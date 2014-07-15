@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,14 +11,59 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public static class PlatformApis
     {
-        public static bool IsWindows() 
+        public enum Platform
         {
+            Unknown,
+            Linux,
+            Mac,
+            Windows,
+        }
+
+        public static Platform CurrentPlatform { get; private set; }
+
+        public static string Architecture { get; private set; }
+
+        static PlatformApis()
+        {
+            CurrentPlatform = Platform.Unknown;
+            Architecture = IntPtr.Size == 4
+                ? "x86"
+                : "amd64";
 #if K10
-            return true;
+            CurrentPlatform = Platform.Windows;
 #else
             var p = (int)Environment.OSVersion.Platform;
-            return (p != 4) && (p != 6) && (p != 128);
+            if ((p != 4) && (p != 6) && (p != 128))
+            {
+                CurrentPlatform = Platform.Windows;
+            }
+            else
+            {
+                string uname = Uname("");
+                if ("Darwin".Equals(uname))
+                {
+                    CurrentPlatform = Platform.Mac;
+                }
+                else if ("Linux".Equals(uname))
+                {
+                    CurrentPlatform = Platform.Linux;
+                }
+                Architecture = Uname("-m");
+            }
 #endif
+        }
+
+        private static string Uname(string args)
+        {
+            Process p = new Process();
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.FileName = "uname";
+            p.StartInfo.Arguments = args;
+            p.Start();
+            string output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit();
+            return (output ?? "").Trim();
         }
 
         public static void Apply(Libuv libuv)
