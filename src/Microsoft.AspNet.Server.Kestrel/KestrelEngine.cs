@@ -33,7 +33,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
                 if (Libuv.IsWindows)
                 {
-                    var architecture = IntPtr.Size == 4
+                    var architecture = Environment.Is64BitProcess
                         ? "x86"
                         : "amd64";
 
