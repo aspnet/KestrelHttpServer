@@ -12,7 +12,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         public Libuv()
         {
-            IsWindows = PlatformApis.IsWindows();
+            IsWindows = PlatformApis.CurrentPlatform == PlatformApis.Platform.Windows;
         }
 
         public bool IsWindows;
@@ -25,6 +25,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             PlatformApis.Apply(this);
 
             var module = LoadLibrary(dllToLoad);
+            if (module == IntPtr.Zero)
+            {
+                throw new InvalidOperationException(string.Format("Failed to load '{0}'", dllToLoad));
+            }
             foreach (var field in GetType().GetTypeInfo().DeclaredFields)
             {
                 var procAddress = GetProcAddress(module, field.Name.TrimStart('_'));

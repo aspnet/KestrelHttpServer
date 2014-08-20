@@ -33,18 +33,14 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
                 if (Libuv.IsWindows)
                 {
-                    var architecture = IntPtr.Size == 4
-                        ? "x86"
-                        : "amd64";
-
                     libraryPath = Path.Combine(
                         libraryPath, 
                         "native",
                         "windows",
-                        architecture, 
+                        PlatformApis.Architecture,
                         "libuv.dll");
                 }
-                else
+                else if (PlatformApis.CurrentPlatform == PlatformApis.Platform.Mac)
                 {
                     libraryPath = Path.Combine(
                         libraryPath,
@@ -52,6 +48,15 @@ namespace Microsoft.AspNet.Server.Kestrel
                         "darwin",
                         "universal", 
                         "libuv.dylib");
+                }
+                else
+                {
+                    libraryPath = Path.Combine(
+                        libraryPath,
+                        "native",
+                        "linux",
+                        PlatformApis.Architecture,
+                        "libuv.so");
                 }
             }
             Libuv.Load(libraryPath);
