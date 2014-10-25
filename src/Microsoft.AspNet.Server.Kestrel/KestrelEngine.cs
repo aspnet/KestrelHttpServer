@@ -31,31 +31,31 @@ namespace Microsoft.AspNet.Server.Kestrel
                 {
                     libraryPath = Path.GetDirectoryName(libraryPath);
                 }
-                if (Libuv.IsWindows)
+                switch (PlatformApis.GetPlatform())
                 {
-                    var architecture = IntPtr.Size == 4
-                        ? "x86"
-                        : "amd64";
+                    case PlatformApis.Platform.Windows:
+                        var architecture = IntPtr.Size == 4
+                            ? "x86"
+                            : "amd64";
 
-                    libraryPath = Path.Combine(
-                        libraryPath, 
-                        "native",
-                        "windows",
-                        architecture, 
-                        "libuv.dll");
-                }
-                else if (Libuv.IsDarwin)
-                {
-                    libraryPath = Path.Combine(
-                        libraryPath,
-                        "native",
-                        "darwin",
-                        "universal",
-                        "libuv.dylib");
-                }
-                else
-                {
-                    libraryPath = "libuv.so.1";
+                        libraryPath = Path.Combine(
+                            libraryPath,
+                            "native",
+                            "windows",
+                            architecture,
+                            "libuv.dll");
+                        break;
+                    case PlatformApis.Platform.MacOSX:
+                        libraryPath = Path.Combine(
+                            libraryPath,
+                            "native",
+                            "darwin",
+                            "universal",
+                            "libuv.dylib");
+                        break;
+                    case PlatformApis.Platform.OtherUnixSystems:
+                        libraryPath = "libuv.so.1";
+                        break;
                 }
             }
             Libuv.Load(libraryPath);

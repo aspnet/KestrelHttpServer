@@ -12,15 +12,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         public Libuv()
         {
-            IsWindows = PlatformApis.IsWindows();
-            if (!IsWindows)
-            {
-                IsDarwin = PlatformApis.IsDarwin();
-            }
         }
-
-        public bool IsWindows;
-        public bool IsDarwin;
 
         public Func<string, IntPtr> LoadLibrary;
         public Func<IntPtr, bool> FreeLibrary;
@@ -327,7 +319,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public uv_buf_t buf_init(IntPtr memory, int len)
         {
-            return new uv_buf_t(memory, len, IsWindows);
+            return new uv_buf_t(memory, len, PlatformApis.GetPlatform() == PlatformApis.Platform.Windows);
         }
 
         public struct sockaddr
