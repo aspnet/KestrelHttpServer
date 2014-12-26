@@ -32,7 +32,7 @@ namespace Kestrel
         {
             var disposables = new List<IDisposable>();
             var information = (ServerInformation)serverInformation;
-            var engine = new KestrelEngine(_libraryManager);
+            var engine = new KestrelEngine((Microsoft.Framework.Runtime.ILibraryManager)_libraryManager);
             engine.Start(1);
             foreach (var address in information.Addresses)
             {
