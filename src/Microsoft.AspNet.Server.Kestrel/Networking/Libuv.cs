@@ -21,30 +21,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public int Check(int statusCode)
+        public static void Check(int statusCode)
         {
             Exception error;
-            var result = Check(statusCode, out error);
+            Check(statusCode, out error);
             if (error != null)
             {
                 throw error;
             }
-            return statusCode;
         }
 
-        public int Check(int statusCode, out Exception error)
+        public static void Check(int statusCode, out Exception error)
         {
+            error = null;
+
             if (statusCode < 0)
             {
                 var errorName = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_err_name(statusCode));
                 var errorDescription = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_strerror(statusCode));
                 error = new Exception("Error " + statusCode + " " + errorName + " " + errorDescription);
             }
-            else
-            {
-                error = null;
-            }
-            return statusCode;
         }
 
         public void loop_init(UvLoopHandle handle)
@@ -58,10 +54,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Check(UnsafeNativeMethods.uv_loop_close(handle.InternalGetHandle()));
         }
 
-        public int run(UvLoopHandle handle, int mode)
+        public void run(UvLoopHandle handle, int mode)
         {
             handle.Validate();
-            return Check(UnsafeNativeMethods.uv_run(handle, mode));
+            Check(UnsafeNativeMethods.uv_run(handle, mode));
         }
 
         public void stop(UvLoopHandle handle)
@@ -171,14 +167,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return UnsafeNativeMethods.uv_req_size(reqType);
         }
 
-        public int ip4_addr(string ip, int port, out sockaddr addr, out Exception error)
+        public void ip4_addr(string ip, int port, out sockaddr addr, out Exception error)
         {
-            return Check(UnsafeNativeMethods.uv_ip4_addr(ip, port, out addr), out error);
+            Check(UnsafeNativeMethods.uv_ip4_addr(ip, port, out addr), out error);
         }
 
-        public int ip6_addr(string ip, int port, out sockaddr addr, out Exception error)
+        public void ip6_addr(string ip, int port, out sockaddr addr, out Exception error)
         {
-            return Check(UnsafeNativeMethods.uv_ip6_addr(ip, port, out addr), out error);
+            Check(UnsafeNativeMethods.uv_ip6_addr(ip, port, out addr), out error);
         }
 
         public void walk(UvLoopHandle loop, uv_walk_cb walk_cb, IntPtr arg)

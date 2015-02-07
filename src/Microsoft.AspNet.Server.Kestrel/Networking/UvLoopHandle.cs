@@ -35,9 +35,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _uv.loop_init(this);
         }
 
-        public int Run(int mode = 0)
+        public void Run(int mode = 0)
         {
-            return _uv.run(this, mode);
+            _uv.run(this, mode);
         }
 
         public void Stop()

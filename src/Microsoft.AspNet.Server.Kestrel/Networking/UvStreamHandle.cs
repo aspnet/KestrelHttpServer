@@ -113,7 +113,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             var stream = FromIntPtr<UvStreamHandle>(handle);
 
             Exception error;
-            status = stream.Libuv.Check(status, out error);
+            Libuv.Check(status, out error);
 
             try
             {
@@ -150,7 +150,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 if (nread < 0)
                 {
                     Exception error;
-                    stream._uv.Check(nread, out error);
+                    Libuv.Check(nread, out error);
                     stream._readCallback(stream, 0, error, stream._readState);
                 }
                 else
