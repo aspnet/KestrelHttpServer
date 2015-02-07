@@ -71,7 +71,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _state = state;
                 handle.Validate();
                 Validate();
-                Libuv.Check(UnsafeNativeMethods.uv_write(this, handle, pBuffers, nBuffers, _uv_write_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, handle, pBuffers, nBuffers, _uv_write_cb));
             }
             catch
             {
@@ -102,11 +102,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             var state = req._state;
             req._state = null;
 
-            Exception error = null;
-            if (status < 0)
-            {
-                Libuv.Check(status, out error);
-            }
+            var error = Libuv.ExceptionForError(status);
 
             try
             {

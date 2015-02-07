@@ -29,13 +29,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             _threadId = Thread.CurrentThread.ManagedThreadId;
             handle = Marshal.AllocCoTaskMem(UnsafeNativeMethods.uv_loop_size());
-            Libuv.Check(UnsafeNativeMethods.uv_loop_init(this));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
         public void Run(int mode = 0)
         {
             Validate();
-            Libuv.Check(UnsafeNativeMethods.uv_run(this, mode));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_run(this, mode));
         }
 
         public void Stop()
@@ -47,7 +47,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         protected override bool ReleaseHandle()
         {
             Validate(closed: true);
-            Libuv.Check(UnsafeNativeMethods.uv_loop_close(InternalGetHandle()));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(InternalGetHandle()));
             Marshal.FreeCoTaskMem(handle);
             return true;
         }

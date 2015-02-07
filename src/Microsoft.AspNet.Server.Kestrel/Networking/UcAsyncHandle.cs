@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _callback = callback;
             loop.Validate();
             Validate();
-            Libuv.Check(UnsafeNativeMethods.uv_async_init(loop, this, _uv_async_cb));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_init(loop, this, _uv_async_cb));
         }
 
         public void DangerousClose()
@@ -30,7 +30,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Send()
         {
-            Libuv.Check(UnsafeNativeMethods.uv_async_send(this));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_send(this));
         }
 
         unsafe static void AsyncCb(IntPtr handle)
