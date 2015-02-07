@@ -35,6 +35,17 @@ namespace Microsoft.AspNet.Server.Kestrel
                     IntPtr.Size == 4 ? "x86" : "amd64");
                 UnsafeNativeMethods.SetDllDirectory(architectureLibraryPath);
             }
+            try
+            {
+                Libuv.loop_size();
+            }
+            catch (DllNotFoundException)
+            {
+                // Binaries for Windows and OSx are bundled, so this only happens
+                // on Linux, where the library name is libuv.so.1
+                // The caught exception mentions 'libuv.dll' and thus is confusing
+                throw new DllNotFoundException("libuv.so.1");
+            }
         }
 
         public Libuv Libuv { get; private set; }
