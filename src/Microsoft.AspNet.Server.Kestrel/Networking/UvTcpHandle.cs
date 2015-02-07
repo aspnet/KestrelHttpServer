@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
-                UnsafeNativeMethods.uv_handle_size(Libuv.HandleType.TCP));
+                UnsafeNativeMethods.uv_handle_size(HandleType.TCP));
 
             loop.Validate();
             Validate();
@@ -25,7 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateHandle(
                 loop.Libuv, 
                 loop.ThreadId,
-                UnsafeNativeMethods.uv_handle_size(Libuv.HandleType.TCP),
+                UnsafeNativeMethods.uv_handle_size(HandleType.TCP),
                 queueCloseHandle);
 
             loop.Validate();
@@ -35,7 +35,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Bind(IPEndPoint endpoint)
         {
-            Libuv.sockaddr addr;
+            Sockaddr addr;
             var addressText = endpoint.Address.ToString();
 
             Exception error1;

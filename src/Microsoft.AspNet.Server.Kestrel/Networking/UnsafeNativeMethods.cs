@@ -42,7 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_tcp_init(UvLoopHandle loop, UvTcpHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_tcp_bind(UvTcpHandle handle, ref Libuv.sockaddr addr, int flags);
+        public extern static int uv_tcp_bind(UvTcpHandle handle, ref Sockaddr addr, int flags);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static int uv_listen(UvStreamHandle handle, int backlog, uv_connection_cb cb);
@@ -78,16 +78,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_loop_size();
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_handle_size(Libuv.HandleType handleType);
+        public extern static int uv_handle_size(HandleType handleType);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_req_size(Libuv.RequestType reqType);
+        public extern static int uv_req_size(RequestType reqType);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_ip4_addr(string ip, int port, out Libuv.sockaddr addr);
+        public extern static int uv_ip4_addr(string ip, int port, out Sockaddr addr);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_ip6_addr(string ip, int port, out Libuv.sockaddr addr);
+        public extern static int uv_ip6_addr(string ip, int port, out Sockaddr addr);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static int uv_walk(UvLoopHandle loop, uv_walk_cb walk_cb, IntPtr arg);

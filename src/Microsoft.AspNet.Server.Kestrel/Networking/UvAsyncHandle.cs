@@ -15,7 +15,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateMemory(
                 loop.Libuv, 
                 loop.ThreadId,
-                UnsafeNativeMethods.uv_handle_size(Libuv.HandleType.ASYNC));
+                UnsafeNativeMethods.uv_handle_size(HandleType.ASYNC));
 
             _callback = callback;
             loop.Validate();

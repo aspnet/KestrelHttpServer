@@ -20,7 +20,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateMemory(
                 loop.Libuv, 
                 loop.ThreadId,
-                UnsafeNativeMethods.uv_req_size(Libuv.RequestType.SHUTDOWN));
+                UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN));
         }
 
         public void Shutdown(UvStreamHandle handle, Action<UvShutdownReq, int, object> callback, object state)
