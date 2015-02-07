@@ -36,8 +36,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             if (statusCode < 0)
             {
-                var errorName = err_name(statusCode);
-                var errorDescription = strerror(statusCode);
+                var errorName = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_err_name(statusCode));
+                var errorDescription = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_strerror(statusCode));
                 error = new Exception("Error " + statusCode + " " + errorName + " " + errorDescription);
             }
             else
@@ -160,18 +160,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             req.Validate();
             handle.Validate();
             Check(UnsafeNativeMethods.uv_shutdown(req, handle, cb));
-        }
-
-        public unsafe String err_name(int err)
-        {
-            IntPtr ptr = UnsafeNativeMethods.uv_err_name(err);
-            return ptr == IntPtr.Zero ? null : Marshal.PtrToStringAnsi(ptr);
-        }
-
-        public unsafe String strerror(int err)
-        {
-            IntPtr ptr = UnsafeNativeMethods.uv_strerror(err);
-            return ptr == IntPtr.Zero ? null : Marshal.PtrToStringAnsi(ptr);
         }
 
         public int loop_size()
