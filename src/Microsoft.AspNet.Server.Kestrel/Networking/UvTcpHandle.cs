@@ -12,7 +12,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             CreateMemory(
                 loop.Libuv,
-                loop.ThreadId, 
+                loop.ThreadId,
                 loop.Libuv.handle_size(Libuv.HandleType.TCP));
 
             _uv.tcp_init(loop, this);

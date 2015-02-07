@@ -80,12 +80,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             UnsafeNativeMethods.uv_unref(handle);
         }
 
-        public void close(UvHandle handle, uv_close_cb close_cb)
-        {
-            handle.Validate(closed: true);
-            UnsafeNativeMethods.uv_close(handle.InternalGetHandle(), close_cb);
-        }
-        public void close(IntPtr handle, uv_close_cb close_cb)
         {
             UnsafeNativeMethods.uv_close(handle, close_cb);
         }
