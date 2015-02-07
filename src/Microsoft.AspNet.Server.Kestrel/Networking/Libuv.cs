@@ -142,12 +142,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Check(UnsafeNativeMethods.uv_read_stop(handle));
         }
 
-        public int try_write(UvStreamHandle handle, Libuv.uv_buf_t[] bufs, int nbufs)
-        {
-            handle.Validate();
-            return Check(UnsafeNativeMethods.uv_try_write(handle, bufs, nbufs));
-        }
-
         unsafe public void write(UvWriteReq req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, uv_write_cb cb)
         {
             req.Validate();
