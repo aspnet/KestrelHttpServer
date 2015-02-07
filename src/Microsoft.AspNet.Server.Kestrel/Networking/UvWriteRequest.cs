@@ -25,7 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Init(UvLoopHandle loop)
         {
-            var requestSize = loop.Libuv.req_size(Libuv.RequestType.WRITE);
+            var requestSize = UnsafeNativeMethods.uv_req_size(Libuv.RequestType.WRITE);
             var bufferSize = Marshal.SizeOf(typeof(Libuv.uv_buf_t)) * BUFFER_COUNT;
             CreateMemory(
                 loop.Libuv,
@@ -70,7 +70,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
                 _callback = callback;
                 _state = state;
-                _uv.write(this, handle, pBuffers, nBuffers, _uv_write_cb);
+                handle.Validate();
+                Validate();
+                Libuv.Check(UnsafeNativeMethods.uv_write(this, handle, pBuffers, nBuffers, _uv_write_cb));
             }
             catch
             {

@@ -14,11 +14,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             CreateMemory(
                 loop.Libuv, 
-                loop.ThreadId, 
-                loop.Libuv.handle_size(Libuv.HandleType.ASYNC));
+                loop.ThreadId,
+                UnsafeNativeMethods.uv_handle_size(Libuv.HandleType.ASYNC));
 
             _callback = callback;
-            _uv.async_init(loop, this, _uv_async_cb);
+            loop.Validate();
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_async_init(loop, this, _uv_async_cb));
         }
 
         public void DangerousClose()
@@ -29,7 +31,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Send()
         {
-            _uv.async_send(this);
+            Libuv.Check(UnsafeNativeMethods.uv_async_send(this));
         }
 
         unsafe static void AsyncCb(IntPtr handle)

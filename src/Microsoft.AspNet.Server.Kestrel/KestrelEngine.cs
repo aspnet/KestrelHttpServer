@@ -37,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
             try
             {
-                Libuv.loop_size();
+                UnsafeNativeMethods.uv_loop_size();
             }
             catch (DllNotFoundException)
             {

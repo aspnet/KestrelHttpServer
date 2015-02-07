@@ -31,23 +31,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             _uv = uv;
             _threadId = Thread.CurrentThread.ManagedThreadId;
-            handle = Marshal.AllocCoTaskMem(_uv.loop_size());
-            _uv.loop_init(this);
+            handle = Marshal.AllocCoTaskMem(UnsafeNativeMethods.uv_loop_size());
+            Libuv.Check(UnsafeNativeMethods.uv_loop_init(this));
         }
 
         public void Run(int mode = 0)
         {
-            _uv.run(this, mode);
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_run(this, mode));
         }
 
         public void Stop()
         {
-            _uv.stop(this);
+            Validate();
+            UnsafeNativeMethods.uv_stop(this);
         }
 
         protected override bool ReleaseHandle()
         {
-            _uv.loop_close(this);
+            Validate(closed: true);
+            Libuv.Check(UnsafeNativeMethods.uv_loop_close(InternalGetHandle()));
             Marshal.FreeCoTaskMem(handle);
             return true;
         }

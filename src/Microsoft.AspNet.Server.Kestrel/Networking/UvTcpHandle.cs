@@ -13,9 +13,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
-                loop.Libuv.handle_size(Libuv.HandleType.TCP));
+                UnsafeNativeMethods.uv_handle_size(HandleType.TCP));
 
-            _uv.tcp_init(loop, this);
+            loop.Validate();
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_tcp_init(loop, this));
         }
 
         public void Init(UvLoopHandle loop, Action<Action<IntPtr>, IntPtr> queueCloseHandle)
@@ -23,9 +25,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateHandle(
                 loop.Libuv, 
                 loop.ThreadId,
-                loop.Libuv.handle_size(Libuv.HandleType.TCP), queueCloseHandle);
+                UnsafeNativeMethods.uv_handle_size(Libuv.HandleType.TCP),
+                queueCloseHandle);
 
-            _uv.tcp_init(loop, this);
+            loop.Validate();
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_tcp_init(loop, this));
         }
 
         public void Bind(IPEndPoint endpoint)
@@ -34,19 +39,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             var addressText = endpoint.Address.ToString();
 
             Exception error1;
-            _uv.ip4_addr(addressText, endpoint.Port, out addr, out error1);
+            Libuv.Check(UnsafeNativeMethods.uv_ip4_addr(addressText, endpoint.Port, out addr), out error1);
 
             if (error1 != null)
             {
                 Exception error2;
-                _uv.ip6_addr(addressText, endpoint.Port, out addr, out error2);
+                Libuv.Check(UnsafeNativeMethods.uv_ip6_addr(addressText, endpoint.Port, out addr), out error2);
                 if (error2 != null)
                 {
                     throw error1;
                 }
             }
 
-            _uv.tcp_bind(this, ref addr, 0);
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_tcp_bind(this, ref addr, 0));
         }
     }
 }

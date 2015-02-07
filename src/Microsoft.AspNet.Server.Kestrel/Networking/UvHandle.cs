@@ -30,11 +30,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
                 if (Thread.CurrentThread.ManagedThreadId == ThreadId)
                 {
-                    _uv.close(memory, _destroyMemory);
+                    UnsafeNativeMethods.uv_close(memory, _destroyMemory);
                 }
                 else
                 {
-                    _queueCloseHandle(memory2 => _uv.close(memory2, _destroyMemory), memory);
+                    _queueCloseHandle(
+                        memory2 => UnsafeNativeMethods.uv_close(memory2, _destroyMemory),
+                        memory);
                 }
             }
             return true;
@@ -42,12 +44,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Reference()
         {
-            _uv.@ref(this);
+            Validate();
+            UnsafeNativeMethods.uv_ref(this);
         }
 
         public void Unreference()
         {
-            _uv.unref(this);
+            Validate();
+            UnsafeNativeMethods.uv_unref(this);
         }
     }
 }
