@@ -33,32 +33,14 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
                 if (Libuv.IsWindows)
                 {
-                    var architecture = IntPtr.Size == 4
-                        ? "x86"
-                        : "amd64";
-
-                    libraryPath = Path.Combine(
-                        libraryPath, 
-                        "native",
-                        "windows",
-                        architecture, 
-                        "libuv.dll");
-                }
-                else if (Libuv.IsDarwin)
-                {
-                    libraryPath = Path.Combine(
+                    var architectureLibraryPath = Path.Combine(
                         libraryPath,
                         "native",
-                        "darwin",
-                        "universal",
-                        "libuv.dylib");
-                }
-                else
-                {
-                    libraryPath = "libuv.so.1";
+                        "windows",
+                        IntPtr.Size == 4 ? "x86" : "amd64");
+                    UnsafeNativeMethods.SetDllDirectory(architectureLibraryPath);
                 }
             }
-            Libuv.Load(libraryPath);
         }
 
         public Libuv Libuv { get; private set; }
