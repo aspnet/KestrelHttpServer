@@ -13,7 +13,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Init(UvLoopHandle loop, Action callback)
         {
             CreateMemory(
-                loop.Libuv, 
                 loop.ThreadId,
                 UnsafeNativeMethods.uv_handle_size(HandleType.ASYNC));
 

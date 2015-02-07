@@ -10,14 +10,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class UvLoopHandle : SafeHandle
     {
-        private Libuv _uv;
         private int _threadId;
 
         public UvLoopHandle() : base(IntPtr.Zero, true) { }
 
         internal IntPtr InternalGetHandle() => handle;
         public override bool IsInvalid => handle == IntPtr.Zero;
-        public Libuv Libuv => _uv;
         public int ThreadId => _threadId;
 
         public void Validate(bool closed = false)
@@ -27,9 +25,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
         }
 
-        public void Init(Libuv uv)
+        public void Init()
         {
-            _uv = uv;
             _threadId = Thread.CurrentThread.ManagedThreadId;
             handle = Marshal.AllocCoTaskMem(UnsafeNativeMethods.uv_loop_size());
             Libuv.Check(UnsafeNativeMethods.uv_loop_init(this));

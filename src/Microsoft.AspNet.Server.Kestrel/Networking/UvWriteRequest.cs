@@ -28,7 +28,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             var requestSize = UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
             var bufferSize = Marshal.SizeOf(typeof(UvBuffer)) * BUFFER_COUNT;
             CreateMemory(
-                loop.Libuv,
                 loop.ThreadId,
                 requestSize + bufferSize);
             _bufs = handle + requestSize;

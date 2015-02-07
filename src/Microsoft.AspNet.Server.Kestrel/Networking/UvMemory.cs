@@ -13,14 +13,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public abstract class UvMemory : SafeHandle
     {
-        protected Libuv _uv;
         private int _threadId;
 
         public UvMemory() : base(IntPtr.Zero, true)
         {
         }
-
-        public Libuv Libuv { get { return _uv; } }
 
         public override bool IsInvalid
         {
@@ -42,9 +39,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        unsafe protected void CreateMemory(Libuv uv, int threadId, int size)
+        unsafe protected void CreateMemory(int threadId, int size)
         {
-            _uv = uv;
             ThreadId = threadId;
             
             handle = Marshal.AllocCoTaskMem(size);

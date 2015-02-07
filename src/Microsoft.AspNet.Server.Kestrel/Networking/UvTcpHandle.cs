@@ -11,7 +11,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Init(UvLoopHandle loop)
         {
             CreateMemory(
-                loop.Libuv,
                 loop.ThreadId,
                 UnsafeNativeMethods.uv_handle_size(HandleType.TCP));
 
@@ -23,7 +22,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Init(UvLoopHandle loop, Action<Action<IntPtr>, IntPtr> queueCloseHandle)
         {
             CreateHandle(
-                loop.Libuv, 
                 loop.ThreadId,
                 UnsafeNativeMethods.uv_handle_size(HandleType.TCP),
                 queueCloseHandle);

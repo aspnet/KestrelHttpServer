@@ -19,7 +19,6 @@ namespace Microsoft.AspNet.Server.Kestrel
             Threads = new List<KestrelThread>();
             Listeners = new List<Listener>();
             Memory = new MemoryPool();
-            Libuv = new Libuv();
 
             if (Libuv.IsWindows)
             {
@@ -48,7 +47,6 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
         }
 
-        public Libuv Libuv { get; private set; }
         public IMemoryPool Memory { get; set; }
         public List<KestrelThread> Threads { get; private set; }
         public List<Listener> Listeners { get; private set; }

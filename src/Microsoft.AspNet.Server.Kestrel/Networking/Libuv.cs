@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public class Libuv
+    public static class Libuv
     {
         public static bool IsWindows
         {

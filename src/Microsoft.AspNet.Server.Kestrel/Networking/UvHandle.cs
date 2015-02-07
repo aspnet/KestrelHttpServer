@@ -12,13 +12,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
         unsafe protected void CreateHandle(
-            Libuv uv,
             int threadId,
             int size,
             Action<Action<IntPtr>, IntPtr> queueCloseHandle)
         {
             _queueCloseHandle = queueCloseHandle;
-            CreateMemory(uv, threadId, size);
+            CreateMemory(threadId, size);
         }
 
         protected override bool ReleaseHandle()
