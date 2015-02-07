@@ -8,12 +8,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class Libuv
     {
-        public Libuv()
+        public bool IsWindows
         {
-            IsWindows = PlatformApis.IsWindows();
+            get
+            {
+#if DNXCORE50
+                return true;
+#else
+                var p = (int)Environment.OSVersion.Platform;
+                return (p != 4) && (p != 6) && (p != 128);
+#endif
+            }
         }
-
-        public bool IsWindows;
 
         public int Check(int statusCode)
         {
@@ -282,7 +288,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             WORK,
             GETADDRINFO,
             GETNAMEINFO,
-        }        
+        }
         //int handle_size_async;
         //int handle_size_tcp;
         //int req_size_write;
