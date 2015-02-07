@@ -15,7 +15,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public static extern int uv_loop_init(UvLoopHandle a0);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int uv_loop_close(IntPtr a0);
+        public static extern int uv_loop_close(UvLoopHandle a0);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public static extern int uv_run(UvLoopHandle handle, int mode);

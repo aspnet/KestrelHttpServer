@@ -46,7 +46,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _listenCallback = callback;
                 _listenState = state;
                 _listenVitality = GCHandle.Alloc(this, GCHandleType.Normal);
-                _uv.listen(this, 10, _uv_connection_cb);
+                Validate();
+                Libuv.Check(UnsafeNativeMethods.uv_listen(this, 10, _uv_connection_cb));
             }
             catch
             {
@@ -62,7 +63,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Accept(UvStreamHandle handle)
         {
-            _uv.accept(this, handle);
+            Validate();
+            handle.Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_accept(this, handle));
         }
 
         public void ReadStart(
@@ -80,7 +83,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _readCallback = readCallback;
                 _readState = state;
                 _readVitality = GCHandle.Alloc(this, GCHandleType.Normal);
-                _uv.read_start(this, _uv_alloc_cb, _uv_read_cb);
+                Validate();
+                Libuv.Check(UnsafeNativeMethods.uv_read_start(this, _uv_alloc_cb, _uv_read_cb));
             }
             catch
             {
@@ -105,7 +109,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _readCallback = null;
             _readState = null;
             _readVitality.Free();
-            _uv.read_stop(this);
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_read_stop(this));
         }
 
         private static void UvConnectionCb(IntPtr handle, int status)

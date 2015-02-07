@@ -78,7 +78,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnStopRude(object obj)
         {
-            _engine.Libuv.walk(
+            UnsafeNativeMethods.uv_walk(
                 _loop,
                 (ptr, arg) =>
                 {
@@ -152,8 +152,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 // run the loop one more time to delete the open handles
                 _post.Reference();
                 _post.DangerousClose();
-
-                _engine.Libuv.walk(
+                UnsafeNativeMethods.uv_walk(
                     _loop,
                     (ptr, arg) =>
                     {

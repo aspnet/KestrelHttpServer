@@ -13,19 +13,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             CreateMemory(
                 uv, 
                 Thread.CurrentThread.ManagedThreadId,
-                uv.loop_size());
+                UnsafeNativeMethods.uv_loop_size());
 
-            _uv.loop_init(this);
+            UnsafeNativeMethods.uv_loop_init(this);
         }
 
         public void Run(int mode = 0)
         {
-            _uv.run(this, mode);
+            Validate();
+            Libuv.Check(UnsafeNativeMethods.uv_run(this, mode));
         }
 
         public void Stop()
         {
-            _uv.stop(this);
+            Validate();
+            UnsafeNativeMethods.uv_stop(this);
         }
 
         unsafe protected override bool ReleaseHandle()
@@ -36,7 +38,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 // loop_close clears the gcHandlePtr
                 var gcHandlePtr = *(IntPtr*)memory;
 
-                _uv.loop_close(this);
+                UnsafeNativeMethods.uv_loop_close(this);
                 handle = IntPtr.Zero;
 
                 DestroyMemory(memory, gcHandlePtr);
