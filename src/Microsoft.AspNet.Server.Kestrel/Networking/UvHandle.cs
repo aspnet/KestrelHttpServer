@@ -12,13 +12,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
         unsafe protected void CreateHandle(
-            Libuv uv,
             int threadId,
             int size,
             Action<Action<IntPtr>, IntPtr> queueCloseHandle)
         {
             _queueCloseHandle = queueCloseHandle;
-            CreateMemory(uv, threadId, size);
+            CreateMemory(threadId, size);
         }
 
         protected override bool ReleaseHandle()
@@ -34,9 +33,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 }
                 else if (_queueCloseHandle != null)
                 {
-                    // This can be called from the finalizer.
-                    // Ensure the closure doesn't reference "this".
-                    var uv = _uv;
                     _queueCloseHandle(memory2 => UnsafeNativeMethods.uv_close(memory2, _destroyMemory), memory);
                 }
             }

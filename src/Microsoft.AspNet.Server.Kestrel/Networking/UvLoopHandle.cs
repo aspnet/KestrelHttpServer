@@ -8,10 +8,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class UvLoopHandle : UvHandle
     {
-        public void Init(Libuv uv)
+        public void Init()
         {
             CreateMemory(
-                uv, 
                 Thread.CurrentThread.ManagedThreadId,
                 UnsafeNativeMethods.uv_loop_size());
 

@@ -131,7 +131,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             var tcs = (TaskCompletionSource<int>)parameter;
             try
             {
-                _loop.Init(_engine.Libuv);
+                _loop.Init();
                 _post.Init(_loop, OnPost);
                 tcs.SetResult(0);
             }
