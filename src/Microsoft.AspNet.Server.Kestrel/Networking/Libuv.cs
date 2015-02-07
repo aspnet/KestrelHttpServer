@@ -82,9 +82,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             UnsafeNativeMethods.uv_unref(handle);
         }
 
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_close_cb(IntPtr handle);
         public void close(UvHandle handle, uv_close_cb close_cb)
         {
             handle.Validate(closed: true);
@@ -95,8 +92,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             UnsafeNativeMethods.uv_close(handle, close_cb);
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_async_cb(IntPtr handle);
         public void async_init(UvLoopHandle loop, UvAsyncHandle handle, uv_async_cb cb)
         {
             loop.Validate();
@@ -122,8 +117,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Check(UnsafeNativeMethods.uv_tcp_bind(handle, ref addr, flags));
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_connection_cb(IntPtr server, int status);
         public void listen(UvStreamHandle handle, int backlog, uv_connection_cb cb)
         {
             handle.Validate();
@@ -137,10 +130,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Check(UnsafeNativeMethods.uv_accept(server, client));
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_alloc_cb(IntPtr server, int suggested_size, out uv_buf_t buf);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_read_cb(IntPtr server, int nread, ref uv_buf_t buf);
         public void read_start(UvStreamHandle handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
         {
             handle.Validate();
@@ -159,8 +148,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return Check(UnsafeNativeMethods.uv_try_write(handle, bufs, nbufs));
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_write_cb(IntPtr req, int status);
         unsafe public void write(UvWriteReq req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, uv_write_cb cb)
         {
             req.Validate();
@@ -168,8 +155,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Check(UnsafeNativeMethods.uv_write(req, handle, bufs, nbufs, cb));
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_shutdown_cb(IntPtr req, int status);
         public void shutdown(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb)
         {
             req.Validate();
@@ -214,8 +199,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return Check(UnsafeNativeMethods.uv_ip6_addr(ip, port, out addr), out error);
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_walk_cb(IntPtr handle, IntPtr arg);
         public void walk(UvLoopHandle loop, uv_walk_cb walk_cb, IntPtr arg)
         {
             loop.Validate();

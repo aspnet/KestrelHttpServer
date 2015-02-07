@@ -9,9 +9,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvStreamHandle : UvHandle
     {
-        private readonly static Libuv.uv_connection_cb _uv_connection_cb = UvConnectionCb;
-        private readonly static Libuv.uv_alloc_cb _uv_alloc_cb = UvAllocCb;
-        private readonly static Libuv.uv_read_cb _uv_read_cb = UvReadCb;
+        private readonly static uv_connection_cb _uv_connection_cb = UvConnectionCb;
+        private readonly static uv_alloc_cb _uv_alloc_cb = UvAllocCb;
+        private readonly static uv_read_cb _uv_read_cb = UvReadCb;
 
         public Action<UvStreamHandle, int, Exception, object> _listenCallback;
         public object _listenState;

@@ -7,7 +7,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class UvAsyncHandle : UvHandle
     {
-        private static Libuv.uv_async_cb _uv_async_cb = AsyncCb;
+        private static uv_async_cb _uv_async_cb = AsyncCb;
         private Action _callback;
 
         public void Init(UvLoopHandle loop, Action callback)

@@ -30,10 +30,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static void uv_unref(UvHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_close(IntPtr handle, Libuv.uv_close_cb close_cb);
+        public extern static void uv_close(IntPtr handle, uv_close_cb close_cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_async_init(UvLoopHandle loop, UvAsyncHandle handle, Libuv.uv_async_cb cb);
+        public extern static int uv_async_init(UvLoopHandle loop, UvAsyncHandle handle, uv_async_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static int uv_async_send(UvAsyncHandle handle);
@@ -45,13 +45,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_tcp_bind(UvTcpHandle handle, ref Libuv.sockaddr addr, int flags);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_listen(UvStreamHandle handle, int backlog, Libuv.uv_connection_cb cb);
+        public extern static int uv_listen(UvStreamHandle handle, int backlog, uv_connection_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static int uv_accept(UvStreamHandle server, UvStreamHandle client);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_read_start(UvStreamHandle handle, Libuv.uv_alloc_cb alloc_cb, Libuv.uv_read_cb read_cb);
+        public extern static int uv_read_start(UvStreamHandle handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static int uv_read_stop(UvStreamHandle handle);
@@ -60,10 +60,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_try_write(UvStreamHandle handle, Libuv.uv_buf_t[] bufs, int nbufs);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static unsafe int uv_write(UvWriteReq req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, Libuv.uv_write_cb cb);
+        public extern static unsafe int uv_write(UvWriteReq req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, uv_write_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_shutdown(UvShutdownReq req, UvStreamHandle handle, Libuv.uv_shutdown_cb cb);
+        public extern static int uv_shutdown(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static IntPtr uv_err_name(int err);
@@ -87,6 +87,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_ip6_addr(string ip, int port, out Libuv.sockaddr addr);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_walk(UvLoopHandle loop, Libuv.uv_walk_cb walk_cb, IntPtr arg);
+        public extern static int uv_walk(UvLoopHandle loop, uv_walk_cb walk_cb, IntPtr arg);
     }
 }
