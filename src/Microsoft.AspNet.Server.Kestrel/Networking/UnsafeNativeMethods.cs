@@ -57,9 +57,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_read_stop(UvStreamHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_try_write(UvStreamHandle handle, Libuv.uv_buf_t[] bufs, int nbufs);
-
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static unsafe int uv_write(UvWriteReq req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, uv_write_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]

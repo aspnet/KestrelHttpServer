@@ -108,12 +108,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _uv.read_stop(this);
         }
 
-        public int TryWrite(Libuv.uv_buf_t buf)
-        {
-            return _uv.try_write(this, new[] { buf }, 1);
-        }
-
-
         private static void UvConnectionCb(IntPtr handle, int status)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
