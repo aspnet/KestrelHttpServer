@@ -48,14 +48,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return new uv_buf_t(memory, len, IsWindows);
         }
 
-        public struct sockaddr
-        {
-            long x0;
-            long x1;
-            long x2;
-            long x3;
-        }
-
         public struct uv_buf_t
         {
             public uv_buf_t(IntPtr memory, int len, bool IsWindows)
@@ -75,44 +67,5 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             public IntPtr x0;
             public IntPtr x1;
         }
-
-        public enum HandleType
-        {
-            Unknown = 0,
-            ASYNC,
-            CHECK,
-            FS_EVENT,
-            FS_POLL,
-            HANDLE,
-            IDLE,
-            NAMED_PIPE,
-            POLL,
-            PREPARE,
-            PROCESS,
-            STREAM,
-            TCP,
-            TIMER,
-            TTY,
-            UDP,
-            SIGNAL,
-        }
-
-        public enum RequestType
-        {
-            Unknown = 0,
-            REQ,
-            CONNECT,
-            WRITE,
-            SHUTDOWN,
-            UDP_SEND,
-            FS,
-            WORK,
-            GETADDRINFO,
-            GETNAMEINFO,
-        }
-        //int handle_size_async;
-        //int handle_size_tcp;
-        //int req_size_write;
-        //int req_size_shutdown;
     }
 }
