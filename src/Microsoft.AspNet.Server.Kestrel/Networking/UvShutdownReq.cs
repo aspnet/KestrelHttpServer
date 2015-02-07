@@ -28,7 +28,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _state = state;
             Validate();
             handle.Validate();
-            Libuv.Check(UnsafeNativeMethods.uv_shutdown(this, handle, _uv_shutdown_cb));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_shutdown(this, handle, _uv_shutdown_cb));
         }
 
         private static void UvShutdownCb(IntPtr ptr, int status)

@@ -14,13 +14,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 Thread.CurrentThread.ManagedThreadId,
                 UnsafeNativeMethods.uv_loop_size());
 
-            UnsafeNativeMethods.uv_loop_init(this);
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
         public void Run(int mode = 0)
         {
             Validate();
-            Libuv.Check(UnsafeNativeMethods.uv_run(this, mode));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_run(this, mode));
         }
 
         public void Stop()
@@ -37,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 // loop_close clears the gcHandlePtr
                 var gcHandlePtr = *(IntPtr*)memory;
 
-                UnsafeNativeMethods.uv_loop_close(this);
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(this));
                 handle = IntPtr.Zero;
 
                 DestroyMemory(memory, gcHandlePtr);

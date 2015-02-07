@@ -47,7 +47,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _listenState = state;
                 _listenVitality = GCHandle.Alloc(this, GCHandleType.Normal);
                 Validate();
-                Libuv.Check(UnsafeNativeMethods.uv_listen(this, 10, _uv_connection_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(this, 10, _uv_connection_cb));
             }
             catch
             {
@@ -65,7 +65,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             Validate();
             handle.Validate();
-            Libuv.Check(UnsafeNativeMethods.uv_accept(this, handle));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(this, handle));
         }
 
         public void ReadStart(
@@ -84,7 +84,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _readState = state;
                 _readVitality = GCHandle.Alloc(this, GCHandleType.Normal);
                 Validate();
-                Libuv.Check(UnsafeNativeMethods.uv_read_start(this, _uv_alloc_cb, _uv_read_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_start(this, _uv_alloc_cb, _uv_read_cb));
             }
             catch
             {
@@ -110,15 +110,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _readState = null;
             _readVitality.Free();
             Validate();
-            Libuv.Check(UnsafeNativeMethods.uv_read_stop(this));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(this));
         }
 
         private static void UvConnectionCb(IntPtr handle, int status)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
 
-            Exception error;
-            Libuv.Check(status, out error);
+            var error = Libuv.ExceptionForError(status);
 
             try
             {
@@ -154,8 +153,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 if (nread < 0)
                 {
-                    Exception error;
-                    Libuv.Check(nread, out error);
+                    var error = Libuv.ExceptionForError(nread);
                     stream._readCallback(stream, 0, error, stream._readState);
                 }
                 else

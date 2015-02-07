@@ -23,26 +23,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public static void Check(int statusCode)
+        public static void ThrowOnError(int statusCode)
         {
-            Exception error;
-            Check(statusCode, out error);
+            var error = ExceptionForError(statusCode);
             if (error != null)
             {
                 throw error;
             }
         }
 
-        public static void Check(int statusCode, out Exception error)
+        public static Exception ExceptionForError(int statusCode)
         {
-            error = null;
-
             if (statusCode < 0)
             {
                 var errorName = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_err_name(statusCode));
                 var errorDescription = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_strerror(statusCode));
-                error = new Exception("Error " + statusCode + " " + errorName + " " + errorDescription);
+                return new Exception("Error " + statusCode + " " + errorName + " " + errorDescription);
             }
+            else
+                return null;
         }
     }
 }
