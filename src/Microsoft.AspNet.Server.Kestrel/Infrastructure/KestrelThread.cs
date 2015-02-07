@@ -142,7 +142,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
             try
             {
-                var ran1 = _loop.Run();
+                _loop.Run();
                 if (_stopImmediate)
                 {
                     // thread-abort form of exit, resources will be leaked
@@ -166,7 +166,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                     IntPtr.Zero);
 
                 // Ensure the "DangerousClose" operation completes in the event loop.
-                var ran2 = _loop.Run();
+                _loop.Run();
 
                 _loop.Dispose();
             }

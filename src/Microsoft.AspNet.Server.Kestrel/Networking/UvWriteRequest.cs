@@ -104,7 +104,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Exception error = null;
             if (status < 0)
             {
-                req.Libuv.Check(status, out error);
+                Libuv.Check(status, out error);
             }
 
             try
