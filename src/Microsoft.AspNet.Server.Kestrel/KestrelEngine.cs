@@ -21,25 +21,19 @@ namespace Microsoft.AspNet.Server.Kestrel
             Memory = new MemoryPool();
             Libuv = new Libuv();
 
-            var libraryPath = default(string);
-
-            if (libraryManager != null)
+            if (Libuv.IsWindows)
             {
                 var library = libraryManager.GetLibraryInformation("Microsoft.AspNet.Server.Kestrel");
-                libraryPath = library.Path;
+                var libraryPath = library.Path;
                 if (library.Type == "Project")
-                {
                     libraryPath = Path.GetDirectoryName(libraryPath);
-                }
-                if (Libuv.IsWindows)
-                {
-                    var architectureLibraryPath = Path.Combine(
-                        libraryPath,
-                        "native",
-                        "windows",
-                        IntPtr.Size == 4 ? "x86" : "amd64");
-                    UnsafeNativeMethods.SetDllDirectory(architectureLibraryPath);
-                }
+
+                var architectureLibraryPath = Path.Combine(
+                    libraryPath,
+                    "native",
+                    "windows",
+                    IntPtr.Size == 4 ? "x86" : "amd64");
+                UnsafeNativeMethods.SetDllDirectory(architectureLibraryPath);
             }
         }
 
