@@ -8,7 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvHandle : UvMemory
     {
-        static Libuv.uv_close_cb _destroyMemory = DestroyMemory;
+        static uv_close_cb _destroyMemory = DestroyMemory;
         Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
         unsafe protected void CreateHandle(
