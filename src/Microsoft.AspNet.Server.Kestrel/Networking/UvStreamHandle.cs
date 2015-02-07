@@ -17,7 +17,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public object _listenState;
         private GCHandle _listenVitality;
 
-        public Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback;
+        public Func<UvStreamHandle, int, object, UvBuffer> _allocCallback;
         public Action<UvStreamHandle, int, Exception, object> _readCallback;
         public object _readState;
         private GCHandle _readVitality;
@@ -69,7 +69,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         }
 
         public void ReadStart(
-            Func<UvStreamHandle, int, object, Libuv.uv_buf_t> allocCallback,
+            Func<UvStreamHandle, int, object, UvBuffer> allocCallback,
             Action<UvStreamHandle, int, Exception, object> readCallback,
             object state)
         {
@@ -131,7 +131,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         }
 
 
-        private static void UvAllocCb(IntPtr handle, int suggested_size, out Libuv.uv_buf_t buf)
+        private static void UvAllocCb(IntPtr handle, int suggested_size, out UvBuffer buf)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
             try
@@ -141,12 +141,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             catch (Exception ex)
             {
                 Trace.WriteLine("UvAllocCb " + ex.ToString());
-                buf = stream.Libuv.buf_init(IntPtr.Zero, 0);
+                buf = default(UvBuffer);
                 throw;
             }
         }
 
-        private static void UvReadCb(IntPtr handle, int nread, ref Libuv.uv_buf_t buf)
+        private static void UvReadCb(IntPtr handle, int nread, ref UvBuffer buf)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
 
