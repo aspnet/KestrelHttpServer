@@ -8,7 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class Libuv
     {
-        public bool IsWindows
+        public static bool IsWindows
         {
             get
             {
@@ -43,31 +43,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 var errorDescription = Marshal.PtrToStringAnsi(UnsafeNativeMethods.uv_strerror(statusCode));
                 error = new Exception("Error " + statusCode + " " + errorName + " " + errorDescription);
             }
-        }
-
-        public uv_buf_t buf_init(IntPtr memory, int len)
-        {
-            return new uv_buf_t(memory, len, IsWindows);
-        }
-
-        public struct uv_buf_t
-        {
-            public uv_buf_t(IntPtr memory, int len, bool IsWindows)
-            {
-                if (IsWindows)
-                {
-                    x0 = (IntPtr)len;
-                    x1 = memory;
-                }
-                else
-                {
-                    x0 = memory;
-                    x1 = (IntPtr)len;
-                }
-            }
-
-            public IntPtr x0;
-            public IntPtr x1;
         }
     }
 }

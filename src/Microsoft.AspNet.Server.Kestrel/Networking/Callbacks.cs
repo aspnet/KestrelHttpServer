@@ -13,10 +13,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public delegate void uv_connection_cb(IntPtr server, int status);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void uv_alloc_cb(IntPtr server, int suggested_size, out Libuv.uv_buf_t buf);
+    public delegate void uv_alloc_cb(IntPtr server, int suggested_size, out UvBuffer buf);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void uv_read_cb(IntPtr server, int nread, ref Libuv.uv_buf_t buf);
+    public delegate void uv_read_cb(IntPtr server, int nread, ref UvBuffer buf);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void uv_write_cb(IntPtr req, int status);

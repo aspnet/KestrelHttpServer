@@ -26,7 +26,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Init(UvLoopHandle loop)
         {
             var requestSize = UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
-            var bufferSize = Marshal.SizeOf(typeof(Libuv.uv_buf_t)) * BUFFER_COUNT;
+            var bufferSize = Marshal.SizeOf(typeof(UvBuffer)) * BUFFER_COUNT;
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
@@ -45,15 +45,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
 
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
+                var pBuffers = (UvBuffer*)_bufs;
                 var nBuffers = bufs.Count;
                 if (nBuffers > BUFFER_COUNT)
                 {
                     // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
+                    var bufArray = new UvBuffer[nBuffers];
                     var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
                     _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
+                    pBuffers = (UvBuffer*)gcHandle.AddrOfPinnedObject();
                 }
 
                 for (var index = 0; index != nBuffers; ++index)
@@ -63,7 +63,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
                     var gcHandle = GCHandle.Alloc(buf.Array, GCHandleType.Pinned);
                     _pins.Add(gcHandle);
-                    pBuffers[index] = Libuv.buf_init(
+                    pBuffers[index] = new UvBuffer(
                         gcHandle.AddrOfPinnedObject() + buf.Offset,
                         buf.Count);
                 }
