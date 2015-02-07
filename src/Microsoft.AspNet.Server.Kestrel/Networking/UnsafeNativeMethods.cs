@@ -66,9 +66,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_shutdown(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
+        // Cannot use [return: MarshalAs(UnmanagedType.LPStr)]
+        // because the source const char* must not be freed,
+        // which the marshaling does
         public extern static IntPtr uv_err_name(int err);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
+        // Cannot use [return: MarshalAs(UnmanagedType.LPStr)]
+        // because the source const char* must not be freed,
+        // which the marshaling does
         public extern static IntPtr uv_strerror(int err);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
