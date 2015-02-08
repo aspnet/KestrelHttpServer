@@ -31,12 +31,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             //TODO: need buffering that works
             var copy = new byte[buffer.Count];
             Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
-            buffer = new ArraySegment<byte>(copy);
 
             KestrelTrace.Log.ConnectionWrite(0, buffer.Count);
             var req = new ThisWriteReq();
             req.Init(_thread.Loop);
-            req.Contextualize(this, _socket, buffer, callback, state);
+            req.Contextualize(this, _socket, copy, callback, state);
             _thread.Post(x =>
             {
                 ((ThisWriteReq)x).Write();
@@ -52,7 +51,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
 
             SocketOutput _self;
-            ArraySegment<byte> _buffer;
+            byte[] _buffer;
             UvStreamHandle _socket;
             Action<Exception, object> _callback;
             object _state;
@@ -60,7 +59,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             internal void Contextualize(
                 SocketOutput socketOutput,
                 UvStreamHandle socket,
-                ArraySegment<byte> buffer,
+                byte[] buffer,
                 Action<Exception, object> callback,
                 object state)
             {
@@ -75,8 +74,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 Write(
                     _socket,
-                    new ArraySegment<ArraySegment<byte>>(
-                        new[]{_buffer}),
+                    _buffer,
                     _writeCallback,
                     this);
             }

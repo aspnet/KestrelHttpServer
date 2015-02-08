@@ -15,27 +15,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         private readonly static uv_write_cb _uv_write_cb = UvWriteCb;
 
-        IntPtr _bufs;
-
         Action<UvWriteReq, int, Exception, object> _callback;
         object _state;
-        const int BUFFER_COUNT = 4;
-
         List<GCHandle> _pins = new List<GCHandle>();
 
         public void Init(UvLoopHandle loop)
         {
             var requestSize = UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
-            var bufferSize = Marshal.SizeOf(typeof(UvBuffer)) * BUFFER_COUNT;
             CreateMemory(
                 loop.ThreadId,
-                requestSize + bufferSize);
-            _bufs = handle + requestSize;
+                requestSize);
         }
 
-        public unsafe void Write(
+        public void Write(
             UvStreamHandle handle,
-            ArraySegment<ArraySegment<byte>> bufs,
+            byte[] buf,
             Action<UvWriteReq, int, Exception, object> callback,
             object state)
         {
@@ -43,35 +37,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
+                var bufHandle = GCHandle.Alloc(buf, GCHandleType.Pinned);
+                _pins.Add(bufHandle);
 
-                var pBuffers = (UvBuffer*)_bufs;
-                var nBuffers = bufs.Count;
-                if (nBuffers > BUFFER_COUNT)
-                {
-                    // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new UvBuffer[nBuffers];
-                    var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers = (UvBuffer*)gcHandle.AddrOfPinnedObject();
-                }
-
-                for (var index = 0; index != nBuffers; ++index)
-                {
-                    // create and pin each segment being written
-                    var buf = bufs.Array[bufs.Offset + index];
-
-                    var gcHandle = GCHandle.Alloc(buf.Array, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers[index] = new UvBuffer(
-                        gcHandle.AddrOfPinnedObject() + buf.Offset,
-                        buf.Count);
-                }
+                var uvBuffer = new UvBuffer(
+                        bufHandle.AddrOfPinnedObject(),
+                        buf.Length);
 
                 _callback = callback;
                 _state = state;
                 handle.Validate();
                 Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, handle, pBuffers, nBuffers, _uv_write_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, handle, ref uvBuffer, 1, _uv_write_cb));
             }
             catch
             {

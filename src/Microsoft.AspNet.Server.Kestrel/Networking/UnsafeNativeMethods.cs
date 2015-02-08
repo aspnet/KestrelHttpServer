@@ -57,7 +57,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static int uv_read_stop(UvStreamHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static unsafe int uv_write(UvWriteReq req, UvStreamHandle handle, UvBuffer* bufs, int nbufs, uv_write_cb cb);
+        // uw_write expects an array, but only one buffer is ever written.
+        // So a pointer (ref) to a single UvBuffer and a constant length of 1 is sufficient.
+        public extern static int uv_write(UvWriteReq req, UvStreamHandle handle, ref UvBuffer bufs, int nbufs, uv_write_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static int uv_shutdown(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb);

@@ -208,9 +208,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                                 req.Init(loop);
                                 req.Write(
                                     tcp2,
-                                    new ArraySegment<ArraySegment<byte>>(
-                                        new[] { new ArraySegment<byte>(new byte[] { 65, 66, 67, 68, 69 }) }
-                                        ),
+                                    new byte[] { 65, 66, 67, 68, 69 },
                                     (_1, _2, _3, _4) => { },
                                     null);
                             }
