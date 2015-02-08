@@ -21,10 +21,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             ThreadId = threadId;
 
             handle = Marshal.AllocCoTaskMem(size);
-            unsafe
-            {
-                *(IntPtr*)handle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));
-            }
+            var weakHandle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));
+            Marshal.WriteIntPtr(handle, weakHandle);
         }
 
         public override bool IsInvalid
@@ -47,9 +45,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        unsafe protected static void DestroyMemory(IntPtr memory)
+        protected static void DestroyMemory(IntPtr memory)
         {
-            var gcHandlePtr = *(IntPtr*)memory;
+            var gcHandlePtr = Marshal.ReadIntPtr(memory);
             if (gcHandlePtr != IntPtr.Zero)
             {
                 var gcHandle = GCHandle.FromIntPtr(gcHandlePtr);
@@ -65,11 +63,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
         }
 
-        unsafe public static THandle FromIntPtr<THandle>(IntPtr handle)
+        public static THandle FromIntPtr<THandle>(IntPtr handle)
         {
-            GCHandle gcHandle = GCHandle.FromIntPtr(*(IntPtr*)handle);
+            var weakHandle = Marshal.ReadIntPtr(handle);
+            var gcHandle = GCHandle.FromIntPtr(weakHandle);
             return (THandle)gcHandle.Target;
         }
-
     }
 }
