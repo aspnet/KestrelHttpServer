@@ -12,8 +12,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         private readonly static uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
 
-        Action<UvShutdownReq, int, object> _callback;
-        object _state;
+        private Action<UvShutdownReq, int, object> _callback;
+        private object _state;
 
         public UvShutdownReq(UvLoopHandle loop)
             : base(loop.ThreadId, getSize())

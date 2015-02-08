@@ -15,9 +15,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         private readonly static uv_write_cb _uv_write_cb = UvWriteCb;
 
-        Action<UvWriteReq, int, Exception, object> _callback;
-        object _state;
-        List<GCHandle> _pins = new List<GCHandle>();
+        private Action<UvWriteReq, int, Exception, object> _callback;
+        private object _state;
+        private List<GCHandle> _pins = new List<GCHandle>();
 
         public UvWriteReq(UvLoopHandle loop)
             : base(loop.ThreadId, getSize())

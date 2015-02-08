@@ -173,6 +173,5 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 Trace.WriteLine("UbReadCb " + ex.ToString());
             }
         }
-
     }
 }
