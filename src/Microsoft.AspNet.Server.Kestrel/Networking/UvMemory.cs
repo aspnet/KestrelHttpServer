@@ -58,11 +58,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Marshal.FreeCoTaskMem(memory);
         }
 
-        internal IntPtr InternalGetHandle()
-        {
-            return handle;
-        }
-
         public void Validate(bool closed = false)
         {
             Trace.Assert(closed || !IsClosed, "Handle is closed");
