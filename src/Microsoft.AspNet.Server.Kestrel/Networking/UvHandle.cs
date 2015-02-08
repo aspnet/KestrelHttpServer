@@ -8,7 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvHandle : UvMemory
     {
-        private static readonly uv_close_cb _destroyMemory = DestroyMemory;
+        private readonly uv_close_cb _destroyMemory;
 
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
@@ -18,6 +18,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Action<Action<IntPtr>, IntPtr> queueCloseHandle)
             : base(threadId, size)
         {
+            _destroyMemory = DestroyMemory;
             _queueCloseHandle = queueCloseHandle;
         }
 

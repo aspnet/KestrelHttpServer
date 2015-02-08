@@ -7,12 +7,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class UvAsyncHandle : UvHandle
     {
-        private static uv_async_cb _uv_async_cb = AsyncCb;
+        private readonly uv_async_cb _uv_async_cb;
+
         private Action _callback;
 
         public UvAsyncHandle(UvLoopHandle loop, Action callback)
-            :base(loop.ThreadId, getSize(), null)
+            : base(loop.ThreadId, getSize(), null)
         {
+            _uv_async_cb = AsyncCb;
             _callback = callback;
             loop.Validate();
             Validate();
@@ -35,9 +37,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_send(this));
         }
 
-        static void AsyncCb(IntPtr handle)
+        private void AsyncCb(IntPtr handle)
         {
-            FromIntPtr<UvAsyncHandle>(handle)._callback.Invoke();
+            _callback.Invoke();
         }
     }
 }

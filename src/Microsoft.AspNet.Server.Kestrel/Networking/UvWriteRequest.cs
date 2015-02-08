@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public class UvWriteReq : UvReq
     {
-        private readonly static uv_write_cb _uv_write_cb = UvWriteCb;
+        private readonly uv_write_cb _uv_write_cb;
 
         private Action<UvWriteReq, int, Exception, object> _callback;
         private object _state;
@@ -21,7 +21,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public UvWriteReq(UvLoopHandle loop)
             : base(loop.ThreadId, getSize())
-        { }
+        {
+            _uv_write_cb = UvWriteCb;
+        }
 
         private static int getSize()
         {
@@ -55,36 +57,35 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _callback = null;
                 _state = null;
-                Unpin(this);
+                Unpin();
                 throw;
             }
         }
 
-        private static void Unpin(UvWriteReq req)
+        private void Unpin()
         {
-            foreach (var pin in req._pins)
+            foreach (var pin in _pins)
             {
                 pin.Free();
             }
-            req._pins.Clear();
+            _pins.Clear();
         }
 
-        private static void UvWriteCb(IntPtr ptr, int status)
+        private void UvWriteCb(IntPtr ptr, int status)
         {
-            var req = FromIntPtr<UvWriteReq>(ptr);
-            Unpin(req);
+            Unpin();
 
-            var callback = req._callback;
-            req._callback = null;
+            var callback = _callback;
+            _callback = null;
 
-            var state = req._state;
-            req._state = null;
+            var state = _state;
+            _state = null;
 
             var error = Libuv.ExceptionForError(status);
 
             try
             {
-                callback(req, status, error, state);
+                callback(this, status, error, state);
             }
             catch (Exception ex)
             {

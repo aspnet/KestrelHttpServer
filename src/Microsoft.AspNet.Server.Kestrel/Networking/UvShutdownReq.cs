@@ -10,14 +10,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public class UvShutdownReq : UvReq
     {
-        private readonly static uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
+        private readonly uv_shutdown_cb _uv_shutdown_cb;
 
         private Action<UvShutdownReq, int, object> _callback;
         private object _state;
 
         public UvShutdownReq(UvLoopHandle loop)
             : base(loop.ThreadId, getSize())
-        { }
+        {
+            _uv_shutdown_cb = UvShutdownCb;
+        }
 
         private static int getSize()
         {
@@ -33,12 +35,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_shutdown(this, handle, _uv_shutdown_cb));
         }
 
-        private static void UvShutdownCb(IntPtr ptr, int status)
+        private void UvShutdownCb(IntPtr ptr, int status)
         {
-            var req = FromIntPtr<UvShutdownReq>(ptr);
-            req._callback(req, status, req._state);
-            req._callback = null;
-            req._state = null;
+            _callback(this, status, _state);
+            _callback = null;
+            _state = null;
         }
     }
 }
