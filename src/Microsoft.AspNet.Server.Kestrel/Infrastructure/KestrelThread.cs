@@ -105,7 +105,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             try
             {
                 _loop = new UvLoopHandle();
-                _post = new UvAsyncHandle(_loop, OnPost);
+                _post = new UvAsyncHandle(_loop, OnPost, QueueCloseHandle);
                 tcs.SetResult(0);
             }
             catch (Exception ex)

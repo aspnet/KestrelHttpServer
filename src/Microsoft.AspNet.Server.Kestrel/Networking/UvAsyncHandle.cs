@@ -10,8 +10,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private readonly uv_async_cb _uv_async_cb;
         private readonly Action _callback;
 
-        public UvAsyncHandle(UvLoopHandle loop, Action callback)
-            : base(loop.ThreadId, getSize(), null)
+        public UvAsyncHandle(
+            UvLoopHandle loop,
+            Action callback,
+            Action<Action<IntPtr>, IntPtr> queueCloseHandle)
+            : base(loop.ThreadId, getSize(), queueCloseHandle)
         {
             _uv_async_cb = AsyncCb;
             _callback = callback;
