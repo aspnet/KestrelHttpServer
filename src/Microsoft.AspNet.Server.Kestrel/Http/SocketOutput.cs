@@ -33,8 +33,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
 
             KestrelTrace.Log.ConnectionWrite(0, buffer.Count);
-            var req = new ThisWriteReq();
-            req.Init(_thread.Loop);
+            var req = new ThisWriteReq(_thread.Loop);
             req.Contextualize(this, _socket, copy, callback, state);
             _thread.Post(x =>
             {
@@ -45,6 +44,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public class ThisWriteReq : UvWriteReq
         {
             private static readonly Action<UvWriteReq, int, Exception, object> _writeCallback = WriteCallback;
+
             private static void WriteCallback(UvWriteReq req, int status, Exception error, object state)
             {
                 ((ThisWriteReq)state).OnWrite(req, status, error);
@@ -55,6 +55,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             UvStreamHandle _socket;
             Action<Exception, object> _callback;
             object _state;
+
+            public ThisWriteReq(UvLoopHandle loop)
+                : base(loop)
+            { }
 
             internal void Contextualize(
                 SocketOutput socketOutput,

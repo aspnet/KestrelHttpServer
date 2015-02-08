@@ -137,8 +137,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
                             var self = (Connection)x;
-                            var shutdown = new UvShutdownReq();
-                            shutdown.Init(self.Thread.Loop);
+                            var shutdown = new UvShutdownReq(self.Thread.Loop);
                             shutdown.Shutdown(self._socket, (req, status, state) =>
                             {
                                 KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);

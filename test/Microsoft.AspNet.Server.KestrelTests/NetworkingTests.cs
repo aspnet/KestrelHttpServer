@@ -46,7 +46,6 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public async Task LoopCanBeInitAndClose()
         {
             var loop = new UvLoopHandle();
-            loop.Init();
             loop.Run();
             loop.Dispose();
         }
@@ -55,10 +54,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public async Task AsyncCanBeSent()
         {
             var loop = new UvLoopHandle();
-            loop.Init();
-            var trigger = new UvAsyncHandle();
             var called = false;
-            trigger.Init(loop, () =>
+            UvAsyncHandle trigger = null;
+            trigger = new UvAsyncHandle(loop, () =>
             {
                 called = true;
                 trigger.Dispose();
@@ -73,9 +71,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public async Task SocketCanBeInitAndClose()
         {
             var loop = new UvLoopHandle();
-            loop.Init();
-            var tcp = new UvTcpHandle();
-            tcp.Init(loop);
+            var tcp = new UvTcpHandle(loop);
             tcp.Bind(new IPEndPoint(IPAddress.Loopback, 0));
             tcp.Dispose();
             loop.Run();
@@ -87,14 +83,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public async Task SocketCanListenAndAccept()
         {
             var loop = new UvLoopHandle();
-            loop.Init();
-            var tcp = new UvTcpHandle();
-            tcp.Init(loop);
+            var tcp = new UvTcpHandle(loop);
             tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
             tcp.Listen(10, (stream, status, error, state) =>
             {
-                var tcp2 = new UvTcpHandle();
-                tcp2.Init(loop);
+                var tcp2 = new UvTcpHandle(loop);
                 stream.Accept(tcp2);
                 tcp2.Dispose();
                 stream.Dispose();
@@ -124,15 +117,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             int bytesRead = 0;
             var loop = new UvLoopHandle();
-            loop.Init();
-            var tcp = new UvTcpHandle();
-            tcp.Init(loop);
+            var tcp = new UvTcpHandle(loop);
             tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
             tcp.Listen(10, (_, status, error, state) =>
             {
                 Console.WriteLine("Connected");
-                var tcp2 = new UvTcpHandle();
-                tcp2.Init(loop);
+                var tcp2 = new UvTcpHandle(loop);
                 tcp.Accept(tcp2);
                 var data = Marshal.AllocCoTaskMem(500);
                 tcp2.ReadStart(
@@ -180,15 +170,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             int bytesRead = 0;
             var loop = new UvLoopHandle();
-            loop.Init();
-            var tcp = new UvTcpHandle();
-            tcp.Init(loop);
+            var tcp = new UvTcpHandle(loop);
             tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
             tcp.Listen(10, (_, status, error, state) =>
             {
                 Console.WriteLine("Connected");
-                var tcp2 = new UvTcpHandle();
-                tcp2.Init(loop);
+                var tcp2 = new UvTcpHandle(loop);
                 tcp.Accept(tcp2);
                 var data = Marshal.AllocCoTaskMem(500);
                 tcp2.ReadStart(
@@ -204,8 +191,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         {
                             for (var x = 0; x != 2; ++x)
                             {
-                                var req = new UvWriteReq();
-                                req.Init(loop);
+                                var req = new UvWriteReq(loop);
                                 req.Write(
                                     tcp2,
                                     new byte[] { 65, 66, 67, 68, 69 },

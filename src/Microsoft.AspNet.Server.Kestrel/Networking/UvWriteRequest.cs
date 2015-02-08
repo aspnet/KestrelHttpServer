@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         object _state;
         List<GCHandle> _pins = new List<GCHandle>();
 
-        public void Init(UvLoopHandle loop)
+        public UvWriteReq(UvLoopHandle loop)
         {
             var requestSize = UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
             CreateMemory(

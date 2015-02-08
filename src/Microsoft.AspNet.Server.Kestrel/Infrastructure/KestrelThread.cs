@@ -31,8 +31,6 @@ namespace Microsoft.AspNet.Server.Kestrel
         public KestrelThread(KestrelEngine engine)
         {
             _engine = engine;
-            _loop = new UvLoopHandle();
-            _post = new UvAsyncHandle();
             _thread = new Thread(ThreadStart);
             QueueCloseHandle = PostCloseHandle;
         }
@@ -112,8 +110,8 @@ namespace Microsoft.AspNet.Server.Kestrel
             var tcs = (TaskCompletionSource<int>)parameter;
             try
             {
-                _loop.Init();
-                _post.Init(_loop, OnPost);
+                _loop = new UvLoopHandle();
+                _post = new UvAsyncHandle(_loop, OnPost);
                 tcs.SetResult(0);
             }
             catch (Exception ex)

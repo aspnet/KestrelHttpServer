@@ -8,7 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class UvTcpHandle : UvStreamHandle
     {
-        public void Init(UvLoopHandle loop)
+        public UvTcpHandle(UvLoopHandle loop)
         {
             CreateMemory(
                 loop.ThreadId,
@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_init(loop, this));
         }
 
-        public void Init(UvLoopHandle loop, Action<Action<IntPtr>, IntPtr> queueCloseHandle)
+        public UvTcpHandle(UvLoopHandle loop, Action<Action<IntPtr>, IntPtr> queueCloseHandle)
         {
             CreateHandle(
                 loop.ThreadId,

@@ -15,7 +15,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         Action<UvShutdownReq, int, object> _callback;
         object _state;
 
-        public void Init(UvLoopHandle loop)
+        public UvShutdownReq(UvLoopHandle loop)
         {
             CreateMemory(
                 loop.ThreadId,
