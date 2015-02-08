@@ -25,7 +25,6 @@ namespace Microsoft.AspNet.Server.Kestrel
         Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>();
         Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>();
         object _workSync = new Object();
-        bool _stopImmediate = false;
         private ExceptionDispatchInfo _closeError;
 
         public KestrelThread(KestrelEngine engine)
@@ -51,13 +50,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             Post(OnStop, null);
             if (!_thread.Join((int)timeout.TotalMilliseconds))
             {
-                Post(OnStopImmediate, null);
-                if (!_thread.Join((int)timeout.TotalMilliseconds))
-                {
-#if DNX451
-                    _thread.Abort();
-#endif
-                }
+                throw new TimeoutException("Loop did not close");
             }
             if (_closeError != null)
             {
@@ -69,11 +62,6 @@ namespace Microsoft.AspNet.Server.Kestrel
         {
             _post.Unreference();
             _loop.Stop();
-        }
-
-        private void OnStopImmediate(object obj)
-        {
-            _stopImmediate = true;
         }
 
         public void Post(Action<object> callback, object state)
@@ -108,6 +96,12 @@ namespace Microsoft.AspNet.Server.Kestrel
         private void ThreadStart(object parameter)
         {
             var tcs = (TaskCompletionSource<int>)parameter;
+            SetupLoop(tcs);
+            RunLoop();
+        }
+
+        private void SetupLoop(TaskCompletionSource<int> tcs)
+        {
             try
             {
                 _loop = new UvLoopHandle();
@@ -118,35 +112,32 @@ namespace Microsoft.AspNet.Server.Kestrel
             {
                 tcs.SetException(ex);
             }
+        }
 
-            try
+        private void RunLoop()
+        {
+            using (_loop)
+            using (_post)
             {
-                _loop.Run();
-                if (_stopImmediate)
+                try
                 {
-                    // thread-abort form of exit, resources will be leaked
-                    return;
+                    _loop.Run();
+
+                    _loop.Validate();
+                    UnsafeNativeMethods.uv_walk(
+                        _loop,
+                        (ptr, arg) =>
+                        {
+                            var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
+                            handle.Dispose();
+                        },
+                        IntPtr.Zero);
+                    _loop.Run();
                 }
-
-                // run the loop one more time to delete the open handles
-                _post.Reference();
-                _post.DangerousClose();
-                _loop.Validate();
-                UnsafeNativeMethods.uv_walk(
-                    _loop,
-                    (ptr, arg) =>
-                    {
-                        var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
-                        handle.Dispose();
-                    },
-                    IntPtr.Zero);
-                _loop.Run();
-
-                _loop.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _closeError = ExceptionDispatchInfo.Capture(ex);
+                catch (Exception ex)
+                {
+                    _closeError = ExceptionDispatchInfo.Capture(ex);
+                }
             }
         }
 
@@ -202,7 +193,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 queue = _closeHandleAdding;
                 _closeHandleAdding = _closeHandleRunning;
                 _closeHandleRunning = queue;
-            }            
+            }
             while (queue.Count != 0)
             {
                 var closeHandle = queue.Dequeue();
