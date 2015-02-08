@@ -34,5 +34,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             _callback.Invoke();
         }
+
+        public void Reference()
+        {
+            Validate();
+            UnsafeNativeMethods.uv_ref(this);
+        }
+
+        public void Unreference()
+        {
+            Validate();
+            UnsafeNativeMethods.uv_unref(this);
+        }
     }
 }
