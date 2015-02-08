@@ -33,7 +33,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_send(this));
         }
 
-        unsafe static void AsyncCb(IntPtr handle)
+        static void AsyncCb(IntPtr handle)
         {
             FromIntPtr<UvAsyncHandle>(handle)._callback.Invoke();
         }
