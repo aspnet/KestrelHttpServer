@@ -8,8 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvAsyncHandle : UvHandle
     {
         private readonly uv_async_cb _uv_async_cb;
-
-        private Action _callback;
+        private readonly Action _callback;
 
         public UvAsyncHandle(UvLoopHandle loop, Action callback)
             : base(loop.ThreadId, getSize(), null)
@@ -24,12 +23,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private static int getSize()
         {
             return UnsafeNativeMethods.uv_handle_size(HandleType.ASYNC);
-        }
-
-        public void DangerousClose()
-        {
-            Dispose();
-            ReleaseHandle();
         }
 
         public void Send()

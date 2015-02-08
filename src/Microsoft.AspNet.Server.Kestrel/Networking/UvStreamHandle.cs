@@ -13,13 +13,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private readonly uv_alloc_cb _uv_alloc_cb;
         private readonly uv_read_cb _uv_read_cb;
 
-        public Action<UvStreamHandle, int, Exception, object> _listenCallback;
-        public object _listenState;
+        private Action<UvStreamHandle, int, Exception, object> _listenCallback;
+        private object _listenState;
         private GCHandle _listenVitality;
 
-        public Func<UvStreamHandle, int, object, UvBuffer> _allocCallback;
-        public Action<UvStreamHandle, int, Exception, object> _readCallback;
-        public object _readState;
+        private Func<UvStreamHandle, int, object, UvBuffer> _allocCallback;
+
+        private Action<UvStreamHandle, int, Exception, object> _readCallback;
+        private object _readState;
         private GCHandle _readVitality;
 
         public UvStreamHandle(

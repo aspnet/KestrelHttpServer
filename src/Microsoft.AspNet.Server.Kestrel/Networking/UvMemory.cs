@@ -13,12 +13,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public abstract class UvMemory : SafeHandle
     {
-        private int _threadId;
+        private readonly int _threadId;
 
         public UvMemory(int threadId, int size)
             : base(IntPtr.Zero, true)
         {
-            ThreadId = threadId;
+            _threadId = threadId;
 
             handle = Marshal.AllocCoTaskMem(size);
             var weakHandle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));
@@ -38,10 +38,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             get
             {
                 return _threadId;
-            }
-            private set
-            {
-                _threadId = value;
             }
         }
 
