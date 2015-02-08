@@ -83,14 +83,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
             var error = Libuv.ExceptionForError(status);
 
-            try
-            {
-                callback(this, status, error, state);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine("UvWriteCb " + ex.ToString());
-            }
+            callback(this, status, error, state);
         }
     }
 }

@@ -128,49 +128,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private void UvConnectionCb(IntPtr handle, int status)
         {
             var error = Libuv.ExceptionForError(status);
-
-            try
-            {
-                _listenCallback(this, status, error, _listenState);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine("UvConnectionCb " + ex.ToString());
-            }
+            _listenCallback(this, status, error, _listenState);
         }
 
 
         private void UvAllocCb(IntPtr handle, int suggested_size, out UvBuffer buf)
         {
-            try
-            {
-                buf = _allocCallback(this, suggested_size, _readState);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine("UvAllocCb " + ex.ToString());
-                buf = default(UvBuffer);
-                throw;
-            }
+            buf = _allocCallback(this, suggested_size, _readState);
         }
 
         private void UvReadCb(IntPtr handle, int nread, ref UvBuffer buf)
         {
-            try
+            if (nread < 0)
             {
-                if (nread < 0)
-                {
-                    var error = Libuv.ExceptionForError(nread);
-                    _readCallback(this, 0, error, _readState);
-                }
-                else
-                {
-                    _readCallback(this, nread, null, _readState);
-                }
+                var error = Libuv.ExceptionForError(nread);
+                _readCallback(this, 0, error, _readState);
             }
-            catch (Exception ex)
+            else
             {
-                Trace.WriteLine("UbReadCb " + ex.ToString());
+                _readCallback(this, nread, null, _readState);
             }
         }
     }
