@@ -68,12 +68,12 @@ namespace Microsoft.AspNet.Server.Kestrel
         private void OnStop(object obj)
         {
             _post.Unreference();
+            _loop.Stop();
         }
 
         private void OnStopImmediate(object obj)
         {
             _stopImmediate = true;
-            _loop.Stop();
         }
 
         public void Post(Action<object> callback, object state)
