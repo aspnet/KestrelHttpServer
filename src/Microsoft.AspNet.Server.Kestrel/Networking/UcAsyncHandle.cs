@@ -11,15 +11,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private Action _callback;
 
         public UvAsyncHandle(UvLoopHandle loop, Action callback)
+            :base(loop.ThreadId, getSize(), null)
         {
-            CreateMemory(
-                loop.ThreadId,
-                UnsafeNativeMethods.uv_handle_size(HandleType.ASYNC));
-
             _callback = callback;
             loop.Validate();
             Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_init(loop, this, _uv_async_cb));
+        }
+
+        private static int getSize()
+        {
+            return UnsafeNativeMethods.uv_handle_size(HandleType.ASYNC);
         }
 
         public void DangerousClose()

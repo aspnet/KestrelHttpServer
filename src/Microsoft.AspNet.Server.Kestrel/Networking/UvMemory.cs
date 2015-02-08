@@ -15,8 +15,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         private int _threadId;
 
-        public UvMemory() : base(IntPtr.Zero, true)
+        public UvMemory(int threadId, int size)
+            : base(IntPtr.Zero, true)
         {
+            ThreadId = threadId;
+
+            handle = Marshal.AllocCoTaskMem(size);
+            unsafe
+            {
+                *(IntPtr*)handle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));
+            }
         }
 
         public override bool IsInvalid
@@ -37,14 +45,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _threadId = value;
             }
-        }
-
-        unsafe protected void CreateMemory(int threadId, int size)
-        {
-            ThreadId = threadId;
-            
-            handle = Marshal.AllocCoTaskMem(size);
-            *(IntPtr*)handle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));
         }
 
         unsafe protected static void DestroyMemory(IntPtr memory)

@@ -22,6 +22,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public object _readState;
         private GCHandle _readVitality;
 
+        public UvStreamHandle(
+            int threadId,
+            int size,
+            Action<Action<IntPtr>, IntPtr> queueCloseHandle)
+            : base(threadId, size, queueCloseHandle)
+        { }
+
         protected override bool ReleaseHandle()
         {
             if (_listenVitality.IsAllocated)

@@ -9,26 +9,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvTcpHandle : UvStreamHandle
     {
         public UvTcpHandle(UvLoopHandle loop)
-        {
-            CreateMemory(
-                loop.ThreadId,
-                UnsafeNativeMethods.uv_handle_size(HandleType.TCP));
+            : this(loop, null)
+        { }
 
+        public UvTcpHandle(
+            UvLoopHandle loop,
+            Action<Action<IntPtr>, IntPtr> queueCloseHandle)
+            : base(loop.ThreadId, getSize(), queueCloseHandle)
+        {
             loop.Validate();
             Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_init(loop, this));
         }
 
-        public UvTcpHandle(UvLoopHandle loop, Action<Action<IntPtr>, IntPtr> queueCloseHandle)
+        private static int getSize()
         {
-            CreateHandle(
-                loop.ThreadId,
-                UnsafeNativeMethods.uv_handle_size(HandleType.TCP),
-                queueCloseHandle);
-
-            loop.Validate();
-            Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_init(loop, this));
+            return UnsafeNativeMethods.uv_handle_size(HandleType.TCP);
         }
 
         public void Bind(IPEndPoint endpoint)

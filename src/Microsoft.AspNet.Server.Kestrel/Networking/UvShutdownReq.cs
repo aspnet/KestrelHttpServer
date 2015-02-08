@@ -16,10 +16,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         object _state;
 
         public UvShutdownReq(UvLoopHandle loop)
+            : base(loop.ThreadId, getSize())
+        { }
+
+        private static int getSize()
         {
-            CreateMemory(
-                loop.ThreadId,
-                UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN));
+            return UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN);
         }
 
         public void Shutdown(UvStreamHandle handle, Action<UvShutdownReq, int, object> callback, object state)

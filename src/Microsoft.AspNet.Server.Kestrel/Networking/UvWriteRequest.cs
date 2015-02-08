@@ -20,11 +20,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         List<GCHandle> _pins = new List<GCHandle>();
 
         public UvWriteReq(UvLoopHandle loop)
+            : base(loop.ThreadId, getSize())
+        { }
+
+        private static int getSize()
         {
-            var requestSize = UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
-            CreateMemory(
-                loop.ThreadId,
-                requestSize);
+            return UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
         }
 
         public void Write(
@@ -94,6 +95,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
     public abstract class UvReq : UvMemory
     {
+        public UvReq(int threadId, int size)
+            : base(threadId, size)
+        { }
+
         protected override bool ReleaseHandle()
         {
             DestroyMemory(handle);

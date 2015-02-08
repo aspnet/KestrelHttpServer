@@ -11,13 +11,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         static uv_close_cb _destroyMemory = DestroyMemory;
         Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
-        protected void CreateHandle(
+        public UvHandle(
             int threadId,
             int size,
             Action<Action<IntPtr>, IntPtr> queueCloseHandle)
+            : base(threadId, size)
         {
             _queueCloseHandle = queueCloseHandle;
-            CreateMemory(threadId, size);
         }
 
         protected override bool ReleaseHandle()

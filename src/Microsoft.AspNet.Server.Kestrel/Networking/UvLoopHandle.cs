@@ -16,7 +16,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             : base(IntPtr.Zero, true)
         {
             _threadId = Thread.CurrentThread.ManagedThreadId;
-            handle = Marshal.AllocCoTaskMem(UnsafeNativeMethods.uv_loop_size());
+            SetHandle(Marshal.AllocCoTaskMem(UnsafeNativeMethods.uv_loop_size()));
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
@@ -26,7 +26,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Validate(bool closed = false)
         {
             Trace.Assert(closed || !IsClosed, "Handle is closed");
-            Trace.Assert(!IsInvalid, "Handle is invalid");
             Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
         }
 
