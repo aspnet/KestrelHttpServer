@@ -12,10 +12,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private const string libuv = "libuv.dll";
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int uv_loop_init(UvLoopHandle a0);
+        public static extern int uv_loop_init(UvLoopHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int uv_loop_close(IntPtr a0);
+        public static extern int uv_loop_close(UvLoopHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public static extern int uv_run(UvLoopHandle handle, int mode);

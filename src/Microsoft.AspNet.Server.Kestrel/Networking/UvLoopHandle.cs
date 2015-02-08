@@ -20,7 +20,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
-        internal IntPtr InternalGetHandle() => handle;
         public override bool IsInvalid => handle == IntPtr.Zero;
         public int ThreadId => _threadId;
 
@@ -46,9 +45,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         protected override bool ReleaseHandle()
         {
             Validate(closed: true);
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(InternalGetHandle()));
             Marshal.FreeCoTaskMem(handle);
             return true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(this));
+
+            base.Dispose(disposing);
         }
     }
 }
