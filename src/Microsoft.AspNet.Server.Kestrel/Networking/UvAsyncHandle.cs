@@ -12,15 +12,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public UvAsyncHandle(
             UvLoopHandle loop,
-            Action callback,
-            Action<Action<IntPtr>, IntPtr> queueCloseHandle)
-            : base(loop.ThreadId, getSize(), queueCloseHandle)
+            Action callback)
+            : base(loop.ThreadId, getSize())
         {
             _uv_async_cb = AsyncCb;
             _callback = callback;
             loop.Validate();
             Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_init(loop, this, _uv_async_cb));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_init(loop, Handle, _uv_async_cb));
         }
 
         private static int getSize()
@@ -30,7 +29,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Send()
         {
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_send(this));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_send(Handle));
         }
 
         private void AsyncCb(IntPtr handle)
@@ -41,13 +40,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Reference()
         {
             Validate();
-            UnsafeNativeMethods.uv_ref(this);
+            UnsafeNativeMethods.uv_ref(Handle);
         }
 
         public void Unreference()
         {
             Validate();
-            UnsafeNativeMethods.uv_unref(this);
+            UnsafeNativeMethods.uv_unref(Handle);
         }
     }
 }

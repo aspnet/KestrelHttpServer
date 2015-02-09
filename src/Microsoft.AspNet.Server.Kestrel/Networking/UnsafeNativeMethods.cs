@@ -24,45 +24,45 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public extern static void uv_stop(UvLoopHandle handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_ref(UvHandle handle);
+        public extern static void uv_ref(IntPtr handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_unref(UvHandle handle);
+        public extern static void uv_unref(IntPtr handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         public extern static void uv_close(IntPtr handle, uv_close_cb close_cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_async_init(UvLoopHandle loop, UvAsyncHandle handle, uv_async_cb cb);
+        public extern static int uv_async_init(UvLoopHandle loop, IntPtr handle, uv_async_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_async_send(UvAsyncHandle handle);
+        public extern static int uv_async_send(IntPtr handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_tcp_init(UvLoopHandle loop, UvTcpHandle handle);
+        public extern static int uv_tcp_init(UvLoopHandle loop, IntPtr handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_tcp_bind(UvTcpHandle handle, ref Sockaddr addr, int flags);
+        public extern static int uv_tcp_bind(IntPtr handle, ref Sockaddr addr, int flags);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_listen(UvStreamHandle handle, int backlog, uv_connection_cb cb);
+        public extern static int uv_listen(IntPtr handle, int backlog, uv_connection_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_accept(UvStreamHandle server, UvStreamHandle client);
+        public extern static int uv_accept(IntPtr server, IntPtr client);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_read_start(UvStreamHandle handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
+        public extern static int uv_read_start(IntPtr handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_read_stop(UvStreamHandle handle);
+        public extern static int uv_read_stop(IntPtr handle);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         // uw_write expects an array, but only one buffer is ever written.
         // So a pointer (ref) to a single UvBuffer and a constant length of 1 is sufficient.
-        public extern static int uv_write(UvWriteReq req, UvStreamHandle handle, ref UvBuffer bufs, int nbufs, uv_write_cb cb);
+        public extern static int uv_write(UvWriteReq req, IntPtr handle, ref UvBuffer bufs, int nbufs, uv_write_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_shutdown(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb);
+        public extern static int uv_shutdown(UvShutdownReq req, IntPtr handle, uv_shutdown_cb cb);
 
         [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
         // Cannot use [return: MarshalAs(UnmanagedType.LPStr)]

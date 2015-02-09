@@ -31,7 +31,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         }
 
         public void Write(
-            UvStreamHandle handle,
+            UvStreamHandle stream,
             byte[] buf,
             Action<UvWriteReq, int, Exception, object> callback,
             object state)
@@ -49,9 +49,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
                 _callback = callback;
                 _state = state;
-                handle.Validate();
+                stream.Validate();
                 Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, handle, ref uvBuffer, 1, _uv_write_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, stream.Handle, ref uvBuffer, 1, _uv_write_cb));
             }
             catch
             {

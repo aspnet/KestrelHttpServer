@@ -22,8 +22,6 @@ namespace Microsoft.AspNet.Server.Kestrel
         UvAsyncHandle _post;
         Queue<Work> _workAdding = new Queue<Work>();
         Queue<Work> _workRunning = new Queue<Work>();
-        Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>();
-        Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>();
         object _workSync = new Object();
         private ExceptionDispatchInfo _closeError;
 
@@ -31,12 +29,9 @@ namespace Microsoft.AspNet.Server.Kestrel
         {
             _engine = engine;
             _thread = new Thread(ThreadStart);
-            QueueCloseHandle = PostCloseHandle;
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
-
-        public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; internal set; }
 
         public Task StartAsync()
         {
@@ -84,15 +79,6 @@ namespace Microsoft.AspNet.Server.Kestrel
             return tcs.Task;
         }
 
-        private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
-        {
-            lock (_workSync)
-            {
-                _closeHandleAdding.Enqueue(new CloseHandle { Callback = callback, Handle = handle });
-            }
-            _post.Send();
-        }
-
         private void ThreadStart(object parameter)
         {
             var tcs = (TaskCompletionSource<int>)parameter;
@@ -105,7 +91,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             try
             {
                 _loop = new UvLoopHandle();
-                _post = new UvAsyncHandle(_loop, OnPost, QueueCloseHandle);
+                _post = new UvAsyncHandle(_loop, OnPost);
                 tcs.SetResult(0);
             }
             catch (Exception ex)
@@ -117,10 +103,11 @@ namespace Microsoft.AspNet.Server.Kestrel
         private void RunLoop()
         {
             using (_loop)
-            using (_post)
+            // _post is disposed in the uv_walk callback
             {
                 try
                 {
+                    _post.Reference();
                     _loop.Run();
 
                     _loop.Validate();
@@ -142,12 +129,6 @@ namespace Microsoft.AspNet.Server.Kestrel
         }
 
         private void OnPost()
-        {
-            DoPostWork();
-            DoPostCloseHandle();
-        }
-
-        private void DoPostWork()
         {
             Queue<Work> queue;
             lock (_workSync)
@@ -185,39 +166,12 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
             }
         }
-        private void DoPostCloseHandle()
-        {
-            Queue<CloseHandle> queue;
-            lock (_workSync)
-            {
-                queue = _closeHandleAdding;
-                _closeHandleAdding = _closeHandleRunning;
-                _closeHandleRunning = queue;
-            }
-            while (queue.Count != 0)
-            {
-                var closeHandle = queue.Dequeue();
-                try
-                {
-                    closeHandle.Callback(closeHandle.Handle);
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine("KestrelThread.DoPostCloseHandle " + ex.ToString());
-                }
-            }
-        }
 
         private struct Work
         {
             public Action<object> Callback;
             public object State;
             public TaskCompletionSource<int> Completion;
-        }
-        private struct CloseHandle
-        {
-            public Action<IntPtr> Callback;
-            public IntPtr Handle;
         }
     }
 }

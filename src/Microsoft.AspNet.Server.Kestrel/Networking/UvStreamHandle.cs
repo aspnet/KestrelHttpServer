@@ -25,16 +25,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public UvStreamHandle(
             int threadId,
-            int size,
-            Action<Action<IntPtr>, IntPtr> queueCloseHandle)
-            : base(threadId, size, queueCloseHandle)
+            int size)
+            : base(threadId, size)
         {
             _uv_connection_cb = UvConnectionCb;
             _uv_alloc_cb = UvAllocCb;
             _uv_read_cb = UvReadCb;
         }
 
-        protected override bool ReleaseHandle()
+        protected override void Dispose(bool disposing)
         {
             if (_listenVitality.IsAllocated)
             {
@@ -44,7 +43,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _readVitality.Free();
             }
-            return base.ReleaseHandle();
+            base.Dispose(disposing);
         }
 
         public void Listen(int backlog, Action<UvStreamHandle, int, Exception, object> callback, object state)
@@ -59,7 +58,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _listenState = state;
                 _listenVitality = GCHandle.Alloc(this, GCHandleType.Normal);
                 Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(this, 10, _uv_connection_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(Handle, 10, _uv_connection_cb));
             }
             catch
             {
@@ -73,11 +72,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public void Accept(UvStreamHandle handle)
+        public void Accept(UvStreamHandle stream)
         {
             Validate();
-            handle.Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(this, handle));
+            stream.Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(Handle, stream.Handle));
         }
 
         public void ReadStart(
@@ -96,7 +95,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _readState = state;
                 _readVitality = GCHandle.Alloc(this, GCHandleType.Normal);
                 Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_start(this, _uv_alloc_cb, _uv_read_cb));
+
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_start(Handle, _uv_alloc_cb, _uv_read_cb));
             }
             catch
             {
@@ -122,7 +122,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _readState = null;
             _readVitality.Free();
             Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(this));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(Handle));
         }
 
         private void UvConnectionCb(IntPtr handle, int status)

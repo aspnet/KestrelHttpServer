@@ -9,17 +9,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvTcpHandle : UvStreamHandle
     {
         public UvTcpHandle(UvLoopHandle loop)
-            : this(loop, null)
-        { }
-
-        public UvTcpHandle(
-            UvLoopHandle loop,
-            Action<Action<IntPtr>, IntPtr> queueCloseHandle)
-            : base(loop.ThreadId, getSize(), queueCloseHandle)
+            : base(loop.ThreadId, getSize())
         {
             loop.Validate();
             Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_init(loop, this));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_init(loop, Handle));
         }
 
         private static int getSize()
@@ -46,7 +40,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
 
             Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_bind(this, ref addr, 0));
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_bind(Handle, ref addr, 0));
         }
     }
 }

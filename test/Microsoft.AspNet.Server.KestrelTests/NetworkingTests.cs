@@ -60,7 +60,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 {
                     called = true;
                     trigger.Dispose();
-                }, (x, y) => { });
+                });
                 trigger.Send();
                 loop.Run();
             }

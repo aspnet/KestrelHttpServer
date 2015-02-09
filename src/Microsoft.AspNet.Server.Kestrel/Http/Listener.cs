@@ -68,7 +68,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 try
                 {
-                    ListenSocket = new UvTcpHandle(Thread.Loop, Thread.QueueCloseHandle);
+                    ListenSocket = new UvTcpHandle(Thread.Loop);
                     ListenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
                     ListenSocket.Listen(10, _connectionCallback, this);
                     tcs.SetResult(0);
@@ -83,7 +83,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void OnConnection(UvStreamHandle listenSocket, int status)
         {
-            var acceptSocket = new UvTcpHandle(Thread.Loop, Thread.QueueCloseHandle);
+            var acceptSocket = new UvTcpHandle(Thread.Loop);
             listenSocket.Accept(acceptSocket);
 
             var connection = new Connection(this, acceptSocket);

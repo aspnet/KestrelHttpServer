@@ -26,13 +26,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN);
         }
 
-        public void Shutdown(UvStreamHandle handle, Action<UvShutdownReq, int, object> callback, object state)
+        public void Shutdown(UvStreamHandle stream, Action<UvShutdownReq, int, object> callback, object state)
         {
             _callback = callback;
             _state = state;
             Validate();
-            handle.Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_shutdown(this, handle, _uv_shutdown_cb));
+            stream.Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_shutdown(this, stream.Handle, _uv_shutdown_cb));
         }
 
         private void UvShutdownCb(IntPtr ptr, int status)
