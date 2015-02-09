@@ -42,6 +42,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Marshal.FreeCoTaskMem(memory);
         }
 
+        public static void DisposeFromIntPtr(IntPtr ptr)
+        {
+            var weakHandle = Marshal.ReadIntPtr(ptr);
+            var gcHandle = GCHandle.FromIntPtr(weakHandle);
+            var handle = (UvHandle)gcHandle.Target;
+            handle.Dispose();
+        }
+
         public void Dispose()
         {
             if (Handle == IntPtr.Zero)

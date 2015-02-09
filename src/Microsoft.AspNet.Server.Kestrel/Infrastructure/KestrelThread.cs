@@ -113,11 +113,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                     _loop.Validate();
                     UnsafeNativeMethods.uv_walk(
                         _loop,
-                        (ptr, arg) =>
-                        {
-                            var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
-                            handle.Dispose();
-                        },
+                        (ptr, arg) => UvHandle.DisposeFromIntPtr(ptr),
                         IntPtr.Zero);
                     _loop.Run();
                 }
