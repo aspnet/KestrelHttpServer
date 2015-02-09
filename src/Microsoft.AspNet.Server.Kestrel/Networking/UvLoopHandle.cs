@@ -35,12 +35,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_run(this, mode));
         }
 
-        public void Stop()
-        {
-            Validate();
-            UnsafeNativeMethods.uv_stop(this);
-        }
-
         protected override bool ReleaseHandle()
         {
             Validate(closed: true);

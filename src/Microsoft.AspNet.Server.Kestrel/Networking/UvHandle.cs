@@ -19,8 +19,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _threadId = threadId;
 
             Handle = Marshal.AllocCoTaskMem(size);
-            var weakHandle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));
-            Marshal.WriteIntPtr(Handle, weakHandle);
         }
 
         public IntPtr Handle { get; private set; }
@@ -33,21 +31,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private static void DestroyMemory(IntPtr memory)
         {
-            var gcHandlePtr = Marshal.ReadIntPtr(memory);
-            if (gcHandlePtr != IntPtr.Zero)
-            {
-                var gcHandle = GCHandle.FromIntPtr(gcHandlePtr);
-                gcHandle.Free();
-            }
             Marshal.FreeCoTaskMem(memory);
-        }
-
-        public static void DisposeFromIntPtr(IntPtr ptr)
-        {
-            var weakHandle = Marshal.ReadIntPtr(ptr);
-            var gcHandle = GCHandle.FromIntPtr(weakHandle);
-            var handle = (UvHandle)gcHandle.Target;
-            handle.Dispose();
         }
 
         public void Dispose()
@@ -67,7 +51,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             // However, the code still frees the unmanaged resources,
             //  so expect something to blow up later.
 
-            Console.WriteLine("TODO: Warning! UvHandle was finalized instead of disposed. This is a bug in Kestrel.");
+            // There is one common case of this happening,
+            //  namely when handles need to be manually closed during shutdown
+
+            Console.WriteLine("TODO: Warning! UvHandle was finalized instead of disposed. This is either a bug in Kestrel (unlikely) or some other code didn't close all resources before Kestrel was stopped.");
             Dispose(false);
         }
 

@@ -18,10 +18,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public static uv_run_delegate uv_run;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_stop_delegate(UvLoopHandle handle);
-        public static uv_stop_delegate uv_stop;
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void uv_ref_delegate(IntPtr handle);
         public static uv_ref_delegate uv_ref;
 

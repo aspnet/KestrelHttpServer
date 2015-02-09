@@ -56,7 +56,32 @@ namespace Microsoft.AspNet.Server.Kestrel
         private void OnStop(object obj)
         {
             _post.Unreference();
-            _loop.Stop();
+            // In a perfect world at this point, there wouldn't be anything left
+            //  that is referenced on the loop …
+            var postHandle = _post.Handle;
+            _post.Dispose();
+            // … so when returning here, the DestroyMemory callback would be
+            //  executed in the next loop iteration and the loop would exit naturally
+
+
+            // However, the world isn't perfect and there are currently ways
+            //  that handles are left that would make the loop run forever.
+            // Right now from the loop's point of view, _post is still active.
+            // So we skip _post when we go through the handles that are still active
+            //  and close them manually.
+            UnsafeNativeMethods.uv_walk(
+                _loop,
+                (ptr, arg) =>
+                {
+                    if (ptr != postHandle)
+                        UnsafeNativeMethods.uv_close(ptr, null);
+                },
+                IntPtr.Zero);
+            // This does not Dispose() the handles, so for each one
+            //  a nice message is written to the Console by the handle's finalizer
+
+            // Now all references are definitely going to be gone
+            //  and the loop will exit after the next iteration
         }
 
         public void Post(Action<object> callback, object state)
@@ -103,18 +128,10 @@ namespace Microsoft.AspNet.Server.Kestrel
         private void RunLoop()
         {
             using (_loop)
-            // _post is disposed in the uv_walk callback
             {
                 try
                 {
                     _post.Reference();
-                    _loop.Run();
-
-                    _loop.Validate();
-                    UnsafeNativeMethods.uv_walk(
-                        _loop,
-                        (ptr, arg) => UvHandle.DisposeFromIntPtr(ptr),
-                        IntPtr.Zero);
                     _loop.Run();
                 }
                 catch (Exception ex)
