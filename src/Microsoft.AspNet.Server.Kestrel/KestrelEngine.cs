@@ -13,6 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelEngine : IDisposable
     {
+        private readonly IDisposable nativeBinder;
 
         public KestrelEngine(ILibraryManager libraryManager)
         {
@@ -20,30 +21,44 @@ namespace Microsoft.AspNet.Server.Kestrel
             Listeners = new List<Listener>();
             Memory = new MemoryPool();
 
+            var library = libraryManager.GetLibraryInformation("Microsoft.AspNet.Server.Kestrel");
+            var libraryPath = library.Path;
+            if (library.Type == "Project")
+            {
+                libraryPath = Path.GetDirectoryName(libraryPath);
+            }
+
             if (Libuv.IsWindows)
             {
-                var library = libraryManager.GetLibraryInformation("Microsoft.AspNet.Server.Kestrel");
-                var libraryPath = library.Path;
-                if (library.Type == "Project")
-                    libraryPath = Path.GetDirectoryName(libraryPath);
-
                 var architectureLibraryPath = Path.Combine(
                     libraryPath,
                     "native",
                     "windows",
-                    IntPtr.Size == 4 ? "x86" : "amd64");
-                UnsafeNativeMethods.SetDllDirectory(architectureLibraryPath);
+                    Environment.Is64BitProcess ? "amd64" : "x86",
+                    "libuv.dll");
+
+                nativeBinder = new WindowsNativeBinder(
+                    architectureLibraryPath,
+                    typeof(UnsafeNativeMethods));
             }
-            try
+            else if (Libuv.IsDarwin)
             {
-                UnsafeNativeMethods.uv_loop_size();
+                var architectureLibraryPath = Path.Combine(
+                    libraryPath,
+                    "native",
+                    "darwin",
+                    "universal",
+                    "libuv.dylib"
+                );
+                nativeBinder = new UnixNativeBinder(
+                    architectureLibraryPath,
+                    typeof(UnsafeNativeMethods));
             }
-            catch (DllNotFoundException)
+            else
             {
-                // Binaries for Windows and OSx are bundled, so this only happens
-                // on Linux, where the library name is libuv.so.1
-                // The caught exception mentions 'libuv.dll' and thus is confusing
-                throw new DllNotFoundException("libuv.so.1");
+                nativeBinder = new UnixNativeBinder(
+                    "libuv.so.1",
+                    typeof(UnsafeNativeMethods));
             }
         }
 
@@ -71,6 +86,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                 thread.Stop(TimeSpan.FromSeconds(2.5));
             }
             Threads.Clear();
+
+            nativeBinder.Dispose();
         }
 
         public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task> application)

@@ -5,91 +5,112 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     internal static class UnsafeNativeMethods
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetDllDirectory(string path);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_loop_init_delegate(UvLoopHandle handle);
+        public static uv_loop_init_delegate uv_loop_init;
 
-        private const string libuv = "libuv.dll";
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_loop_close_delegate(UvLoopHandle handle);
+        public static uv_loop_close_delegate uv_loop_close;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int uv_loop_init(UvLoopHandle a0);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_run_delegate(UvLoopHandle handle, int mode);
+        public static uv_run_delegate uv_run;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int uv_loop_close(UvLoopHandle a0);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void uv_stop_delegate(UvLoopHandle handle);
+        public static uv_stop_delegate uv_stop;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int uv_run(UvLoopHandle handle, int mode);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void uv_ref_delegate(UvMemory handle);
+        public static uv_ref_delegate uv_ref;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_stop(UvLoopHandle handle);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void uv_unref_delegate(UvMemory handle);
+        public static uv_unref_delegate uv_unref;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_ref(UvHandle handle);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void uv_close_delegate(IntPtr handle, uv_close_cb close_cb);
+        public static uv_close_delegate uv_close;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_unref(UvHandle handle);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_async_init_delegate(UvLoopHandle loop, UvAsyncHandle handle, uv_async_cb cb);
+        public static uv_async_init_delegate uv_async_init;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void uv_close(IntPtr handle, uv_close_cb close_cb);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_async_send_delegate(UvAsyncHandle handle);
+        public static uv_async_send_delegate uv_async_send;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_async_init(UvLoopHandle loop, UvAsyncHandle handle, uv_async_cb cb);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_tcp_init_delegate(UvLoopHandle loop, UvStreamHandle handle);
+        public static uv_tcp_init_delegate uv_tcp_init;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_async_send(UvAsyncHandle handle);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_tcp_bind_delegate(UvStreamHandle handle, ref Sockaddr addr, int flags);
+        public static uv_tcp_bind_delegate uv_tcp_bind;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_tcp_init(UvLoopHandle loop, UvTcpHandle handle);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_listen_delegate(UvStreamHandle handle, int backlog, uv_connection_cb cb);
+        public static uv_listen_delegate uv_listen;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_tcp_bind(UvTcpHandle handle, ref Sockaddr addr, int flags);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_accept_delegate(UvStreamHandle server, UvStreamHandle client);
+        public static uv_accept_delegate uv_accept;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_listen(UvStreamHandle handle, int backlog, uv_connection_cb cb);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_read_start_delegate(UvStreamHandle handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
+        public static uv_read_start_delegate uv_read_start;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_accept(UvStreamHandle server, UvStreamHandle client);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_read_stop_delegate(UvStreamHandle handle);
+        public static uv_read_stop_delegate uv_read_stop;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_read_start(UvStreamHandle handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        // uw_write expects an array, but only one buffer is ever written.
+        // So a pointer (ref) to a single UvBuffer and a constant length of 1 is sufficient.
+        public unsafe delegate int uv_write_delegate(UvWriteReq req, UvStreamHandle handle, UvBuffer* bufs, int nbufs, uv_write_cb cb);
+        public static uv_write_delegate uv_write;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_read_stop(UvStreamHandle handle);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_shutdown_delegate(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb);
+        public static uv_shutdown_delegate uv_shutdown;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static unsafe int uv_write(UvWriteReq req, UvStreamHandle handle, UvBuffer* bufs, int nbufs, uv_write_cb cb);
-
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_shutdown(UvShutdownReq req, UvStreamHandle handle, uv_shutdown_cb cb);
-
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         // Cannot use [return: MarshalAs(UnmanagedType.LPStr)]
         // because the source const char* must not be freed,
         // which the marshaling does
-        public extern static IntPtr uv_err_name(int err);
+        public delegate IntPtr uv_err_name_delegate(int err);
+        public static uv_err_name_delegate uv_err_name;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         // Cannot use [return: MarshalAs(UnmanagedType.LPStr)]
         // because the source const char* must not be freed,
         // which the marshaling does
-        public extern static IntPtr uv_strerror(int err);
+        public delegate IntPtr uv_strerror_delegate(int err);
+        public static uv_strerror_delegate uv_strerror;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_loop_size();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_loop_size_delegate();
+        public static uv_loop_size_delegate uv_loop_size;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_handle_size(HandleType handleType);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_handle_size_delegate(HandleType handleType);
+        public static uv_handle_size_delegate uv_handle_size;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_req_size(RequestType reqType);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_req_size_delegate(RequestType reqType);
+        public static uv_req_size_delegate uv_req_size;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_ip4_addr(string ip, int port, out Sockaddr addr);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_ip4_addr_delegate(string ip, int port, out Sockaddr addr);
+        public static uv_ip4_addr_delegate uv_ip4_addr;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_ip6_addr(string ip, int port, out Sockaddr addr);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_ip6_addr_delegate(string ip, int port, out Sockaddr addr);
+        public static uv_ip6_addr_delegate uv_ip6_addr;
 
-        [DllImport(libuv, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int uv_walk(UvLoopHandle loop, uv_walk_cb walk_cb, IntPtr arg);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int uv_walk_delegate(UvLoopHandle loop, uv_walk_cb walk_cb, IntPtr arg);
+        public static uv_walk_delegate uv_walk;
     }
 }
