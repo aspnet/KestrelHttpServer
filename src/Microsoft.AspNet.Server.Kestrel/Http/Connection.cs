@@ -159,7 +159,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         x =>
                         {
                             KestrelTrace.Log.ConnectionStop(_connectionId);
-                            ((UvHandle)x).Dispose();
+                            ((UvLoopResource)x).Dispose();
                         },
                         _socket);
                     break;

@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public class UvAsyncHandle : UvHandle
+    public class UvAsyncHandle : UvLoopResource
     {
         private readonly uv_async_cb _uv_async_cb;
         private readonly Action _callback;

@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public abstract class UvStreamHandle : UvHandle
+    public abstract class UvStreamHandle : UvLoopResource
     {
         private readonly uv_connection_cb _uv_connection_cb;
         private readonly uv_alloc_cb _uv_alloc_cb;

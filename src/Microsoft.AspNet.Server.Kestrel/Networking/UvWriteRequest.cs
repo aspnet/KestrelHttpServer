@@ -10,7 +10,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// <summary>
     /// Summary description for UvWriteRequest
     /// </summary>
-    public class UvWriteReq : UvReq
+    public class UvWriteReq : UvMemoryResource
     {
         private readonly uv_write_cb _uv_write_cb;
 

@@ -8,13 +8,13 @@ using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public abstract class UvHandle : IDisposable
+    public abstract class UvLoopResource : IDisposable
     {
         private static readonly uv_close_cb _destroyMemory = DestroyMemory;
 
         private readonly int _threadId;
 
-        protected UvHandle(int threadId,int size)
+        protected UvLoopResource(int threadId, int size)
         {
             _threadId = threadId;
 
@@ -37,13 +37,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Dispose()
         {
             if (Handle == IntPtr.Zero)
-                throw new ObjectDisposedException(nameof(UvHandle));
+                throw new ObjectDisposedException(nameof(UvLoopResource));
             Validate();
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        ~UvHandle()
+        ~UvLoopResource()
         {
             // If the finalizer is called, this means Dispose was not.
             // In that case, there is no way to know if the event loop is still active

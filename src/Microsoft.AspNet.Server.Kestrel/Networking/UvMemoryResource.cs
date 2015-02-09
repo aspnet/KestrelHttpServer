@@ -5,23 +5,23 @@ using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public abstract class UvReq : SafeHandle
+    public abstract class UvMemoryResource : SafeHandle
     {
         private readonly int _threadId;
 
-        public UvReq(int threadId, int size)
+        public UvMemoryResource(int threadId, int size)
             : base(IntPtr.Zero, true)
         {
             _threadId = threadId;
 
-            handle = Marshal.AllocCoTaskMem(size);
+            SetHandle(Marshal.AllocCoTaskMem(size));
         }
 
         public override bool IsInvalid => handle == IntPtr.Zero;
+        public int ThreadId => _threadId;
 
-        public void Validate(bool closed = false)
+        public void Validate()
         {
-            Trace.Assert(closed || !IsClosed, "Handle is closed");
             Trace.Assert(!IsInvalid, "Handle is invalid");
             Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
         }

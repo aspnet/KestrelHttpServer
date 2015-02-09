@@ -1,45 +1,27 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public class UvLoopHandle : SafeHandle
+    public class UvLoopHandle : UvMemoryResource
     {
-        private int _threadId;
-
         public UvLoopHandle()
-            : base(IntPtr.Zero, true)
+            : base(Thread.CurrentThread.ManagedThreadId, getSize())
         {
-            _threadId = Thread.CurrentThread.ManagedThreadId;
-            SetHandle(Marshal.AllocCoTaskMem(UnsafeNativeMethods.uv_loop_size()));
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
-        public override bool IsInvalid => handle == IntPtr.Zero;
-        public int ThreadId => _threadId;
-
-        public void Validate(bool closed = false)
+        private static int getSize()
         {
-            Trace.Assert(closed || !IsClosed, "Handle is closed");
-            Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
+            return UnsafeNativeMethods.uv_loop_size();
         }
 
         public void Run(int mode = 0)
         {
             Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_run(this, mode));
-        }
-
-        protected override bool ReleaseHandle()
-        {
-            Validate(closed: true);
-            Marshal.FreeCoTaskMem(handle);
-            return true;
         }
 
         protected override void Dispose(bool disposing)

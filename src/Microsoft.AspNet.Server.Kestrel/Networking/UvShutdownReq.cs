@@ -8,7 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// <summary>
     /// Summary description for UvShutdownRequest
     /// </summary>
-    public class UvShutdownReq : UvReq
+    public class UvShutdownReq : UvMemoryResource
     {
         private readonly uv_shutdown_cb _uv_shutdown_cb;
 
