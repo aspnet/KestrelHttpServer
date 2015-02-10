@@ -31,12 +31,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             //TODO: need buffering that works
             var copy = new byte[buffer.Count];
             Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
+            var arraySegment = new ArraySegment<byte>(copy);
 
             KestrelTrace.Log.ConnectionWrite(0, buffer.Count);
             var req = new UvWriteReq(
                 _thread.Loop,
                 _socket,
-                copy,
+                arraySegment,
                 callback,
                 state);
             _thread.Post(x =>

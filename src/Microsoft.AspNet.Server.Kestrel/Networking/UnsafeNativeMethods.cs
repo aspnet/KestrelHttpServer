@@ -62,9 +62,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public static uv_read_stop_delegate uv_read_stop;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        // uw_write expects an array, but only one buffer is ever written.
-        // So a pointer (ref) to a single UvBuffer and a constant length of 1 is sufficient.
-        public delegate int uv_write_delegate(UvWriteReq req, IntPtr handle, ref UvBuffer bufs, int nbufs, uv_write_cb cb);
+        public delegate int uv_write_delegate(UvWriteReq req, IntPtr handle, UvBuffer[] bufs, int nbufs, uv_write_cb cb);
         public static uv_write_delegate uv_write;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

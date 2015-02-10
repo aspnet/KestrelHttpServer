@@ -201,7 +201,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                                     var req = new UvWriteReq(
                                         loop,
                                         tcp2,
-                                        new byte[] { 65, 66, 67, 68, 69 },
+                                        new ArraySegment<byte>(
+                                            new byte[] { 65, 66, 67, 68, 69 }),
                                         (_1, _2) => { },
                                         null
                                     );
