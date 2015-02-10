@@ -33,76 +33,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
 
             KestrelTrace.Log.ConnectionWrite(0, buffer.Count);
-            var req = new ThisWriteReq(_thread.Loop);
-            req.Contextualize(this, _socket, copy, callback, state);
+            var req = new UvWriteReq(
+                _thread.Loop,
+                _socket,
+                copy,
+                callback,
+                state);
             _thread.Post(x =>
             {
-                ((ThisWriteReq)x).Write();
+                ((UvWriteReq)x).Write();
             }, req);
         }
-
-        public class ThisWriteReq : UvWriteReq
-        {
-            private static readonly Action<UvWriteReq, int, Exception, object> _writeCallback = WriteCallback;
-
-            private static void WriteCallback(UvWriteReq req, int status, Exception error, object state)
-            {
-                ((ThisWriteReq)state).OnWrite(req, status, error);
-            }
-
-            SocketOutput _self;
-            byte[] _buffer;
-            UvStreamHandle _socket;
-            Action<Exception, object> _callback;
-            object _state;
-
-            public ThisWriteReq(UvLoopHandle loop)
-                : base(loop)
-            { }
-
-            internal void Contextualize(
-                SocketOutput socketOutput,
-                UvStreamHandle socket,
-                byte[] buffer,
-                Action<Exception, object> callback,
-                object state)
-            {
-                _self = socketOutput;
-                _socket = socket;
-                _buffer = buffer;
-                _callback = callback;
-                _state = state;
-            }
-
-            public void Write()
-            {
-                Write(
-                    _socket,
-                    _buffer,
-                    _writeCallback,
-                    this);
-            }
-
-            private void OnWrite(UvWriteReq req, int status, Exception error)
-            {
-                KestrelTrace.Log.ConnectionWriteCallback(0, status);
-                //NOTE: pool this?
-
-                var callback = _callback;
-                _callback = null;
-                var state = _state;
-                _state = null;
-
-                Dispose();
-                callback(error, state);
-            }
-        }
-
 
         public bool Flush(Action drained)
         {
             return false;
         }
-
     }
 }

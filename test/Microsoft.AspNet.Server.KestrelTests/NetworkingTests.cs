@@ -198,12 +198,13 @@ namespace Microsoft.AspNet.Server.KestrelTests
                             {
                                 for (var x = 0; x != 2; ++x)
                                 {
-                                    var req = new UvWriteReq(loop);
-                                    req.Write(
+                                    var req = new UvWriteReq(
+                                        loop,
                                         tcp2,
                                         new byte[] { 65, 66, 67, 68, 69 },
-                                        (_1, _2, _3, _4) => { },
-                                        null);
+                                        (_1, _2) => { },
+                                        null
+                                    );
                                 }
                             }
                         },

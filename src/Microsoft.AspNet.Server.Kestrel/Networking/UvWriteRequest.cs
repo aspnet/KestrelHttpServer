@@ -13,15 +13,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvWriteReq : UvMemoryResource
     {
         private readonly uv_write_cb _uv_write_cb;
+        private readonly List<GCHandle> _pins = new List<GCHandle>();
 
-        private Action<UvWriteReq, int, Exception, object> _callback;
-        private object _state;
-        private List<GCHandle> _pins = new List<GCHandle>();
+        private readonly UvStreamHandle _stream;
+        private readonly byte[] _buffer;
+        private readonly Action<Exception, object> _callback;
+        private readonly object _state;
 
-        public UvWriteReq(UvLoopHandle loop)
+        public UvWriteReq(
+            UvLoopHandle loop,
+            UvStreamHandle stream,
+            byte[] buffer,
+            Action<Exception, object> callback,
+            object state)
             : base(loop.ThreadId, getSize())
         {
             _uv_write_cb = UvWriteCb;
+            _stream = stream;
+            _buffer = buffer;
+            _callback = callback;
+            _state = state;
         }
 
         private static int getSize()
@@ -29,33 +40,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
         }
 
-        public void Write(
-            UvStreamHandle stream,
-            byte[] buf,
-            Action<UvWriteReq, int, Exception, object> callback,
-            object state)
+        public void Write()
         {
             try
             {
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
-                var bufHandle = GCHandle.Alloc(buf, GCHandleType.Pinned);
+                var bufHandle = GCHandle.Alloc(_buffer, GCHandleType.Pinned);
                 _pins.Add(bufHandle);
 
                 var uvBuffer = new UvBuffer(
                         bufHandle.AddrOfPinnedObject(),
-                        buf.Length);
+                        _buffer.Length);
 
-                _callback = callback;
-                _state = state;
-                stream.Validate();
+                _stream.Validate();
                 Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, stream.Handle, ref uvBuffer, 1, _uv_write_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, _stream.Handle, ref uvBuffer, 1, _uv_write_cb));
             }
             catch
             {
-                _callback = null;
-                _state = null;
                 Unpin();
                 throw;
             }
@@ -74,15 +77,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             Unpin();
 
-            var callback = _callback;
-            _callback = null;
-
-            var state = _state;
-            _state = null;
-
             var error = Libuv.ExceptionForError(status);
 
-            callback(this, status, error, state);
+            KestrelTrace.Log.ConnectionWriteCallback(0, status);
+            //NOTE: pool this?
+
+            Dispose();
+            _callback(error, _state);
         }
     }
 }
