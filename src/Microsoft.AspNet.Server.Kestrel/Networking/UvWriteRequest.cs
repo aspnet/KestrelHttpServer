@@ -13,12 +13,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvWriteReq : UvMemoryResource
     {
         private readonly uv_write_cb _uv_write_cb;
-        private readonly List<GCHandle> _pins = new List<GCHandle>();
 
         private readonly UvStreamHandle _stream;
-        private readonly byte[] _buffer;
+        private UvBuffer _uvBuffer;
         private readonly Action<Exception, object> _callback;
         private readonly object _state;
+
+        private readonly GCHandle _selfKeepAlive;
+        private readonly GCHandle _bufferHandle;
 
         public UvWriteReq(
             UvLoopHandle loop,
@@ -30,9 +32,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             _uv_write_cb = UvWriteCb;
             _stream = stream;
-            _buffer = buffer;
             _callback = callback;
             _state = state;
+
+            _selfKeepAlive = GCHandle.Alloc(this, GCHandleType.Normal);
+            _bufferHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            _uvBuffer = new UvBuffer(
+                _bufferHandle.AddrOfPinnedObject(),
+                buffer.Length);
         }
 
         private static int getSize()
@@ -44,39 +51,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             try
             {
-                // add GCHandle to keeps this SafeHandle alive while request processing
-                _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
-                var bufHandle = GCHandle.Alloc(_buffer, GCHandleType.Pinned);
-                _pins.Add(bufHandle);
-
-                var uvBuffer = new UvBuffer(
-                        bufHandle.AddrOfPinnedObject(),
-                        _buffer.Length);
-
                 _stream.Validate();
                 Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(this, _stream.Handle, ref uvBuffer, 1, _uv_write_cb));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(
+                    this,
+                    _stream.Handle,
+                    ref _uvBuffer,
+                    1,
+                    _uv_write_cb));
             }
             catch
             {
-                Unpin();
+                Dispose();
                 throw;
             }
         }
 
-        private void Unpin()
-        {
-            foreach (var pin in _pins)
-            {
-                pin.Free();
-            }
-            _pins.Clear();
-        }
-
         private void UvWriteCb(IntPtr ptr, int status)
         {
-            Unpin();
-
             var error = Libuv.ExceptionForError(status);
 
             KestrelTrace.Log.ConnectionWriteCallback(0, status);
@@ -84,6 +76,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
             Dispose();
             _callback(error, _state);
+        }
+
+        protected override bool ReleaseHandle()
+        {
+            _bufferHandle.Free();
+            _selfKeepAlive.Free();
+
+            return base.ReleaseHandle();
         }
     }
 }
