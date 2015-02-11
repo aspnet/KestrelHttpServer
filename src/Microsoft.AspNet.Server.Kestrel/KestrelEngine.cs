@@ -34,7 +34,12 @@ namespace Microsoft.AspNet.Server.Kestrel
                     libraryPath,
                     "native",
                     "windows",
+#if DNXCORE50
+                    // TODO: This is only temporary. Remove when CoreCLR has a release with the Is64BitProcess member
+                    IntPtr.Size == 8 ? "amd64" : "x86",
+#else
                     Environment.Is64BitProcess ? "amd64" : "x86",
+#endif
                     "libuv.dll");
 
                 nativeBinder = new WindowsNativeBinder(
