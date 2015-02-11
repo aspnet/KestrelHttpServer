@@ -8,6 +8,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public abstract class UvMemoryResource : SafeHandle
     {
         private readonly int _threadId;
+        private readonly GCHandle _selfKeepAlive;
 
         public UvMemoryResource(int threadId, int size)
             : base(IntPtr.Zero, true)
@@ -15,6 +16,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _threadId = threadId;
 
             SetHandle(Marshal.AllocCoTaskMem(size));
+            _selfKeepAlive = GCHandle.Alloc(this, GCHandleType.Normal);
         }
 
         public override bool IsInvalid => handle == IntPtr.Zero;
@@ -28,6 +30,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         protected override bool ReleaseHandle()
         {
+            _selfKeepAlive.Free();
             Marshal.FreeCoTaskMem(handle);
             handle = IntPtr.Zero;
             return true;
