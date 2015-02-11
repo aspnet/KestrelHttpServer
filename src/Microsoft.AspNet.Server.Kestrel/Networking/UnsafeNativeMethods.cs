@@ -5,6 +5,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     internal static class UnsafeNativeMethods
     {
+#pragma warning disable 649
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int uv_loop_init_delegate(UvLoopHandle handle);
         public static uv_loop_init_delegate uv_loop_init;
