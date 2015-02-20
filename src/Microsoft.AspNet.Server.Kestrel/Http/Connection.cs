@@ -124,38 +124,31 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 case ProduceEndType.SocketShutdownSend:
                     KestrelTrace.Log.ConnectionWriteFin(_connectionId, 0);
-                    Thread.Post(
-                        x =>
-                        {
-                            KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
-                            var self = (Connection)x;
-                            new UvShutdownReq(
-                                self.Thread.Loop,
-                                self._socket,
-                                (req, status) =>
-                                {
-                                    KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
-                                    // This connection is now done
-                                });
-                        },
-                        this);
+                    Thread.Post(() =>
+                    {
+                        KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
+                        new UvShutdownReq(
+                            Thread.Loop,
+                            _socket,
+                            (req, status) =>
+                            {
+                                KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
+                                // This connection is now done
+                            });
+                    });
                     break;
                 case ProduceEndType.ConnectionKeepAlive:
                     KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
                     _frame = new Frame(this);
-                    Thread.Post(
-                        x => ((Frame)x).Consume(),
-                        _frame);
+                    Thread.Post(_frame.Consume);
                     break;
                 case ProduceEndType.SocketDisconnect:
                     KestrelTrace.Log.ConnectionDisconnect(_connectionId);
-                    Thread.Post(
-                        x =>
-                        {
-                            KestrelTrace.Log.ConnectionStop(_connectionId);
-                            ((UvLoopResource)x).Dispose();
-                        },
-                        _socket);
+                    Thread.Post(() =>
+                    {
+                        _socket.Dispose();
+                        KestrelTrace.Log.ConnectionStop(_connectionId);
+                    });
                     break;
             }
         }

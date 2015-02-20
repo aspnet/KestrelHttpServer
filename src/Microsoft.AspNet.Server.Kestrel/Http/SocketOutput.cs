@@ -40,10 +40,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 arraySegment,
                 callback,
                 state);
-            _thread.Post(x =>
-            {
-                ((UvWriteReq)x).Write();
-            }, req);
+            _thread.Post(req.Write);
         }
 
         public bool Flush(Action drained)

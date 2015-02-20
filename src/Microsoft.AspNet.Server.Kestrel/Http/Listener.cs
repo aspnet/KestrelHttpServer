@@ -65,7 +65,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Application = application;
 
             var tcs = new TaskCompletionSource<int>();
-            Thread.Post(_ =>
+            Thread.Post(() =>
             {
                 try
                 {
@@ -80,7 +80,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     tcs.SetException(ex);
                 }
-            }, null);
+            });
             return tcs.Task;
         }
 
@@ -94,20 +94,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public void Dispose()
         {
             var tcs = new TaskCompletionSource<int>();
-            Thread.Post(
-                _ =>
+            Thread.Post(() =>
+            {
+                try
                 {
-                    try
-                    {
-                        _listenSocket.Dispose();
-                        tcs.SetResult(0);
-                    }
-                    catch (Exception ex)
-                    {
-                        tcs.SetException(ex);
-                    }
-                },
-                null);
+                    _listenSocket.Dispose();
+                    tcs.SetResult(0);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
             tcs.Task.Wait();
             _listenSocket = null;
         }

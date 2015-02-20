@@ -20,8 +20,8 @@ namespace Microsoft.AspNet.Server.Kestrel
         Thread _thread;
         UvLoopHandle _loop;
         UvAsyncHandle _post;
-        Queue<Work> _workAdding = new Queue<Work>();
-        Queue<Work> _workRunning = new Queue<Work>();
+        Queue<Action> _workAdding = new Queue<Action>();
+        Queue<Action> _workRunning = new Queue<Action>();
         object _workSync = new Object();
         private ExceptionDispatchInfo _closeError;
 
@@ -42,7 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public void Stop(TimeSpan timeout)
         {
-            Post(OnStop, null);
+            Post(OnStop);
             if (!_thread.Join((int)timeout.TotalMilliseconds))
             {
                 throw new TimeoutException("Loop did not close");
@@ -53,7 +53,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
         }
 
-        private void OnStop(object obj)
+        private void OnStop()
         {
             _post.Unreference();
             // In a perfect world at this point, there wouldn't be anything left
@@ -84,23 +84,30 @@ namespace Microsoft.AspNet.Server.Kestrel
             //  and the loop will exit after the next iteration
         }
 
-        public void Post(Action<object> callback, object state)
+        public void Post(Action callback)
         {
             lock (_workSync)
             {
-                _workAdding.Enqueue(new Work { Callback = callback, State = state });
+                _workAdding.Enqueue(callback);
             }
             _post.Send();
         }
 
-        public Task PostAsync(Action<object> callback, object state)
+        public Task PostAsync(Action callback)
         {
             var tcs = new TaskCompletionSource<int>();
-            lock (_workSync)
+            Post(() =>
             {
-                _workAdding.Enqueue(new Work { Callback = callback, State = state, Completion = tcs });
-            }
-            _post.Send();
+                try
+                {
+                    callback();
+                    tcs.SetResult(0);
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            });
             return tcs.Task;
         }
 
@@ -143,48 +150,24 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnPost()
         {
-            Queue<Work> queue;
+            var finishedBatch = finishCurrentBatch();
+            foreach (var work in finishedBatch)
+            {
+                work();
+            }
+            finishedBatch.Clear();
+        }
+
+        private Queue<Action> finishCurrentBatch()
+        {
+            Queue<Action> queue;
             lock (_workSync)
             {
                 queue = _workAdding;
                 _workAdding = _workRunning;
                 _workRunning = queue;
             }
-            while (queue.Count != 0)
-            {
-                var work = queue.Dequeue();
-                try
-                {
-                    work.Callback(work.State);
-                    if (work.Completion != null)
-                    {
-                        ThreadPool.QueueUserWorkItem(
-                            tcs =>
-                            {
-                                ((TaskCompletionSource<int>)tcs).SetResult(0);
-                            },
-                            work.Completion);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (work.Completion != null)
-                    {
-                        ThreadPool.QueueUserWorkItem(_ => work.Completion.SetException(ex), null);
-                    }
-                    else
-                    {
-                        Trace.WriteLine("KestrelThread.DoPostWork " + ex.ToString());
-                    }
-                }
-            }
-        }
-
-        private struct Work
-        {
-            public Action<object> Callback;
-            public object State;
-            public TaskCompletionSource<int> Completion;
+            return queue;
         }
     }
 }
