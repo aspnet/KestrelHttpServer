@@ -52,10 +52,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Dispose()
         {
-            destroy();
-
             _tcpStreamHandle.Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(_tcpStreamHandle.Handle));
+
+            destroy();
 
             GC.SuppressFinalize(this);
         }

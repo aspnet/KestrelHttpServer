@@ -86,6 +86,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 KestrelTrace.Log.ConnectionReadFin(_connectionId);
                 SocketInput.RemoteIntakeFin = true;
                 _read.Dispose();
+                _read = null;
 
                 if (errorDone && error != null)
                 {
@@ -107,6 +108,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         void IConnectionControl.Pause()
         {
             KestrelTrace.Log.ConnectionPause(_connectionId);
+            Debug.Assert(_read != null);
             _read.Dispose();
             _read = null;
         }
