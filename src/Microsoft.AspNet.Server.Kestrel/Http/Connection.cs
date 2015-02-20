@@ -80,13 +80,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             var normalRead = error == null && status > 0;
             var normalDone = status == 0 || status == -4077 || status == -4095;
-            var errorDone = !(normalDone || normalRead);
 
-            if (normalRead)
-            {
-                KestrelTrace.Log.ConnectionRead(_connectionId, status);
-            }
-            else if (normalDone || errorDone)
+            if (!normalRead)
             {
                 KestrelTrace.Log.ConnectionReadFin(_connectionId);
                 SocketInput.RemoteIntakeFin = true;
@@ -95,12 +90,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _listener.RemoveConnection(this);
                 _socket.Dispose();
 
-                if (errorDone && error != null)
+                if (!normalDone && error != null)
                 {
                     Trace.WriteLine("Connection.OnRead " + error.ToString());
                 }
+
+                // Not sure if this is right
+                // It should be, but there are some interesting code paths
+                // while reading the message body regarding status == 0 && RemoteIntakeFin
+                return;
             }
 
+            KestrelTrace.Log.ConnectionRead(_connectionId, status);
 
             try
             {
