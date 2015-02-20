@@ -10,17 +10,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvTcpListenHandle : UvTcpHandle
     {
         private readonly uv_connection_cb _uv_connection_cb;
+        private readonly GCHandle _selfKeepAlive;
+        private readonly Action<int, Exception> _listenCallback;
 
-        private GCHandle _listenVitality;
-        private Action<int, Exception> _listenCallback;
-
-        public UvTcpListenHandle(UvLoopHandle loop)
+        public UvTcpListenHandle(
+            UvLoopHandle loop,
+            IPEndPoint endPoint,
+            int backlog,
+            Action<int, Exception> callback)
             : base(loop)
         {
             _uv_connection_cb = UvConnectionCb;
+            _selfKeepAlive = GCHandle.Alloc(this, GCHandleType.Normal);
+
+            Bind(endPoint);
+            _listenCallback = callback;
+            Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(Handle, backlog, _uv_connection_cb));
         }
 
-        public void Bind(IPEndPoint endpoint)
+        private void Bind(IPEndPoint endpoint)
         {
             Sockaddr addr;
             var addressText = endpoint.Address.ToString();
@@ -42,30 +51,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_bind(Handle, ref addr, 0));
         }
 
-        public void Listen(int backlog, Action<int, Exception> callback)
-        {
-            if (_listenVitality.IsAllocated)
-            {
-                throw new InvalidOperationException("TODO: Listen may not be called more than once");
-            }
-            try
-            {
-                _listenCallback = callback;
-                _listenVitality = GCHandle.Alloc(this, GCHandleType.Normal);
-                Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(Handle, 10, _uv_connection_cb));
-            }
-            catch
-            {
-                _listenCallback = null;
-                if (_listenVitality.IsAllocated)
-                {
-                    _listenVitality.Free();
-                }
-                throw;
-            }
-        }
-
         private void UvConnectionCb(IntPtr handle, int status)
         {
             var error = Libuv.ExceptionForError(status);
@@ -81,10 +66,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         protected override void Dispose(bool disposing)
         {
-            if (_listenVitality.IsAllocated)
-            {
-                _listenVitality.Free();
-            }
+            _selfKeepAlive.Free();
             base.Dispose(disposing);
         }
     }

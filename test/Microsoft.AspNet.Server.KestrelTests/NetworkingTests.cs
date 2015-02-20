@@ -72,8 +72,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpListenHandle(loop);
-                tcp.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                var tcp = new UvTcpListenHandle(
+                    loop,
+                    new IPEndPoint(IPAddress.Loopback, 0),
+                    10,
+                    null
+                );
                 tcp.Dispose();
                 loop.Run();
             }
@@ -86,15 +90,18 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Task t;
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpListenHandle(loop);
-                tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (status, error) =>
-                {
-                    var tcp2 = new UvTcpStreamHandle(loop);
-                    tcp.Accept(tcp2);
-                    tcp2.Dispose();
-                    tcp.Dispose();
-                });
+                UvTcpListenHandle tcp = null;
+                tcp = new UvTcpListenHandle(
+                    loop,
+                    new IPEndPoint(IPAddress.Loopback, 54321),
+                    10,
+                    (status, error) =>
+                    {
+                        var tcp2 = new UvTcpStreamHandle(loop);
+                        tcp.Accept(tcp2);
+                        tcp2.Dispose();
+                        tcp.Dispose();
+                    });
                 t = Task.Run(async () =>
                 {
                     var socket = new Socket(
@@ -122,27 +129,30 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Task t;
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpListenHandle(loop);
-                tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (status, error) =>
-                {
-                    Console.WriteLine("Connected");
-                    var tcp2 = new UvTcpStreamHandle(loop);
-                    tcp.Accept(tcp2);
-                    var data = Marshal.AllocCoTaskMem(500);
-                    tcp2.ReadStart(
-                        (a, b, c) => new UvBuffer(data, 500),
-                        (__, nread, error2, state2) =>
-                        {
-                            bytesRead += nread;
-                            if (nread == 0)
+                UvTcpListenHandle tcp = null;
+                tcp = new UvTcpListenHandle(
+                    loop,
+                    new IPEndPoint(IPAddress.Loopback, 54321),
+                    10,
+                    (status, error) =>
+                    {
+                        Console.WriteLine("Connected");
+                        var tcp2 = new UvTcpStreamHandle(loop);
+                        tcp.Accept(tcp2);
+                        var data = Marshal.AllocCoTaskMem(500);
+                        tcp2.ReadStart(
+                            (a, b, c) => new UvBuffer(data, 500),
+                            (__, nread, error2, state2) =>
                             {
-                                tcp2.Dispose();
-                            }
-                        },
-                        null);
-                    tcp.Dispose();
-                });
+                                bytesRead += nread;
+                                if (nread == 0)
+                                {
+                                    tcp2.Dispose();
+                                }
+                            },
+                            null);
+                        tcp.Dispose();
+                    });
                 Console.WriteLine("Task.Run");
                 t = Task.Run(async () =>
                 {
@@ -177,41 +187,44 @@ namespace Microsoft.AspNet.Server.KestrelTests
             int bytesRead = 0;
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpListenHandle(loop);
-                tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (status, error) =>
-                {
-                    Console.WriteLine("Connected");
-                    var tcp2 = new UvTcpStreamHandle(loop);
-                    tcp.Accept(tcp2);
-                    var data = Marshal.AllocCoTaskMem(500);
-                    tcp2.ReadStart(
-                        (a, b, c) => new UvBuffer(data, 500),
-                        (__, nread, error2, state2) =>
-                        {
-                            bytesRead += nread;
-                            if (nread == 0)
+                UvTcpListenHandle tcp = null;
+                tcp = new UvTcpListenHandle(
+                    loop,
+                    new IPEndPoint(IPAddress.Loopback, 54321),
+                    10,
+                    (status, error) =>
+                    {
+                        Console.WriteLine("Connected");
+                        var tcp2 = new UvTcpStreamHandle(loop);
+                        tcp.Accept(tcp2);
+                        var data = Marshal.AllocCoTaskMem(500);
+                        tcp2.ReadStart(
+                            (a, b, c) => new UvBuffer(data, 500),
+                            (__, nread, error2, state2) =>
                             {
-                                tcp2.Dispose();
-                            }
-                            else
-                            {
-                                for (var x = 0; x != 2; ++x)
+                                bytesRead += nread;
+                                if (nread == 0)
                                 {
-                                    var req = new UvWriteReq(
-                                        loop,
-                                        tcp2,
-                                        new ArraySegment<byte>(
-                                            new byte[] { 65, 66, 67, 68, 69 }),
-                                        (_1, _2) => { },
-                                        null
-                                    );
+                                    tcp2.Dispose();
                                 }
-                            }
-                        },
-                        null);
-                    tcp.Dispose();
-                });
+                                else
+                                {
+                                    for (var x = 0; x != 2; ++x)
+                                    {
+                                        var req = new UvWriteReq(
+                                            loop,
+                                            tcp2,
+                                            new ArraySegment<byte>(
+                                                new byte[] { 65, 66, 67, 68, 69 }),
+                                            (_1, _2) => { },
+                                            null
+                                        );
+                                    }
+                                }
+                            },
+                            null);
+                        tcp.Dispose();
+                    });
                 Console.WriteLine("Task.Run");
                 t = Task.Run(async () =>
                 {

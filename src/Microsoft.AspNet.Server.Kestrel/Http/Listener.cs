@@ -69,9 +69,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 try
                 {
-                    _listenSocket = new UvTcpListenHandle(Thread.Loop);
-                    _listenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
-                    _listenSocket.Listen(10, _connectionCallback);
+                    _listenSocket = new UvTcpListenHandle(
+                        Thread.Loop,
+                        new IPEndPoint(IPAddress.Any, port),
+                        10,
+                        _connectionCallback);
                     tcs.SetResult(0);
                 }
                 catch (Exception ex)
