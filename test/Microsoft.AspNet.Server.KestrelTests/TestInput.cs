@@ -50,6 +50,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public void End(ProduceEndType endType)
         {
         }
+
+        public bool IsInKeepAlive => false;
     }
 }
 

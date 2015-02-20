@@ -36,6 +36,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         void Pause();
         void Resume();
         void End(ProduceEndType endType);
+        bool IsInKeepAlive { get; }
     }
 
     public class Connection : ConnectionContext, IConnectionControl
@@ -43,17 +44,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Action<int, Exception> _readCallback;
         private readonly Func<int, UvBuffer> _allocCallback;
         private readonly UvTcpStreamHandle _socket;
+        private readonly Listener _listener;
 
         private UvReadHandle _read;
         private Frame _frame;
         long _connectionId;
+        private bool _isInKeepAlive;
 
-        public Connection(ListenerContext context, UvTcpStreamHandle socket) : base(context)
+        public Connection(Listener listener, UvTcpStreamHandle socket) : base(listener)
         {
             _readCallback = OnRead;
             _allocCallback = OnAlloc;
             _socket = socket;
             ConnectionControl = this;
+            _listener = listener;
 
             KestrelTrace.Log.ConnectionStart(_connectionId);
 
@@ -61,6 +65,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             SocketOutput = new SocketOutput(Thread, _socket);
             _frame = new Frame(this);
             _read = new UvReadHandle(_socket, _allocCallback, _readCallback);
+            listener.AddConnection(this);
         }
 
         private UvBuffer OnAlloc(int suggestedSize)
@@ -97,6 +102,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             try
             {
+                _isInKeepAlive = false;
                 _frame.Consume();
             }
             catch (Exception ex)
@@ -104,6 +110,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 Trace.WriteLine("Connection._frame.Consume " + ex.ToString());
             }
         }
+
+        bool IConnectionControl.IsInKeepAlive => _isInKeepAlive;
 
         void IConnectionControl.Pause()
         {
@@ -142,12 +150,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 case ProduceEndType.ConnectionKeepAlive:
                     KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
                     _frame = new Frame(this);
+                    _isInKeepAlive = true;
                     Thread.Post(_frame.Consume);
                     break;
                 case ProduceEndType.SocketDisconnect:
                     KestrelTrace.Log.ConnectionDisconnect(_connectionId);
                     Thread.Post(() =>
                     {
+                        _listener.RemoveConnection(this);
                         _read?.Dispose(); // Remove the ? once connections closed by the client work
                         _socket.Dispose();
                         KestrelTrace.Log.ConnectionStop(_connectionId);

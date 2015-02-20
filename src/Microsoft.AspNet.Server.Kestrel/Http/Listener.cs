@@ -3,7 +3,9 @@
 
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -33,6 +35,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     public class Listener : ListenerContext, IDisposable
     {
         private readonly Action<int, Exception> _connectionCallback;
+        private readonly List<IConnectionControl> _activeConnections = new List<IConnectionControl>();
 
         private UvTcpListenHandle _listenSocket;
 
@@ -81,10 +84,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             new Connection(this, acceptSocket);
         }
 
+        public void AddConnection(Connection c)
+        {
+            _activeConnections.Add(c);
+        }
+
+        public void RemoveConnection(Connection c)
+        {
+            _activeConnections.Remove(c);
+        }
+
         public void Dispose()
         {
             var task = Thread.PostAsync(_listenSocket.Dispose);
             task.Wait();
+            var copiedConnections = _activeConnections.ToList();
+            foreach (var connection in copiedConnections)
+            {
+                if (!connection.IsInKeepAlive)
+                    Console.WriteLine("TODO: Warning! Closing an active connection");
+                connection.End(ProduceEndType.SocketShutdownSend);
+                connection.End(ProduceEndType.SocketDisconnect);
+            }
             _listenSocket = null;
         }
     }
