@@ -32,11 +32,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public class Listener : ListenerContext, IDisposable
     {
-        private static readonly Action<UvTcpListenHandle, int, Exception, object> _connectionCallback = ConnectionCallback;
+        private readonly Action<UvTcpListenHandle, int, Exception> _connectionCallback;
 
         UvTcpListenHandle ListenSocket { get; set; }
 
-        private static void ConnectionCallback(UvTcpListenHandle stream, int status, Exception error, object state)
+        private void ConnectionCallback(UvTcpListenHandle stream, int status, Exception error)
         {
             if (error != null)
             {
@@ -44,12 +44,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                ((Listener)state).OnConnection(stream, status);
+                OnConnection(stream, status);
             }
         }
 
         public Listener(IMemoryPool memory)
         {
+            _connectionCallback = ConnectionCallback;
             Memory = memory;
         }
 
@@ -70,7 +71,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     ListenSocket = new UvTcpListenHandle(Thread.Loop);
                     ListenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
-                    ListenSocket.Listen(10, _connectionCallback, this);
+                    ListenSocket.Listen(10, _connectionCallback);
                     tcs.SetResult(0);
                 }
                 catch (Exception ex)

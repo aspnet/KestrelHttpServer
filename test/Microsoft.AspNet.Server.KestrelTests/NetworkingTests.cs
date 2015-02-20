@@ -88,13 +88,13 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (stream, status, error, state) =>
+                tcp.Listen(10, (stream, status, error) =>
                 {
                     var tcp2 = new UvTcpStreamHandle(loop);
                     stream.Accept(tcp2);
                     tcp2.Dispose();
                     stream.Dispose();
-                }, null);
+                });
                 t = Task.Run(async () =>
                 {
                     var socket = new Socket(
@@ -124,7 +124,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (_, status, error, state) =>
+                tcp.Listen(10, (_, status, error) =>
                 {
                     Console.WriteLine("Connected");
                     var tcp2 = new UvTcpStreamHandle(loop);
@@ -142,7 +142,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         },
                         null);
                     tcp.Dispose();
-                }, null);
+                });
                 Console.WriteLine("Task.Run");
                 t = Task.Run(async () =>
                 {
@@ -179,7 +179,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (_, status, error, state) =>
+                tcp.Listen(10, (_, status, error) =>
                 {
                     Console.WriteLine("Connected");
                     var tcp2 = new UvTcpStreamHandle(loop);
@@ -211,7 +211,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         },
                         null);
                     tcp.Dispose();
-                }, null);
+                });
                 Console.WriteLine("Task.Run");
                 t = Task.Run(async () =>
                 {
