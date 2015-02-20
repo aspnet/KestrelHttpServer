@@ -148,6 +148,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     KestrelTrace.Log.ConnectionDisconnect(_connectionId);
                     Thread.Post(() =>
                     {
+                        _read?.Dispose(); // Remove the ? once connections closed by the client work
                         _socket.Dispose();
                         KestrelTrace.Log.ConnectionStop(_connectionId);
                     });
