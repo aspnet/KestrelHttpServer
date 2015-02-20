@@ -88,12 +88,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (stream, status, error) =>
+                tcp.Listen(10, (status, error) =>
                 {
                     var tcp2 = new UvTcpStreamHandle(loop);
-                    stream.Accept(tcp2);
+                    tcp.Accept(tcp2);
                     tcp2.Dispose();
-                    stream.Dispose();
+                    tcp.Dispose();
                 });
                 t = Task.Run(async () =>
                 {
@@ -124,7 +124,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (_, status, error) =>
+                tcp.Listen(10, (status, error) =>
                 {
                     Console.WriteLine("Connected");
                     var tcp2 = new UvTcpStreamHandle(loop);
@@ -179,7 +179,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
-                tcp.Listen(10, (_, status, error) =>
+                tcp.Listen(10, (status, error) =>
                 {
                     Console.WriteLine("Connected");
                     var tcp2 = new UvTcpStreamHandle(loop);

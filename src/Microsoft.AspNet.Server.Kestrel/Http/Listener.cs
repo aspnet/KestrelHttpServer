@@ -32,11 +32,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public class Listener : ListenerContext, IDisposable
     {
-        private readonly Action<UvTcpListenHandle, int, Exception> _connectionCallback;
+        private readonly Action<int, Exception> _connectionCallback;
 
-        UvTcpListenHandle ListenSocket { get; set; }
+        private UvTcpListenHandle _listenSocket;
 
-        private void ConnectionCallback(UvTcpListenHandle stream, int status, Exception error)
+        private void ConnectionCallback(int status, Exception error)
         {
             if (error != null)
             {
@@ -44,7 +44,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                OnConnection(stream, status);
+                OnConnection(status);
             }
         }
 
@@ -69,9 +69,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 try
                 {
-                    ListenSocket = new UvTcpListenHandle(Thread.Loop);
-                    ListenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
-                    ListenSocket.Listen(10, _connectionCallback);
+                    _listenSocket = new UvTcpListenHandle(Thread.Loop);
+                    _listenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
+                    _listenSocket.Listen(10, _connectionCallback);
                     tcs.SetResult(0);
                 }
                 catch (Exception ex)
@@ -82,10 +82,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return tcs.Task;
         }
 
-        private void OnConnection(UvTcpListenHandle listenSocket, int status)
+        private void OnConnection(int status)
         {
             var acceptSocket = new UvTcpStreamHandle(Thread.Loop);
-            listenSocket.Accept(acceptSocket);
+            _listenSocket.Accept(acceptSocket);
 
             var connection = new Connection(this, acceptSocket);
             connection.Start();
@@ -99,7 +99,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     try
                     {
-                        ListenSocket.Dispose();
+                        _listenSocket.Dispose();
                         tcs.SetResult(0);
                     }
                     catch (Exception ex)
@@ -109,7 +109,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 },
                 null);
             tcs.Task.Wait();
-            ListenSocket = null;
+            _listenSocket = null;
         }
     }
 }

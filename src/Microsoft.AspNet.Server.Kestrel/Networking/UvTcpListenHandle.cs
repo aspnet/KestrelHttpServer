@@ -12,7 +12,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private readonly uv_connection_cb _uv_connection_cb;
 
         private GCHandle _listenVitality;
-        private Action<UvTcpListenHandle, int, Exception> _listenCallback;
+        private Action<int, Exception> _listenCallback;
 
         public UvTcpListenHandle(UvLoopHandle loop)
             : base(loop)
@@ -42,7 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_bind(Handle, ref addr, 0));
         }
 
-        public void Listen(int backlog, Action<UvTcpListenHandle, int, Exception> callback)
+        public void Listen(int backlog, Action<int, Exception> callback)
         {
             if (_listenVitality.IsAllocated)
             {
@@ -69,7 +69,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private void UvConnectionCb(IntPtr handle, int status)
         {
             var error = Libuv.ExceptionForError(status);
-            _listenCallback(this, status, error);
+            _listenCallback(status, error);
         }
 
         public void Accept(UvTcpStreamHandle stream)
