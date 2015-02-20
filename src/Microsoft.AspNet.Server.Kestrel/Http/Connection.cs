@@ -42,26 +42,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         private readonly Action<int, Exception> _readCallback;
         private readonly Func<int, UvBuffer> _allocCallback;
-
-        private UvBuffer AllocCallback(int suggestedSize)
-        {
-            return OnAlloc(suggestedSize);
-        }
-
-        private void ReadCallback(int nread, Exception error)
-        {
-            OnRead(nread, error);
-        }
-
         private readonly UvTcpStreamHandle _socket;
+
         private UvReadHandle _read;
         private Frame _frame;
         long _connectionId;
 
         public Connection(ListenerContext context, UvTcpStreamHandle socket) : base(context)
         {
-            _readCallback = ReadCallback;
-            _allocCallback = AllocCallback;
+            _readCallback = OnRead;
+            _allocCallback = OnAlloc;
             _socket = socket;
             ConnectionControl = this;
 
