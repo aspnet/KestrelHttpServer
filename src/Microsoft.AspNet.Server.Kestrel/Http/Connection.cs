@@ -63,10 +63,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _allocCallback = AllocCallback;
             _socket = socket;
             ConnectionControl = this;
-        }
 
-        public void Start()
-        {
             KestrelTrace.Log.ConnectionStart(_connectionId);
 
             SocketInput = new SocketInput(Memory);

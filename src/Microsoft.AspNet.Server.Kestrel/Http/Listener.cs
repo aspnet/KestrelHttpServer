@@ -88,8 +88,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             var acceptSocket = new UvTcpStreamHandle(Thread.Loop, _listenSocket);
 
-            var connection = new Connection(this, acceptSocket);
-            connection.Start();
+            new Connection(this, acceptSocket);
         }
 
         public void Dispose()
