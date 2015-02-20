@@ -54,6 +54,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         private readonly UvTcpStreamHandle _socket;
+        private UvReadHandle _read;
         private Frame _frame;
         long _connectionId;
 
@@ -69,7 +70,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             SocketInput = new SocketInput(Memory);
             SocketOutput = new SocketOutput(Thread, _socket);
             _frame = new Frame(this);
-            _socket.ReadStart(_allocCallback, _readCallback);
+            _read = new UvReadHandle(_socket, _allocCallback, _readCallback);
         }
 
         private UvBuffer OnAlloc(int suggestedSize)
@@ -94,7 +95,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 KestrelTrace.Log.ConnectionReadFin(_connectionId);
                 SocketInput.RemoteIntakeFin = true;
-                _socket.ReadStop();
+                _read.Dispose();
 
                 if (errorDone && error != null)
                 {
@@ -116,13 +117,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         void IConnectionControl.Pause()
         {
             KestrelTrace.Log.ConnectionPause(_connectionId);
-            _socket.ReadStop();
+            _read.Dispose();
+            _read = null;
         }
 
         void IConnectionControl.Resume()
         {
             KestrelTrace.Log.ConnectionResume(_connectionId);
-            _socket.ReadStart(_allocCallback, _readCallback);
+            Debug.Assert(_read == null);
+            _read = new UvReadHandle(_socket, _allocCallback, _readCallback);
         }
 
         void IConnectionControl.End(ProduceEndType endType)
