@@ -11,8 +11,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private readonly uv_alloc_cb _uv_alloc_cb;
         private readonly uv_read_cb _uv_read_cb;
 
-        private Func<UvTcpStreamHandle, int, UvBuffer> _allocCallback;
-        private Action<UvTcpStreamHandle, int, Exception> _readCallback;
+        private Func<int, UvBuffer> _allocCallback;
+        private Action<int, Exception> _readCallback;
 
         private GCHandle _readVitality;
 
@@ -36,8 +36,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         }
 
         public void ReadStart(
-            Func<UvTcpStreamHandle, int, UvBuffer> allocCallback,
-            Action<UvTcpStreamHandle, int, Exception> readCallback)
+            Func<int, UvBuffer> allocCallback,
+            Action<int, Exception> readCallback)
         {
             if (_readVitality.IsAllocated)
             {
@@ -80,7 +80,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private void UvAllocCb(IntPtr handle, int suggested_size, out UvBuffer buf)
         {
-            buf = _allocCallback(this, suggested_size);
+            buf = _allocCallback(suggested_size);
         }
 
         private void UvReadCb(IntPtr handle, int nread, ref UvBuffer buf)
@@ -88,11 +88,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             if (nread < 0)
             {
                 var error = Libuv.ExceptionForError(nread);
-                _readCallback(this, 0, error);
+                _readCallback(0, error);
             }
             else
             {
-                _readCallback(this, nread, null);
+                _readCallback(nread, null);
             }
         }
     }

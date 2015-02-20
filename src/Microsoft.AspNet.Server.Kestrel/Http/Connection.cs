@@ -40,17 +40,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private readonly Action<UvTcpStreamHandle, int, Exception> _readCallback;
-        private readonly Func<UvTcpStreamHandle, int, UvBuffer> _allocCallback;
+        private readonly Action<int, Exception> _readCallback;
+        private readonly Func<int, UvBuffer> _allocCallback;
 
-        private UvBuffer AllocCallback(UvTcpStreamHandle handle, int suggestedSize)
+        private UvBuffer AllocCallback(int suggestedSize)
         {
-            return OnAlloc(handle, suggestedSize);
+            return OnAlloc(suggestedSize);
         }
 
-        private void ReadCallback(UvTcpStreamHandle handle, int nread, Exception error)
+        private void ReadCallback(int nread, Exception error)
         {
-            OnRead(handle, nread, error);
+            OnRead(nread, error);
         }
 
         private readonly UvTcpStreamHandle _socket;
@@ -75,13 +75,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket.ReadStart(_allocCallback, _readCallback);
         }
 
-        private UvBuffer OnAlloc(UvTcpStreamHandle handle, int suggestedSize)
+        private UvBuffer OnAlloc(int suggestedSize)
         {
             const int bufferSize = 2048;
             return new UvBuffer(SocketInput.Pin(bufferSize), bufferSize);
         }
 
-        private void OnRead(UvTcpStreamHandle handle, int status, Exception error)
+        private void OnRead(int status, Exception error)
         {
             SocketInput.Unpin(status);
 

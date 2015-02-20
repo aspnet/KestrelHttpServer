@@ -139,8 +139,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         var tcp2 = new UvTcpStreamHandle(loop, tcp);
                         var data = Marshal.AllocCoTaskMem(500);
                         tcp2.ReadStart(
-                            (a, b) => new UvBuffer(data, 500),
-                            (__, nread, error2) =>
+                            (b) => new UvBuffer(data, 500),
+                            (nread, error2) =>
                             {
                                 bytesRead += nread;
                                 if (nread == 0)
@@ -195,8 +195,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         var tcp2 = new UvTcpStreamHandle(loop, tcp);
                         var data = Marshal.AllocCoTaskMem(500);
                         tcp2.ReadStart(
-                            (a, b) => new UvBuffer(data, 500),
-                            (__, nread, error2) =>
+                            (b) => new UvBuffer(data, 500),
+                            (nread, error2) =>
                             {
                                 bytesRead += nread;
                                 if (nread == 0)
