@@ -92,6 +92,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 SocketInput.RemoteIntakeFin = true;
                 _read.Dispose();
                 _read = null;
+                _listener.RemoveConnection(this);
+                _socket.Dispose();
 
                 if (errorDone && error != null)
                 {
@@ -136,6 +138,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     KestrelTrace.Log.ConnectionWriteFin(_connectionId, 0);
                     Thread.Post(() =>
                     {
+                        if (_read == null)
+                            return;
+
                         KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
                         new UvShutdownReq(
                             Thread.Loop,
@@ -158,7 +163,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     Thread.Post(() =>
                     {
                         _listener.RemoveConnection(this);
-                        _read?.Dispose(); // Remove the ? once connections closed by the client work
+                        if (_read == null)
+                            return;
+
+                        _read.Dispose();
                         _socket.Dispose();
                         KestrelTrace.Log.ConnectionStop(_connectionId);
                     });
