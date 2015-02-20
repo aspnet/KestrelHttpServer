@@ -11,10 +11,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private readonly uv_alloc_cb _uv_alloc_cb;
         private readonly uv_read_cb _uv_read_cb;
 
-        private Func<UvTcpStreamHandle, int, object, UvBuffer> _allocCallback;
+        private Func<UvTcpStreamHandle, int, UvBuffer> _allocCallback;
+        private Action<UvTcpStreamHandle, int, Exception> _readCallback;
 
-        private Action<UvTcpStreamHandle, int, Exception, object> _readCallback;
-        private object _readState;
         private GCHandle _readVitality;
 
         public UvTcpStreamHandle(UvLoopHandle loop, UvTcpListenHandle listenHandle)
@@ -37,9 +36,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         }
 
         public void ReadStart(
-            Func<UvTcpStreamHandle, int, object, UvBuffer> allocCallback,
-            Action<UvTcpStreamHandle, int, Exception, object> readCallback,
-            object state)
+            Func<UvTcpStreamHandle, int, UvBuffer> allocCallback,
+            Action<UvTcpStreamHandle, int, Exception> readCallback)
         {
             if (_readVitality.IsAllocated)
             {
@@ -49,7 +47,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _allocCallback = allocCallback;
                 _readCallback = readCallback;
-                _readState = state;
                 _readVitality = GCHandle.Alloc(this, GCHandleType.Normal);
                 Validate();
 
@@ -59,7 +56,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _allocCallback = null;
                 _readCallback = null;
-                _readState = null;
                 if (_readVitality.IsAllocated)
                 {
                     _readVitality.Free();
@@ -76,7 +72,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
             _allocCallback = null;
             _readCallback = null;
-            _readState = null;
             _readVitality.Free();
             Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(Handle));
@@ -85,7 +80,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private void UvAllocCb(IntPtr handle, int suggested_size, out UvBuffer buf)
         {
-            buf = _allocCallback(this, suggested_size, _readState);
+            buf = _allocCallback(this, suggested_size);
         }
 
         private void UvReadCb(IntPtr handle, int nread, ref UvBuffer buf)
@@ -93,11 +88,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             if (nread < 0)
             {
                 var error = Libuv.ExceptionForError(nread);
-                _readCallback(this, 0, error, _readState);
+                _readCallback(this, 0, error);
             }
             else
             {
-                _readCallback(this, nread, null, _readState);
+                _readCallback(this, nread, null);
             }
         }
     }

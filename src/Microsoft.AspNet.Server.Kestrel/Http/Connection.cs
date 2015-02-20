@@ -40,17 +40,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private static readonly Action<UvTcpStreamHandle, int, Exception, object> _readCallback = ReadCallback;
-        private static readonly Func<UvTcpStreamHandle, int, object, UvBuffer> _allocCallback = AllocCallback;
+        private readonly Action<UvTcpStreamHandle, int, Exception> _readCallback;
+        private readonly Func<UvTcpStreamHandle, int, UvBuffer> _allocCallback;
 
-        private static UvBuffer AllocCallback(UvTcpStreamHandle handle, int suggestedSize, object state)
+        private UvBuffer AllocCallback(UvTcpStreamHandle handle, int suggestedSize)
         {
-            return ((Connection)state).OnAlloc(handle, suggestedSize);
+            return OnAlloc(handle, suggestedSize);
         }
 
-        private static void ReadCallback(UvTcpStreamHandle handle, int nread, Exception error, object state)
+        private void ReadCallback(UvTcpStreamHandle handle, int nread, Exception error)
         {
-            ((Connection)state).OnRead(handle, nread, error);
+            OnRead(handle, nread, error);
         }
 
         private readonly UvTcpStreamHandle _socket;
@@ -59,6 +59,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Connection(ListenerContext context, UvTcpStreamHandle socket) : base(context)
         {
+            _readCallback = ReadCallback;
+            _allocCallback = AllocCallback;
             _socket = socket;
             ConnectionControl = this;
         }
@@ -70,7 +72,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             SocketInput = new SocketInput(Memory);
             SocketOutput = new SocketOutput(Thread, _socket);
             _frame = new Frame(this);
-            _socket.ReadStart(_allocCallback, _readCallback, this);
+            _socket.ReadStart(_allocCallback, _readCallback);
         }
 
         private UvBuffer OnAlloc(UvTcpStreamHandle handle, int suggestedSize)
@@ -123,7 +125,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         void IConnectionControl.Resume()
         {
             KestrelTrace.Log.ConnectionResume(_connectionId);
-            _socket.ReadStart(_allocCallback, _readCallback, this);
+            _socket.ReadStart(_allocCallback, _readCallback);
         }
 
         void IConnectionControl.End(ProduceEndType endType)
