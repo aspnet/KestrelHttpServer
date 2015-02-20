@@ -26,7 +26,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public void Validate()
         {
             Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
-            Trace.Assert(Handle != IntPtr.Zero, "Handle in invalid");
+            if (Handle == IntPtr.Zero)
+                throw new ObjectDisposedException(GetType().Name);
         }
 
         private static void DestroyMemory(IntPtr memory)

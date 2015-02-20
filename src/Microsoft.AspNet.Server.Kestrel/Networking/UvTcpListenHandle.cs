@@ -31,6 +31,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private void Bind(IPEndPoint endpoint)
         {
+            Validate();
+
             Sockaddr addr;
             var addressText = endpoint.Address.ToString();
 
@@ -47,7 +49,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 }
             }
 
-            Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_tcp_bind(Handle, ref addr, 0));
         }
 
