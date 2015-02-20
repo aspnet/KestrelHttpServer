@@ -72,7 +72,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpHandle(loop);
+                var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 0));
                 tcp.Dispose();
                 loop.Run();
@@ -86,11 +86,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Task t;
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpHandle(loop);
+                var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
                 tcp.Listen(10, (stream, status, error, state) =>
                 {
-                    var tcp2 = new UvTcpHandle(loop);
+                    var tcp2 = new UvTcpStreamHandle(loop);
                     stream.Accept(tcp2);
                     tcp2.Dispose();
                     stream.Dispose();
@@ -122,12 +122,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Task t;
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpHandle(loop);
+                var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
                 tcp.Listen(10, (_, status, error, state) =>
                 {
                     Console.WriteLine("Connected");
-                    var tcp2 = new UvTcpHandle(loop);
+                    var tcp2 = new UvTcpStreamHandle(loop);
                     tcp.Accept(tcp2);
                     var data = Marshal.AllocCoTaskMem(500);
                     tcp2.ReadStart(
@@ -177,12 +177,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             int bytesRead = 0;
             using (var loop = new UvLoopHandle())
             {
-                var tcp = new UvTcpHandle(loop);
+                var tcp = new UvTcpListenHandle(loop);
                 tcp.Bind(new IPEndPoint(IPAddress.Loopback, 54321));
                 tcp.Listen(10, (_, status, error, state) =>
                 {
                     Console.WriteLine("Connected");
-                    var tcp2 = new UvTcpHandle(loop);
+                    var tcp2 = new UvTcpStreamHandle(loop);
                     tcp.Accept(tcp2);
                     var data = Marshal.AllocCoTaskMem(500);
                     tcp2.ReadStart(

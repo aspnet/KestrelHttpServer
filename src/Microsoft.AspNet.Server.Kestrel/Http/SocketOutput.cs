@@ -18,9 +18,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     public class SocketOutput : ISocketOutput
     {
         private readonly KestrelThread _thread;
-        private readonly UvStreamHandle _socket;
+        private readonly UvTcpStreamHandle _socket;
 
-        public SocketOutput(KestrelThread thread, UvStreamHandle socket)
+        public SocketOutput(KestrelThread thread, UvTcpStreamHandle socket)
         {
             _thread = thread;
             _socket = socket;

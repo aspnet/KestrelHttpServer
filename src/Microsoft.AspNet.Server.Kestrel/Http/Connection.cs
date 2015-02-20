@@ -40,24 +40,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private static readonly Action<UvStreamHandle, int, Exception, object> _readCallback = ReadCallback;
-        private static readonly Func<UvStreamHandle, int, object, UvBuffer> _allocCallback = AllocCallback;
+        private static readonly Action<UvTcpStreamHandle, int, Exception, object> _readCallback = ReadCallback;
+        private static readonly Func<UvTcpStreamHandle, int, object, UvBuffer> _allocCallback = AllocCallback;
 
-        private static UvBuffer AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
+        private static UvBuffer AllocCallback(UvTcpStreamHandle handle, int suggestedSize, object state)
         {
             return ((Connection)state).OnAlloc(handle, suggestedSize);
         }
 
-        private static void ReadCallback(UvStreamHandle handle, int nread, Exception error, object state)
+        private static void ReadCallback(UvTcpStreamHandle handle, int nread, Exception error, object state)
         {
             ((Connection)state).OnRead(handle, nread, error);
         }
 
-        private readonly UvStreamHandle _socket;
+        private readonly UvTcpStreamHandle _socket;
         private Frame _frame;
         long _connectionId;
 
-        public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
+        public Connection(ListenerContext context, UvTcpStreamHandle socket) : base(context)
         {
             _socket = socket;
             ConnectionControl = this;
@@ -73,13 +73,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket.ReadStart(_allocCallback, _readCallback, this);
         }
 
-        private UvBuffer OnAlloc(UvStreamHandle handle, int suggestedSize)
+        private UvBuffer OnAlloc(UvTcpStreamHandle handle, int suggestedSize)
         {
             const int bufferSize = 2048;
             return new UvBuffer(SocketInput.Pin(bufferSize), bufferSize);
         }
 
-        private void OnRead(UvStreamHandle handle, int status, Exception error)
+        private void OnRead(UvTcpStreamHandle handle, int status, Exception error)
         {
             SocketInput.Unpin(status);
 

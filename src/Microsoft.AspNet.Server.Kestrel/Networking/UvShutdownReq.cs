@@ -26,7 +26,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN);
         }
 
-        public void Shutdown(UvStreamHandle stream, Action<UvShutdownReq, int, object> callback, object state)
+        public void Shutdown(UvTcpStreamHandle stream, Action<UvShutdownReq, int, object> callback, object state)
         {
             _callback = callback;
             _state = state;

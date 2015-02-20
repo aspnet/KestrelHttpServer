@@ -6,38 +6,26 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public abstract class UvStreamHandle : UvLoopResource
+    public class UvTcpStreamHandle : UvTcpHandle
     {
-        private readonly uv_connection_cb _uv_connection_cb;
         private readonly uv_alloc_cb _uv_alloc_cb;
         private readonly uv_read_cb _uv_read_cb;
 
-        private Action<UvStreamHandle, int, Exception, object> _listenCallback;
-        private object _listenState;
-        private GCHandle _listenVitality;
+        private Func<UvTcpStreamHandle, int, object, UvBuffer> _allocCallback;
 
-        private Func<UvStreamHandle, int, object, UvBuffer> _allocCallback;
-
-        private Action<UvStreamHandle, int, Exception, object> _readCallback;
+        private Action<UvTcpStreamHandle, int, Exception, object> _readCallback;
         private object _readState;
         private GCHandle _readVitality;
 
-        public UvStreamHandle(
-            int threadId,
-            int size)
-            : base(threadId, size)
+        public UvTcpStreamHandle(UvLoopHandle loop)
+            : base(loop)
         {
-            _uv_connection_cb = UvConnectionCb;
             _uv_alloc_cb = UvAllocCb;
             _uv_read_cb = UvReadCb;
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (_listenVitality.IsAllocated)
-            {
-                _listenVitality.Free();
-            }
             if (_readVitality.IsAllocated)
             {
                 _readVitality.Free();
@@ -45,42 +33,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             base.Dispose(disposing);
         }
 
-        public void Listen(int backlog, Action<UvStreamHandle, int, Exception, object> callback, object state)
-        {
-            if (_listenVitality.IsAllocated)
-            {
-                throw new InvalidOperationException("TODO: Listen may not be called more than once");
-            }
-            try
-            {
-                _listenCallback = callback;
-                _listenState = state;
-                _listenVitality = GCHandle.Alloc(this, GCHandleType.Normal);
-                Validate();
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(Handle, 10, _uv_connection_cb));
-            }
-            catch
-            {
-                _listenCallback = null;
-                _listenState = null;
-                if (_listenVitality.IsAllocated)
-                {
-                    _listenVitality.Free();
-                }
-                throw;
-            }
-        }
-
-        public void Accept(UvStreamHandle stream)
-        {
-            Validate();
-            stream.Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(Handle, stream.Handle));
-        }
-
         public void ReadStart(
-            Func<UvStreamHandle, int, object, UvBuffer> allocCallback,
-            Action<UvStreamHandle, int, Exception, object> readCallback,
+            Func<UvTcpStreamHandle, int, object, UvBuffer> allocCallback,
+            Action<UvTcpStreamHandle, int, Exception, object> readCallback,
             object state)
         {
             if (_readVitality.IsAllocated)
@@ -122,12 +77,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _readVitality.Free();
             Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(Handle));
-        }
-
-        private void UvConnectionCb(IntPtr handle, int status)
-        {
-            var error = Libuv.ExceptionForError(status);
-            _listenCallback(this, status, error, _listenState);
         }
 
 

@@ -14,7 +14,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     {
         private readonly uv_write_cb _uv_write_cb;
 
-        private readonly UvStreamHandle _stream;
+        private readonly UvTcpStreamHandle _stream;
         private readonly Action<Exception, object> _callback;
         private readonly object _state;
 
@@ -24,7 +24,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public UvWriteReq(
             UvLoopHandle loop,
-            UvStreamHandle stream,
+            UvTcpStreamHandle stream,
             ArraySegment<byte> buffer,
             Action<Exception, object> callback,
             object state)
