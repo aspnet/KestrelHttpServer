@@ -64,24 +64,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Thread = thread;
             Application = application;
 
-            var tcs = new TaskCompletionSource<int>();
-            Thread.Post(() =>
+            return Thread.PostAsync(() =>
             {
-                try
-                {
-                    _listenSocket = new UvTcpListenHandle(
-                        Thread.Loop,
-                        new IPEndPoint(IPAddress.Any, port),
-                        10,
-                        _connectionCallback);
-                    tcs.SetResult(0);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
+                _listenSocket = new UvTcpListenHandle(
+                    Thread.Loop,
+                    new IPEndPoint(IPAddress.Any, port),
+                    10,
+                    _connectionCallback);
             });
-            return tcs.Task;
         }
 
         private void OnConnection(int status)
@@ -93,20 +83,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void Dispose()
         {
-            var tcs = new TaskCompletionSource<int>();
-            Thread.Post(() =>
-            {
-                try
-                {
-                    _listenSocket.Dispose();
-                    tcs.SetResult(0);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            });
-            tcs.Task.Wait();
+            var task = Thread.PostAsync(_listenSocket.Dispose);
+            task.Wait();
             _listenSocket = null;
         }
     }
