@@ -57,13 +57,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _listenCallback(status, error);
         }
 
-        public void Accept(UvTcpStreamHandle stream)
-        {
-            Validate();
-            stream.Validate();
-            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(Handle, stream.Handle));
-        }
-
         protected override void Dispose(bool disposing)
         {
             _selfKeepAlive.Free();

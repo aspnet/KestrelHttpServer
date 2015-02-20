@@ -97,8 +97,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     10,
                     (status, error) =>
                     {
-                        var tcp2 = new UvTcpStreamHandle(loop);
-                        tcp.Accept(tcp2);
+                        var tcp2 = new UvTcpStreamHandle(loop, tcp);
                         tcp2.Dispose();
                         tcp.Dispose();
                     });
@@ -137,8 +136,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     (status, error) =>
                     {
                         Console.WriteLine("Connected");
-                        var tcp2 = new UvTcpStreamHandle(loop);
-                        tcp.Accept(tcp2);
+                        var tcp2 = new UvTcpStreamHandle(loop, tcp);
                         var data = Marshal.AllocCoTaskMem(500);
                         tcp2.ReadStart(
                             (a, b, c) => new UvBuffer(data, 500),
@@ -195,8 +193,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     (status, error) =>
                     {
                         Console.WriteLine("Connected");
-                        var tcp2 = new UvTcpStreamHandle(loop);
-                        tcp.Accept(tcp2);
+                        var tcp2 = new UvTcpStreamHandle(loop, tcp);
                         var data = Marshal.AllocCoTaskMem(500);
                         tcp2.ReadStart(
                             (a, b, c) => new UvBuffer(data, 500),

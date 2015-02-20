@@ -17,11 +17,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private object _readState;
         private GCHandle _readVitality;
 
-        public UvTcpStreamHandle(UvLoopHandle loop)
+        public UvTcpStreamHandle(UvLoopHandle loop, UvTcpListenHandle listenHandle)
             : base(loop)
         {
             _uv_alloc_cb = UvAllocCb;
             _uv_read_cb = UvReadCb;
+
+            listenHandle.Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(listenHandle.Handle, Handle));
         }
 
         protected override void Dispose(bool disposing)
