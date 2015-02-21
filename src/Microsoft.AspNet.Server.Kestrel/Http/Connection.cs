@@ -35,7 +35,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         void Pause();
         void Resume();
-        void End(ProduceEndType endType);
+        Task EndAsync(ProduceEndType endType);
         bool IsInKeepAlive { get; }
     }
 
@@ -131,13 +131,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _read = new UvReadHandle(_socket, _allocCallback, _readCallback);
         }
 
-        void IConnectionControl.End(ProduceEndType endType)
+        async Task IConnectionControl.EndAsync(ProduceEndType endType)
         {
             switch (endType)
             {
                 case ProduceEndType.SocketShutdownSend:
                     KestrelTrace.Log.ConnectionWriteFin(_connectionId, 0);
-                    Thread.Post(() =>
+                    await Thread.PostAsync(() =>
                     {
                         if (_read == null)
                             return;
@@ -157,11 +157,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
                     _frame = new Frame(this);
                     _isInKeepAlive = true;
-                    Thread.Post(_frame.Consume);
+                    await Thread.PostAsync(_frame.Consume);
                     break;
                 case ProduceEndType.SocketDisconnect:
                     KestrelTrace.Log.ConnectionDisconnect(_connectionId);
-                    Thread.Post(() =>
+                    await Thread.PostAsync(() =>
                     {
                         _listener.RemoveConnection(this);
                         if (_read == null)
@@ -172,6 +172,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         KestrelTrace.Log.ConnectionStop(_connectionId);
                     });
                     break;
+                default:
+                    throw new ArgumentException(nameof(endType));
             }
         }
     }

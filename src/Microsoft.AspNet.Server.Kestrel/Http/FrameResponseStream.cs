@@ -24,23 +24,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public override Task FlushAsync(CancellationToken cancellationToken)
         {
-            var tcs = new TaskCompletionSource<int>();
-            _context.FrameControl.Write(
+            return _context.FrameControl.WriteAsync(
                 new ArraySegment<byte>(new byte[0]),
                 (error, arg) =>
                 {
-                    var tcsArg = (TaskCompletionSource<int>)arg;
                     if (error != null)
-                    {
-                        tcsArg.SetException(error);
-                    }
-                    else
-                    {
-                        tcsArg.SetResult(0);
-                    }
+                        throw error;
                 },
-                tcs);
-            return tcs.Task;
+                null);
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -65,23 +56,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            var tcs = new TaskCompletionSource<int>();
-            _context.FrameControl.Write(
+            return _context.FrameControl.WriteAsync(
                 new ArraySegment<byte>(buffer, offset, count),
                 (error, arg) =>
                 {
-                    var tcsArg = (TaskCompletionSource<int>)arg;
                     if (error != null)
-                    {
-                        tcsArg.SetException(error);
-                    }
-                    else
-                    {
-                        tcsArg.SetResult(0);
-                    }
+                        throw error;
                 },
-                tcs);
-            return tcs.Task;
+                null);
         }
 
         public override bool CanRead

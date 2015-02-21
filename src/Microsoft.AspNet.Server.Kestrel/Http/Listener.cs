@@ -98,14 +98,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             var task = Thread.PostAsync(_listenSocket.Dispose);
             task.Wait();
+
+            var endTasks = new List<Task>();
             var copiedConnections = _activeConnections.ToList();
             foreach (var connection in copiedConnections)
             {
                 if (!connection.IsInKeepAlive)
                     Console.WriteLine("TODO: Warning! Closing an active connection");
-                connection.End(ProduceEndType.SocketShutdownSend);
-                connection.End(ProduceEndType.SocketDisconnect);
+                endTasks.Add(connection.EndAsync(ProduceEndType.SocketShutdownSend));
+                endTasks.Add(connection.EndAsync(ProduceEndType.SocketDisconnect));
             }
+            Task.WaitAll(endTasks.ToArray());
             _listenSocket = null;
         }
     }

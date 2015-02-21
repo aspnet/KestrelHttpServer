@@ -38,8 +38,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
     public interface IFrameControl
     {
-        void ProduceContinue();
-        void Write(ArraySegment<byte> data, Action<Exception, object> callback, object state);
+        Task ProduceContinueAsync();
+        Task WriteAsync(ArraySegment<byte> data, Action<Exception, object> callback, object state);
     }
 
     public class Frame : FrameContext, IFrameControl
@@ -230,21 +230,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             finally
             {
-                ProduceEnd(error);
+                await ProduceEndAsync(error);
             }
         }
 
 
-        public void Write(ArraySegment<byte> data, Action<Exception, object> callback, object state)
+        public async Task WriteAsync(ArraySegment<byte> data, Action<Exception, object> callback, object state)
         {
-            ProduceStart();
-            SocketOutput.Write(data, callback, state);
+            await ProduceStartAsync();
+            await SocketOutput.WriteAsync(data, callback, state);
         }
 
-        public void Upgrade(IDictionary<string, object> options, Func<object, Task> callback)
+        public Task Upgrade(IDictionary<string, object> options, Func<object, Task> callback)
         {
             _keepAlive = false;
-            ProduceStart();
+            return ProduceStartAsync();
 
             // NOTE: needs changes
             //_upgradeTask = callback(_callContext);
@@ -252,16 +252,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         byte[] _continueBytes = Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n");
 
-        public void ProduceContinue()
+        public Task ProduceContinueAsync()
         {
-            if (_resultStarted) return;
+            if (_resultStarted)
+                return Task.FromResult(0);
 
             string[] expect;
             if (HttpVersion.Equals("HTTP/1.1") &&
                 RequestHeaders.TryGetValue("Expect", out expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
-                SocketOutput.Write(
+                return SocketOutput.WriteAsync(
                     new ArraySegment<byte>(_continueBytes, 0, _continueBytes.Length),
                     (error, _) =>
                     {
@@ -272,11 +273,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     },
                     null);
             }
+
+            return Task.FromResult(0);
         }
 
-        public void ProduceStart()
+        public Task ProduceStartAsync()
         {
-            if (_resultStarted) return;
+            if (_resultStarted)
+                return Task.CompletedTask;
             _resultStarted = true;
 
             FireOnSendingHeaders();
@@ -286,7 +290,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
 
             var responseHeader = CreateResponseHeader(status, ResponseHeaders);
-            SocketOutput.Write(
+            return SocketOutput.WriteAsync(
                 responseHeader.Item1,
                 (error, x) =>
                 {
@@ -299,17 +303,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 responseHeader.Item2);
         }
 
-        public void ProduceEnd(Exception ex)
+        public Task ProduceEndAsync(Exception ex)
         {
-            ProduceStart();
+            var tasks = new List<Task>(3);
+            tasks.Add(ProduceStartAsync());
 
             if (!_keepAlive)
             {
-                ConnectionControl.End(ProduceEndType.SocketShutdownSend);
+                tasks.Add(ConnectionControl.EndAsync(ProduceEndType.SocketShutdownSend));
             }
 
             //NOTE: must finish reading request body
-            ConnectionControl.End(_keepAlive ? ProduceEndType.ConnectionKeepAlive : ProduceEndType.SocketDisconnect);
+            tasks.Add(ConnectionControl.EndAsync(
+                _keepAlive ? ProduceEndType.ConnectionKeepAlive : ProduceEndType.SocketDisconnect));
+
+            return Task.WhenAll(tasks);
         }
 
         private Tuple<ArraySegment<byte>, IDisposable> CreateResponseHeader(

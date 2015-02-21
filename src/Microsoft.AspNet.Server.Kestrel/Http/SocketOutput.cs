@@ -4,6 +4,7 @@
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -12,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public interface ISocketOutput
     {
-        void Write(ArraySegment<byte> buffer, Action<Exception, object> callback, object state);
+        Task WriteAsync(ArraySegment<byte> buffer, Action<Exception, object> callback, object state);
     }
 
     public class SocketOutput : ISocketOutput
@@ -26,7 +27,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
         }
 
-        public void Write(ArraySegment<byte> buffer, Action<Exception, object> callback, object state)
+        public Task WriteAsync(ArraySegment<byte> buffer, Action<Exception, object> callback, object state)
         {
             //TODO: need buffering that works
             var copy = new byte[buffer.Count];
@@ -40,7 +41,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 arraySegment,
                 callback,
                 state);
-            _thread.Post(req.Write);
+            return _thread.PostAsync(req.Write);
         }
 
         public bool Flush(Action drained)

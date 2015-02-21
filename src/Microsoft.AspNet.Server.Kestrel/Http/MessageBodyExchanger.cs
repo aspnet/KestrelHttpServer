@@ -71,7 +71,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public Task<int> ReadAsync(ArraySegment<byte> buffer)
+        public async Task<int> ReadAsync(ArraySegment<byte> buffer)
         {
             Task<int> result = null;
             var send100Continue = false;
@@ -114,9 +114,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             if (send100Continue)
             {
-                _context.FrameControl.ProduceContinue();
+                await _context.FrameControl.ProduceContinueAsync();
             }
-            return result;
+            return await result;
         }
 
         static void CompletePending(object state)
