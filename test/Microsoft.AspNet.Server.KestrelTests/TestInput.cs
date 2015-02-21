@@ -46,7 +46,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
         }
 
-        public Task WriteAsync(ArraySegment<byte> data, Action<Exception, object> callback, object state)
+        public Task WriteAsync(ArraySegment<byte> data)
         {
             return Task.CompletedTask;
         }

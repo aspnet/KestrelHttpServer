@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public interface ISocketOutput
     {
-        Task WriteAsync(ArraySegment<byte> buffer, Action<Exception, object> callback, object state);
+        Task WriteAsync(ArraySegment<byte> buffer);
     }
 
     public class SocketOutput : ISocketOutput
@@ -27,7 +27,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
         }
 
-        public Task WriteAsync(ArraySegment<byte> buffer, Action<Exception, object> callback, object state)
+        public Task WriteAsync(ArraySegment<byte> buffer)
         {
             //TODO: need buffering that works
             var copy = new byte[buffer.Count];
@@ -38,9 +38,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var req = new UvWriteReq(
                 _thread.Loop,
                 _socket,
-                arraySegment,
-                callback,
-                state);
+                arraySegment);
             return _thread.PostAsync(req.Write);
         }
 

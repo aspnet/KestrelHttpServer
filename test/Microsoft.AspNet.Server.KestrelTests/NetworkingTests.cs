@@ -215,9 +215,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                                             loop,
                                             tcp2,
                                             new ArraySegment<byte>(
-                                                new byte[] { 65, 66, 67, 68, 69 }),
-                                            (_1, _2) => { },
-                                            null
+                                                new byte[] { 65, 66, 67, 68, 69 })
                                         );
                                     }
                                 }

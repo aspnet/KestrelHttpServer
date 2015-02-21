@@ -39,7 +39,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     public interface IFrameControl
     {
         Task ProduceContinueAsync();
-        Task WriteAsync(ArraySegment<byte> data, Action<Exception, object> callback, object state);
+        Task WriteAsync(ArraySegment<byte> data);
     }
 
     public class Frame : FrameContext, IFrameControl
@@ -235,10 +235,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
 
-        public async Task WriteAsync(ArraySegment<byte> data, Action<Exception, object> callback, object state)
+        public async Task WriteAsync(ArraySegment<byte> data)
         {
             await ProduceStartAsync();
-            await SocketOutput.WriteAsync(data, callback, state);
+            await SocketOutput.WriteAsync(data);
         }
 
         public Task Upgrade(IDictionary<string, object> options, Func<object, Task> callback)
@@ -263,24 +263,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
                 return SocketOutput.WriteAsync(
-                    new ArraySegment<byte>(_continueBytes, 0, _continueBytes.Length),
-                    (error, _) =>
-                    {
-                        if (error != null)
-                        {
-                            Trace.WriteLine("ProduceContinue " + error.ToString());
-                        }
-                    },
-                    null);
+                    new ArraySegment<byte>(_continueBytes, 0, _continueBytes.Length));
             }
 
             return Task.FromResult(0);
         }
 
-        public Task ProduceStartAsync()
+        public async Task ProduceStartAsync()
         {
             if (_resultStarted)
-                return Task.CompletedTask;
+                return;
+
             _resultStarted = true;
 
             FireOnSendingHeaders();
@@ -290,17 +283,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
 
             var responseHeader = CreateResponseHeader(status, ResponseHeaders);
-            return SocketOutput.WriteAsync(
-                responseHeader.Item1,
-                (error, x) =>
-                {
-                    if (error != null)
-                    {
-                        Trace.WriteLine("ProduceStart " + error.ToString());
-                    }
-                    ((IDisposable)x).Dispose();
-                },
-                responseHeader.Item2);
+            try
+            {
+                await SocketOutput.WriteAsync(responseHeader.Item1);
+            }
+            finally
+            {
+                responseHeader.Item2.Dispose();
+            }
         }
 
         public Task ProduceEndAsync(Exception ex)
