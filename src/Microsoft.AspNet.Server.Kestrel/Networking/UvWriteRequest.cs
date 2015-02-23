@@ -70,7 +70,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
             Dispose();
 
-            Libuv.ThrowOnError(status);
+            if (status == -125 || status == -4081) // UV_ECANCELED on Unix and Windows
+                return;
+            else
+                Libuv.ThrowOnError(status);
         }
 
         protected override bool ReleaseHandle()
