@@ -35,7 +35,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         public Task ProduceContinueAsync()
         {
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
 
         public void Pause()
@@ -48,11 +48,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         public Task WriteAsync(ArraySegment<byte> data)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
         public Task EndAsync(ProduceEndType endType)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
 
         public bool IsInKeepAlive => false;
