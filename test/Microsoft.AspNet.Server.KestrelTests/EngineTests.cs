@@ -337,30 +337,5 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 }
             }
         }
-
-
-        [Fact]
-        public async Task DisconnectingClient()
-        {
-            using (var server = new TestServer(App, port))
-            {
-                var socket = new Socket(SocketType.Stream, ProtocolType.IP);
-                socket.Connect(IPAddress.Loopback, port);
-                await Task.Delay(200);
-                socket.Disconnect(false);
-                socket.Dispose();
-
-                await Task.Delay(200);
-                using (var connection = new TestConnection(port))
-                {
-                    await connection.SendEnd(
-                        "GET / HTTP/1.0",
-                        "\r\n");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.0 200 OK",
-                        "\r\n");
-                }
-            }
-        }
     }
 }
