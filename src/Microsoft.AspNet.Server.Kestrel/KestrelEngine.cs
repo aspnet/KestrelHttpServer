@@ -1,19 +1,21 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using Microsoft.AspNet.Server.Kestrel.Networking;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Framework.Runtime;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelEngine : IDisposable
     {
         private readonly IDisposable nativeBinder;
+        private readonly List<Listener> _listeners = new List<Listener>();
 
         public KestrelEngine(ILibraryManager libraryManager)
         {
@@ -97,20 +99,24 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task> application)
         {
-            var listeners = new List<Listener>();
             foreach (var thread in Threads)
             {
                 var listener = new Listener(Memory);
                 listener.StartAsync(scheme, host, port, thread, application).Wait();
-                listeners.Add(listener);
+                _listeners.Add(listener);
             }
             return new Disposable(() =>
             {
-                foreach (var listener in listeners)
+                foreach (var listener in _listeners)
                 {
                     listener.Dispose();
                 }
             });
+        }
+
+        internal bool IsClean()
+        {
+            return _listeners.All(x => x.IsClean());
         }
     }
 }

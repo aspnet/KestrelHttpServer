@@ -51,6 +51,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 app);
         }
 
+        public bool IsClean() => _engine.IsClean();
+
         public void Dispose()
         {
             _server.Dispose();

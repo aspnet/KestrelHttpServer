@@ -80,6 +80,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             using (var engine = new KestrelEngine(LibraryManager))
             {
                 engine.Start(1);
+                Assert.True(engine.IsClean());
             }
         }
 
@@ -91,7 +92,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 engine.Start(1);
                 using (engine.CreateServer("http", "localhost", port, App))
                 {
-
+                    Assert.True(engine.IsClean());
                 }
             }
         }
@@ -122,6 +123,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         while (length > 0);
                         Assert.False(string.IsNullOrEmpty(response));
                     }
+                    Assert.True(engine.IsClean());
                 }
             }
         }
@@ -141,6 +143,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "HTTP/1.0 200 OK",
                         "",
                         "Hello World");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -168,6 +171,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "Connection: close",
                         "",
                         "Goodbye");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -189,6 +193,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "HTTP/1.0 200 OK",
                         "",
                         "Hello World");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -209,6 +214,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "HTTP/1.0 200 OK",
                         "",
                         "Hello World");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -238,6 +244,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "Content-Length: 7",
                         "",
                         "Goodbye");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -268,6 +275,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "Content-Length: 7",
                         "",
                         "Goodbye");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -299,6 +307,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "Content-Length: 7",
                         "",
                         "Goodbye");
+                    Assert.True(server.IsClean());
                 }
             }
         }
@@ -324,6 +333,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         "Connection: close",
                         "",
                         "Hello World");
+                    Assert.True(server.IsClean());
                 }
             }
         }

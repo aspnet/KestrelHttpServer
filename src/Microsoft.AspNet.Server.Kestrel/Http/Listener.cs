@@ -111,5 +111,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Task.WaitAll(endTasks.ToArray());
             _listenSocket = null;
         }
+
+        internal bool IsClean()
+        {
+            return _activeConnections.All(x => x.IsInKeepAlive);
+        }
     }
 }
