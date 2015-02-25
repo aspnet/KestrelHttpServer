@@ -74,7 +74,9 @@ namespace Microsoft.AspNet.Server.Kestrel
                 (ptr, arg) =>
                 {
                     if (ptr != postHandle)
+                    {
                         UnsafeNativeMethods.uv_close(ptr, null);
+                    }
                 },
                 IntPtr.Zero);
             // This does not Dispose() the handles, so for each one
@@ -150,7 +152,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnPost()
         {
-            var finishedBatch = finishCurrentBatch();
+            var finishedBatch = FinishCurrentBatch();
             foreach (var work in finishedBatch)
             {
                 work();
@@ -158,7 +160,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             finishedBatch.Clear();
         }
 
-        private Queue<Action> finishCurrentBatch()
+        private Queue<Action> FinishCurrentBatch()
         {
             Queue<Action> queue;
             lock (_workSync)

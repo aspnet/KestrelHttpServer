@@ -24,7 +24,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             UvLoopHandle loop,
             UvTcpStreamHandle stream,
             ArraySegment<byte> buffer)
-            : base(loop.ThreadId, getSize())
+            : base(loop.ThreadId, GetSize())
         {
             _uv_write_cb = UvWriteCb;
             _stream = stream;
@@ -39,7 +39,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 buffer.Count);
         }
 
-        private static int getSize()
+        private static int GetSize()
         {
             return UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
         }

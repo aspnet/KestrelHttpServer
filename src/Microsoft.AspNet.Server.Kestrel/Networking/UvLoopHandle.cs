@@ -8,12 +8,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     public class UvLoopHandle : UvMemoryResource
     {
         public UvLoopHandle()
-            : base(Thread.CurrentThread.ManagedThreadId, getSize())
+            : base(Thread.CurrentThread.ManagedThreadId, GetSize())
         {
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
-        private static int getSize()
+        private static int GetSize()
         {
             return UnsafeNativeMethods.uv_loop_size();
         }

@@ -55,21 +55,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _tcpStreamHandle.Validate();
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(_tcpStreamHandle.Handle));
 
-            destroy();
+            Destroy();
 
             GC.SuppressFinalize(this);
         }
 
         ~UvReadHandle()
         {
-            destroy();
+            Destroy();
 
             // See UvLoopResource's finalizer comment
 
             Console.WriteLine("TODO: Warning! UvReadHandle was finalized instead of disposed.");
         }
 
-        private void destroy()
+        private void Destroy()
         {
             _selfKeepAlive.Free();
         }

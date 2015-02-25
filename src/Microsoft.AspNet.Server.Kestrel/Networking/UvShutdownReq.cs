@@ -14,7 +14,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private readonly Action<UvShutdownReq, int> _callback;
 
         public UvShutdownReq(UvLoopHandle loop, UvTcpStreamHandle stream, Action<UvShutdownReq, int> callback)
-            : base(loop.ThreadId, getSize())
+            : base(loop.ThreadId, GetSize())
         {
             _uv_shutdown_cb = UvShutdownCb;
 
@@ -24,7 +24,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_shutdown(this, stream.Handle, _uv_shutdown_cb));
         }
 
-        private static int getSize()
+        private static int GetSize()
         {
             return UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN);
         }

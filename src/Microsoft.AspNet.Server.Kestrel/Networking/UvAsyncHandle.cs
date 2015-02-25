@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public UvAsyncHandle(
             UvLoopHandle loop,
             Action callback)
-            : base(loop.ThreadId, getSize())
+            : base(loop.ThreadId, GetSize())
         {
             _uv_async_cb = AsyncCb;
             _callback = callback;
@@ -22,7 +22,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             Libuv.ThrowOnError(UnsafeNativeMethods.uv_async_init(loop, Handle, _uv_async_cb));
         }
 
-        private static int getSize()
+        private static int GetSize()
         {
             return UnsafeNativeMethods.uv_handle_size(HandleType.ASYNC);
         }
