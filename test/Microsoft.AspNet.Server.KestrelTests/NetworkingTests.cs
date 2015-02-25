@@ -144,7 +144,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                             (nread, error2) =>
                             {
                                 bytesRead += nread;
-                                if (nread == 0)
+                                if (nread <= 0)
                                 {
                                     read.Dispose();
                                     tcp2.Dispose();
@@ -202,7 +202,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                             (nread, error2) =>
                             {
                                 bytesRead += nread;
-                                if (nread == 0)
+                                if (nread <= 0)
                                 {
                                     read.Dispose();
                                     tcp2.Dispose();

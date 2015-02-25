@@ -42,7 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             if (nread < 0)
             {
                 var error = Libuv.ExceptionForError(nread);
-                _readCallback(0, error);
+                _readCallback(nread, error);
             }
             else
             {

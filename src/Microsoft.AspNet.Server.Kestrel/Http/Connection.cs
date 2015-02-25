@@ -85,20 +85,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 KestrelTrace.Log.ConnectionReadFin(_connectionId);
                 SocketInput.RemoteIntakeFin = true;
-                _read.Dispose();
-                _read = null;
-                _listener.RemoveConnection(this);
-                _socket.Dispose();
+                if (status != -4095)
+                {
+                    _read.Dispose();
+                    _read = null;
+                    _listener.RemoveConnection(this);
+                    _socket.Dispose();
+
+                    // Not sure if this is right
+                    // It should be, but there are some interesting code paths
+                    // while reading the message body regarding status == 0 && RemoteIntakeFin
+                    return;
+                }
 
                 if (!normalDone && error != null)
                 {
                     Trace.WriteLine("Connection.OnRead " + error.ToString());
                 }
-
-                // Not sure if this is right
-                // It should be, but there are some interesting code paths
-                // while reading the message body regarding status == 0 && RemoteIntakeFin
-                return;
             }
 
             KestrelTrace.Log.ConnectionRead(_connectionId, status);
