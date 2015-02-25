@@ -17,6 +17,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     internal class EngineTests
     {
+        private const int port = 54321;
+
         private async Task App(Frame frame)
         {
             for (; ;)
@@ -75,51 +77,61 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task EngineCanStartAndStop()
         {
-            var engine = new KestrelEngine(LibraryManager);
-            engine.Start(1);
-            engine.Dispose();
+            using (var engine = new KestrelEngine(LibraryManager))
+            {
+                engine.Start(1);
+            }
         }
 
         [Fact]
         public async Task ListenerCanCreateAndDispose()
         {
-            var engine = new KestrelEngine(LibraryManager);
-            engine.Start(1);
-            var started = engine.CreateServer("http", "localhost", 54321, App);
-            started.Dispose();
-            engine.Dispose();
-        }
+            using (var engine = new KestrelEngine(LibraryManager))
+            {
+                engine.Start(1);
+                using (engine.CreateServer("http", "localhost", port, App))
+                {
 
+                }
+            }
+        }
 
         [Fact]
         public async Task ConnectionCanReadAndWrite()
         {
-            var engine = new KestrelEngine(LibraryManager);
-            engine.Start(1);
-            var started = engine.CreateServer("http", "localhost", 54321, App);
-
-            Console.WriteLine("Started");
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            socket.Connect(new IPEndPoint(IPAddress.Loopback, 54321));
-            socket.Send(Encoding.ASCII.GetBytes("POST / HTTP/1.0\r\n\r\nHello World"));
-            socket.Shutdown(SocketShutdown.Send);
-            var buffer = new byte[8192];
-            for (; ;)
+            using (var engine = new KestrelEngine(LibraryManager))
             {
-                var length = socket.Receive(buffer);
-                if (length == 0) { break; }
-                var text = Encoding.ASCII.GetString(buffer, 0, length);
+                engine.Start(1);
+                using (engine.CreateServer("http", "localhost", port, App))
+                {
+                    using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                    {
+                        Console.WriteLine("Started");
+
+                        socket.Connect(new IPEndPoint(IPAddress.Loopback, port));
+                        socket.Send(Encoding.ASCII.GetBytes("POST / HTTP/1.0\r\n\r\nHello World"));
+                        socket.Shutdown(SocketShutdown.Send);
+                        var buffer = new byte[8192];
+                        var response = string.Empty;
+                        var length = 0;
+                        do
+                        {
+                            length = socket.Receive(buffer);
+                            response += Encoding.ASCII.GetString(buffer, 0, length);
+                        }
+                        while (length > 0);
+                        Assert.False(string.IsNullOrEmpty(response));
+                    }
+                }
             }
-            started.Dispose();
-            engine.Dispose();
         }
 
         [Fact]
         public async Task Http10()
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.SendEnd(
                         "POST / HTTP/1.0",
@@ -136,9 +148,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Http11()
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
@@ -164,9 +176,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Http10ContentLength()
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.Send(
                         "POST / HTTP/1.0",
@@ -184,9 +196,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Http10TransferEncoding()
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.Send(
                         "POST / HTTP/1.0",
@@ -205,9 +217,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Http10KeepAlive()
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.0",
@@ -233,9 +245,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Http10KeepAliveContentLength()
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.SendEnd(
                         "POST / HTTP/1.0",
@@ -263,9 +275,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Http10KeepAliveTransferEncoding()
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.SendEnd(
                         "POST / HTTP/1.0",
@@ -294,9 +306,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task Expect100ContinueForBody()
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, port))
             {
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.Send(
                         "POST / HTTP/1.1",
@@ -320,16 +332,16 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task DisconnectingClient()
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, port))
             {
                 var socket = new Socket(SocketType.Stream, ProtocolType.IP);
-                socket.Connect(IPAddress.Loopback, 54321);
+                socket.Connect(IPAddress.Loopback, port);
                 await Task.Delay(200);
                 socket.Disconnect(false);
                 socket.Dispose();
 
                 await Task.Delay(200);
-                using (var connection = new TestConnection())
+                using (var connection = new TestConnection(port))
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.0",

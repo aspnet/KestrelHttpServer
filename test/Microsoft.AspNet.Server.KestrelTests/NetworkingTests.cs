@@ -19,6 +19,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     public class NetworkingTests
     {
+        private const int port = 54322;
+
         public NetworkingTests()
         {
             new KestrelEngine(LibraryManager);
@@ -93,7 +95,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 UvTcpListenHandle tcp = null;
                 tcp = new UvTcpListenHandle(
                     loop,
-                    new IPEndPoint(IPAddress.Loopback, 54321),
+                    new IPEndPoint(IPAddress.Loopback, port),
                     10,
                     (status, error) =>
                     {
@@ -110,7 +112,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     await Task.Factory.FromAsync(
                         socket.BeginConnect,
                         socket.EndConnect,
-                        new IPEndPoint(IPAddress.Loopback, 54321),
+                        new IPEndPoint(IPAddress.Loopback, port),
                         null,
                         TaskCreationOptions.None);
                     socket.Dispose();
@@ -131,7 +133,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 UvTcpListenHandle tcp = null;
                 tcp = new UvTcpListenHandle(
                     loop,
-                    new IPEndPoint(IPAddress.Loopback, 54321),
+                    new IPEndPoint(IPAddress.Loopback, port),
                     10,
                     (status, error) =>
                     {
@@ -162,7 +164,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     await Task.Factory.FromAsync(
                         socket.BeginConnect,
                         socket.EndConnect,
-                        new IPEndPoint(IPAddress.Loopback, 54321),
+                        new IPEndPoint(IPAddress.Loopback, port),
                         null,
                         TaskCreationOptions.None);
                     await Task.Factory.FromAsync(
@@ -189,7 +191,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 UvTcpListenHandle tcp = null;
                 tcp = new UvTcpListenHandle(
                     loop,
-                    new IPEndPoint(IPAddress.Loopback, 54321),
+                    new IPEndPoint(IPAddress.Loopback, port),
                     10,
                     (status, error) =>
                     {
@@ -232,7 +234,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     await Task.Factory.FromAsync(
                         socket.BeginConnect,
                         socket.EndConnect,
-                        new IPEndPoint(IPAddress.Loopback, 54321),
+                        new IPEndPoint(IPAddress.Loopback, port),
                         null,
                         TaskCreationOptions.None);
                     await Task.Factory.FromAsync(

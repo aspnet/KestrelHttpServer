@@ -15,9 +15,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
         private KestrelEngine _engine;
         private IDisposable _server;
 
-        public TestServer(Func<Frame, Task> app)
+        public TestServer(Func<Frame, Task> app, int port)
         {
-            Create(app);
+            Create(app, port);
         }
 
         ILibraryManager LibraryManager
@@ -40,14 +40,14 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        public void Create(Func<Frame, Task> app)
+        public void Create(Func<Frame, Task> app, int port)
         {
             _engine = new KestrelEngine(LibraryManager);
             _engine.Start(1);
             _server = _engine.CreateServer(
                 "http",
                 "localhost",
-                54321,
+                port,
                 app);
         }
 
