@@ -26,7 +26,29 @@ namespace Microsoft.AspNet.Server.KestrelTests
         }
 
         [Fact]
-        public async Task DisconnectingClient()
+        public async Task BogusHttpVersionWorks()
+        {
+            using (var server = new TestServer(App, port))
+            {
+                using (var connection = new TestConnection(port))
+                {
+                    await connection.SendEnd(
+                        "POST / bogus",
+                        // The connection is handled as HTTP/1.1 so keep-alive is active
+                        "Connection: close",
+                        "",
+                        "Hello World");
+                    await connection.ReceiveEnd(
+                        "bogus 200 OK",
+                        "",
+                        "Hello World");
+                    Assert.True(false, "This should not be reached");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task EndingBeforeStartingTheRequestDoesNotEndConnection()
         {
             using (var server = new TestServer(App, port))
             {
@@ -37,6 +59,55 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 }
                 await Task.Delay(200);
                 Assert.True(server.IsClean(), "Is not clean");
+            }
+        }
+
+        [Fact]
+        public async Task EndingInRequestLineDoesNotEndConnection()
+        {
+            using (var server = new TestServer(App, port))
+            {
+                using (var connection = new TestConnection(port))
+                {
+                    await connection.SendEnd("POST / Ht");
+                    await Task.Delay(200);
+                    Assert.True(server.IsClean(), "Is not clean");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task EndingInHeadersDoesNotEndConnection()
+        {
+            using (var server = new TestServer(App, port))
+            {
+                using (var connection = new TestConnection(port))
+                {
+                    await connection.SendEnd(
+                        "POST / Http/1.0",
+                        "Conn"
+                    );
+                    await Task.Delay(200);
+                    Assert.True(server.IsClean(), "Is not clean");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task EndingInContentDoesNotEndConnection()
+        {
+            using (var server = new TestServer(App, port))
+            {
+                using (var connection = new TestConnection(port))
+                {
+                    await connection.SendEnd(
+                        "POST / HTTP/1.0",
+                        "Content-Length: 100",
+                        "",
+                        "a");
+                    await Task.Delay(200);
+                    Assert.True(server.IsClean(), "Is not clean");
+                }
             }
         }
     }
