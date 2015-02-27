@@ -9,7 +9,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
     {
         public void Main()
         {
-            new EngineTests().DisconnectingClient().Wait();
+            new EngineTests().Http10().Wait();
         }
     }
 }

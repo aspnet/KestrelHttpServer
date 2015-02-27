@@ -15,7 +15,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// <summary>
     /// Summary description for EngineTests
     /// </summary>
-    internal class EngineTests
+    public class EngineTests
     {
         private const int port = 54321;
 
