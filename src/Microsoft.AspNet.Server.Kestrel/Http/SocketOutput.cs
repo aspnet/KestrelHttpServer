@@ -27,7 +27,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
         }
 
-        public Task WriteAsync(ArraySegment<byte> buffer)
+        public async Task WriteAsync(ArraySegment<byte> buffer)
         {
             //TODO: need buffering that works
             var copy = new byte[buffer.Count];
@@ -35,11 +35,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var arraySegment = new ArraySegment<byte>(copy);
 
             KestrelTrace.Log.ConnectionWrite(0, buffer.Count);
-            var req = new UvWriteReq(
+            using (var req = new UvWriteReq(
                 _thread.Loop,
                 _socket,
-                arraySegment);
-            return _thread.PostAsync(req.Write);
+                arraySegment))
+            {
+                await _thread.PostAsync(req.Write);
+                await req.Task;
+            }
         }
 
         public bool Flush(Action drained)
