@@ -40,7 +40,7 @@ namespace Kestrel
         {
             var disposables = new List<IDisposable>();
             var information = (ServerInformation)serverInformation;
-            ILoggerFactory loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+            var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
             var engine = new KestrelEngine(_libraryManager, loggerFactory);
             engine.Start(1);
             foreach (var address in information.Addresses)
