@@ -9,6 +9,8 @@ using Microsoft.AspNet.FeatureModel;
 using Microsoft.AspNet.Hosting.Server;
 using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.Framework.ConfigurationModel;
+using Microsoft.Framework.DependencyInjection;
+using Microsoft.Framework.Logging;
 using Microsoft.Framework.Runtime;
 
 namespace Kestrel
@@ -19,10 +21,12 @@ namespace Kestrel
     public class ServerFactory : IServerFactory
     {
         private readonly ILibraryManager _libraryManager;
+        private readonly IServiceProvider _serviceProvider;
 
-        public ServerFactory(ILibraryManager libraryManager)
+        public ServerFactory(ILibraryManager libraryManager, IServiceProvider serviceProvider)
         {
             _libraryManager = libraryManager;
+            _serviceProvider = serviceProvider;
         }
 
         public IServerInformation Initialize(IConfiguration configuration)
@@ -36,7 +40,8 @@ namespace Kestrel
         {
             var disposables = new List<IDisposable>();
             var information = (ServerInformation)serverInformation;
-            var engine = new KestrelEngine(_libraryManager);
+            ILoggerFactory loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+            var engine = new KestrelEngine(_libraryManager, loggerFactory);
             engine.Start(1);
             foreach (var address in information.Addresses)
             {

@@ -10,22 +10,22 @@ using Microsoft.Framework.Runtime;
 using System.IO;
 using Microsoft.Framework.Logging;
 using Microsoft.Framework.Logging.Console;
+using Microsoft.Framework.Runtime.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelEngine : IDisposable
     {
 
-        public KestrelEngine(ILibraryManager libraryManager)
+        public KestrelEngine(ILibraryManager libraryManager,ILoggerFactory loggerFactory)
         {
             Threads = new List<KestrelThread>();
             Listeners = new List<Listener>();
             Memory = new MemoryPool();
             Libuv = new Libuv();
 
-            var loggerFactory = new LoggerFactory();
             loggerFactory.AddConsole();
-            Logger = loggerFactory.Create(typeof(KestrelEngine).FullName);
+            Logger = loggerFactory.Create<KestrelEngine>();
 
             var libraryPath = default(string);
 
