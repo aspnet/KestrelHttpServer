@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.Framework.Runtime;
 using System.IO;
+using Microsoft.Framework.Logging;
+using Microsoft.Framework.Logging.Console;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
@@ -20,6 +22,10 @@ namespace Microsoft.AspNet.Server.Kestrel
             Listeners = new List<Listener>();
             Memory = new MemoryPool();
             Libuv = new Libuv();
+
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddConsole();
+            Logger = loggerFactory.Create(typeof(KestrelEngine).FullName);
 
             var libraryPath = default(string);
 
@@ -66,6 +72,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         public List<KestrelThread> Threads { get; private set; }
         public List<Listener> Listeners { get; private set; }
 
+        public ILogger Logger { get; private set; }
         public void Start(int count)
         {
             for (var index = 0; index != count; ++index)
@@ -95,6 +102,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             {
                 var listener = new Listener(Memory);
                 listener.StartAsync(scheme, host, port, thread, application).Wait();
+                Logger.WriteInformation(string.Format("Server listening on {0}://{1}:{2}", scheme, host, port));
                 listeners.Add(listener);
             }
             return new Disposable(() =>
