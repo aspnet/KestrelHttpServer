@@ -1,23 +1,22 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using Microsoft.AspNet.Server.Kestrel.Networking;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.Framework.Runtime;
-using System.IO;
 using Microsoft.Framework.Logging;
 using Microsoft.Framework.Logging.Console;
-using Microsoft.Framework.Runtime.Infrastructure;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelEngine : IDisposable
     {
 
-        public KestrelEngine(ILibraryManager libraryManager,ILoggerFactory loggerFactory)
+        public KestrelEngine(ILibraryManager libraryManager, ILoggerFactory loggerFactory)
         {
             Threads = new List<KestrelThread>();
             Listeners = new List<Listener>();
@@ -71,8 +70,8 @@ namespace Microsoft.AspNet.Server.Kestrel
         public IMemoryPool Memory { get; set; }
         public List<KestrelThread> Threads { get; private set; }
         public List<Listener> Listeners { get; private set; }
-
         public ILogger Logger { get; private set; }
+
         public void Start(int count)
         {
             for (var index = 0; index != count; ++index)

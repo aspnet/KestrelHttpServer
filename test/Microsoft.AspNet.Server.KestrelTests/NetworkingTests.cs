@@ -3,6 +3,7 @@
 
 using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Networking;
+using Microsoft.Framework.Logging;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 using System;
@@ -10,7 +11,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Microsoft.Framework.Logging;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -49,7 +49,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             get
             {
-                return new LoggerFactory();
+                return new TestLoggerFactory();
             }
         }
 
