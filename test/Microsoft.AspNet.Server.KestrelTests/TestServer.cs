@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNet.Server.Kestrel;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.AspNet.Testing.Logging;
 using Microsoft.Framework.Logging;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
-using System;
-using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
@@ -45,7 +46,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             get
             {
-                return new TestLoggerFactory();
+                return NullLoggerFactory.Instance;
             }
         }
 

@@ -1,15 +1,15 @@
-﻿using Microsoft.AspNet.Server.Kestrel;
-using Microsoft.AspNet.Server.Kestrel.Http;
-using Microsoft.Framework.Logging;
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Infrastructure;
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-
+using Microsoft.AspNet.Server.Kestrel;
+using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.AspNet.Testing.Logging;
+using Microsoft.Framework.Logging;
+using Microsoft.Framework.Runtime;
+using Microsoft.Framework.Runtime.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -60,7 +60,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             get
             {
-               return new TestLoggerFactory();
+               return NullLoggerFactory.Instance;
             }
         }
 

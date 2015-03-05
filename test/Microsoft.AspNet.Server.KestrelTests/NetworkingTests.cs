@@ -1,16 +1,17 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNet.Server.Kestrel;
-using Microsoft.AspNet.Server.Kestrel.Networking;
-using Microsoft.Framework.Logging;
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Infrastructure;
 using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
+using Microsoft.AspNet.Server.Kestrel.Networking;
+using Microsoft.AspNet.Testing.Logging;
+using Microsoft.Framework.Logging;
+using Microsoft.Framework.Runtime;
+using Microsoft.Framework.Runtime.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -49,7 +50,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             get
             {
-                return new TestLoggerFactory();
+                return NullLoggerFactory.Instance;
             }
         }
 
