@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.AspNet.Testing.Logging;
-using Microsoft.Framework.Logging;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 
@@ -42,17 +41,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        ILoggerFactory LoggerFactory
-        {
-            get
-            {
-                return NullLoggerFactory.Instance;
-            }
-        }
-
         public void Create(Func<Frame, Task> app)
         {
-            _engine = new KestrelEngine(LibraryManager, LoggerFactory);
+            _engine = new KestrelEngine(LibraryManager, NullLoggerFactory.Instance);
             _engine.Start(1);
             _server = _engine.CreateServer(
                 "http",

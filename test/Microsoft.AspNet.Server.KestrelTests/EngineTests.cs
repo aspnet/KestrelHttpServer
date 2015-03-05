@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.AspNet.Testing.Logging;
-using Microsoft.Framework.Logging;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 using Xunit;
@@ -56,14 +55,6 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        ILoggerFactory LoggerFactory
-        {
-            get
-            {
-               return NullLoggerFactory.Instance;
-            }
-        }
-
         private async Task AppChunked(Frame frame)
         {
             var data = new MemoryStream();
@@ -85,7 +76,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task EngineCanStartAndStop()
         {
-            var engine = new KestrelEngine(LibraryManager, LoggerFactory);
+            var engine = new KestrelEngine(LibraryManager, NullLoggerFactory.Instance);
             engine.Start(1);
             engine.Dispose();
         }
@@ -93,7 +84,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task ListenerCanCreateAndDispose()
         {
-            var engine = new KestrelEngine(LibraryManager, LoggerFactory);
+            var engine = new KestrelEngine(LibraryManager, NullLoggerFactory.Instance);
             engine.Start(1);
             var started = engine.CreateServer("http", "localhost", 54321, App);
             started.Dispose();
@@ -104,7 +95,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public async Task ConnectionCanReadAndWrite()
         {
-            var engine = new KestrelEngine(LibraryManager, LoggerFactory);
+            var engine = new KestrelEngine(LibraryManager, NullLoggerFactory.Instance);
             engine.Start(1);
             var started = engine.CreateServer("http", "localhost", 54321, App);
 

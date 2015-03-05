@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.AspNet.Testing.Logging;
-using Microsoft.Framework.Logging;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 using Xunit;
@@ -24,7 +23,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         Libuv _uv;
         public NetworkingTests()
         {
-            var engine = new KestrelEngine(LibraryManager, LoggerFactory);
+            var engine = new KestrelEngine(LibraryManager, NullLoggerFactory.Instance);
             _uv = engine.Libuv;
         }
 
@@ -43,14 +42,6 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     return null;
                 }
                 return (ILibraryManager)services.GetService(typeof(ILibraryManager));
-            }
-        }
-
-        ILoggerFactory LoggerFactory
-        {
-            get
-            {
-                return NullLoggerFactory.Instance;
             }
         }
 
