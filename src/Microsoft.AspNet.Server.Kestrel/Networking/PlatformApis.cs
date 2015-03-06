@@ -10,14 +10,40 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public static class PlatformApis
     {
-        public static bool IsWindows()
+        public enum Platform
         {
+            None,
+            Windows,
+            MacOSX,
+            OtherUnixSystems
+        };
+
+        static Platform currentPlatform = Platform.None;
+
+        public static Platform GetPlatform()
+        {
+            if (currentPlatform == Platform.None)
+            {
+                // check platform
 #if ASPNETCORE50
-            return true;
+                currentPlatform = Platform.Windows;
 #else
-            var p = (int)Environment.OSVersion.Platform;
-            return (p != 4) && (p != 6) && (p != 128);
+                var p = (int)Environment.OSVersion.Platform;
+                if ((p != 4) && (p != 6) && (p != 128))
+                {
+                    currentPlatform = Platform.Windows;
+                }
+                else if (string.Equals(GetUname(), "Darwin", StringComparison.Ordinal))
+                {
+                    currentPlatform = Platform.MacOSX;
+                }
+                else
+                {
+                    currentPlatform = Platform.OtherUnixSystems;
+                }
 #endif
+            }
+            return currentPlatform;
         }
 
         [DllImport("libc")]
@@ -43,20 +69,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public static bool IsDarwin()
-        {
-            return string.Equals(GetUname(), "Darwin", StringComparison.Ordinal);
-        }
-
         public static void Apply(Libuv libuv)
         {
-            if (libuv.IsWindows)
+            if (GetPlatform() == Platform.Windows)
             {
                 WindowsApis.Apply(libuv);
             }
             else
             {
-                LinuxApis.Apply(libuv);
+                UnixApis.Apply(libuv);
             }
         }
 
@@ -79,7 +100,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public static class LinuxApis
+        public static class UnixApis
         {
             [DllImport("libdl")]
             public static extern IntPtr dlopen(String fileName, int flags);
