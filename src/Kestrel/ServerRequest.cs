@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNet.FeatureModel;
 using Microsoft.AspNet.Http;
@@ -12,13 +13,13 @@ using Microsoft.AspNet.Server.Kestrel.Http;
 
 namespace Kestrel
 {
-    public class ServerRequest : IHttpRequestFeature, IHttpResponseFeature, IHttpUpgradeFeature
+    public class ServerRequest : IHttpRequestFeature, IHttpResponseFeature, IHttpUpgradeFeature, IHttpConnectionFeature
     {
         Frame _frame;
         string _scheme;
         string _pathBase;
         private FeatureCollection _features;
-
+        
         public ServerRequest(Frame frame)
         {
             _frame = frame;
@@ -31,6 +32,7 @@ namespace Kestrel
             _features.Add(typeof(IHttpRequestFeature), this);
             _features.Add(typeof(IHttpResponseFeature), this);
             _features.Add(typeof(IHttpUpgradeFeature), this);
+            _features.Add(typeof(IHttpConnectionFeature), this);
         }
 
         internal IFeatureCollection Features
@@ -217,7 +219,7 @@ namespace Kestrel
             }
         }
 
-        async Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
+        Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
         {
             _frame.StatusCode = 101;
             _frame.ReasonPhrase = "Switching Protocols";
@@ -231,7 +233,65 @@ namespace Kestrel
                 }
             }
             _frame.ProduceStart();
-            return _frame.DuplexStream;
+            return Task.FromResult<Stream>(_frame.DuplexStream);
+        }
+        
+        IPAddress IHttpConnectionFeature.RemoteIpAddress
+        {
+        	get
+        	{
+        		try
+        		{
+	        		return IPAddress.Parse(_frame.RemoteIpAddress);
+	        	}
+	        	catch
+	        	{
+	        		return IPAddress.Any;
+	        	}
+        	}
+        	set
+        	{
+        	}
+        }
+        
+        IPAddress IHttpConnectionFeature.LocalIpAddress
+        {
+        	get
+        	{
+        		try
+        		{
+	        		return IPAddress.Parse(_frame.LocalIpAddress);
+	        	}
+	        	catch
+	        	{
+	        		return IPAddress.Any;
+	        	}
+        	}
+        	set
+        	{
+        	}
+        }
+        
+        int IHttpConnectionFeature.RemotePort { get; set; }
+        
+        int IHttpConnectionFeature.LocalPort { get; set; }
+        
+        bool IHttpConnectionFeature.IsLocal
+        {
+        	get
+        	{
+        		try
+        		{
+	        		return IPAddress.IsLoopback(IPAddress.Parse(_frame.RemoteIpAddress));
+	        	}
+	        	catch
+	        	{
+	        		return false;
+	        	}
+        	}
+        	set
+        	{
+        	}
         }
     }
 }

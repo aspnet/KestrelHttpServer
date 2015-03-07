@@ -191,6 +191,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             handle.Validate();
             Check(_uv_tcp_bind(handle, ref addr, flags));
         }
+        
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        delegate int uv_tcp_getsockname(UvTcpHandle handle, out sockaddr addr, ref int namelen);
+        uv_tcp_getsockname _uv_tcp_getsockname;
+        public void tcp_getsockname(UvTcpHandle handle, out sockaddr addr, ref int namelen)
+        {
+            handle.Validate();
+            Check(_uv_tcp_getsockname(handle, out addr, ref namelen));
+        }
+        
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        delegate int uv_tcp_getpeername(UvTcpHandle handle, out sockaddr addr, ref int namelen);
+        uv_tcp_getsockname _uv_tcp_getpeername;
+        public void tcp_getpeername(UvTcpHandle handle, out sockaddr addr, ref int namelen)
+        {
+            handle.Validate();
+            Check(_uv_tcp_getpeername(handle, out addr, ref namelen));
+        }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void uv_connection_cb(IntPtr server, int status);
@@ -317,6 +335,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         public int ip4_addr(string ip, int port, out sockaddr addr, out Exception error)
         {
             return Check(_uv_ip4_addr(ip, port, out addr), out error);
+        }
+        
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        delegate int uv_ip4_name(ref sockaddr src, StringBuilder dst, int size);
+
+        uv_ip4_name _uv_ip4_name;
+        public int ip4_name(ref sockaddr src, StringBuilder dst, int size, out Exception error)
+        {
+            return Check(_uv_ip4_name(ref src, dst, size), out error);
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
