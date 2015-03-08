@@ -64,52 +64,52 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
             ConnectionControl = this;
         }
-		
-		private void ExtractIP()
-		{
-			//storage for binary IP addresses
+
+        private void ExtractIP()
+        {
+            // storage for binary IP addresses
             Libuv.sockaddr peer;
             Libuv.sockaddr local;
-            //length of sockaddr structs
-            int peerLength = Marshal.SizeOf(typeof(Libuv.sockaddr));
-            int localLength = peerLength;
-            //buffers for addresses
-            StringBuilder peerString = new StringBuilder(50);
-            StringBuilder localString = new StringBuilder(50);
-            //storage for errors during decoding processes
+            // length of sockaddr structs
+            var peerLength = Marshal.SizeOf(typeof(Libuv.sockaddr));
+            var localLength = peerLength;
+            // buffers for addresses
+            var peerString = new StringBuilder(50);
+            var localString = new StringBuilder(50);
+            // storage for errors during decoding processes
             Exception peerException;
             Exception localException;
-            
-            //get local and peer IPs in binary form
+
+            // get local and peer IPs in binary form
             _socket.Libuv.tcp_getsockname((UvTcpHandle)_socket, out local, ref localLength);
             _socket.Libuv.tcp_getpeername((UvTcpHandle)_socket, out peer, ref peerLength);
-            //decode as IPv4 addresses
+            // decode as IPv4 addresses
             _socket.Libuv.ip4_name(ref local, localString, 50, out localException);
             _socket.Libuv.ip4_name(ref peer, peerString, 50, out peerException);
-            
+
             if (localException != null) {
-            	throw localException;
+                throw localException;
             }
-            
+
             if (peerException != null) {
-            	throw peerException;
+                throw peerException;
             }
-            
-            //put IPS as part of Frame information
+
+            // put IPs as part of Frame information
             _frame.RemoteIpAddress = peerString.ToString();
             _frame.LocalIpAddress = localString.ToString();
-		}
-		
+        }
+
         public void Start()
         {
             KestrelTrace.Log.ConnectionStart(_connectionId);
 
             SocketInput = new SocketInput(Memory);
             SocketOutput = new SocketOutput(Thread, _socket);
-            
+
             _frame = new Frame(this);
-           	ExtractIP();
-                        
+            ExtractIP();
+
             _socket.ReadStart(_allocCallback, _readCallback, this);
         }
 
@@ -144,10 +144,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-
             try
             {
-            	ExtractIP();
+                ExtractIP();
                 _frame.Consume();
             }
             catch (Exception ex)

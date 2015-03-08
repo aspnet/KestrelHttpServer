@@ -19,7 +19,7 @@ namespace Kestrel
         string _scheme;
         string _pathBase;
         private FeatureCollection _features;
-        
+
         public ServerRequest(Frame frame)
         {
             _frame = frame;
@@ -235,63 +235,51 @@ namespace Kestrel
             _frame.ProduceStart();
             return Task.FromResult<Stream>(_frame.DuplexStream);
         }
-        
+
         IPAddress IHttpConnectionFeature.RemoteIpAddress
         {
-        	get
-        	{
-        		try
-        		{
-	        		return IPAddress.Parse(_frame.RemoteIpAddress);
-	        	}
-	        	catch
-	        	{
-	        		return IPAddress.Any;
-	        	}
-        	}
-        	set
-        	{
-        	}
+            get
+            {
+                IPAddress ip;
+                var result = IPAddress.TryParse(_frame.RemoteIpAddress, out ip);
+                return result ? ip : IPAddress.Any;
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
         }
-        
+
         IPAddress IHttpConnectionFeature.LocalIpAddress
         {
-        	get
-        	{
-        		try
-        		{
-	        		return IPAddress.Parse(_frame.LocalIpAddress);
-	        	}
-	        	catch
-	        	{
-	        		return IPAddress.Any;
-	        	}
-        	}
-        	set
-        	{
-        	}
+            get
+            {
+                IPAddress ip;
+                var result = IPAddress.TryParse(_frame.LocalIpAddress, out ip);
+                return result ? ip : IPAddress.Any;
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
         }
-        
+
         int IHttpConnectionFeature.RemotePort { get; set; }
-        
+
         int IHttpConnectionFeature.LocalPort { get; set; }
-        
+
         bool IHttpConnectionFeature.IsLocal
         {
-        	get
-        	{
-        		try
-        		{
-	        		return IPAddress.IsLoopback(IPAddress.Parse(_frame.RemoteIpAddress));
-	        	}
-	        	catch
-	        	{
-	        		return false;
-	        	}
-        	}
-        	set
-        	{
-        	}
+            get
+            {
+                IPAddress ip;
+                var result = IPAddress.TryParse(_frame.RemoteIpAddress, out ip);
+                return result ? IPAddress.IsLoopback(ip) : false;
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
         }
     }
 }
