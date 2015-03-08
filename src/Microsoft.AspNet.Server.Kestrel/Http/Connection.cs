@@ -87,11 +87,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket.Libuv.ip4_name(ref local, localString, 50, out localException);
             _socket.Libuv.ip4_name(ref peer, peerString, 50, out peerException);
 
-            if (localException != null) {
+            if (localException != null)
+            {
                 throw localException;
             }
 
-            if (peerException != null) {
+            if (peerException != null)
+            {
                 throw peerException;
             }
 
