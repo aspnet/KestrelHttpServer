@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNet.Server.Kestrel;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.AspNet.Testing.Logging;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
-using System;
-using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
@@ -42,7 +43,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         public void Create(Func<Frame, Task> app)
         {
-            _engine = new KestrelEngine(LibraryManager);
+            _engine = new KestrelEngine(LibraryManager, NullLoggerFactory.Instance);
             _engine.Start(1);
             _server = _engine.CreateServer(
                 "http",
