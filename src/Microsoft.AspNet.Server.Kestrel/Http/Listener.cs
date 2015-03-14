@@ -3,7 +3,9 @@
 
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -32,11 +34,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public class Listener : ListenerContext, IDisposable
     {
-        private static readonly Action<UvStreamHandle, int, Exception, object> _connectionCallback = ConnectionCallback;
+        private readonly Action<int, Exception> _connectionCallback;
+        private readonly List<IConnectionControl> _activeConnections = new List<IConnectionControl>();
 
-        UvTcpHandle ListenSocket { get; set; }
+        private UvTcpListenHandle _listenSocket;
 
-        private static void ConnectionCallback(UvStreamHandle stream, int status, Exception error, object state)
+        private void ConnectionCallback(int status, Exception error)
         {
             if (error != null)
             {
@@ -44,12 +47,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                ((Listener)state).OnConnection(stream, status);
+                OnConnection(status);
             }
         }
 
         public Listener(IMemoryPool memory)
         {
+            _connectionCallback = ConnectionCallback;
             Memory = memory;
         }
 
@@ -63,54 +67,54 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Thread = thread;
             Application = application;
 
-            var tcs = new TaskCompletionSource<int>();
-            Thread.Post(_ =>
+            return Thread.PostAsync(() =>
             {
-                try
-                {
-                    ListenSocket = new UvTcpHandle();
-                    ListenSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-                    ListenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
-                    ListenSocket.Listen(10, _connectionCallback, this);
-                    tcs.SetResult(0);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            }, null);
-            return tcs.Task;
+                _listenSocket = new UvTcpListenHandle(
+                    Thread.Loop,
+                    new IPEndPoint(IPAddress.Any, port),
+                    10,
+                    _connectionCallback);
+            });
         }
 
-        private void OnConnection(UvStreamHandle listenSocket, int status)
+        private void OnConnection(int status)
         {
-            var acceptSocket = new UvTcpHandle();
-            acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-            listenSocket.Accept(acceptSocket);
+            var acceptSocket = new UvTcpStreamHandle(Thread.Loop, _listenSocket);
 
-            var connection = new Connection(this, acceptSocket);
-            connection.Start();
+            new Connection(this, acceptSocket);
+        }
+
+        public void AddConnection(Connection c)
+        {
+            _activeConnections.Add(c);
+        }
+
+        public void RemoveConnection(Connection c)
+        {
+            _activeConnections.Remove(c);
         }
 
         public void Dispose()
         {
-            var tcs = new TaskCompletionSource<int>();
-            Thread.Post(
-                _ =>
-                {
-                    try
-                    {
-                        ListenSocket.Dispose();
-                        tcs.SetResult(0);
-                    }
-                    catch (Exception ex)
-                    {
-                        tcs.SetException(ex);
-                    }
-                },
-                null);
-            tcs.Task.Wait();
-            ListenSocket = null;
+            var task = Thread.PostAsync(_listenSocket.Dispose);
+            task.Wait();
+
+            var endTasks = new List<Task>();
+            var copiedConnections = _activeConnections.ToList();
+            foreach (var connection in copiedConnections)
+            {
+                if (!connection.IsInKeepAlive)
+                    Console.WriteLine("TODO: Warning! Closing an active connection");
+                endTasks.Add(connection.EndAsync(ProduceEndType.SocketShutdownSend));
+                endTasks.Add(connection.EndAsync(ProduceEndType.SocketDisconnect));
+            }
+            Task.WaitAll(endTasks.ToArray());
+            _listenSocket = null;
+        }
+
+        internal bool IsClean()
+        {
+            return _activeConnections.All(x => x.IsInKeepAlive);
         }
     }
 }

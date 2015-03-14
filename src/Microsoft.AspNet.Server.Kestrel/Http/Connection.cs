@@ -35,78 +35,80 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         void Pause();
         void Resume();
-        void End(ProduceEndType endType);
+        Task EndAsync(ProduceEndType endType);
+        bool IsInKeepAlive { get; }
     }
 
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private static readonly Action<UvStreamHandle, int, Exception, object> _readCallback = ReadCallback;
-        private static readonly Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback = AllocCallback;
+        private readonly Action<int, Exception> _readCallback;
+        private readonly Func<int, UvBuffer> _allocCallback;
+        private readonly UvTcpStreamHandle _socket;
+        private readonly Listener _listener;
 
-        private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
-        {
-            return ((Connection)state).OnAlloc(handle, suggestedSize);
-        }
-
-        private static void ReadCallback(UvStreamHandle handle, int nread, Exception error, object state)
-        {
-            ((Connection)state).OnRead(handle, nread, error);
-        }
-
-        private readonly UvStreamHandle _socket;
+        private UvReadHandle _read;
         private Frame _frame;
         long _connectionId;
+        private bool _isInKeepAlive;
 
-        public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
+        public Connection(Listener listener, UvTcpStreamHandle socket) : base(listener)
         {
+            _readCallback = OnRead;
+            _allocCallback = OnAlloc;
             _socket = socket;
             ConnectionControl = this;
-        }
+            _listener = listener;
 
-        public void Start()
-        {
             KestrelTrace.Log.ConnectionStart(_connectionId);
 
             SocketInput = new SocketInput(Memory);
             SocketOutput = new SocketOutput(Thread, _socket);
             _frame = new Frame(this);
-            _socket.ReadStart(_allocCallback, _readCallback, this);
+            _read = new UvReadHandle(_socket, _allocCallback, _readCallback);
+            listener.AddConnection(this);
         }
 
-        private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
+        private UvBuffer OnAlloc(int suggestedSize)
         {
-            return handle.Libuv.buf_init(
-                SocketInput.Pin(2048),
-                2048);
+            const int bufferSize = 2048;
+            return new UvBuffer(SocketInput.Pin(bufferSize), bufferSize);
         }
 
-        private void OnRead(UvStreamHandle handle, int status, Exception error)
+        private void OnRead(int status, Exception error)
         {
             SocketInput.Unpin(status);
 
             var normalRead = error == null && status > 0;
             var normalDone = status == 0 || status == -4077 || status == -4095;
-            var errorDone = !(normalDone || normalRead);
 
-            if (normalRead)
-            {
-                KestrelTrace.Log.ConnectionRead(_connectionId, status);
-            }
-            else if (normalDone || errorDone)
+            if (!normalRead)
             {
                 KestrelTrace.Log.ConnectionReadFin(_connectionId);
                 SocketInput.RemoteIntakeFin = true;
-                _socket.ReadStop();
+                if (status != -4095)
+                {
+                    _read.Dispose();
+                    _read = null;
+                    _listener.RemoveConnection(this);
+                    _socket.Dispose();
 
-                if (errorDone && error != null)
+                    // Not sure if this is right
+                    // It should be, but there are some interesting code paths
+                    // while reading the message body regarding status == 0 && RemoteIntakeFin
+                    return;
+                }
+
+                if (!normalDone && error != null)
                 {
                     Trace.WriteLine("Connection.OnRead " + error.ToString());
                 }
             }
 
+            KestrelTrace.Log.ConnectionRead(_connectionId, status);
 
             try
             {
+                _isInKeepAlive = false;
                 _frame.Consume();
             }
             catch (Exception ex)
@@ -115,56 +117,66 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
+        bool IConnectionControl.IsInKeepAlive => _isInKeepAlive;
+
         void IConnectionControl.Pause()
         {
             KestrelTrace.Log.ConnectionPause(_connectionId);
-            _socket.ReadStop();
+            Debug.Assert(_read != null);
+            _read.Dispose();
+            _read = null;
         }
 
         void IConnectionControl.Resume()
         {
             KestrelTrace.Log.ConnectionResume(_connectionId);
-            _socket.ReadStart(_allocCallback, _readCallback, this);
+            Debug.Assert(_read == null);
+            _read = new UvReadHandle(_socket, _allocCallback, _readCallback);
         }
 
-        void IConnectionControl.End(ProduceEndType endType)
+        async Task IConnectionControl.EndAsync(ProduceEndType endType)
         {
             switch (endType)
             {
                 case ProduceEndType.SocketShutdownSend:
                     KestrelTrace.Log.ConnectionWriteFin(_connectionId, 0);
-                    Thread.Post(
-                        x =>
-                        {
-                            KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
-                            var self = (Connection)x;
-                            var shutdown = new UvShutdownReq();
-                            shutdown.Init(self.Thread.Loop);
-                            shutdown.Shutdown(self._socket, (req, status, state) =>
+                    await Thread.PostAsync(() =>
+                    {
+                        if (_read == null)
+                            return;
+
+                        KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
+                        new UvShutdownReq(
+                            Thread.Loop,
+                            _socket,
+                            (req, status) =>
                             {
                                 KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
-                                req.Dispose();
-                            }, null);
-                        },
-                        this);
+                                // This connection is now done
+                            });
+                    });
                     break;
                 case ProduceEndType.ConnectionKeepAlive:
                     KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
                     _frame = new Frame(this);
-                    Thread.Post(
-                        x => ((Frame)x).Consume(),
-                        _frame);
+                    _isInKeepAlive = true;
+                    await Thread.PostAsync(_frame.Consume);
                     break;
                 case ProduceEndType.SocketDisconnect:
                     KestrelTrace.Log.ConnectionDisconnect(_connectionId);
-                    Thread.Post(
-                        x =>
-                        {
-                            KestrelTrace.Log.ConnectionStop(_connectionId);
-                            ((UvHandle)x).Dispose();
-                        },
-                        _socket);
+                    await Thread.PostAsync(() =>
+                    {
+                        _listener.RemoveConnection(this);
+                        if (_read == null)
+                            return;
+
+                        _read.Dispose();
+                        _socket.Dispose();
+                        KestrelTrace.Log.ConnectionStop(_connectionId);
+                    });
                     break;
+                default:
+                    throw new ArgumentException(nameof(endType));
             }
         }
     }

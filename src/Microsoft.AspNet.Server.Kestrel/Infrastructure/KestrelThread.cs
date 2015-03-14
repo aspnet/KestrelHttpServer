@@ -20,26 +20,18 @@ namespace Microsoft.AspNet.Server.Kestrel
         Thread _thread;
         UvLoopHandle _loop;
         UvAsyncHandle _post;
-        Queue<Work> _workAdding = new Queue<Work>();
-        Queue<Work> _workRunning = new Queue<Work>();
-        Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>();
-        Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>();
+        Queue<Action> _workAdding = new Queue<Action>();
+        Queue<Action> _workRunning = new Queue<Action>();
         object _workSync = new Object();
-        bool _stopImmediate = false;
         private ExceptionDispatchInfo _closeError;
 
         public KestrelThread(KestrelEngine engine)
         {
             _engine = engine;
-            _loop = new UvLoopHandle();
-            _post = new UvAsyncHandle();
             _thread = new Thread(ThreadStart);
-            QueueCloseHandle = PostCloseHandle;
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
-
-        public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; internal set; }
 
         public Task StartAsync()
         {
@@ -50,16 +42,10 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public void Stop(TimeSpan timeout)
         {
-            Post(OnStop, null);
+            Post(OnStop);
             if (!_thread.Join((int)timeout.TotalMilliseconds))
             {
-                Post(OnStopImmediate, null);
-                if (!_thread.Join((int)timeout.TotalMilliseconds))
-                {
-#if DNX451
-                    _thread.Abort();
-#endif
-                }
+                throw new TimeoutException("Loop did not close");
             }
             if (_closeError != null)
             {
@@ -67,167 +53,123 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
         }
 
-        private void OnStop(object obj)
+        private void OnStop()
         {
             _post.Unreference();
+            // In a perfect world at this point, there wouldn't be anything left
+            //  that is referenced on the loop …
+            var postHandle = _post.Handle;
+            _post.Dispose();
+            // … so when returning here, the DestroyMemory callback would be
+            //  executed in the next loop iteration and the loop would exit naturally
+
+
+            // However, the world isn't perfect and there are currently ways
+            //  that handles are left that would make the loop run forever.
+            // Right now from the loop's point of view, _post is still active.
+            // So we skip _post when we go through the handles that are still active
+            //  and close them manually.
+            UnsafeNativeMethods.uv_walk(
+                _loop,
+                (ptr, arg) =>
+                {
+                    if (ptr != postHandle)
+                    {
+                        UnsafeNativeMethods.uv_close(ptr, null);
+                    }
+                },
+                IntPtr.Zero);
+            // This does not Dispose() the handles, so for each one
+            //  a nice message is written to the Console by the handle's finalizer
+
+            // Now all references are definitely going to be gone
+            //  and the loop will exit after the next iteration
         }
 
-        private void OnStopImmediate(object obj)
-        {
-            _stopImmediate = true;
-            _loop.Stop();
-        }
-
-        public void Post(Action<object> callback, object state)
+        public void Post(Action callback)
         {
             lock (_workSync)
             {
-                _workAdding.Enqueue(new Work { Callback = callback, State = state });
+                _workAdding.Enqueue(callback);
             }
             _post.Send();
         }
 
-        public Task PostAsync(Action<object> callback, object state)
+        public Task PostAsync(Action callback)
         {
             var tcs = new TaskCompletionSource<int>();
-            lock (_workSync)
+            Post(() =>
             {
-                _workAdding.Enqueue(new Work { Callback = callback, State = state, Completion = tcs });
-            }
-            _post.Send();
+                try
+                {
+                    callback();
+                    tcs.SetResult(0);
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            });
             return tcs.Task;
-        }
-
-        private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
-        {
-            lock (_workSync)
-            {
-                _closeHandleAdding.Enqueue(new CloseHandle { Callback = callback, Handle = handle });
-            }
-            _post.Send();
         }
 
         private void ThreadStart(object parameter)
         {
             var tcs = (TaskCompletionSource<int>)parameter;
+            SetupLoop(tcs);
+            RunLoop();
+        }
+
+        private void SetupLoop(TaskCompletionSource<int> tcs)
+        {
             try
             {
-                _loop.Init(_engine.Libuv);
-                _post.Init(_loop, OnPost);
+                _loop = new UvLoopHandle();
+                _post = new UvAsyncHandle(_loop, OnPost);
                 tcs.SetResult(0);
             }
             catch (Exception ex)
             {
                 tcs.SetException(ex);
             }
+        }
 
-            try
+        private void RunLoop()
+        {
+            using (_loop)
             {
-                var ran1 = _loop.Run();
-                if (_stopImmediate)
+                try
                 {
-                    // thread-abort form of exit, resources will be leaked
-                    return;
+                    _post.Reference();
+                    _loop.Run();
                 }
-
-                // run the loop one more time to delete the open handles
-                _post.Reference();
-                _post.DangerousClose();
-                _engine.Libuv.walk(
-                    _loop,
-                    (ptr, arg) =>
-                    {
-                        var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
-                        handle.Dispose();
-                    },
-                    IntPtr.Zero);
-                var ran2 = _loop.Run();
-
-                _loop.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _closeError = ExceptionDispatchInfo.Capture(ex);
+                catch (Exception ex)
+                {
+                    _closeError = ExceptionDispatchInfo.Capture(ex);
+                }
             }
         }
 
         private void OnPost()
         {
-            DoPostWork();
-            DoPostCloseHandle();
+            var finishedBatch = FinishCurrentBatch();
+            foreach (var work in finishedBatch)
+            {
+                work();
+            }
+            finishedBatch.Clear();
         }
 
-        private void DoPostWork()
+        private Queue<Action> FinishCurrentBatch()
         {
-            Queue<Work> queue;
+            Queue<Action> queue;
             lock (_workSync)
             {
                 queue = _workAdding;
                 _workAdding = _workRunning;
                 _workRunning = queue;
             }
-            while (queue.Count != 0)
-            {
-                var work = queue.Dequeue();
-                try
-                {
-                    work.Callback(work.State);
-                    if (work.Completion != null)
-                    {
-                        ThreadPool.QueueUserWorkItem(
-                            tcs =>
-                            {
-                                ((TaskCompletionSource<int>)tcs).SetResult(0);
-                            },
-                            work.Completion);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (work.Completion != null)
-                    {
-                        ThreadPool.QueueUserWorkItem(_ => work.Completion.SetException(ex), null);
-                    }
-                    else
-                    {
-                        Trace.WriteLine("KestrelThread.DoPostWork " + ex.ToString());
-                    }
-                }
-            }
-        }
-        private void DoPostCloseHandle()
-        {
-            Queue<CloseHandle> queue;
-            lock (_workSync)
-            {
-                queue = _closeHandleAdding;
-                _closeHandleAdding = _closeHandleRunning;
-                _closeHandleRunning = queue;
-            }            
-            while (queue.Count != 0)
-            {
-                var closeHandle = queue.Dequeue();
-                try
-                {
-                    closeHandle.Callback(closeHandle.Handle);
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine("KestrelThread.DoPostCloseHandle " + ex.ToString());
-                }
-            }
-        }
-
-        private struct Work
-        {
-            public Action<object> Callback;
-            public object State;
-            public TaskCompletionSource<int> Completion;
-        }
-        private struct CloseHandle
-        {
-            public Action<IntPtr> Callback;
-            public IntPtr Handle;
+            return queue;
         }
     }
 }

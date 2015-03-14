@@ -4,6 +4,7 @@
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -12,95 +13,41 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public interface ISocketOutput
     {
-        void Write(ArraySegment<byte> buffer, Action<Exception, object> callback, object state);
+        Task WriteAsync(ArraySegment<byte> buffer);
     }
 
     public class SocketOutput : ISocketOutput
     {
         private readonly KestrelThread _thread;
-        private readonly UvStreamHandle _socket;
+        private readonly UvTcpStreamHandle _socket;
 
-        public SocketOutput(KestrelThread thread, UvStreamHandle socket)
+        public SocketOutput(KestrelThread thread, UvTcpStreamHandle socket)
         {
             _thread = thread;
             _socket = socket;
         }
 
-        public void Write(ArraySegment<byte> buffer, Action<Exception, object> callback, object state)
+        public async Task WriteAsync(ArraySegment<byte> buffer)
         {
             //TODO: need buffering that works
             var copy = new byte[buffer.Count];
             Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
-            buffer = new ArraySegment<byte>(copy);
+            var arraySegment = new ArraySegment<byte>(copy);
 
             KestrelTrace.Log.ConnectionWrite(0, buffer.Count);
-            var req = new ThisWriteReq();
-            req.Init(_thread.Loop);
-            req.Contextualize(this, _socket, buffer, callback, state);
-            _thread.Post(x =>
+            using (var req = new UvWriteReq(
+                _thread.Loop,
+                _socket,
+                arraySegment))
             {
-                ((ThisWriteReq)x).Write();
-            }, req);
-        }
-
-        public class ThisWriteReq : UvWriteReq
-        {
-            private static readonly Action<UvWriteReq, int, Exception, object> _writeCallback = WriteCallback;
-            private static void WriteCallback(UvWriteReq req, int status, Exception error, object state)
-            {
-                ((ThisWriteReq)state).OnWrite(req, status, error);
-            }
-
-            SocketOutput _self;
-            ArraySegment<byte> _buffer;
-            UvStreamHandle _socket;
-            Action<Exception, object> _callback;
-            object _state;
-
-            internal void Contextualize(
-                SocketOutput socketOutput,
-                UvStreamHandle socket,
-                ArraySegment<byte> buffer,
-                Action<Exception, object> callback,
-                object state)
-            {
-                _self = socketOutput;
-                _socket = socket;
-                _buffer = buffer;
-                _callback = callback;
-                _state = state;
-            }
-
-            public void Write()
-            {
-                Write(
-                    _socket,
-                    new ArraySegment<ArraySegment<byte>>(
-                        new[]{_buffer}),
-                    _writeCallback,
-                    this);
-            }
-
-            private void OnWrite(UvWriteReq req, int status, Exception error)
-            {
-                KestrelTrace.Log.ConnectionWriteCallback(0, status);
-                //NOTE: pool this?
-
-                var callback = _callback;
-                _callback = null;
-                var state = _state;
-                _state = null;
-
-                Dispose();
-                callback(error, state);
+                await _thread.PostAsync(req.Write);
+                await req.Task;
             }
         }
-
 
         public bool Flush(Action drained)
         {
             return false;
         }
-
     }
 }

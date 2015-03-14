@@ -106,7 +106,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (_gcHandle.IsAllocated)
             {
                 _gcHandle.Free();
-                Extend(count);
+                if (count >= 0)
+                    Extend(count);
             }
         }
 

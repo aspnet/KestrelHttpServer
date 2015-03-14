@@ -8,34 +8,31 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// <summary>
     /// Summary description for UvShutdownRequest
     /// </summary>
-    public class UvShutdownReq : UvReq
+    public class UvShutdownReq : UvMemoryResource
     {
-        private readonly static Libuv.uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
+        private readonly uv_shutdown_cb _uv_shutdown_cb;
+        private readonly Action<UvShutdownReq, int> _callback;
 
-        Action<UvShutdownReq, int, object> _callback;
-        object _state;
-
-        public void Init(UvLoopHandle loop)
+        public UvShutdownReq(UvLoopHandle loop, UvTcpStreamHandle stream, Action<UvShutdownReq, int> callback)
+            : base(loop.ThreadId, GetSize())
         {
-            CreateMemory(
-                loop.Libuv, 
-                loop.ThreadId,
-                loop.Libuv.req_size(Libuv.RequestType.SHUTDOWN));
-        }
+            _uv_shutdown_cb = UvShutdownCb;
 
-        public void Shutdown(UvStreamHandle handle, Action<UvShutdownReq, int, object> callback, object state)
-        {
             _callback = callback;
-            _state = state;
-            _uv.shutdown(this, handle, _uv_shutdown_cb);
+            Validate();
+            stream.Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_shutdown(this, stream.Handle, _uv_shutdown_cb));
         }
 
-        private static void UvShutdownCb(IntPtr ptr, int status)
+        private static int GetSize()
         {
-            var req = FromIntPtr<UvShutdownReq>(ptr);
-            req._callback(req, status, req._state);
-            req._callback = null;
-            req._state = null;
+            return UnsafeNativeMethods.uv_req_size(RequestType.SHUTDOWN);
+        }
+
+        private void UvShutdownCb(IntPtr ptr, int status)
+        {
+            _callback(this, status);
+            Dispose();
         }
     }
 }

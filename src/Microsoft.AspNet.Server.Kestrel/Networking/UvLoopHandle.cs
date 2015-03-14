@@ -1,44 +1,35 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public class UvLoopHandle : UvHandle
+    public class UvLoopHandle : UvMemoryResource
     {
-        public void Init(Libuv uv)
+        public UvLoopHandle()
+            : base(Thread.CurrentThread.ManagedThreadId, GetSize())
         {
-            CreateMemory(
-                uv, 
-                Thread.CurrentThread.ManagedThreadId,
-                uv.loop_size());
-
-            _uv.loop_init(this);
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
-        public int Run(int mode = 0)
+        private static int GetSize()
         {
-            return _uv.run(this, mode);
+            return UnsafeNativeMethods.uv_loop_size();
         }
 
-        public void Stop()
+        public void Run(int mode = 0)
         {
-            _uv.stop(this);
+            Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_run(this, mode));
         }
 
-        protected override bool ReleaseHandle()
+        protected override void Dispose(bool disposing)
         {
-            var memory = this.handle;
-            if (memory != IntPtr.Zero)
-            {
-                _uv.loop_close(this);
-                handle = IntPtr.Zero;
-                DestroyMemory(memory);
-            }
-            return true;
-        }
+            if (disposing)
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(this));
 
+            base.Dispose(disposing);
+        }
     }
 }

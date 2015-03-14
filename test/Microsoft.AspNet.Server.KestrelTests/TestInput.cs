@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
@@ -32,8 +33,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        public void ProduceContinue()
+        public Task ProduceContinueAsync()
         {
+            return Task.FromResult(0);
         }
 
         public void Pause()
@@ -44,12 +46,16 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
         }
 
-        public void Write(ArraySegment<byte> data, Action<Exception, object> callback, object state)
+        public Task WriteAsync(ArraySegment<byte> data)
         {
+            return Task.FromResult(0);
         }
-        public void End(ProduceEndType endType)
+        public Task EndAsync(ProduceEndType endType)
         {
+            return Task.FromResult(0);
         }
+
+        public bool IsInKeepAlive => false;
     }
 }
 

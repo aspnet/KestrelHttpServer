@@ -3,128 +3,84 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     /// <summary>
     /// Summary description for UvWriteRequest
     /// </summary>
-    public class UvWriteReq : UvReq
+    public class UvWriteReq : UvMemoryResource
     {
-        private readonly static Libuv.uv_write_cb _uv_write_cb = UvWriteCb;
+        private readonly uv_write_cb _uv_write_cb;
 
-        IntPtr _bufs;
+        private readonly UvTcpStreamHandle _stream;
 
-        Action<UvWriteReq, int, Exception, object> _callback;
-        object _state;
-        const int BUFFER_COUNT = 4;
+        private readonly UvBuffer[] _uvBuffers;
+        private readonly GCHandle[] _bufferHandles;
+        private readonly GCHandle _bufferArrayHandle;
 
-        List<GCHandle> _pins = new List<GCHandle>();
+        private readonly TaskCompletionSource<int> _tcs;
 
-        public void Init(UvLoopHandle loop)
+        public UvWriteReq(
+            UvLoopHandle loop,
+            UvTcpStreamHandle stream,
+            ArraySegment<byte> buffer)
+            : base(loop.ThreadId, GetSize())
         {
-            var requestSize = loop.Libuv.req_size(Libuv.RequestType.WRITE);
-            var bufferSize = Marshal.SizeOf(typeof(Libuv.uv_buf_t)) * BUFFER_COUNT;
-            CreateMemory(
-                loop.Libuv,
-                loop.ThreadId,
-                requestSize + bufferSize);
-            _bufs = handle + requestSize;
+            _uv_write_cb = UvWriteCb;
+            _stream = stream;
+
+            _bufferHandles = new GCHandle[1];
+            _uvBuffers = new UvBuffer[1];
+            _bufferArrayHandle = GCHandle.Alloc(_uvBuffers, GCHandleType.Pinned);
+
+            _bufferHandles[0] = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
+            _uvBuffers[0] = new UvBuffer(
+                _bufferHandles[0].AddrOfPinnedObject() + buffer.Offset,
+                buffer.Count);
+
+            _tcs = new TaskCompletionSource<int>();
         }
 
-        public unsafe void Write(
-            UvStreamHandle handle,
-            ArraySegment<ArraySegment<byte>> bufs,
-            Action<UvWriteReq, int, Exception, object> callback,
-            object state)
+        private static int GetSize()
         {
-            try
-            {
-                // add GCHandle to keeps this SafeHandle alive while request processing
-                _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
-
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
-                var nBuffers = bufs.Count;
-                if (nBuffers > BUFFER_COUNT)
-                {
-                    // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
-                    var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
-                }
-
-                for (var index = 0; index != nBuffers; ++index)
-                {
-                    // create and pin each segment being written
-                    var buf = bufs.Array[bufs.Offset + index];
-
-                    var gcHandle = GCHandle.Alloc(buf.Array, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers[index] = Libuv.buf_init(
-                        gcHandle.AddrOfPinnedObject() + buf.Offset,
-                        buf.Count);
-                }
-
-                _callback = callback;
-                _state = state;
-                _uv.write(this, handle, pBuffers, nBuffers, _uv_write_cb);
-            }
-            catch
-            {
-                _callback = null;
-                _state = null;
-                Unpin(this);
-                throw;
-            }
+            return UnsafeNativeMethods.uv_req_size(RequestType.WRITE);
         }
 
-        private static void Unpin(UvWriteReq req)
+        public Task Task => _tcs.Task;
+
+        public void Write()
         {
-            foreach (var pin in req._pins)
-            {
-                pin.Free();
-            }
-            req._pins.Clear();
+            _stream.Validate();
+            Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_write(
+                this,
+                _stream.Handle,
+                _uvBuffers,
+                _uvBuffers.Length,
+                _uv_write_cb));
         }
 
-        private static void UvWriteCb(IntPtr ptr, int status)
+        private void UvWriteCb(IntPtr ptr, int status)
         {
-            var req = FromIntPtr<UvWriteReq>(ptr);
-            Unpin(req);
+            KestrelTrace.Log.ConnectionWriteCallback(0, status);
 
-            var callback = req._callback;
-            req._callback = null;
-
-            var state = req._state;
-            req._state = null;
-
-            Exception error = null;
-            if (status < 0)
-            {
-                req.Libuv.Check(status, out error);
-            }
-
-            try
-            {
-                callback(req, status, error, state);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine("UvWriteCb " + ex.ToString());
-            }
+            var exception = Libuv.ExceptionForError(status);
+            if (exception == null)
+                _tcs.SetResult(0);
+            else
+                _tcs.SetException(exception);
         }
-    }
 
-    public abstract class UvReq : UvMemory
-    {
         protected override bool ReleaseHandle()
         {
-            DestroyMemory(handle);
-            handle = IntPtr.Zero;
-            return true;
+            foreach (var bufferHandle in _bufferHandles)
+                bufferHandle.Free();
+            _bufferArrayHandle.Free();
+
+            return base.ReleaseHandle();
         }
     }
 }
