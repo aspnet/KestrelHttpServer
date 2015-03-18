@@ -2,11 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 
-namespace Microsoft.AspNet.Server.Kestrel.Networking
+namespace Kestrel.LibraryLoader
 {
     public static class PlatformApis
     {
@@ -48,15 +46,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             return string.Equals(GetUname(), "Darwin", StringComparison.Ordinal);
         }
 
-        public static void Apply(Libuv libuv)
+        public static void Apply(Library library)
         {
-            if (libuv.IsWindows)
+            if (library.IsWindows)
             {
-                WindowsApis.Apply(libuv);
+                WindowsApis.Apply(library);
             }
             else
             {
-                LinuxApis.Apply(libuv);
+                LinuxApis.Apply(library);
             }
         }
 
@@ -71,11 +69,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
             public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
 
-            public static void Apply(Libuv libuv)
+            public static void Apply(Library library)
             {
-                libuv.LoadLibrary = LoadLibrary;
-                libuv.FreeLibrary = FreeLibrary;
-                libuv.GetProcAddress = GetProcAddress;
+                library.LoadLibrary = LoadLibrary;
+                library.FreeLibrary = FreeLibrary;
+                library.GetProcAddress = GetProcAddress;
             }
         }
 
@@ -111,11 +109,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 return errPtr == IntPtr.Zero ? res : IntPtr.Zero;
             }
 
-            public static void Apply(Libuv libuv)
+            public static void Apply(Library library)
             {
-                libuv.LoadLibrary = LoadLibrary;
-                libuv.FreeLibrary = FreeLibrary;
-                libuv.GetProcAddress = GetProcAddress;
+                library.LoadLibrary = LoadLibrary;
+                library.FreeLibrary = FreeLibrary;
+                library.GetProcAddress = GetProcAddress;
             }
         }
     }

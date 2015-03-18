@@ -5,28 +5,13 @@ using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using Kestrel.LibraryLoader;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public class Libuv
+    public class Libuv : Library
     {
-        public Libuv()
-        {
-            IsWindows = PlatformApis.IsWindows();
-            if (!IsWindows)
-            {
-                IsDarwin = PlatformApis.IsDarwin();
-            }
-        }
-
-        public bool IsWindows;
-        public bool IsDarwin;
-
-        public Func<string, IntPtr> LoadLibrary;
-        public Func<IntPtr, bool> FreeLibrary;
-        public Func<IntPtr, string, IntPtr> GetProcAddress;
-
-        public void Load(string dllToLoad)
+        public override void Load(string dllToLoad)
         {
             PlatformApis.Apply(this);
 
