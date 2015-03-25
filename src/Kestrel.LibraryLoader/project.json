@@ -1,0 +1,7 @@
+﻿{
+    "version": "1.0.0-*",
+    "description": "Load libraries between Windows and Unix with delight.",
+    "compilationOptions": {
+        "allowUnsafe": true
+    }
+}
