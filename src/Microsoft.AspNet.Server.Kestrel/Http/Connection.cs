@@ -61,6 +61,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             _socket = socket;
             ConnectionControl = this;
+
+            Thread.OnStopping += OnLoopStopping;
         }
 
         public void Start()
@@ -71,6 +73,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             SocketOutput = new SocketOutput(Thread, _socket);
             _frame = new Frame(this);
             _socket.ReadStart(_allocCallback, _readCallback, this);
+        }
+
+        private void OnLoopStopping()
+        {
+            _socket.Dispose();
         }
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)

@@ -26,6 +26,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>();
         object _workSync = new Object();
         bool _stopImmediate = false;
+        volatile bool _aborting = false;
         private ExceptionDispatchInfo _closeError;
 
         public KestrelThread(KestrelEngine engine)
@@ -40,6 +41,8 @@ namespace Microsoft.AspNet.Server.Kestrel
         public UvLoopHandle Loop { get { return _loop; } }
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; internal set; }
+
+        public event Action OnStopping;
 
         public Task StartAsync()
         {
@@ -61,6 +64,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 #endif
                 }
             }
+
             if (_closeError != null)
             {
                 _closeError.Throw();
@@ -69,7 +73,13 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnStop(object obj)
         {
-            _post.Unreference();
+            if (OnStopping != null)
+            {
+                OnStopping();
+            }
+            
+            _aborting = true;
+            _post.Dispose();
         }
 
         private void OnStopImmediate(object obj)
@@ -80,6 +90,11 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public void Post(Action<object> callback, object state)
         {
+            if (_aborting)
+            {
+                return;
+            }
+
             lock (_workSync)
             {
                 _workAdding.Enqueue(new Work { Callback = callback, State = state });
@@ -129,19 +144,6 @@ namespace Microsoft.AspNet.Server.Kestrel
                     // thread-abort form of exit, resources will be leaked
                     return;
                 }
-
-                // run the loop one more time to delete the open handles
-                _post.Reference();
-                _post.DangerousClose();
-                _engine.Libuv.walk(
-                    _loop,
-                    (ptr, arg) =>
-                    {
-                        var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
-                        handle.Dispose();
-                    },
-                    IntPtr.Zero);
-                var ran2 = _loop.Run();
 
                 _loop.Dispose();
             }
