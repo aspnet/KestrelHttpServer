@@ -2,19 +2,36 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
-    public class UvLoopHandle : UvHandle
+    public class UvLoopHandle : SafeHandle
     {
+        private Libuv _uv;
+        private int _threadId;
+
+        public UvLoopHandle() : base(IntPtr.Zero, true) { }
+
+        internal IntPtr InternalGetHandle() => handle;
+        public override bool IsInvalid => handle == IntPtr.Zero;
+        public Libuv Libuv => _uv;
+        public int ThreadId => _threadId;
+
+        public void Validate(bool closed = false)
+        {
+            Trace.Assert(closed || !IsClosed, "Handle is closed");
+            Trace.Assert(!IsInvalid, "Handle is invalid");
+            Trace.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
+        }
+
         public void Init(Libuv uv)
         {
-            CreateMemory(
-                uv, 
-                Thread.CurrentThread.ManagedThreadId,
-                uv.loop_size());
-
+            _uv = uv;
+            _threadId = Thread.CurrentThread.ManagedThreadId;
+            handle = Marshal.AllocCoTaskMem(_uv.loop_size());
             _uv.loop_init(this);
         }
 
@@ -30,15 +47,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         protected override bool ReleaseHandle()
         {
-            var memory = this.handle;
-            if (memory != IntPtr.Zero)
-            {
-                _uv.loop_close(this);
-                handle = IntPtr.Zero;
-                DestroyMemory(memory);
-            }
+            _uv.loop_close(this);
+            Marshal.FreeCoTaskMem(handle);
             return true;
         }
-
     }
 }
