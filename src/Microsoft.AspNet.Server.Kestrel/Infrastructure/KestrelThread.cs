@@ -199,7 +199,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                     work.Callback(work.State);
                     if (work.Completion != null)
                     {
-                        ThreadPool.QueueUserWorkItem(
+                        ThreadPool.UnsafeQueueUserWorkItem(
                             tcs =>
                             {
                                 ((TaskCompletionSource<int>)tcs).SetResult(0);
@@ -211,7 +211,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 {
                     if (work.Completion != null)
                     {
-                        ThreadPool.QueueUserWorkItem(_ => work.Completion.SetException(ex), null);
+                        ThreadPool.UnsafeQueueUserWorkItem(_ => work.Completion.SetException(ex), null);
                     }
                     else
                     {

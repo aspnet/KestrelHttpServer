@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 // ReSharper disable AccessToModifiedClosure
@@ -158,7 +159,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             ResponseBody = new FrameResponseStream(this);
             DuplexStream = new FrameDuplexStream(RequestBody, ResponseBody);
             SocketInput.Free();
-            Task.Run(ExecuteAsync);
+            //Task.Run(ExecuteAsync);
+            //var ignore = ExecuteAsync();
+            ThreadPool.UnsafeQueueUserWorkItem(_ => ExecuteAsync(), null);
         }
 
         public void OnStarting(Func<object, Task> callback, object state)
