@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -28,17 +28,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _uv.stop(this);
         }
 
-        protected override bool ReleaseHandle()
+        unsafe protected override bool ReleaseHandle()
         {
             var memory = this.handle;
             if (memory != IntPtr.Zero)
             {
+                // loop_close clears the gcHandlePtr
+                var gcHandlePtr = *(IntPtr*)memory;
+
                 _uv.loop_close(this);
                 handle = IntPtr.Zero;
-                DestroyMemory(memory);
+
+                DestroyMemory(memory, gcHandlePtr);
             }
             return true;
         }
-
     }
 }

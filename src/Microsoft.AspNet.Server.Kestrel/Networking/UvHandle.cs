@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -32,9 +32,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 {
                     _uv.close(memory, _destroyMemory);
                 }
-                else
+                else if (_queueCloseHandle != null)
                 {
-                    _queueCloseHandle(memory2 => _uv.close(memory2, _destroyMemory), memory);
+                    // This can be called from the finalizer.
+                    // Ensure the closure doesn't reference "this".
+                    var uv = _uv;
+                    _queueCloseHandle(memory2 => uv.close(memory2, _destroyMemory), memory);
                 }
             }
             return true;

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -54,7 +54,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         Mode _mode;
         private bool _resultStarted;
-        private bool _headersSent;
+        private bool _responseStarted;
         private bool _keepAlive;
 
         /*
@@ -63,10 +63,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         CancellationTokenSource _cts = new CancellationTokenSource();
         */
 
-        List<KeyValuePair<Action<object>, object>> _onSendingHeaders;
-        List<KeyValuePair<Action<object>, object>> _onResponseCompleted;
-        object _onSendingHeadersSync = new Object();
-        object _onResponseCompletedSync = new Object();
+        List<KeyValuePair<Func<object, Task>, object>> _onStarting;
+        List<KeyValuePair<Func<object, Task>, object>> _onCompleted;
+        object _onStartingSync = new Object();
+        object _onCompletedSync = new Object();
 
         public Frame(ConnectionContext context) : base(context)
         {
@@ -92,9 +92,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Stream DuplexStream { get; set; }
 
-        public bool HeadersSent
+        public bool HasResponseStarted
         {
-            get { return _headersSent; }
+            get { return _responseStarted; }
         }
 
 
@@ -190,58 +190,58 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Task.Run(ExecuteAsync);
         }
 
-        public void OnSendingHeaders(Action<object> callback, object state)
+        public void OnStarting(Func<object, Task> callback, object state)
         {
-            lock (_onSendingHeadersSync)
+            lock (_onStartingSync)
             {
-                if (_onSendingHeaders == null)
+                if (_onStarting == null)
                 {
-                    _onSendingHeaders = new List<KeyValuePair<Action<object>, object>>();
+                    _onStarting = new List<KeyValuePair<Func<object, Task>, object>>();
                 }
-                _onSendingHeaders.Add(new KeyValuePair<Action<object>, object>(callback, state));
+                _onStarting.Add(new KeyValuePair<Func<object, Task>, object>(callback, state));
             }
         }
 
-        public void OnResponseCompleted(Action<object> callback, object state)
+        public void OnCompleted(Func<object, Task> callback, object state)
         {
-            lock (_onResponseCompletedSync)
+            lock (_onCompletedSync)
             {
-                if (_onResponseCompleted == null)
+                if (_onCompleted == null)
                 {
-                    _onResponseCompleted = new List<KeyValuePair<Action<object>, object>>();
+                    _onCompleted = new List<KeyValuePair<Func<object, Task>, object>>();
                 }
-                _onResponseCompleted.Add(new KeyValuePair<Action<object>, object>(callback, state));
+                _onCompleted.Add(new KeyValuePair<Func<object, Task>, object>(callback, state));
             }
         }
 
-        private void FireOnSendingHeaders()
+        private void FireOnStarting()
         {
-            List<KeyValuePair<Action<object>, object>> onSendingHeaders = null;
-            lock (_onSendingHeadersSync)
+            List<KeyValuePair<Func<object, Task>, object>> onStarting = null;
+            lock (_onStartingSync)
             {
-                onSendingHeaders = _onSendingHeaders;
-                _onSendingHeaders = null;
+                onStarting = _onStarting;
+                _onStarting = null;
             }
-            if (onSendingHeaders != null)
+            if (onStarting != null)
             {
-                foreach (var entry in onSendingHeaders)
+                foreach (var entry in onStarting)
                 {
                     entry.Key.Invoke(entry.Value);
                 }
             }
         }
 
-        private void FireOnResponseCompleted()
+        private void FireOnCompleted()
         {
-            List<KeyValuePair<Action<object>, object>> onResponseCompleted = null;
-            lock (_onResponseCompletedSync)
+            List<KeyValuePair<Func<object, Task>, object>> onCompleted = null;
+            lock (_onCompletedSync)
             {
-                onResponseCompleted = _onResponseCompleted;
-                _onResponseCompleted = null;
+                onCompleted = _onCompleted;
+                _onCompleted = null;
             }
-            if (onResponseCompleted != null)
+            if (onCompleted != null)
             {
-                foreach (var entry in onResponseCompleted)
+                foreach (var entry in onCompleted)
                 {
                     try
                     {
@@ -268,7 +268,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             finally
             {
-                FireOnResponseCompleted();
+                FireOnCompleted();
                 ProduceEnd(error);
             }
         }
@@ -318,9 +318,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (_resultStarted) return;
             _resultStarted = true;
 
-            FireOnSendingHeaders();
+            FireOnStarting();
 
-            _headersSent = true;
+            _responseStarted = true;
 
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
 

@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -91,19 +91,33 @@ namespace Microsoft.AspNet.Server.Kestrel
         public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task> application)
         {
             var listeners = new List<Listener>();
-            foreach (var thread in Threads)
+
+            try
             {
-                var listener = new Listener(Memory);
-                listener.StartAsync(scheme, host, port, thread, application).Wait();
-                listeners.Add(listener);
+                foreach (var thread in Threads)
+                {
+                    var listener = new Listener(Memory);
+
+                    listeners.Add(listener);
+                    listener.StartAsync(scheme, host, port, thread, application).Wait();
+                }
+                return new Disposable(() =>
+                {
+                    foreach (var listener in listeners)
+                    {
+                        listener.Dispose();
+                    }
+                });
             }
-            return new Disposable(() =>
+            catch
             {
                 foreach (var listener in listeners)
                 {
                     listener.Dispose();
                 }
-            });
+
+                throw;
+            }
         }
     }
 }

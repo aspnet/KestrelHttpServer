@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 #define TRACE
 using System;
@@ -54,6 +54,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         unsafe protected static void DestroyMemory(IntPtr memory)
         {
             var gcHandlePtr = *(IntPtr*)memory;
+            DestroyMemory(memory, gcHandlePtr);
+        }
+
+        unsafe protected static void DestroyMemory(IntPtr memory, IntPtr gcHandlePtr)
+        {
             if (gcHandlePtr != IntPtr.Zero)
             {
                 var gcHandle = GCHandle.FromIntPtr(gcHandlePtr);

@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.FeatureModel;
-using Microsoft.AspNet.Http;
+using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Http;
 
 namespace Kestrel
@@ -194,19 +194,19 @@ namespace Kestrel
             }
         }
 
-        bool IHttpResponseFeature.HeadersSent
+        bool IHttpResponseFeature.HasStarted
         {
-            get { return _frame.HeadersSent; }
+            get { return _frame.HasResponseStarted; }
         }
 
-        void IHttpResponseFeature.OnSendingHeaders(Action<object> callback, object state)
+        void IHttpResponseFeature.OnStarting(Func<object, Task> callback, object state)
         {
-            _frame.OnSendingHeaders(callback, state);
+            _frame.OnStarting(callback, state);
         }
 
-        void IHttpResponseFeature.OnResponseCompleted(Action<object> callback, object state)
+        void IHttpResponseFeature.OnCompleted(Func<object, Task> callback, object state)
         {
-            _frame.OnResponseCompleted(callback, state);
+            _frame.OnCompleted(callback, state);
         }
 
         bool IHttpUpgradeFeature.IsUpgradableRequest

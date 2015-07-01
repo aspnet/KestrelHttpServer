@@ -1,14 +1,13 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.FeatureModel;
 using Microsoft.AspNet.Hosting.Server;
 using Microsoft.AspNet.Server.Kestrel;
-using Microsoft.Framework.ConfigurationModel;
+using Microsoft.Framework.Configuration;
 using Microsoft.Framework.Runtime;
 
 namespace Kestrel
