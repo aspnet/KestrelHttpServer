@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNet.FeatureModel;
 using Microsoft.AspNet.Http.Features;
@@ -12,7 +13,7 @@ using Microsoft.AspNet.Server.Kestrel.Http;
 
 namespace Kestrel
 {
-    public class ServerRequest : IHttpRequestFeature, IHttpResponseFeature, IHttpUpgradeFeature
+    public class ServerRequest : IHttpRequestFeature, IHttpResponseFeature, IHttpUpgradeFeature, IHttpConnectionFeature
     {
         Frame _frame;
         string _scheme;
@@ -31,6 +32,7 @@ namespace Kestrel
             _features.Add(typeof(IHttpRequestFeature), this);
             _features.Add(typeof(IHttpResponseFeature), this);
             _features.Add(typeof(IHttpUpgradeFeature), this);
+            _features.Add(typeof(IHttpConnectionFeature), this);
         }
 
         internal IFeatureCollection Features
@@ -222,7 +224,7 @@ namespace Kestrel
             }
         }
 
-        async Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
+        Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
         {
             _frame.StatusCode = 101;
             _frame.ReasonPhrase = "Switching Protocols";
@@ -236,7 +238,53 @@ namespace Kestrel
                 }
             }
             _frame.ProduceStart();
-            return _frame.DuplexStream;
+            return Task.FromResult<Stream>(_frame.DuplexStream);
+        }
+
+        IPAddress IHttpConnectionFeature.RemoteIpAddress
+        {
+            get
+            {
+                IPAddress ip;
+                var result = IPAddress.TryParse(_frame.RemoteIpAddress, out ip);
+                return result ? ip : IPAddress.Any;
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        IPAddress IHttpConnectionFeature.LocalIpAddress
+        {
+            get
+            {
+                IPAddress ip;
+                var result = IPAddress.TryParse(_frame.LocalIpAddress, out ip);
+                return result ? ip : IPAddress.Any;
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        int IHttpConnectionFeature.RemotePort { get; set; }
+
+        int IHttpConnectionFeature.LocalPort { get; set; }
+
+        bool IHttpConnectionFeature.IsLocal
+        {
+            get
+            {
+                IPAddress ip;
+                var result = IPAddress.TryParse(_frame.RemoteIpAddress, out ip);
+                return result ? IPAddress.IsLoopback(ip) : false;
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
         }
     }
 }

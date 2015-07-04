@@ -97,6 +97,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             get { return _responseStarted; }
         }
 
+        public string RemoteIpAddress { get; set; }
+
+        public string LocalIpAddress { get; set; }
 
         /*
         public bool LocalIntakeFin

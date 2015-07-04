@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -63,13 +65,53 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             ConnectionControl = this;
         }
 
+        private void ExtractIP()
+        {
+            // storage for binary IP addresses
+            Libuv.sockaddr peer;
+            Libuv.sockaddr local;
+            // length of sockaddr structs
+            var peerLength = Marshal.SizeOf(typeof(Libuv.sockaddr));
+            var localLength = peerLength;
+            // buffers for addresses
+            var peerString = new StringBuilder(50);
+            var localString = new StringBuilder(50);
+            // storage for errors during decoding processes
+            Exception peerException;
+            Exception localException;
+
+            // get local and peer IPs in binary form
+            _socket.Libuv.tcp_getsockname((UvTcpHandle)_socket, out local, ref localLength);
+            _socket.Libuv.tcp_getpeername((UvTcpHandle)_socket, out peer, ref peerLength);
+            // decode as IPv4 addresses
+            _socket.Libuv.ip4_name(ref local, localString, 50, out localException);
+            _socket.Libuv.ip4_name(ref peer, peerString, 50, out peerException);
+
+            if (localException != null)
+            {
+                throw localException;
+            }
+
+            if (peerException != null)
+            {
+                throw peerException;
+            }
+
+            // put IPs as part of Frame information
+            _frame.RemoteIpAddress = peerString.ToString();
+            _frame.LocalIpAddress = localString.ToString();
+        }
+
         public void Start()
         {
             KestrelTrace.Log.ConnectionStart(_connectionId);
 
             SocketInput = new SocketInput(Memory);
             SocketOutput = new SocketOutput(Thread, _socket);
+
             _frame = new Frame(this);
+            ExtractIP();
+
             _socket.ReadStart(_allocCallback, _readCallback, this);
         }
 
@@ -104,9 +146,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-
             try
             {
+                ExtractIP();
                 _frame.Consume();
             }
             catch (Exception ex)
@@ -151,6 +193,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 case ProduceEndType.ConnectionKeepAlive:
                     KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
                     _frame = new Frame(this);
+                    ExtractIP();
                     Thread.Post(
                         x => ((Frame)x).Consume(),
                         _frame);
