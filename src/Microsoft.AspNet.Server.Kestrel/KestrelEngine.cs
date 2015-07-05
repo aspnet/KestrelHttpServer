@@ -13,55 +13,60 @@ namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelEngine : IDisposable
     {
+        private readonly IDisposable nativeBinder;
 
         public KestrelEngine(ILibraryManager libraryManager)
         {
             Threads = new List<KestrelThread>();
             Listeners = new List<Listener>();
             Memory = new MemoryPool();
-            Libuv = new Libuv();
 
-            var libraryPath = default(string);
-
-            if (libraryManager != null)
+            var library = libraryManager.GetLibraryInformation("Microsoft.AspNet.Server.Kestrel");
+            var libraryPath = library.Path;
+            if (library.Type == "Project")
             {
-                var library = libraryManager.GetLibraryInformation("Microsoft.AspNet.Server.Kestrel");
-                libraryPath = library.Path;
-                if (library.Type == "Project")
-                {
-                    libraryPath = Path.GetDirectoryName(libraryPath);
-                }
-                if (Libuv.IsWindows)
-                {
-                    var architecture = IntPtr.Size == 4
-                        ? "x86"
-                        : "amd64";
-
-                    libraryPath = Path.Combine(
-                        libraryPath, 
-                        "native",
-                        "windows",
-                        architecture, 
-                        "libuv.dll");
-                }
-                else if (Libuv.IsDarwin)
-                {
-                    libraryPath = Path.Combine(
-                        libraryPath,
-                        "native",
-                        "darwin",
-                        "universal",
-                        "libuv.dylib");
-                }
-                else
-                {
-                    libraryPath = "libuv.so.1";
-                }
+                libraryPath = Path.GetDirectoryName(libraryPath);
             }
-            Libuv.Load(libraryPath);
+
+            if (Libuv.IsWindows)
+            {
+                var architectureLibraryPath = Path.Combine(
+                    libraryPath,
+                    "native",
+                    "windows",
+#if DNXCORE50
+                    // TODO: This is only temporary. Remove when CoreCLR has a release with the Is64BitProcess member
+                    IntPtr.Size == 8 ? "amd64" : "x86",
+#else
+                    Environment.Is64BitProcess ? "amd64" : "x86",
+#endif
+                    "libuv.dll");
+
+                nativeBinder = new WindowsNativeBinder(
+                    architectureLibraryPath,
+                    typeof(UnsafeNativeMethods));
+            }
+            else if (Libuv.IsDarwin)
+            {
+                var architectureLibraryPath = Path.Combine(
+                    libraryPath,
+                    "native",
+                    "darwin",
+                    "universal",
+                    "libuv.dylib"
+                );
+                nativeBinder = new UnixNativeBinder(
+                    architectureLibraryPath,
+                    typeof(UnsafeNativeMethods));
+            }
+            else
+            {
+                nativeBinder = new UnixNativeBinder(
+                    "libuv.so.1",
+                    typeof(UnsafeNativeMethods));
+            }
         }
 
-        public Libuv Libuv { get; private set; }
         public IMemoryPool Memory { get; set; }
         public List<KestrelThread> Threads { get; private set; }
         public List<Listener> Listeners { get; private set; }
@@ -86,6 +91,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                 thread.Stop(TimeSpan.FromSeconds(2.5));
             }
             Threads.Clear();
+
+            nativeBinder.Dispose();
         }
 
         public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task> application)

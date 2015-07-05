@@ -78,7 +78,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnStopRude(object obj)
         {
-            _engine.Libuv.walk(
+            UnsafeNativeMethods.uv_walk(
                 _loop,
                 (ptr, arg) =>
                 {
@@ -131,7 +131,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             var tcs = (TaskCompletionSource<int>)parameter;
             try
             {
-                _loop.Init(_engine.Libuv);
+                _loop.Init();
                 _post.Init(_loop, OnPost);
                 tcs.SetResult(0);
             }
@@ -142,7 +142,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
             try
             {
-                var ran1 = _loop.Run();
+                _loop.Run();
                 if (_stopImmediate)
                 {
                     // thread-abort form of exit, resources will be leaked
@@ -152,8 +152,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 // run the loop one more time to delete the open handles
                 _post.Reference();
                 _post.DangerousClose();
-
-                _engine.Libuv.walk(
+                UnsafeNativeMethods.uv_walk(
                     _loop,
                     (ptr, arg) =>
                     {
@@ -166,7 +165,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                     IntPtr.Zero);
 
                 // Ensure the "DangerousClose" operation completes in the event loop.
-                var ran2 = _loop.Run();
+                _loop.Run();
 
                 _loop.Dispose();
             }

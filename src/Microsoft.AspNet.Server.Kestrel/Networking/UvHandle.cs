@@ -8,17 +8,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvHandle : UvMemory
     {
-        static Libuv.uv_close_cb _destroyMemory = DestroyMemory;
+        static uv_close_cb _destroyMemory = DestroyMemory;
         Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
         unsafe protected void CreateHandle(
-            Libuv uv,
             int threadId,
             int size,
             Action<Action<IntPtr>, IntPtr> queueCloseHandle)
         {
             _queueCloseHandle = queueCloseHandle;
-            CreateMemory(uv, threadId, size);
+            CreateMemory(threadId, size);
         }
 
         protected override bool ReleaseHandle()
@@ -30,14 +29,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
                 if (Thread.CurrentThread.ManagedThreadId == ThreadId)
                 {
-                    _uv.close(memory, _destroyMemory);
+                    UnsafeNativeMethods.uv_close(memory, _destroyMemory);
                 }
                 else if (_queueCloseHandle != null)
                 {
-                    // This can be called from the finalizer.
-                    // Ensure the closure doesn't reference "this".
-                    var uv = _uv;
-                    _queueCloseHandle(memory2 => uv.close(memory2, _destroyMemory), memory);
+                    _queueCloseHandle(memory2 => UnsafeNativeMethods.uv_close(memory2, _destroyMemory), memory);
                 }
             }
             return true;
@@ -45,12 +41,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Reference()
         {
-            _uv.@ref(this);
+            Validate();
+            UnsafeNativeMethods.uv_ref(this);
         }
 
         public void Unreference()
         {
-            _uv.unref(this);
+            Validate();
+            UnsafeNativeMethods.uv_unref(this);
         }
     }
 }

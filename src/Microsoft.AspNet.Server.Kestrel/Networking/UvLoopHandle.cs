@@ -8,24 +8,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public class UvLoopHandle : UvHandle
     {
-        public void Init(Libuv uv)
+        public void Init()
         {
             CreateMemory(
-                uv, 
                 Thread.CurrentThread.ManagedThreadId,
-                uv.loop_size());
+                UnsafeNativeMethods.uv_loop_size());
 
-            _uv.loop_init(this);
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_init(this));
         }
 
-        public int Run(int mode = 0)
+        public void Run(int mode = 0)
         {
-            return _uv.run(this, mode);
+            Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_run(this, mode));
         }
 
         public void Stop()
         {
-            _uv.stop(this);
+            Validate();
+            UnsafeNativeMethods.uv_stop(this);
         }
 
         unsafe protected override bool ReleaseHandle()
@@ -36,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 // loop_close clears the gcHandlePtr
                 var gcHandlePtr = *(IntPtr*)memory;
 
-                _uv.loop_close(this);
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(this.InternalGetHandle()));
                 handle = IntPtr.Zero;
 
                 DestroyMemory(memory, gcHandlePtr);

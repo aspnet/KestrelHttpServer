@@ -9,15 +9,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvStreamHandle : UvHandle
     {
-        private readonly static Libuv.uv_connection_cb _uv_connection_cb = UvConnectionCb;
-        private readonly static Libuv.uv_alloc_cb _uv_alloc_cb = UvAllocCb;
-        private readonly static Libuv.uv_read_cb _uv_read_cb = UvReadCb;
+        private readonly static uv_connection_cb _uv_connection_cb = UvConnectionCb;
+        private readonly static uv_alloc_cb _uv_alloc_cb = UvAllocCb;
+        private readonly static uv_read_cb _uv_read_cb = UvReadCb;
 
         public Action<UvStreamHandle, int, Exception, object> _listenCallback;
         public object _listenState;
         private GCHandle _listenVitality;
 
-        public Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback;
+        public Func<UvStreamHandle, int, object, UvBuffer> _allocCallback;
         public Action<UvStreamHandle, int, Exception, object> _readCallback;
         public object _readState;
         private GCHandle _readVitality;
@@ -46,7 +46,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _listenCallback = callback;
                 _listenState = state;
                 _listenVitality = GCHandle.Alloc(this, GCHandleType.Normal);
-                _uv.listen(this, 10, _uv_connection_cb);
+                Validate();
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_listen(this, 10, _uv_connection_cb));
             }
             catch
             {
@@ -62,11 +63,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         public void Accept(UvStreamHandle handle)
         {
-            _uv.accept(this, handle);
+            Validate();
+            handle.Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_accept(this, handle));
         }
 
         public void ReadStart(
-            Func<UvStreamHandle, int, object, Libuv.uv_buf_t> allocCallback,
+            Func<UvStreamHandle, int, object, UvBuffer> allocCallback,
             Action<UvStreamHandle, int, Exception, object> readCallback,
             object state)
         {
@@ -80,7 +83,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 _readCallback = readCallback;
                 _readState = state;
                 _readVitality = GCHandle.Alloc(this, GCHandleType.Normal);
-                _uv.read_start(this, _uv_alloc_cb, _uv_read_cb);
+                Validate();
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_start(this, _uv_alloc_cb, _uv_read_cb));
             }
             catch
             {
@@ -105,21 +109,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             _readCallback = null;
             _readState = null;
             _readVitality.Free();
-            _uv.read_stop(this);
+            Validate();
+            Libuv.ThrowOnError(UnsafeNativeMethods.uv_read_stop(this));
         }
-
-        public int TryWrite(Libuv.uv_buf_t buf)
-        {
-            return _uv.try_write(this, new[] { buf }, 1);
-        }
-
 
         private static void UvConnectionCb(IntPtr handle, int status)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
 
-            Exception error;
-            status = stream.Libuv.Check(status, out error);
+            var error = Libuv.ExceptionForError(status);
 
             try
             {
@@ -132,7 +130,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         }
 
 
-        private static void UvAllocCb(IntPtr handle, int suggested_size, out Libuv.uv_buf_t buf)
+        private static void UvAllocCb(IntPtr handle, int suggested_size, out UvBuffer buf)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
             try
@@ -142,12 +140,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             catch (Exception ex)
             {
                 Trace.WriteLine("UvAllocCb " + ex.ToString());
-                buf = stream.Libuv.buf_init(IntPtr.Zero, 0);
+                buf = default(UvBuffer);
                 throw;
             }
         }
 
-        private static void UvReadCb(IntPtr handle, int nread, ref Libuv.uv_buf_t buf)
+        private static void UvReadCb(IntPtr handle, int nread, ref UvBuffer buf)
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
 
@@ -155,8 +153,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 if (nread < 0)
                 {
-                    Exception error;
-                    stream._uv.Check(nread, out error);
+                    var error = Libuv.ExceptionForError(nread);
                     stream._readCallback(stream, 0, error, stream._readState);
                 }
                 else
