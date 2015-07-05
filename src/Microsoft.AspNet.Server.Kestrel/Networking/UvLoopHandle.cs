@@ -37,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 // loop_close clears the gcHandlePtr
                 var gcHandlePtr = *(IntPtr*)memory;
 
-                Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(this));
+                Libuv.ThrowOnError(UnsafeNativeMethods.uv_loop_close(this.InternalGetHandle()));
                 handle = IntPtr.Zero;
 
                 DestroyMemory(memory, gcHandlePtr);
