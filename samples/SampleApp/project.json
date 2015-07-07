@@ -4,12 +4,8 @@
         "Kestrel": "1.0.0-*"
     },
     "frameworks": {
-        "dnx451": { },
-        "dnxcore50": {
-            "dependencies": {
-                "System.Console": "4.0.0-beta-*"
-            }
-        }
+        "dnx451": { }
+
     },
     "commands": {
         "run": "Kestrel",

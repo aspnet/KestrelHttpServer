@@ -66,7 +66,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
                 if (_reads.Any())
                 {
-                    ThreadPool.QueueUserWorkItem(_completePending, this);
+                    ThreadPool.UnsafeQueueUserWorkItem(_completePending, this);
                 }
             }
         }

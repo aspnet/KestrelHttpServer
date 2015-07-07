@@ -78,7 +78,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 // Get off the event loop before calling user code!
                 _callbackError = error;
-                ThreadPool.QueueUserWorkItem(obj =>
+                ThreadPool.UnsafeQueueUserWorkItem(obj =>
                 {
                     var req = (ThisWriteReq)obj;
                     req._callback(req._callbackError, req._state);
