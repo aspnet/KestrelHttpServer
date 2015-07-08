@@ -52,7 +52,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     ListenSocket = new UvTcpHandle();
                     ListenSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-                    ListenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
+                    ListenSocket.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
                     ListenSocket.Listen(10, _connectionCallback, this);
                     tcs.SetResult(0);
                 }
