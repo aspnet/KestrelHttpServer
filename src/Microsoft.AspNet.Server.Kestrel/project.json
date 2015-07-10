@@ -1,28 +1,28 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta5",
     "description": "ASP.NET 5 cross platform development web server.",
     "dependencies": {
-        "Microsoft.Framework.Runtime.Abstractions": "1.0.0-*"
+        "Microsoft.Framework.Runtime.Abstractions": "1.0.0-beta5"
     },
     "frameworks": {
         "dnx451": { },
         "dnxcore50": {
             "dependencies": {
-                "System.Collections": "4.0.10-beta-*",
-                "System.Diagnostics.Debug": "4.0.10-beta-*",
-                "System.Diagnostics.TraceSource": "4.0.0-beta-*",
-                "System.Diagnostics.Tracing": "4.0.20-beta-*",
-                "System.Globalization": "4.0.10-beta-*",
-                "System.IO": "4.0.10-beta-*",
-                "System.Linq": "4.0.0-beta-*",
-                "System.Net.Primitives": "4.0.10-beta-*",
-                "System.Runtime.Extensions": "4.0.10-beta-*",
-                "System.Runtime.InteropServices": "4.0.20-beta-*",
-                "System.Text.Encoding": "4.0.10-beta-*",
-                "System.Threading": "4.0.10-beta-*",
-                "System.Threading.Tasks": "4.0.10-beta-*",
-                "System.Threading.Thread": "4.0.0-beta-*",
-                "System.Threading.ThreadPool": "4.0.10-beta-*"
+                "System.Collections": "4.0.10-beta-23019",
+                "System.Diagnostics.Debug": "4.0.10-beta-23019",
+                "System.Diagnostics.TraceSource": "4.0.0-beta-23019",
+                "System.Diagnostics.Tracing": "4.0.20-beta-23019",
+                "System.Globalization": "4.0.10-beta-23019",
+                "System.IO": "4.0.10-beta-23019",
+                "System.Linq": "4.0.0-beta-23019",
+                "System.Net.Primitives": "4.0.10-beta-23019",
+                "System.Runtime.Extensions": "4.0.10-beta-23019",
+                "System.Runtime.InteropServices": "4.0.20-beta-23019",
+                "System.Text.Encoding": "4.0.10-beta-23019",
+                "System.Threading": "4.0.10-beta-23019",
+                "System.Threading.Tasks": "4.0.10-beta-23019",
+                "System.Threading.Thread": "4.0.0-beta-23019",
+                "System.Threading.ThreadPool": "4.0.10-beta-23019"
             }
         }
     },

@@ -1,9 +1,9 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta5",
     "description": "ASP.NET 5 cross platform development web server.",
     "dependencies": {
-        "Microsoft.AspNet.Hosting": "1.0.0-*",
-        "Microsoft.AspNet.Server.Kestrel": "1.0.0-*"
+        "Microsoft.AspNet.Hosting": "1.0.0-beta5",
+        "Microsoft.AspNet.Server.Kestrel": "1.0.0-beta5"
     },
     "frameworks": {
         "dnx451": {
@@ -11,7 +11,7 @@
         },
         "dnxcore50": {
             "dependencies": {
-                "System.Runtime": "4.0.20-beta-*"
+                "System.Runtime": "4.0.20-beta-23019"
             }
         }
     }
