@@ -24,7 +24,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         Mode _mode;
-        private bool _resultStarted;
         private bool _responseStarted;
         private bool _keepAlive;
 
@@ -232,6 +231,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             try
             {
                 await Application.Invoke(this);
+
+                // Trigger FireOnStarting if ProduceStart hasn't been called yet.
+                // We call it here, so it can go through our normal error handling
+                // and respond with a 500 if an OnStarting callback throws.
+                if (!_responseStarted)
+                {
+                    FireOnStarting();
+                }
             }
             catch (Exception ex)
             {
@@ -270,7 +277,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void ProduceContinue()
         {
-            if (_resultStarted) return;
+            if (_responseStarted) return;
 
             string[] expect;
             if (HttpVersion.Equals("HTTP/1.1") &&
@@ -292,11 +299,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void ProduceStart()
         {
-            if (_resultStarted) return;
-            _resultStarted = true;
-
+            // ProduceStart shouldn't no-op in the future just b/c FireOnStarting throws.
+            if (_responseStarted) return;
             FireOnStarting();
-
             _responseStarted = true;
 
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
@@ -319,7 +324,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             if (ex != null)
             {
-                if (_resultStarted)
+                if (_responseStarted)
                 {
                     // We can no longer respond with a 500, so we simply close the connection.
                     ConnectionControl.End(ProduceEndType.SocketDisconnect);
