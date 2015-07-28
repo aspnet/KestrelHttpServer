@@ -1,32 +1,32 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta6",
     "description": "ASP.NET 5 cross platform development web server.",
     "repository": {
         "type": "git",
         "url": "git://github.com/aspnet/kestrelhttpserver"
     },
     "dependencies": {
-        "Microsoft.Framework.Runtime.Abstractions": "1.0.0-*"
+        "Microsoft.Framework.Runtime.Abstractions": "1.0.0-beta6"
     },
     "frameworks": {
-        "dnx451": { },
+        "dnx451": {},
         "dnxcore50": {
             "dependencies": {
-                "System.Collections": "4.0.10-beta-*",
-                "System.Diagnostics.Debug": "4.0.10-beta-*",
-                "System.Diagnostics.TraceSource": "4.0.0-beta-*",
-                "System.Diagnostics.Tracing": "4.0.20-beta-*",
-                "System.Globalization": "4.0.10-beta-*",
-                "System.IO": "4.0.10-beta-*",
-                "System.Linq": "4.0.0-beta-*",
-                "System.Net.Primitives": "4.0.10-beta-*",
-                "System.Runtime.Extensions": "4.0.10-beta-*",
-                "System.Runtime.InteropServices": "4.0.20-beta-*",
-                "System.Text.Encoding": "4.0.10-beta-*",
-                "System.Threading": "4.0.10-beta-*",
-                "System.Threading.Tasks": "4.0.10-beta-*",
-                "System.Threading.Thread": "4.0.0-beta-*",
-                "System.Threading.ThreadPool": "4.0.10-beta-*"
+                "System.Collections": "4.0.10-beta-23109",
+                "System.Diagnostics.Debug": "4.0.10-beta-23109",
+                "System.Diagnostics.TraceSource": "4.0.0-beta-23109",
+                "System.Diagnostics.Tracing": "4.0.20-beta-23109",
+                "System.Globalization": "4.0.10-beta-23109",
+                "System.IO": "4.0.10-beta-23109",
+                "System.Linq": "4.0.0-beta-23109",
+                "System.Net.Primitives": "4.0.10-beta-23109",
+                "System.Runtime.Extensions": "4.0.10-beta-23109",
+                "System.Runtime.InteropServices": "4.0.20-beta-23109",
+                "System.Text.Encoding": "4.0.10-beta-23109",
+                "System.Threading": "4.0.10-beta-23109",
+                "System.Threading.Tasks": "4.0.10-beta-23109",
+                "System.Threading.Thread": "4.0.0-beta-23109",
+                "System.Threading.ThreadPool": "4.0.10-beta-23109"
             }
         }
     },

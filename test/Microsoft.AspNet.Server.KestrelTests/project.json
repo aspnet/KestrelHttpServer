@@ -1,16 +1,16 @@
 {
     "version": "1.0.0-*",
     "dependencies": {
-        "xunit.runner.aspnet": "2.0.0-aspnet-*",
-        "Microsoft.AspNet.Server.Kestrel": "1.0.0-*"
+        "xunit.runner.aspnet": "2.0.0-aspnet-beta6",
+        "Microsoft.AspNet.Server.Kestrel": "1.0.0-beta6"
     },
     "frameworks": {
-        "dnx451": { },
+        "dnx451": {},
         "dnxcore50": {
             "dependencies": {
-                "System.Net.Sockets": "4.0.10-beta-*",
-                "System.Runtime.Handles": "4.0.0-beta-*",
-                "System.IO": "4.0.10-beta-*"
+                "System.Net.Sockets": "4.0.10-beta-23109",
+                "System.Runtime.Handles": "4.0.0-beta-23109",
+                "System.IO": "4.0.10-beta-23109"
             }
         }
     },

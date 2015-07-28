@@ -1,21 +1,21 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta6",
     "description": "ASP.NET 5 cross platform development web server.",
     "repository": {
         "type": "git",
         "url": "git://github.com/aspnet/kestrelhttpserver"
     },
     "dependencies": {
-        "Microsoft.AspNet.Hosting": "1.0.0-*",
-        "Microsoft.AspNet.Server.Kestrel": "1.0.0-*"
+        "Microsoft.AspNet.Hosting": "1.0.0-beta6",
+        "Microsoft.AspNet.Server.Kestrel": "1.0.0-beta6"
     },
     "frameworks": {
         "dnx451": {
-            "dependencies": { }
+            "dependencies": {}
         },
         "dnxcore50": {
             "dependencies": {
-                "System.Runtime": "4.0.20-beta-*"
+                "System.Runtime": "4.0.20-beta-23109"
             }
         }
     }
