@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
@@ -231,7 +232,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                     }
                     else
                     {
-                        Trace.WriteLine("KestrelThread.DoPostWork " + ex.ToString());
+                        KestrelTrace.Log.LogError("KestrelThread.DoPostWork " + ex, ex);
                     }
                 }
             }
@@ -254,7 +255,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine("KestrelThread.DoPostCloseHandle " + ex.ToString());
+                    KestrelTrace.Log.LogError("KestrelThread.DoPostCloseHandle " + ex, ex);
                 }
             }
         }

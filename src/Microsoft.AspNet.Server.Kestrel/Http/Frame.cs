@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Framework.Logging;
 
 // ReSharper disable AccessToModifiedClosure
 
@@ -298,7 +299,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         if (error != null)
                         {
-                            Trace.WriteLine("WriteChunkPrefix" + error.ToString());
+                            KestrelTrace.Log.LogError("WriteChunkPrefix" + error, error);
                         }
                     },
                     null,
@@ -315,7 +316,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     if (error != null)
                     {
-                        Trace.WriteLine("WriteChunkSuffix" + error.ToString());
+                        KestrelTrace.Log.LogError("WriteChunkSuffix" + error, error);
                     }
                 },
                 null,
@@ -329,7 +330,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     if (error != null)
                     {
-                        Trace.WriteLine("WriteChunkedResponseSuffix" + error.ToString());
+                        KestrelTrace.Log.LogError("WriteChunkedResponseSuffix" + error, error);
                     }
                 },
                 null,
@@ -368,7 +369,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         if (error != null)
                         {
-                            Trace.WriteLine("ProduceContinue " + error.ToString());
+                            KestrelTrace.Log.LogError("ProduceContinue " + error, error);
                         }
                     },
                     null);
@@ -391,7 +392,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     if (error != null)
                     {
-                        Trace.WriteLine("ProduceStart " + error.ToString());
+                        KestrelTrace.Log.LogError("ProduceStart " + error, error);
                     }
                     ((IDisposable)x).Dispose();
                 },
