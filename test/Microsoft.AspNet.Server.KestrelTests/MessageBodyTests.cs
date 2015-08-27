@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -15,6 +16,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     public class MessageBodyTests
     {
+        public MessageBodyTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
         [Fact]
         public void Http10ConnectionClose()
         {

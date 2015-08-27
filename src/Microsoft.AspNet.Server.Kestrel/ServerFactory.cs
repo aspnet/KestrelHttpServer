@@ -21,11 +21,11 @@ namespace Microsoft.AspNet.Server.Kestrel
         private readonly ILibraryManager _libraryManager;
         private readonly IApplicationShutdown _appShutdownService;
         
-        public ServerFactory(ILibraryManager libraryManager, IApplicationShutdown appShutdownService, ILogger<KestrelEngine> logger)
+        public ServerFactory(ILibraryManager libraryManager, IApplicationShutdown appShutdownService, ILoggerFactory loggerFactory)
         {
             _libraryManager = libraryManager;
             _appShutdownService = appShutdownService;
-            KestrelTrace.Log = new KestrelTrace(logger);
+            KestrelTrace.Initialize(loggerFactory.CreateLogger(nameof(Kestrel)));
         }
 
         public IServerInformation Initialize(IConfiguration configuration)

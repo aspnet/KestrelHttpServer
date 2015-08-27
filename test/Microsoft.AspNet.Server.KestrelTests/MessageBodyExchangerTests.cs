@@ -4,6 +4,7 @@
 using Microsoft.AspNet.Server.Kestrel.Http;
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -13,6 +14,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     public class MessageBodyExchangerTests
     {
+        public MessageBodyExchangerTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
 	    [Fact]
         public async Task CallingReadAsyncBeforeTransfer()
         {

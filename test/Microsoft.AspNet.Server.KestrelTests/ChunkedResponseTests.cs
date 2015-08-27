@@ -4,12 +4,18 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
     public class ChunkedResponseTests
     {
+        public ChunkedResponseTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
         [Fact]
         public async Task ResponsesAreChunkedAutomatically()
         {
