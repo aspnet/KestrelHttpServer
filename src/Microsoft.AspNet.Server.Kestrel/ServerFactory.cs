@@ -8,6 +8,7 @@ using Microsoft.AspNet.Hosting.Server;
 using Microsoft.AspNet.Http.Features;
 using Microsoft.Dnx.Runtime;
 using Microsoft.Framework.Configuration;
+using Microsoft.Framework.Logging;
 using Constants = Microsoft.AspNet.Server.Kestrel.Infrastructure.Constants;
 
 namespace Microsoft.AspNet.Server.Kestrel
@@ -19,15 +20,18 @@ namespace Microsoft.AspNet.Server.Kestrel
     {
         private readonly ILibraryManager _libraryManager;
         private readonly IApplicationShutdown _appShutdownService;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public ServerFactory(ILibraryManager libraryManager, IApplicationShutdown appShutdownService)
+        public ServerFactory(ILibraryManager libraryManager, IApplicationShutdown appShutdownService, ILoggerFactory loggerFactory)
         {
             _libraryManager = libraryManager;
             _appShutdownService = appShutdownService;
+            _loggerFactory = loggerFactory;
         }
 
         public IServerInformation Initialize(IConfiguration configuration)
         {
+            KestrelTrace.Initialize(_loggerFactory.CreateLogger("Microsoft.AspNet.Server.Kestrel"));
             var information = new ServerInformation();
             information.Initialize(configuration);
             return information;

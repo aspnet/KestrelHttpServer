@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System.Diagnostics;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -75,18 +76,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 if (errorDone && error != null)
                 {
-                    Trace.WriteLine("Connection.OnRead " + error.ToString());
+                    KestrelTrace.Log.LogError("Connection.OnRead " + error, error);
                 }
             }
-
-
+            
             try
             {
                 _frame.Consume();
             }
             catch (Exception ex)
             {
-                Trace.WriteLine("Connection._frame.Consume " + ex.ToString());
+                KestrelTrace.Log.LogError("Connection._frame.Consume " + ex, ex);
             }
         }
 

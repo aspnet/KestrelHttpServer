@@ -1,13 +1,18 @@
 ﻿using Microsoft.AspNet.Server.Kestrel.Http;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Microsoft.AspNet.Server.Kestrel;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
     public class FrameRequestHeadersTests
     {
+        public FrameRequestHeadersTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
         [Fact]
         public void InitialDictionaryIsEmpty()
         {

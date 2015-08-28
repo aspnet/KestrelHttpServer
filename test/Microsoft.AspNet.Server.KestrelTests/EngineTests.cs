@@ -20,6 +20,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     public class EngineTests
     {
+        public EngineTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
         private async Task App(Frame frame)
         {
             frame.ResponseHeaders.Clear();

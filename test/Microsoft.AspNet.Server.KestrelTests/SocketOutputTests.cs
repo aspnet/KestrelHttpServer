@@ -14,6 +14,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
 {
     public class SocketOutputTests
     {
+        public SocketOutputTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
         [Fact]
         public void CanWrite1MB()
         {

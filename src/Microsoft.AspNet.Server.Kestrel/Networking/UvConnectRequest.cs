@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
@@ -63,7 +64,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
             catch (Exception ex)
             {
-                Trace.WriteLine("UvConnectRequest " + ex.ToString());
+                KestrelTrace.Log.LogError("UvConnectRequest " + ex, ex);
             }
         }
     }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNet.Server.Kestrel;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Xunit;
 
@@ -10,6 +11,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
 {
     public class FrameResponseHeadersTests
     {
+        public FrameResponseHeadersTests()
+        {
+            KestrelTrace.Initialize(new TestLogger());
+        }
+
         [Fact]
         public void InitialDictionaryContainsServerAndDate()
         {

@@ -5,6 +5,7 @@ using Microsoft.AspNet.Server.Kestrel.Networking;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -20,7 +21,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             if (error != null)
             {
-                Trace.WriteLine("Listener.ConnectionCallback " + error.ToString());
+                KestrelTrace.Log.LogError("Listener.ConnectionCallback " + error, error);
             }
             else
             {

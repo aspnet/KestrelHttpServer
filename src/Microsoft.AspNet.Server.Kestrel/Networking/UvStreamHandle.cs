@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
@@ -127,7 +128,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
             catch (Exception ex)
             {
-                Trace.WriteLine("UvConnectionCb " + ex.ToString());
+                KestrelTrace.Log.LogError("UvConnectionCb " + ex, ex);
             }
         }
 
@@ -141,7 +142,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
             catch (Exception ex)
             {
-                Trace.WriteLine("UvAllocCb " + ex.ToString());
+                KestrelTrace.Log.LogError("UvAllocCb " + ex, ex);
                 buf = stream.Libuv.buf_init(IntPtr.Zero, 0);
                 throw;
             }
@@ -166,7 +167,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
             catch (Exception ex)
             {
-                Trace.WriteLine("UbReadCb " + ex.ToString());
+                KestrelTrace.Log.LogError("UbReadCb " + ex, ex);
             }
         }
 

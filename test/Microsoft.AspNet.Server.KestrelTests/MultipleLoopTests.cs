@@ -16,6 +16,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         Libuv _uv;
         public MultipleLoopTests()
         {
+            KestrelTrace.Initialize(new TestLogger());
             var engine = new KestrelEngine(LibraryManager, new ShutdownNotImplemented());
             _uv = engine.Libuv;
         }

@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -76,7 +77,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                         }
                                         catch (Exception ex)
                                         {
-                                            Trace.WriteLine("DispatchPipe.Accept " + ex.Message);
+                                            KestrelTrace.Log.LogError("DispatchPipe.Accept " + ex.Message, ex);
                                             acceptSocket.Dispose();
                                             return;
                                         }
