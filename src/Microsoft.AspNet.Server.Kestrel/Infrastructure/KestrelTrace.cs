@@ -38,57 +38,57 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public void ConnectionStart(long connectionId)
         {
-            this.LogDebug(13, $"{nameof(ConnectionStart)} -> Id: {connectionId}");
+            _logger.LogDebug(13, $"{nameof(ConnectionStart)} -> Id: {connectionId}");
         }
 
         public void ConnectionStop(long connectionId)
         {
-            this.LogDebug(14, $"{nameof(ConnectionStop)} -> Id: {connectionId}");
+            _logger.LogDebug(14, $"{nameof(ConnectionStop)} -> Id: {connectionId}");
         }
 
         internal void ConnectionRead(long connectionId, int status)
         {
-            this.LogDebug(4, $"{nameof(ConnectionRead)} -> Id: {connectionId}, Status: {status}");
+            _logger.LogDebug(4, $"{nameof(ConnectionRead)} -> Id: {connectionId}, Status: {status}");
         }
 
         internal void ConnectionPause(long connectionId)
         {
-            this.LogDebug(5, $"{nameof(ConnectionPause)} -> Id: {connectionId}");
+            _logger.LogDebug(5, $"{nameof(ConnectionPause)} -> Id: {connectionId}");
         }
 
         internal void ConnectionResume(long connectionId)
         {
-            this.LogDebug(6, $"{nameof(ConnectionResume)} -> Id: {connectionId}");
+            _logger.LogDebug(6, $"{nameof(ConnectionResume)} -> Id: {connectionId}");
         }
 
         internal void ConnectionReadFin(long connectionId)
         {
-            this.LogDebug(7, $"{nameof(ConnectionReadFin)} -> Id: {connectionId}");
+            _logger.LogDebug(7, $"{nameof(ConnectionReadFin)} -> Id: {connectionId}");
         }
 
         internal void ConnectionWriteFin(long connectionId, int step)
         {
-            this.LogDebug(8, $"{nameof(ConnectionWriteFin)} -> Id: {connectionId}, Step: {step}");
+            _logger.LogDebug(8, $"{nameof(ConnectionWriteFin)} -> Id: {connectionId}, Step: {step}");
         }
 
         internal void ConnectionKeepAlive(long connectionId)
         {
-            this.LogDebug(9, $"{nameof(ConnectionKeepAlive)} -> Id: {connectionId}");
+            _logger.LogDebug(9, $"{nameof(ConnectionKeepAlive)} -> Id: {connectionId}");
         }
 
         internal void ConnectionDisconnect(long connectionId)
         {
-            this.LogDebug(10, $"{nameof(ConnectionDisconnect)} -> Id: {connectionId}");
+            _logger.LogDebug(10, $"{nameof(ConnectionDisconnect)} -> Id: {connectionId}");
         }
 
         internal void ConnectionWrite(long connectionId, int count)
         {
-            this.LogDebug(11, $"{nameof(ConnectionWrite)} -> Id: {connectionId}, Count: {count}");
+            _logger.LogDebug(11, $"{nameof(ConnectionWrite)} -> Id: {connectionId}, Count: {count}");
         }
 
         internal void ConnectionWriteCallback(long connectionId, int status)
         {
-            this.LogDebug(12, $"{nameof(ConnectionWriteCallback)} -> Id: {connectionId}, Status: {status}");
+            _logger.LogDebug(12, $"{nameof(ConnectionWriteCallback)} -> Id: {connectionId}, Status: {status}");
         }
 
         void ILogger.Log(LogLevel logLevel, int eventId, object state, Exception exception, Func<object, Exception, string> formatter)
