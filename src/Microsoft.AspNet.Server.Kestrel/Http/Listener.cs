@@ -34,11 +34,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 try
                 {
+                    Log.LogInformation($"Start listening {host}:{port}");
                     ListenSocket = CreateListenSocket(host, port);
                     tcs.SetResult(0);
                 }
                 catch (Exception ex)
                 {
+                    Log.LogError("Cannot start listening", ex);
                     tcs.SetException(ex);
                 }
             }, null);

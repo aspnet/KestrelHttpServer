@@ -15,6 +15,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelEngine : IDisposable
     {
+        private readonly ILogger _log;
         private readonly ServiceContext _serviceContext;
 
         public KestrelEngine(ILibraryManager libraryManager, IApplicationShutdown appShutdownService, ILogger logger)
@@ -71,6 +72,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private KestrelEngine(IApplicationShutdown appShutdownService, ILogger logger)
         {
+            _log = logger;
             _serviceContext = new ServiceContext
             {
                 AppShutdown = appShutdownService,
@@ -86,6 +88,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public void Start(int count)
         {
+            _log.LogInformation($"Start Kestrel server. Thread count: {count}");
             for (var index = 0; index != count; ++index)
             {
                 Threads.Add(new KestrelThread(this, _serviceContext));
