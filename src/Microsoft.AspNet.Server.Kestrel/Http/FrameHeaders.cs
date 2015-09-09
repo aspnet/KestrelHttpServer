@@ -20,7 +20,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             get
             {
                 return GetValueFast(key);
-            }
+        }
 
             set
             {

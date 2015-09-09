@@ -18,6 +18,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             SocketInput = context.SocketInput;
             SocketOutput = context.SocketOutput;
             ConnectionControl = context.ConnectionControl;
+            DateHeaderValueManager = context.DateHeaderValueManager;
         }
 
         public SocketInput SocketInput { get; set; }

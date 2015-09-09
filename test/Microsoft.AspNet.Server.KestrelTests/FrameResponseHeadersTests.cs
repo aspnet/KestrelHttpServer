@@ -14,7 +14,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public void InitialDictionaryContainsServerAndDate()
         {
-            IDictionary<string, StringValues> headers = new FrameResponseHeaders();
+            var dateHeaderValue = DateTime.UtcNow.ToString("r");
+            IDictionary<string, StringValues> headers = new FrameResponseHeaders(dateHeaderValue);
 
             Assert.Equal(2, headers.Count);
 
@@ -36,7 +37,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public void InitialEntriesCanBeCleared()
         {
-            IDictionary<string, StringValues> headers = new FrameResponseHeaders();
+            var dateHeaderValue = DateTime.UtcNow.ToString("r");
+            IDictionary<string, StringValues> headers = new FrameResponseHeaders(dateHeaderValue);
 
             headers.Clear();
 
