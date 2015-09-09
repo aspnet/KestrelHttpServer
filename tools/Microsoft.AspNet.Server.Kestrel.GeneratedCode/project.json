@@ -1,0 +1,26 @@
+﻿{
+    "version": "1.0.0-*",
+
+    "dependencies": {
+        "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*"
+    },
+
+    "commands": {
+        "run": "Microsoft.AspNet.Server.Kestrel.GeneratedCode"
+    },
+
+    "frameworks": {
+        "dnx451": {
+            "frameworkAssemblies": {
+                "System.Runtime": "",
+                "System.Text.Encoding": "",
+                "System.Threading.Tasks": ""
+            }
+        },
+        "dnxcore50": {
+            "dependencies": {
+                "System.Console": "4.0.0-beta-*"
+            }
+        }
+    }
+}

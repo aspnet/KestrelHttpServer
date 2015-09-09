@@ -8,14 +8,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.Framework.Primitives;
 
-namespace Kestrel
+namespace Microsoft.AspNet.Server.Kestrel
 {
     public class ServerRequest : IHttpRequestFeature, IHttpResponseFeature, IHttpUpgradeFeature
     {
-        Frame _frame;
-        string _scheme;
-        string _pathBase;
+        private Frame _frame;
+        private string _scheme;
+        private string _pathBase;
         private FeatureCollection _features;
 
         public ServerRequest(Frame frame)
@@ -23,13 +24,6 @@ namespace Kestrel
             _frame = frame;
             _features = new FeatureCollection();
             PopulateFeatures();
-        }
-
-        private void PopulateFeatures()
-        {
-            _features.Add(typeof(IHttpRequestFeature), this);
-            _features.Add(typeof(IHttpResponseFeature), this);
-            _features.Add(typeof(IHttpUpgradeFeature), this);
         }
 
         internal IFeatureCollection Features
@@ -115,7 +109,7 @@ namespace Kestrel
             }
         }
 
-        IDictionary<string, string[]> IHttpRequestFeature.Headers
+        IDictionary<string, StringValues> IHttpRequestFeature.Headers
         {
             get
             {
@@ -167,7 +161,7 @@ namespace Kestrel
             }
         }
 
-        IDictionary<string, string[]> IHttpResponseFeature.Headers
+        IDictionary<string, StringValues> IHttpResponseFeature.Headers
         {
             get
             {
@@ -198,6 +192,26 @@ namespace Kestrel
             get { return _frame.HasResponseStarted; }
         }
 
+        bool IHttpUpgradeFeature.IsUpgradableRequest
+        {
+            get
+            {
+                StringValues values;
+                if (_frame.RequestHeaders.TryGetValue("Connection", out values))
+                {
+                    return values.Any(value => value.IndexOf("upgrade", StringComparison.OrdinalIgnoreCase) != -1);
+                }
+                return false;
+            }
+        }
+
+        private void PopulateFeatures()
+        {
+            _features[typeof(IHttpRequestFeature)] = this;
+            _features[typeof(IHttpResponseFeature)] = this;
+            _features[typeof(IHttpUpgradeFeature)] = this;
+        }
+
         void IHttpResponseFeature.OnStarting(Func<object, Task> callback, object state)
         {
             _frame.OnStarting(callback, state);
@@ -208,34 +222,21 @@ namespace Kestrel
             _frame.OnCompleted(callback, state);
         }
 
-        bool IHttpUpgradeFeature.IsUpgradableRequest
-        {
-            get
-            {
-                string[] values;
-                if (_frame.RequestHeaders.TryGetValue("Connection", out values))
-                {
-                    return values.Any(value => value.IndexOf("upgrade", StringComparison.OrdinalIgnoreCase) != -1);
-                }
-                return false;
-            }
-        }
-
-        async Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
+        Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
         {
             _frame.StatusCode = 101;
             _frame.ReasonPhrase = "Switching Protocols";
-            _frame.ResponseHeaders["Connection"] = new string[] { "Upgrade" };
+            _frame.ResponseHeaders["Connection"] = "Upgrade";
             if (!_frame.ResponseHeaders.ContainsKey("Upgrade"))
             {
-                string[] values;
+                StringValues values;
                 if (_frame.RequestHeaders.TryGetValue("Upgrade", out values))
                 {
                     _frame.ResponseHeaders["Upgrade"] = values;
                 }
             }
             _frame.ProduceStart();
-            return _frame.DuplexStream;
+            return Task.FromResult(_frame.DuplexStream);
         }
     }
 }

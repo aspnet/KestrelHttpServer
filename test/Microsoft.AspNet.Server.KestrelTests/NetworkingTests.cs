@@ -1,15 +1,15 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNet.Server.Kestrel;
-using Microsoft.AspNet.Server.Kestrel.Networking;
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Infrastructure;
 using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel;
+using Microsoft.AspNet.Server.Kestrel.Networking;
+using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -45,7 +45,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         }
 
         [Fact]
-        public async Task LoopCanBeInitAndClose()
+        public void LoopCanBeInitAndClose()
         {
             var loop = new UvLoopHandle();
             loop.Init(_uv);
@@ -54,7 +54,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         }
 
         [Fact]
-        public async Task AsyncCanBeSent()
+        public void AsyncCanBeSent()
         {
             var loop = new UvLoopHandle();
             loop.Init(_uv);
@@ -72,7 +72,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         }
 
         [Fact]
-        public async Task SocketCanBeInitAndClose()
+        public void SocketCanBeInitAndClose()
         {
             var loop = new UvLoopHandle();
             loop.Init(_uv);

@@ -3,43 +3,36 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.AspNet.Hosting.Server;
 using Microsoft.Framework.Configuration;
 
-namespace Kestrel
+namespace Microsoft.AspNet.Server.Kestrel
 {
-    public class ServerInformation : IServerInformation
+    public class KestrelServerInformation : IKestrelServerInformation
     {
-        public ServerInformation()
+        public KestrelServerInformation()
         {
             Addresses = new List<ServerAddress>();
         }
 
+        public IList<ServerAddress> Addresses { get; private set; }
+
+        public int ThreadCount { get; set; }
+
         public void Initialize(IConfiguration configuration)
         {
-            string urls;
-            if (!configuration.TryGet("server.urls", out urls))
+            var urls = configuration["server.urls"];
+            if (string.IsNullOrEmpty(urls))
             {
                 urls = "http://+:5000/";
             }
             foreach (var url in urls.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var address = ServerAddress.FromUrl(url);
-                if(address != null)
+                if (address != null)
                 {
                     Addresses.Add(address);
                 }
             }
         }
-
-        public string Name
-        {
-            get
-            {
-                return "Kestrel";
-            }
-        }
-
-        public IList<ServerAddress> Addresses { get; private set; }
     }
 }

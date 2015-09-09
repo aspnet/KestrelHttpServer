@@ -4,36 +4,20 @@
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using System;
 using System.Diagnostics;
-using System.Net;
 using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     /// <summary>
-    /// Summary description for Accept
+    /// Base class for listeners in Kestrel. Listens for incoming connections
     /// </summary>
-    public class Listener : ListenerContext, IDisposable
+    public abstract class Listener : ListenerContext, IDisposable
     {
-        private static readonly Action<UvStreamHandle, int, Exception, object> _connectionCallback = ConnectionCallback;
-
-        UvTcpHandle ListenSocket { get; set; }
-
-        private static void ConnectionCallback(UvStreamHandle stream, int status, Exception error, object state)
+        protected Listener(ServiceContext serviceContext) : base(serviceContext)
         {
-            if (error != null)
-            {
-                Trace.WriteLine("Listener.ConnectionCallback " + error.ToString());
-            }
-            else
-            {
-                ((Listener)state).OnConnection(stream, status);
-            }
         }
 
-        public Listener(IMemoryPool memory)
-        {
-            Memory = memory;
-        }
+        protected UvStreamHandle ListenSocket { get; private set; }
 
         public Task StartAsync(
             string scheme,
@@ -50,10 +34,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 try
                 {
-                    ListenSocket = new UvTcpHandle();
-                    ListenSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-                    ListenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
-                    ListenSocket.Listen(10, _connectionCallback, this);
+                    ListenSocket = CreateListenSocket(host, port);
                     tcs.SetResult(0);
                 }
                 catch (Exception ex)
@@ -64,13 +45,33 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return tcs.Task;
         }
 
-        private void OnConnection(UvStreamHandle listenSocket, int status)
-        {
-            var acceptSocket = new UvTcpHandle();
-            acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-            listenSocket.Accept(acceptSocket);
+        /// <summary>
+        /// Creates the socket used to listen for incoming connections
+        /// </summary>
+        protected abstract UvStreamHandle CreateListenSocket(string host, int port);
 
-            var connection = new Connection(this, acceptSocket);
+        protected static void ConnectionCallback(UvStreamHandle stream, int status, Exception error, object state)
+        {
+            if (error != null)
+            {
+                Trace.WriteLine("Listener.ConnectionCallback " + error.ToString());
+            }
+            else
+            {
+                ((Listener)state).OnConnection(stream, status);
+            }
+        }
+
+        /// <summary>
+        /// Handles an incoming connection
+        /// </summary>
+        /// <param name="listenSocket">Socket being used to listen on</param>
+        /// <param name="status">Connection status</param>
+        protected abstract void OnConnection(UvStreamHandle listenSocket, int status);
+
+        protected virtual void DispatchConnection(UvStreamHandle socket)
+        {
+            var connection = new Connection(this, socket);
             connection.Start();
         }
 

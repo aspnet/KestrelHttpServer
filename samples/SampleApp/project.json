@@ -1,7 +1,7 @@
 {
     "version": "1.0.0-*",
     "dependencies": {
-        "Kestrel": "1.0.0-*"
+        "Microsoft.AspNet.Server.Kestrel": "1.0.0-*"
     },
     "frameworks": {
         "dnx451": { },
@@ -12,7 +12,9 @@
         }
     },
     "commands": {
-        "run": "Kestrel",
+        "run": "Microsoft.AspNet.Server.Kestrel",
+        "run-socket": "Microsoft.AspNet.Server.Kestrel --server.urls http://unix:/tmp/kestrel-test.sock",
+        "kestrel": "Microsoft.AspNet.Server.Kestrel",
         "web": "Microsoft.AspNet.Hosting"
     }
 }

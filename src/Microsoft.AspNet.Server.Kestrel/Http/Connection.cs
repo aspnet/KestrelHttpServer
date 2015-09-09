@@ -2,8 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNet.Server.Kestrel.Networking;
 using System.Diagnostics;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
+using Microsoft.AspNet.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -12,19 +13,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly Action<UvStreamHandle, int, Exception, object> _readCallback = ReadCallback;
         private static readonly Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback = AllocCallback;
 
-        private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
-        {
-            return ((Connection)state).OnAlloc(handle, suggestedSize);
-        }
-
-        private static void ReadCallback(UvStreamHandle handle, int nread, Exception error, object state)
-        {
-            ((Connection)state).OnRead(handle, nread, error);
-        }
-
         private readonly UvStreamHandle _socket;
         private Frame _frame;
-        long _connectionId;
+        private long _connectionId = 0;
+
+        private readonly object _stateLock = new object();
+        private ConnectionState _connectionState;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -42,6 +36,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket.ReadStart(_allocCallback, _readCallback, this);
         }
 
+        private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
+        {
+            return ((Connection)state).OnAlloc(handle, suggestedSize);
+        }
+
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
             return handle.Libuv.buf_init(
@@ -49,12 +48,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 2048);
         }
 
+        private static void ReadCallback(UvStreamHandle handle, int nread, Exception error, object state)
+        {
+            ((Connection)state).OnRead(handle, nread, error);
+        }
+
         private void OnRead(UvStreamHandle handle, int status, Exception error)
         {
             SocketInput.Unpin(status);
 
             var normalRead = error == null && status > 0;
-            var normalDone = status == 0 || status == -4077 || status == -4095;
+            var normalDone = status == 0 || status == Constants.ECONNRESET || status == Constants.EOF;
             var errorDone = !(normalDone || normalRead);
 
             if (normalRead)
@@ -98,43 +102,70 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         void IConnectionControl.End(ProduceEndType endType)
         {
-            switch (endType)
+            lock (_stateLock)
             {
-                case ProduceEndType.SocketShutdownSend:
-                    KestrelTrace.Log.ConnectionWriteFin(_connectionId, 0);
-                    Thread.Post(
-                        x =>
+                switch (endType)
+                {
+                    case ProduceEndType.SocketShutdownSend:
+                        if (_connectionState != ConnectionState.Open)
                         {
-                            KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
-                            var self = (Connection)x;
-                            var shutdown = new UvShutdownReq();
-                            shutdown.Init(self.Thread.Loop);
-                            shutdown.Shutdown(self._socket, (req, status, state) =>
+                            return;
+                        }
+                        _connectionState = ConnectionState.Shutdown;
+
+                        KestrelTrace.Log.ConnectionWriteFin(_connectionId, 0);
+                        Thread.Post(
+                            state =>
                             {
                                 KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
-                                req.Dispose();
-                            }, null);
-                        },
-                        this);
-                    break;
-                case ProduceEndType.ConnectionKeepAlive:
-                    KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
-                    _frame = new Frame(this);
-                    Thread.Post(
-                        x => ((Frame)x).Consume(),
-                        _frame);
-                    break;
-                case ProduceEndType.SocketDisconnect:
-                    KestrelTrace.Log.ConnectionDisconnect(_connectionId);
-                    Thread.Post(
-                        x =>
+                                var self = (Connection)state;
+                                var shutdown = new UvShutdownReq();
+                                shutdown.Init(self.Thread.Loop);
+                                shutdown.Shutdown(self._socket, (req, status, _) =>
+                                {
+                                    KestrelTrace.Log.ConnectionWriteFin(_connectionId, 1);
+                                    req.Dispose();
+                                }, null);
+                            },
+                            this);
+                        break;
+                    case ProduceEndType.ConnectionKeepAlive:
+                        if (_connectionState != ConnectionState.Open)
                         {
-                            KestrelTrace.Log.ConnectionStop(_connectionId);
-                            ((UvHandle)x).Dispose();
-                        },
-                        _socket);
-                    break;
+                            return;
+                        }
+
+                        KestrelTrace.Log.ConnectionKeepAlive(_connectionId);
+                        _frame = new Frame(this);
+                        Thread.Post(
+                            state => ((Frame)state).Consume(),
+                            _frame);
+                        break;
+                    case ProduceEndType.SocketDisconnect:
+                        if (_connectionState == ConnectionState.Disconnected)
+                        {
+                            return;
+                        }
+                        _connectionState = ConnectionState.Disconnected;
+
+                        KestrelTrace.Log.ConnectionDisconnect(_connectionId);
+                        Thread.Post(
+                            state =>
+                            {
+                                KestrelTrace.Log.ConnectionStop(_connectionId);
+                                ((UvHandle)state).Dispose();
+                            },
+                            _socket);
+                        break;
+                }
             }
+        }
+
+        private enum ConnectionState
+        {
+            Open,
+            Shutdown,
+            Disconnected
         }
     }
 }

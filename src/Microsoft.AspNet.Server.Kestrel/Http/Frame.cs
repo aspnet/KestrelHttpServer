@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Framework.Primitives;
 
 // ReSharper disable AccessToModifiedClosure
 
@@ -15,36 +16,29 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public class Frame : FrameContext, IFrameControl
     {
-        enum Mode
-        {
-            StartLine,
-            MessageHeader,
-            MessageBody,
-            Terminated,
-        }
+        private static Encoding _ascii = Encoding.ASCII;
+        private static readonly ArraySegment<byte> _endChunkBytes = CreateAsciiByteArraySegment("\r\n");
+        private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
+        private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
 
-        Mode _mode;
-        private bool _resultStarted;
+        private Mode _mode;
         private bool _responseStarted;
         private bool _keepAlive;
+        private bool _autoChunk;
+        private readonly FrameRequestHeaders _requestHeaders = new FrameRequestHeaders();
+        private readonly FrameResponseHeaders _responseHeaders = new FrameResponseHeaders();
 
-        /*
-        //IDictionary<string, object> _environment;
-
-        CancellationTokenSource _cts = new CancellationTokenSource();
-        */
-
-        List<KeyValuePair<Func<object, Task>, object>> _onStarting;
-        List<KeyValuePair<Func<object, Task>, object>> _onCompleted;
-        object _onStartingSync = new Object();
-        object _onCompletedSync = new Object();
+        private List<KeyValuePair<Func<object, Task>, object>> _onStarting;
+        private List<KeyValuePair<Func<object, Task>, object>> _onCompleted;
+        private object _onStartingSync = new Object();
+        private object _onCompletedSync = new Object();
 
         public Frame(ConnectionContext context) : base(context)
         {
             FrameControl = this;
             StatusCode = 200;
-            RequestHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-            ResponseHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+            RequestHeaders = _requestHeaders;
+            ResponseHeaders = _responseHeaders;
         }
 
         public string Method { get; set; }
@@ -52,13 +46,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public string Path { get; set; }
         public string QueryString { get; set; }
         public string HttpVersion { get; set; }
-        public IDictionary<string, string[]> RequestHeaders { get; set; }
+        public IDictionary<string, StringValues> RequestHeaders { get; set; }
         public MessageBody MessageBody { get; set; }
         public Stream RequestBody { get; set; }
 
         public int StatusCode { get; set; }
         public string ReasonPhrase { get; set; }
-        public IDictionary<string, string[]> ResponseHeaders { get; set; }
+        public IDictionary<string, StringValues> ResponseHeaders { get; set; }
         public Stream ResponseBody { get; set; }
 
         public Stream DuplexStream { get; set; }
@@ -68,18 +62,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             get { return _responseStarted; }
         }
 
-
-        /*
-        public bool LocalIntakeFin
-        {
-            get
-            {
-                return _mode == Mode.MessageBody
-                    ? _messageBody.LocalIntakeFin
-                    : _mode == Mode.Terminated;
-            }
-        }
-        */
         public void Consume()
         {
             var input = SocketInput;
@@ -91,7 +73,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         if (input.Buffer.Count == 0 && input.RemoteIntakeFin)
                         {
                             _mode = Mode.Terminated;
-                            return;
+                            break;
                         }
 
                         if (!TakeStartLine(input))
@@ -99,6 +81,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             if (input.RemoteIntakeFin)
                             {
                                 _mode = Mode.Terminated;
+                                break;
                             }
                             return;
                         }
@@ -110,7 +93,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         if (input.Buffer.Count == 0 && input.RemoteIntakeFin)
                         {
                             _mode = Mode.Terminated;
-                            return;
+                            break;
                         }
 
                         var endOfHeaders = false;
@@ -121,12 +104,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 if (input.RemoteIntakeFin)
                                 {
                                     _mode = Mode.Terminated;
+                                    break;
                                 }
                                 return;
                             }
                         }
 
-                        //var resumeBody = HandleExpectContinue(callback);
+                        if (_mode == Mode.Terminated)
+                        {
+                            // If we broke out of the above while loop in the Terminated
+                            // state, we don't want to transition to the MessageBody state.
+                            break;
+                        }
+
                         _mode = Mode.MessageBody;
                         Execute();
                         break;
@@ -142,6 +132,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         return;
 
                     case Mode.Terminated:
+                        ConnectionControl.End(ProduceEndType.SocketShutdownSend);
+                        ConnectionControl.End(ProduceEndType.SocketDisconnect);
                         return;
                 }
             }
@@ -231,7 +223,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Exception error = null;
             try
             {
-                await Application.Invoke(this);
+                await Application.Invoke(this).ConfigureAwait(false);
+
+                // Trigger FireOnStarting if ProduceStart hasn't been called yet.
+                // We call it here, so it can go through our normal error handling
+                // and respond with a 500 if an OnStarting callback throws.
+                if (!_responseStarted)
+                {
+                    FireOnStarting();
+                }
             }
             catch (Exception ex)
             {
@@ -244,23 +244,78 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-
         public void Write(ArraySegment<byte> data, Action<Exception, object> callback, object state)
         {
-            ProduceStart();
-            SocketOutput.Write(data, callback, state);
+            ProduceStart(immediate: false);
+
+            if (_autoChunk)
+            {
+                if (data.Count == 0)
+                {
+                    callback(null, state);
+                    return;
+                }
+
+                WriteChunkPrefix(data.Count);
+            }
+
+            SocketOutput.Write(data, callback, state, immediate: !_autoChunk);
+
+            if (_autoChunk)
+            {
+                WriteChunkSuffix();
+            }
+        }
+
+        private void WriteChunkPrefix(int numOctets)
+        {
+            var numOctetBytes = CreateAsciiByteArraySegment(numOctets.ToString("x") + "\r\n");
+
+            SocketOutput.Write(numOctetBytes,
+                    (error, _) =>
+                    {
+                        if (error != null)
+                        {
+                            Trace.WriteLine("WriteChunkPrefix" + error.ToString());
+                        }
+                    },
+                    null,
+                    immediate: false);
+        }
+
+        private void WriteChunkSuffix()
+        {
+            SocketOutput.Write(_endChunkBytes,
+                (error, _) =>
+                {
+                    if (error != null)
+                    {
+                        Trace.WriteLine("WriteChunkSuffix" + error.ToString());
+                    }
+                },
+                null,
+                immediate: true);
+        }
+
+        private void WriteChunkedResponseSuffix()
+        {
+            SocketOutput.Write(_endChunkedResponseBytes,
+                (error, _) =>
+                {
+                    if (error != null)
+                    {
+                        Trace.WriteLine("WriteChunkedResponseSuffix" + error.ToString());
+                    }
+                },
+                null,
+                immediate: true);
         }
 
         public void Upgrade(IDictionary<string, object> options, Func<object, Task> callback)
         {
             _keepAlive = false;
             ProduceStart();
-
-            // NOTE: needs changes
-            //_upgradeTask = callback(_callContext);
         }
-
-        private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
         {
@@ -270,9 +325,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void ProduceContinue()
         {
-            if (_resultStarted) return;
+            if (_responseStarted) return;
 
-            string[] expect;
+            StringValues expect;
             if (HttpVersion.Equals("HTTP/1.1") &&
                 RequestHeaders.TryGetValue("Expect", out expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
@@ -290,34 +345,62 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public void ProduceStart()
+        public void ProduceStart(bool immediate = true, bool appCompleted = false)
         {
-            if (_resultStarted) return;
-            _resultStarted = true;
-
+            // ProduceStart shouldn't no-op in the future just b/c FireOnStarting throws.
+            if (_responseStarted) return;
             FireOnStarting();
-
             _responseStarted = true;
 
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
 
-            var responseHeader = CreateResponseHeader(status, ResponseHeaders);
+            var responseHeader = CreateResponseHeader(status, appCompleted, ResponseHeaders);
             SocketOutput.Write(
                 responseHeader.Item1,
-                (error, x) =>
+                (error, state) =>
                 {
                     if (error != null)
                     {
                         Trace.WriteLine("ProduceStart " + error.ToString());
                     }
-                    ((IDisposable)x).Dispose();
+                    ((IDisposable)state).Dispose();
                 },
-                responseHeader.Item2);
+                responseHeader.Item2,
+                immediate: immediate);
         }
 
         public void ProduceEnd(Exception ex)
         {
-            ProduceStart();
+            if (ex != null)
+            {
+                if (_responseStarted)
+                {
+                    // We can no longer respond with a 500, so we simply close the connection.
+                    ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                    return;
+                }
+                else
+                {
+                    StatusCode = 500;
+                    ReasonPhrase = null;
+
+                    // If OnStarting hasn't been triggered yet, we don't want to trigger it now that
+                    // the app func has failed. https://github.com/aspnet/KestrelHttpServer/issues/43
+                    _onStarting = null;
+
+                    ResponseHeaders = new FrameResponseHeaders();
+                    ResponseHeaders["Content-Length"] = new[] { "0" };
+                }
+            }
+
+            ProduceStart(immediate: true, appCompleted: true);
+
+            // _autoChunk should be checked after we are sure ProduceStart() has been called
+            // since ProduceStart() may set _autoChunk to true.
+            if (_autoChunk)
+            {
+                WriteChunkedResponseSuffix();
+            }
 
             if (!_keepAlive)
             {
@@ -329,7 +412,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         private Tuple<ArraySegment<byte>, IDisposable> CreateResponseHeader(
-            string status, IEnumerable<KeyValuePair<string, string[]>> headers)
+            string status,
+            bool appCompleted,
+            IEnumerable<KeyValuePair<string, StringValues>> headers)
         {
             var writer = new MemoryPoolTextWriter(Memory);
             writer.Write(HttpVersion);
@@ -379,10 +464,33 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            if (hasTransferEncoding == false && hasContentLength == false)
+            if (_keepAlive && !hasTransferEncoding && !hasContentLength)
             {
-                _keepAlive = false;
+                if (appCompleted)
+                {
+                    // Don't set the Content-Length or Transfer-Encoding headers
+                    // automatically for HEAD requests or 101, 204, 205, 304 responses.
+                    if (Method != "HEAD" && StatusCanHaveBody(StatusCode))
+                    {
+                        // Since the app has completed and we are only now generating
+                        // the headers we can safely set the Content-Length to 0.
+                        writer.Write("Content-Length: 0\r\n");
+                    }
+                }
+                else
+                {
+                    if (HttpVersion == "HTTP/1.1")
+                    {
+                        _autoChunk = true;
+                        writer.Write("Transfer-Encoding: chunked\r\n");
+                    }
+                    else
+                    {
+                        _keepAlive = false;
+                    }
+                }
             }
+
             if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
             {
                 writer.Write("Connection: close\r\n\r\n");
@@ -493,18 +601,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         ch2 != ' ' &&
                             ch2 != '\t')
                 {
-                    var name = Encoding.ASCII.GetString(remaining.Array, remaining.Offset, colonIndex);
                     var value = "";
                     if (valueEndIndex != -1)
                     {
-                        value = Encoding.ASCII.GetString(
+                        value = _ascii.GetString(
                             remaining.Array, remaining.Offset + valueStartIndex, valueEndIndex - valueStartIndex);
                     }
                     if (wrappedHeaders)
                     {
                         value = value.Replace("\r\n", " ");
                     }
-                    AddRequestHeader(name, value);
+                    AddRequestHeader(remaining.Array, remaining.Offset, colonIndex, value);
                     baton.Skip(index + 2);
                     return true;
                 }
@@ -539,19 +646,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return false;
         }
 
-        private void AddRequestHeader(string name, string value)
+        private void AddRequestHeader(byte[] keyBytes, int keyOffset, int keyLength, string value)
         {
-            string[] existing;
-            if (!RequestHeaders.TryGetValue(name, out existing) ||
-                existing == null ||
-                existing.Length == 0)
-            {
-                RequestHeaders[name] = new[] { value };
-            }
-            else
-            {
-                RequestHeaders[name] = existing.Concat(new[] { value }).ToArray();
-            }
+            _requestHeaders.Append(keyBytes, keyOffset, keyLength, value);
+        }
+
+        public bool StatusCanHaveBody(int statusCode)
+        {
+            // List of status codes taken from Microsoft.Net.Http.Server.Response
+            return statusCode != 101 &&
+                   statusCode != 204 &&
+                   statusCode != 205 &&
+                   statusCode != 304;
+        }
+
+        private enum Mode
+        {
+            StartLine,
+            MessageHeader,
+            MessageBody,
+            Terminated,
         }
     }
 }

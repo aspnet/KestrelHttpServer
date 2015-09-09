@@ -4,7 +4,7 @@
 using System;
 using System.Linq;
 
-namespace Kestrel
+namespace Microsoft.AspNet.Server.Kestrel
 {
     public class Program
     {
@@ -18,9 +18,8 @@ namespace Kestrel
         public void Main(string[] args)
         {
             var program = new Microsoft.AspNet.Hosting.Program(_serviceProvider);
-            var mergedArgs = new[] { "--server", "Kestrel" }.Concat(args).ToArray();
+            var mergedArgs = new[] { "--server", "Microsoft.AspNet.Server.Kestrel" }.Concat(args).ToArray();
             program.Main(mergedArgs);
         }
     }
 }
-
