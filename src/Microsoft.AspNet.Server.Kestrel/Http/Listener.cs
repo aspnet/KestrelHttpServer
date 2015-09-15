@@ -24,7 +24,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             string host,
             int port,
             KestrelThread thread,
-            Func<Frame, Task> application)
+            Func<Frame, Task<IDisposable>> application)
         {
             Thread = thread;
             Application = application;

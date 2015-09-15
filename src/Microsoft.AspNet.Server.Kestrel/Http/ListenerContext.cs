@@ -27,7 +27,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public KestrelThread Thread { get; set; }
 
-        public Func<Frame, Task> Application { get; set; }
+        public Func<Frame, Task<IDisposable>> Application { get; set; }
 
         public IMemoryPool Memory { get; set; }
 

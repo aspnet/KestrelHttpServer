@@ -18,6 +18,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 frame.ResponseHeaders.Clear();
                 await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
                 await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
+                return null;
             }))
             {
                 using (var connection = new TestConnection())
@@ -50,6 +51,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
                 await frame.ResponseBody.WriteAsync(new byte[0], 0, 0);
                 await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
+                return null;
             }))
             {
                 using (var connection = new TestConnection())
@@ -80,6 +82,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 frame.ResponseHeaders.Clear();
                 await frame.ResponseBody.WriteAsync(new byte[0], 0, 0);
+                return null;
             }))
             {
                 using (var connection = new TestConnection())

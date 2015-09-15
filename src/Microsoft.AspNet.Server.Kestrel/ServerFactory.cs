@@ -37,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             return serverFeatures;
         }
 
-        public IDisposable Start(IFeatureCollection serverFeatures, Func<IFeatureCollection, Task> application)
+        public IDisposable Start(IFeatureCollection serverFeatures, Func<IFeatureCollection, Task<IDisposable>> application)
         {
             var disposables = new Stack<IDisposable>();
             var disposer = new Disposable(() =>
@@ -73,7 +73,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                         async frame =>
                         {
                             var request = new ServerRequest(frame);
-                            await application.Invoke(request.Features).ConfigureAwait(false);
+                            return await application.Invoke(request.Features).ConfigureAwait(false);
+                            
                         }));
                 }
 
