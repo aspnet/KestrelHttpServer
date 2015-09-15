@@ -25,7 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public Task StartAsync(
             string pipeName,
             KestrelThread thread,
-            Func<Frame, Task> application)
+            Func<Frame, Task<IDisposable>> application)
         {
             Thread = thread;
             Application = application;

@@ -106,7 +106,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             Threads.Clear();
         }
 
-        public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task> application)
+        public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task<IDisposable>> application)
         {
             var listeners = new List<IDisposable>();
             var usingPipes = host.StartsWith(Constants.UnixPipeHostPrefix);

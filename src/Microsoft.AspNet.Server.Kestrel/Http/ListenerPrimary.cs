@@ -34,7 +34,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             string host,
             int port,
             KestrelThread thread,
-            Func<Frame, Task> application)
+            Func<Frame, Task<IDisposable>> application)
         {
             await StartAsync(scheme, host, port, thread, application).ConfigureAwait(false);
 

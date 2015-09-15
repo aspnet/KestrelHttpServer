@@ -37,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             return serverFeatures;
         }
 
-        public IDisposable Start(IFeatureCollection serverFeatures, Func<IFeatureCollection, Task> application)
+        public IDisposable Start(IFeatureCollection serverFeatures, Func<IFeatureCollection, Task<IDisposable>> application)
         {
             var disposables = new Stack<IDisposable>();
             var disposer = new Disposable(() =>

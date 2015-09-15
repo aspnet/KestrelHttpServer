@@ -20,7 +20,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     public class EngineTests
     {
-        private async Task App(Frame frame)
+        private async Task<IDisposable> App(Frame frame)
         {
             frame.ResponseHeaders.Clear();
             for (; ;)
@@ -33,6 +33,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 }
                 await frame.ResponseBody.WriteAsync(buffer, 0, count);
             }
+            return null;
         }
 
         ILibraryManager LibraryManager
@@ -58,7 +59,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        private async Task AppChunked(Frame frame)
+        private async Task<IDisposable> AppChunked(Frame frame)
         {
             frame.ResponseHeaders.Clear();
             var data = new MemoryStream();
@@ -75,12 +76,13 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var bytes = data.ToArray();
             frame.ResponseHeaders["Content-Length"] = new[] { bytes.Length.ToString() };
             await frame.ResponseBody.WriteAsync(bytes, 0, bytes.Length);
+            return null;
         }
 
-        private Task EmptyApp(Frame frame)
+        private Task<IDisposable> EmptyApp(Frame frame)
         {
             frame.ResponseHeaders.Clear();
-            return Task.FromResult<object>(null);
+            return Task.FromResult<IDisposable>(null);
         }
 
         [Fact]
@@ -472,6 +474,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     var statusString = await reader.ReadLineAsync();
                     frame.StatusCode = int.Parse(statusString);
                 }
+
+                return null;
             }))
             {
                 using (var connection = new TestConnection())
@@ -715,7 +719,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
                 // If we write to the response stream, we will not get a 500.
 
-                return Task.FromResult<object>(null);
+                return Task.FromResult<IDisposable>(null);
             }))
             {
                 using (var connection = new TestConnection())
@@ -770,6 +774,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
                 // The second write should succeed since the OnStarting callback will not be called again
                 await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Exception!!"), 0, 11);
+
+                return null;
             }))
             {
                 using (var connection = new TestConnection())

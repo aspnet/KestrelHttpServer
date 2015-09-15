@@ -221,9 +221,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private async Task ExecuteAsync()
         {
             Exception error = null;
+            IDisposable disposable = null;
             try
             {
-                await Application.Invoke(this).ConfigureAwait(false);
+                disposable = await Application.Invoke(this).ConfigureAwait(false);
 
                 // Trigger FireOnStarting if ProduceStart hasn't been called yet.
                 // We call it here, so it can go through our normal error handling
@@ -241,6 +242,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 FireOnCompleted();
                 ProduceEnd(error);
+                disposable?.Dispose();
             }
         }
 

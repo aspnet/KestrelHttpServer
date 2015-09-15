@@ -18,7 +18,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         private KestrelEngine _engine;
         private IDisposable _server;
 
-        public TestServer(Func<Frame, Task> app)
+        public TestServer(Func<Frame, Task<IDisposable>> app)
         {
             Create(app);
         }
@@ -43,7 +43,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        public void Create(Func<Frame, Task> app)
+        public void Create(Func<Frame, Task<IDisposable>> app)
         {
             _engine = new KestrelEngine(LibraryManager, new ShutdownNotImplemented(), new TestLogger());
             _engine.Start(1);
