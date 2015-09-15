@@ -9,13 +9,15 @@
         "Microsoft.AspNet.Hosting": "1.0.0-*",
         "Microsoft.Dnx.Runtime.Abstractions": "1.0.0-*",
         "Microsoft.Framework.Logging.Abstractions": "1.0.0-*",
+        "System.Numerics.Vectors": "4.1.1-beta-*",
         "Microsoft.StandardsPolice": {
             "version": "1.0.0-*",
             "type": "build"
         }
     },
     "frameworks": {
-        "dnx451": { },
+        "dnx451": {
+        },
         "dnxcore50": {
             "dependencies": {
                 "System.Collections": "4.0.11-beta-*",
