@@ -73,7 +73,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                         async frame =>
                         {
                             var request = new ServerRequest(frame);
-                            await application.Invoke(request.Features).ConfigureAwait(false);
+                            return await application.Invoke(request.Features).ConfigureAwait(false);
+                            
                         }));
                 }
 
