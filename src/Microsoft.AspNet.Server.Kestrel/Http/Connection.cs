@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Framework.Logging;
@@ -11,13 +12,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private static readonly Action<UvStreamHandle, int, Exception, object> _readCallback = ReadCallback;
+        private const int EOF = -4095;
+        private const int ECONNRESET = -4077;
+
+        private static readonly Action<UvStreamHandle, int, int, Exception, object> _readCallback = ReadCallback;
         private static readonly Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback = AllocCallback;
 
         private static long _lastConnectionId;
 
         private readonly UvStreamHandle _socket;
         private Frame _frame;
+        private Task _frameTask;
         private long _connectionId = 0;
 
         private readonly object _stateLock = new object();
@@ -35,9 +40,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             Log.ConnectionStart(_connectionId);
 
-            SocketInput = new SocketInput(Memory);
+            SocketInput = new SocketInput(Memory2);
             SocketOutput = new SocketOutput(Thread, _socket, _connectionId, Log);
             _frame = new Frame(this);
+            _frameTask = Task.Run(_frame.ProcessFraming);
             _socket.ReadStart(_allocCallback, _readCallback, this);
         }
 
@@ -48,53 +54,38 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
+            var result = SocketInput.Pin(2048);
+
             return handle.Libuv.buf_init(
-                SocketInput.Pin(2048),
-                2048);
+                result.DataPtr,
+                result.Data.Count);
         }
 
-        private static void ReadCallback(UvStreamHandle handle, int nread, Exception error, object state)
+        private static void ReadCallback(UvStreamHandle handle, int readCount, int errorCode, Exception error, object state)
         {
-            ((Connection)state).OnRead(handle, nread, error);
+            ((Connection)state).OnRead(handle, readCount, errorCode, error);
         }
 
-        private void OnRead(UvStreamHandle handle, int status, Exception error)
+        private void OnRead(UvStreamHandle handle, int readCount, int errorCode, Exception error)
         {
-            SocketInput.Unpin(status);
+            SocketInput.Unpin(readCount);
 
-            var normalRead = error == null && status > 0;
-            var normalDone = status == 0 || status == Constants.ECONNRESET || status == Constants.EOF;
+            var normalRead = readCount != 0 && errorCode == 0;
+            var normalDone = readCount == 0 && (errorCode == 0 || errorCode == Constants.ECONNRESET || errorCode == Constants.EOF);
             var errorDone = !(normalDone || normalRead);
 
             if (normalRead)
             {
-                Log.ConnectionRead(_connectionId, status);
+                Log.ConnectionRead(_connectionId, readCount);
             }
             else if (normalDone || errorDone)
             {
                 SocketInput.RemoteIntakeFin = true;
                 _socket.ReadStop();
-
-                if (errorDone && error != null)
-                {
-                    Log.LogError("Connection.OnRead", error);
-                }
-                else
-                {
-                    Log.ConnectionReadFin(_connectionId);
-                }
+                Log.ConnectionReadFin(_connectionId);
             }
 
-
-            try
-            {
-                _frame.Consume();
-            }
-            catch (Exception ex)
-            {
-                Log.LogError("Connection._frame.Consume ", ex);
-                throw;
-            }
+            SocketInput.SetCompleted(errorDone ? error : null);
         }
 
         void IConnectionControl.Pause()
@@ -123,20 +114,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         _connectionState = ConnectionState.Shutdown;
 
                         Log.ConnectionWriteFin(_connectionId);
-                        Thread.Post(
-                            state =>
-                            {
-                                var self = (Connection)state;
-                                var shutdown = new UvShutdownReq(self.Log);
-                                shutdown.Init(self.Thread.Loop);
-                                shutdown.Shutdown(self._socket, (req, status, state2) =>
-                                {
-                                    var self2 = (Connection)state2;
-                                    self2.Log.ConnectionWroteFin(_connectionId, status);
-                                    req.Dispose();
-                                }, this);
-                            },
-                            this);
+                        SocketOutput.End(endType);
                         break;
                     case ProduceEndType.ConnectionKeepAlive:
                         if (_connectionState != ConnectionState.Open)
@@ -145,10 +123,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
 
                         Log.ConnectionKeepAlive(_connectionId);
-                        _frame = new Frame(this);
-                        Thread.Post(
-                            state => ((Frame)state).Consume(),
-                            _frame);
                         break;
                     case ProduceEndType.SocketDisconnect:
                         if (_connectionState == ConnectionState.Disconnected)
@@ -158,13 +132,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         _connectionState = ConnectionState.Disconnected;
 
                         Log.ConnectionDisconnect(_connectionId);
-                        Thread.Post(
-                            state =>
-                            {
-                                Log.ConnectionStop(_connectionId);
-                                ((UvHandle)state).Dispose();
-                            },
-                            _socket);
+                        SocketOutput.End(endType);
                         break;
                 }
             }

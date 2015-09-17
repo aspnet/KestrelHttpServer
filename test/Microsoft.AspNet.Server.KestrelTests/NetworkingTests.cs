@@ -21,11 +21,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
     public class NetworkingTests
     {
         private readonly Libuv _uv;
-        private readonly IKestrelTrace _logger = new KestrelTrace(new TestLogger());
+        private readonly IKestrelTrace _logger;
         public NetworkingTests()
         {
-            var engine = new KestrelEngine(LibraryManager, new ShutdownNotImplemented(), new TestLogger());
+            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
             _uv = engine.Libuv;
+            _logger = engine.Log;
         }
 
         ILibraryManager LibraryManager
@@ -141,7 +142,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 var data = Marshal.AllocCoTaskMem(500);
                 tcp2.ReadStart(
                     (a, b, c) => _uv.buf_init(data, 500),
-                    (__, nread, error2, state2) =>
+                    (__, nread, errCode, error2, state2) =>
                     {
                         bytesRead += nread;
                         if (nread == 0)
@@ -197,7 +198,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 var data = Marshal.AllocCoTaskMem(500);
                 tcp2.ReadStart(
                     (a, b, c) => tcp2.Libuv.buf_init(data, 500),
-                    (__, nread, error2, state2) =>
+                    (__, nread, errCode, error2, state2) =>
                     {
                         bytesRead += nread;
                         if (nread == 0)
@@ -208,7 +209,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         {
                             for (var x = 0; x != 2; ++x)
                             {
-                                var req = new UvWriteReq(new KestrelTrace(new TestLogger()));
+                                var req = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                                 req.Init(loop);
                                 req.Write(
                                     tcp2,

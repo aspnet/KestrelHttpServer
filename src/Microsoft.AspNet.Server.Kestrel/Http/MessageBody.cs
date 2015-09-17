@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Framework.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -14,18 +16,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         public bool RequestKeepAlive { get; protected set; }
-
-        public void Intake(int count)
-        {
-            Transfer(count, false);
-        }
-
-        public void IntakeFin(int count)
-        {
-            Transfer(count, true);
-        }
-
-        public abstract void Consume();
 
         public static MessageBody For(
             string httpVersion,
@@ -93,17 +83,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
             }
 
-            public override void Consume()
+            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 var input = _context.SocketInput;
+                while (true)
+                {
+                    await input;
 
-                if (input.RemoteIntakeFin)
-                {
-                    IntakeFin(input.Buffer.Count);
-                }
-                else
-                {
-                    Intake(input.Buffer.Count);
+                    var begin = input.GetIterator();
+                    int actual;
+                    var end = begin.CopyTo(buffer.Array, buffer.Offset, buffer.Count, out actual);
+                    input.JumpTo(end);
+
+                    if (actual != 0)
+                    {
+                        return actual;
+                    }
+                    if (input.RemoteIntakeFin)
+                    {
+                        return 0;
+                    }
                 }
             }
         }
@@ -111,29 +110,43 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         class ForContentLength : MessageBody
         {
             private readonly int _contentLength;
-            private int _neededLength;
+            private int _inputLength;
 
             public ForContentLength(bool keepAlive, int contentLength, FrameContext context)
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
                 _contentLength = contentLength;
-                _neededLength = _contentLength;
+                _inputLength = _contentLength;
             }
 
-            public override void Consume()
+            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 var input = _context.SocketInput;
-                var consumeLength = Math.Min(_neededLength, input.Buffer.Count);
-                _neededLength -= consumeLength;
 
-                if (_neededLength != 0)
+                while (true)
                 {
-                    Intake(consumeLength);
-                }
-                else
-                {
-                    IntakeFin(consumeLength);
+                    var limit = Math.Min(buffer.Count, _inputLength);
+                    if (limit == 0)
+                    {
+                        return 0;
+                    }
+
+                    await input;
+
+                    var begin = input.GetIterator();
+                    int actual;
+                    var end = begin.CopyTo(buffer.Array, buffer.Offset, limit, out actual);
+                    _inputLength -= actual;
+                    input.JumpTo(end);
+                    if (actual != 0)
+                    {
+                        return actual;
+                    }
+                    if (input.RemoteIntakeFin)
+                    {
+                        throw new Exception("Unexpected end of request content");
+                    }
                 }
             }
         }
@@ -144,9 +157,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         /// </summary>
         class ForChunkedEncoding : MessageBody
         {
-            private int _neededLength;
+            private int _inputLength;
 
-            private Mode _mode = Mode.ChunkSizeLine;
+            private Mode _mode = Mode.ChunkPrefix;
 
             public ForChunkedEncoding(bool keepAlive, FrameContext context)
                 : base(context)
@@ -154,80 +167,89 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 RequestKeepAlive = keepAlive;
             }
 
-            public override void Consume()
+            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 var input = _context.SocketInput;
-                for (; ;)
+
+                while (_mode != Mode.Complete)
                 {
-                    switch (_mode)
+                    while (_mode == Mode.ChunkPrefix)
                     {
-                        case Mode.ChunkSizeLine:
-                            var chunkSize = 0;
-                            if (!TakeChunkedLine(input, ref chunkSize))
-                            {
-                                return;
-                            }
-
-                            _neededLength = chunkSize;
-                            if (chunkSize == 0)
-                            {
-                                _mode = Mode.Complete;
-                                IntakeFin(0);
-                                return;
-                            }
+                        var chunkSize = 0;
+                        if (!TakeChunkedLine(input, ref chunkSize))
+                        {
+                            await input;
+                        }
+                        else if (chunkSize == 0)
+                        {
+                            _mode = Mode.Complete;
+                        }
+                        else
+                        {
                             _mode = Mode.ChunkData;
-                            break;
+                        }
+                        _inputLength = chunkSize;
+                    }
+                    while (_mode == Mode.ChunkData)
+                    {
+                        var limit = Math.Min(buffer.Count, _inputLength);
+                        if (limit != 0)
+                        {
+                            await input;
+                        }
 
-                        case Mode.ChunkData:
-                            if (_neededLength == 0)
-                            {
-                                _mode = Mode.ChunkDataCRLF;
-                                break;
-                            }
-                            if (input.Buffer.Count == 0)
-                            {
-                                return;
-                            }
+                        var begin = input.GetIterator();
+                        int actual;
+                        var end = begin.CopyTo(buffer.Array, buffer.Offset, limit, out actual);
+                        _inputLength -= actual;
+                        input.JumpTo(end);
 
-                            var consumeLength = Math.Min(_neededLength, input.Buffer.Count);
-                            _neededLength -= consumeLength;
-
-                            Intake(consumeLength);
-                            break;
-
-                        case Mode.ChunkDataCRLF:
-                            if (input.Buffer.Count < 2)
-                            {
-                                return;
-                            }
-                            var crlf = input.Take(2);
-                            if (crlf.Array[crlf.Offset] != '\r' ||
-                                crlf.Array[crlf.Offset + 1] != '\n')
-                            {
-                                throw new NotImplementedException("INVALID REQUEST FORMAT");
-                            }
-                            _mode = Mode.ChunkSizeLine;
-                            break;
-
-                        default:
+                        if (_inputLength == 0)
+                        {
+                            _mode = Mode.ChunkSuffix;
+                        }
+                        if (actual != 0)
+                        {
+                            return actual;
+                        }
+                    }
+                    while (_mode == Mode.ChunkSuffix)
+                    {
+                        var scan = input.GetIterator();
+                        var ch1 = scan.Take();
+                        var ch2 = scan.Take();
+                        if (ch1 == -1 || ch2 == -1)
+                        {
+                            await input;
+                        }
+                        else if (ch1 == '\r' && ch2 == '\n')
+                        {
+                            input.JumpTo(scan);
+                            _mode = Mode.ChunkPrefix;
+                        }
+                        else
+                        {
                             throw new NotImplementedException("INVALID REQUEST FORMAT");
+                        }
                     }
                 }
+
+                return 0;
             }
 
             private static bool TakeChunkedLine(SocketInput baton, ref int chunkSizeOut)
             {
-                var remaining = baton.Buffer;
-                if (remaining.Count < 2)
-                {
-                    return false;
-                }
-                var ch0 = remaining.Array[remaining.Offset];
+                var scan = baton.GetIterator();
+                var ch0 = scan.Take();
                 var chunkSize = 0;
                 var mode = 0;
-                for (var index = 0; index != remaining.Count - 1; ++index)
+                while (ch0 != -1)
                 {
-                    var ch1 = remaining.Array[remaining.Offset + index + 1];
+                    var ch1 = scan.Take();
+                    if (ch1 == -1)
+                    {
+                        return false;
+                    }
 
                     if (mode == 0)
                     {
@@ -269,7 +291,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                         else if (ch0 == '\r' && ch1 == '\n')
                         {
-                            baton.Skip(index + 2);
+                            baton.JumpTo(scan);
                             chunkSizeOut = chunkSize;
                             return true;
                         }
@@ -282,7 +304,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         if (ch0 == '\r' && ch1 == '\n')
                         {
-                            baton.Skip(index + 2);
+                            baton.JumpTo(scan);
                             chunkSizeOut = chunkSize;
                             return true;
                         }
@@ -299,9 +321,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             private enum Mode
             {
-                ChunkSizeLine,
+                ChunkPrefix,
                 ChunkData,
-                ChunkDataCRLF,
+                ChunkSuffix,
                 Complete,
             };
         }

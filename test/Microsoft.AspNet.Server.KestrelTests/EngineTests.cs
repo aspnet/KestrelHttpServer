@@ -12,6 +12,7 @@ using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.Dnx.Runtime;
 using Microsoft.Dnx.Runtime.Infrastructure;
 using Xunit;
+using System.Linq;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
@@ -23,7 +24,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         private async Task App(Frame frame)
         {
             frame.ResponseHeaders.Clear();
-            for (; ;)
+            while (true)
             {
                 var buffer = new byte[8192];
                 var count = await frame.RequestBody.ReadAsync(buffer, 0, buffer.Length);
@@ -60,19 +61,20 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         private async Task AppChunked(Frame frame)
         {
-            frame.ResponseHeaders.Clear();
-            var data = new MemoryStream();
-            for (; ;)
+            Console.WriteLine($"----");
+            Console.WriteLine($"{frame.Method} {frame.RequestUri} {frame.HttpVersion}");
+            foreach (var h in frame.RequestHeaders)
             {
-                var buffer = new byte[8192];
-                var count = await frame.RequestBody.ReadAsync(buffer, 0, buffer.Length);
-                if (count == 0)
-                {
-                    break;
-                }
-                data.Write(buffer, 0, count);
+                Console.WriteLine($"{h.Key}: {h.Value}");
             }
+            Console.WriteLine($"");
+
+            var data = new MemoryStream();
+            await frame.RequestBody.CopyToAsync(data);
             var bytes = data.ToArray();
+            Console.WriteLine($"{Encoding.ASCII.GetString(bytes)}");
+
+            frame.ResponseHeaders.Clear();
             frame.ResponseHeaders["Content-Length"] = new[] { bytes.Length.ToString() };
             await frame.ResponseBody.WriteAsync(bytes, 0, bytes.Length);
         }
@@ -86,7 +88,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public void EngineCanStartAndStop()
         {
-            var engine = new KestrelEngine(LibraryManager, new ShutdownNotImplemented(), new TestLogger());
+            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
             engine.Start(1);
             engine.Dispose();
         }
@@ -94,7 +96,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public void ListenerCanCreateAndDispose()
         {
-            var engine = new KestrelEngine(LibraryManager, new ShutdownNotImplemented(), new TestLogger());
+            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
             engine.Start(1);
             var started = engine.CreateServer("http", "localhost", 54321, App);
             started.Dispose();
@@ -105,7 +107,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public void ConnectionCanReadAndWrite()
         {
-            var engine = new KestrelEngine(LibraryManager, new ShutdownNotImplemented(), new TestLogger());
+            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
             engine.Start(1);
             var started = engine.CreateServer("http", "localhost", 54321, App);
 
@@ -115,7 +117,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             socket.Send(Encoding.ASCII.GetBytes("POST / HTTP/1.0\r\n\r\nHello World"));
             socket.Shutdown(SocketShutdown.Send);
             var buffer = new byte[8192];
-            for (; ;)
+            for (;;)
             {
                 var length = socket.Receive(buffer);
                 if (length == 0) { break; }

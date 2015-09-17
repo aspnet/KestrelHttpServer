@@ -7,21 +7,24 @@ using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    public class ListenerContext
+    public class ListenerContext : ServiceContext
     {
-        public ListenerContext() { }
-
-        public ListenerContext(ServiceContext serviceContext)
+        public ListenerContext()
         {
-            Memory = serviceContext.Memory;
-            Log = serviceContext.Log;
+        }
+
+        public ListenerContext(ServiceContext serviceContext) 
+            : base(serviceContext)
+        {
         }
 
         public ListenerContext(ListenerContext listenerContext)
+            : base(listenerContext)
         {
             Thread = listenerContext.Thread;
             Application = listenerContext.Application;
             Memory = listenerContext.Memory;
+            Memory2 = listenerContext.Memory2;
             Log = listenerContext.Log;
         }
 
@@ -29,8 +32,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Func<Frame, Task> Application { get; set; }
 
-        public IMemoryPool Memory { get; set; }
-
-        public IKestrelTrace Log { get; }
+        public MemoryPool2 Memory2 { get; set; }
     }
 }
