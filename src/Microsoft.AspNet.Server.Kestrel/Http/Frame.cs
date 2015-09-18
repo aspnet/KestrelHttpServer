@@ -354,7 +354,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
 
-            var responseHeader = CreateResponseHeader(status, appCompleted, ResponseHeaders);
+            var responseHeader = CreateResponseHeader(status, appCompleted);
             SocketOutput.Write(
                 responseHeader.Item1,
                 (error, state) =>
@@ -413,8 +413,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private Tuple<ArraySegment<byte>, IDisposable> CreateResponseHeader(
             string status,
-            bool appCompleted,
-            IEnumerable<KeyValuePair<string, StringValues>> headers)
+            bool appCompleted)
         {
             var writer = new MemoryPoolTextWriter(Memory);
             writer.Write(HttpVersion);
@@ -423,27 +422,46 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             writer.Write('\r');
             writer.Write('\n');
 
-            ResponseType responseType = new ResponseType();
-            if (headers != null)
+            var hasConnection = false;
+            var hasTransferEncoding = false;
+            var hasContentLength = false;
+
+            foreach (var header in _responseHeaders)
             {
-                var defaultHeaders = headers as FrameResponseHeaders;
-                if (defaultHeaders != null)
+                var isConnection = false;
+                if (!hasConnection &&
+                    string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
                 {
-                    foreach (var header in defaultHeaders)
-                    {
-                        responseType = WriteHeader(writer, header, responseType);
-                    }
+                    hasConnection = isConnection = true;
                 }
-                else
+                else if (!hasTransferEncoding &&
+                    string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
                 {
-                    foreach (var header in headers)
+                    hasTransferEncoding = true;
+                }
+                else if (!hasContentLength &&
+                    string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasContentLength = true;
+                }
+
+                foreach (var value in header.Value)
+                {
+                    writer.Write(header.Key);
+                    writer.Write(':');
+                    writer.Write(' ');
+                    writer.Write(value);
+                    writer.Write('\r');
+                    writer.Write('\n');
+
+                    if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
                     {
-                        responseType = WriteHeader(writer, header, responseType);
+                        _keepAlive = false;
                     }
                 }
             }
 
-            if (_keepAlive && !responseType.hasTransferEncoding && !responseType.hasContentLength)
+            if (_keepAlive && !hasTransferEncoding && !hasContentLength)
             {
                 if (appCompleted)
                 {
@@ -470,11 +488,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            if (_keepAlive == false && responseType.hasConnection == false && HttpVersion == "HTTP/1.1")
+            if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
             {
                 writer.Write("Connection: close\r\n\r\n");
             }
-            else if (_keepAlive && responseType.hasConnection == false && HttpVersion == "HTTP/1.0")
+            else if (_keepAlive && hasConnection == false && HttpVersion == "HTTP/1.0")
             {
                 writer.Write("Connection: keep-alive\r\n\r\n");
             }
@@ -485,42 +503,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             writer.Flush();
             return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
-        }
-
-        private ResponseType WriteHeader(MemoryPoolTextWriter writer, KeyValuePair<string, StringValues> header, ResponseType responseType)
-        {
-            var isConnection = false;
-            if (!responseType.hasConnection &&
-                string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
-            {
-                responseType.hasConnection = isConnection = true;
-            }
-            else if (!responseType.hasTransferEncoding &&
-                string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-            {
-                responseType.hasTransferEncoding = true;
-            }
-            else if (!responseType.hasContentLength &&
-                string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
-            {
-                responseType.hasContentLength = true;
-            }
-
-            foreach (var value in header.Value)
-            {
-                writer.Write(header.Key);
-                writer.Write(':');
-                writer.Write(' ');
-                writer.Write(value);
-                writer.Write('\r');
-                writer.Write('\n');
-
-                if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
-                {
-                    _keepAlive = false;
-                }
-            }
-            return responseType;
         }
 
         private bool TakeStartLine(SocketInput baton)
@@ -681,13 +663,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             MessageHeader,
             MessageBody,
             Terminated,
-        }
-
-        private struct ResponseType
-        {
-            public bool hasConnection;
-            public bool hasTransferEncoding;
-            public bool hasContentLength;
         }
     }
 }
