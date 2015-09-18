@@ -428,38 +428,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var hasContentLength = false;
             if (headers != null)
             {
-                foreach (var header in headers)
+                var defaultHeaders = headers as FrameResponseHeaders;
+                if (defaultHeaders != null)
                 {
-                    var isConnection = false;
-                    if (!hasConnection &&
-                        string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
+                    foreach (var header in defaultHeaders)
                     {
-                        hasConnection = isConnection = true;
+                        WriteHeader(writer, header, ref hasConnection, ref hasTransferEncoding, ref hasContentLength);
                     }
-                    else if (!hasTransferEncoding &&
-                        string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                }
+                else
+                {
+                    foreach (var header in headers)
                     {
-                        hasTransferEncoding = true;
-                    }
-                    else if (!hasContentLength &&
-                        string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
-                    {
-                        hasContentLength = true;
-                    }
-
-                    foreach (var value in header.Value)
-                    {
-                        writer.Write(header.Key);
-                        writer.Write(':');
-                        writer.Write(' ');
-                        writer.Write(value);
-                        writer.Write('\r');
-                        writer.Write('\n');
-
-                        if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
-                        {
-                            _keepAlive = false;
-                        }
+                        WriteHeader(writer, header, ref hasConnection, ref hasTransferEncoding, ref hasContentLength);
                     }
                 }
             }
@@ -506,6 +487,41 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             writer.Flush();
             return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
+        }
+
+        private void WriteHeader(MemoryPoolTextWriter writer, KeyValuePair<string, StringValues> header, ref bool hasConnection, ref bool hasTransferEncoding, ref bool hasContentLength)
+        {
+            var isConnection = false;
+            if (!hasConnection &&
+                string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
+            {
+                hasConnection = isConnection = true;
+            }
+            else if (!hasTransferEncoding &&
+                string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+            {
+                hasTransferEncoding = true;
+            }
+            else if (!hasContentLength &&
+                string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
+            {
+                hasContentLength = true;
+            }
+
+            foreach (var value in header.Value)
+            {
+                writer.Write(header.Key);
+                writer.Write(':');
+                writer.Write(' ');
+                writer.Write(value);
+                writer.Write('\r');
+                writer.Write('\n');
+
+                if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
+                {
+                    _keepAlive = false;
+                }
+            }
         }
 
         private bool TakeStartLine(SocketInput baton)
