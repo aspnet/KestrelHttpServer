@@ -423,9 +423,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             writer.Write('\r');
             writer.Write('\n');
 
-            var hasConnection = false;
-            var hasTransferEncoding = false;
-            var hasContentLength = false;
+            ResponseType responseType = new ResponseType();
             if (headers != null)
             {
                 var defaultHeaders = headers as FrameResponseHeaders;
@@ -433,19 +431,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     foreach (var header in defaultHeaders)
                     {
-                        WriteHeader(writer, header, ref hasConnection, ref hasTransferEncoding, ref hasContentLength);
+                        responseType = WriteHeader(writer, header, responseType);
                     }
                 }
                 else
                 {
                     foreach (var header in headers)
                     {
-                        WriteHeader(writer, header, ref hasConnection, ref hasTransferEncoding, ref hasContentLength);
+                        responseType = WriteHeader(writer, header, responseType);
                     }
                 }
             }
 
-            if (_keepAlive && !hasTransferEncoding && !hasContentLength)
+            if (_keepAlive && !responseType.hasTransferEncoding && !responseType.hasContentLength)
             {
                 if (appCompleted)
                 {
@@ -472,11 +470,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
+            if (_keepAlive == false && responseType.hasConnection == false && HttpVersion == "HTTP/1.1")
             {
                 writer.Write("Connection: close\r\n\r\n");
             }
-            else if (_keepAlive && hasConnection == false && HttpVersion == "HTTP/1.0")
+            else if (_keepAlive && responseType.hasConnection == false && HttpVersion == "HTTP/1.0")
             {
                 writer.Write("Connection: keep-alive\r\n\r\n");
             }
@@ -489,23 +487,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
         }
 
-        private void WriteHeader(MemoryPoolTextWriter writer, KeyValuePair<string, StringValues> header, ref bool hasConnection, ref bool hasTransferEncoding, ref bool hasContentLength)
+        private ResponseType WriteHeader(MemoryPoolTextWriter writer, KeyValuePair<string, StringValues> header, ResponseType responseType)
         {
             var isConnection = false;
-            if (!hasConnection &&
+            if (!responseType.hasConnection &&
                 string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
             {
-                hasConnection = isConnection = true;
+                responseType.hasConnection = isConnection = true;
             }
-            else if (!hasTransferEncoding &&
+            else if (!responseType.hasTransferEncoding &&
                 string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
             {
-                hasTransferEncoding = true;
+                responseType.hasTransferEncoding = true;
             }
-            else if (!hasContentLength &&
+            else if (!responseType.hasContentLength &&
                 string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
             {
-                hasContentLength = true;
+                responseType.hasContentLength = true;
             }
 
             foreach (var value in header.Value)
@@ -522,6 +520,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _keepAlive = false;
                 }
             }
+            return responseType;
         }
 
         private bool TakeStartLine(SocketInput baton)
@@ -682,6 +681,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             MessageHeader,
             MessageBody,
             Terminated,
+        }
+
+        private struct ResponseType
+        {
+            public bool hasConnection;
+            public bool hasTransferEncoding;
+            public bool hasContentLength;
         }
     }
 }
