@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildThisFileDirectory)\Config.Definitions.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{467B785F-1F19-4D23-958E-3C2D0FC2DC49}</ProjectGuid>
+    <Platform Condition="'$(Platform)'==''">Win32</Platform>
+    <Configuration Condition="'$(Configuration)'==''">Debug</Configuration>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <Keyword>Win32Proj</Keyword>
+    <BuildForOneCore Condition="'$(BuildForOneCore)' == ''">False</BuildForOneCore>
+    <RootNamespace>libuv</RootNamespace>
+    <ProjectName>libuv</ProjectName>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>bin\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(MSBuildThisFileDirectory)\Native.Settings" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions Condition="'$(BuildForOneCore)' == 'True'">ONECORE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\submodules\libuv\include;..\..\submodules\libuv\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>BUILDING_UV_SHARED=1;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_WIN32_WINNT=0x0600;_GNU_SOURCE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <Subsystem>Console</Subsystem>
+      <AdditionalDependencies>ws2_32.lib;userenv.lib;Psapi.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Platform)' == 'x64'">
+    <ClCompile>
+      <DisableSpecificWarnings>4244;4267;4477;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+ <ItemGroup>
+    <ClInclude Include="..\..\submodules\libuv\include\uv.h"/>
+    <ClInclude Include="..\..\submodules\libuv\include\tree.h"/>
+    <ClInclude Include="..\..\submodules\libuv\include\uv-errno.h"/>
+    <ClInclude Include="..\..\submodules\libuv\include\uv-threadpool.h"/>
+    <ClInclude Include="..\..\submodules\libuv\include\uv-version.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\heap-inl.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\queue.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\uv-common.h"/>
+    <ClInclude Include="..\..\submodules\libuv\include\uv-win.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\atomicops-inl.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\handle-inl.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\internal.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\req-inl.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\stream-inl.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\winapi.h"/>
+    <ClInclude Include="..\..\submodules\libuv\src\win\winsock.h"/>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\submodules\libuv\src\fs-poll.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\inet.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\threadpool.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\uv-common.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\version.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\async.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\core.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\dl.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\error.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\fs.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\fs-event.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\getaddrinfo.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\getnameinfo.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\handle.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\loop-watcher.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\pipe.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\thread.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\poll.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\process.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\process-stdio.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\req.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\signal.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\stream.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\tcp.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\tty.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\timer.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\udp.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\util.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\winapi.c"/>
+    <ClCompile Include="..\..\submodules\libuv\src\win\winsock.c"/>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <PropertyGroup>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
