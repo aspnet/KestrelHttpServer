@@ -100,4 +100,11 @@
   </PropertyGroup>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="PostBuildEvent">
+    <PropertyGroup>
+      <TargetFolderName Condition="'$(Platform)' == 'x64'">amd64</TargetFolderName>
+      <TargetFolderName Condition="'$(Platform)' == 'Win32'">x86</TargetFolderName>
+    </PropertyGroup>
+    <Copy SourceFiles="bin\$(Platform)\$(Configuration)\$(TargetFileName)" DestinationFolder="$(ProjectDir)\..\Microsoft.AspNet.Server.Kestrel\native\windows\$(TargetFolderName)"/> 
+  </Target>
 </Project>
