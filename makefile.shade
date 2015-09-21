@@ -6,3 +6,7 @@ var AUTHORS='Microsoft'
 use-standard-lifecycle
 k-standard-goals
 custom-goals
+
+#repo-initialize target='initialize'
+    git gitCommand="submodule update --init"
+    k-restore
