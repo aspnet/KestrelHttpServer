@@ -8,6 +8,21 @@ namespace Microsoft.AspNet.Server.KestrelTests.TestHelpers
 {
     public class MockSystemClock : ISystemClock
     {
-        public DateTimeOffset UtcNow { get; set; } = DateTimeOffset.UtcNow;
+        private DateTimeOffset _utcNow = DateTimeOffset.Now;
+
+        public DateTimeOffset UtcNow
+        {
+            get
+            {
+                UtcNowCalled++;
+                return _utcNow;
+            }
+            set
+            {
+                _utcNow = value;
+            }
+        }
+
+        public int UtcNowCalled { get; private set; }
     }
 }

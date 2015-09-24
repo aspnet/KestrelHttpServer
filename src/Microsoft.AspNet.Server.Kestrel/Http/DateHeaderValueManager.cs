@@ -12,10 +12,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     /// </summary>
     public class DateHeaderValueManager : IDisposable
     {
-        private readonly TimeSpan _timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan _timerInterval = TimeSpan.FromSeconds(1);
-        private readonly uint _timerTicksWithoutRequestsUntilIdle;
         private readonly ISystemClock _systemClock;
+        private readonly TimeSpan _timeWithoutRequestsUntilIdle;
+        private readonly TimeSpan _timerInterval;
+        private readonly uint _timerTicksWithoutRequestsUntilIdle;
 
         private volatile string _dateValue;
         private bool _isDisposed = false;
@@ -24,27 +24,53 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private object _timerLocker = new object();
         private int _timerTicksSinceLastRequest;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DateHeaderValueManager"/> class.
+        /// </summary>
         public DateHeaderValueManager()
-            : this(new SystemClock())
+            : this(
+                  systemClock: new SystemClock(),
+                  timeWithoutRequestsUntilIdle: TimeSpan.FromSeconds(10),
+                  timerInterval: TimeSpan.FromSeconds(1))
         {
 
         }
 
-        public DateHeaderValueManager(ISystemClock systemClock)
+        // Internal for testing
+        internal DateHeaderValueManager(
+            ISystemClock systemClock,
+            TimeSpan timeWithoutRequestsUntilIdle,
+            TimeSpan timerInterval)
         {
             _systemClock = systemClock;
+            _timeWithoutRequestsUntilIdle = timeWithoutRequestsUntilIdle;
+            _timerInterval = timerInterval;
+
+            // Calculate the number of timer ticks where no requests are seen before we're considered to be idle.
+            // Once we're idle, the timer is shutdown to prevent code from running while there are no requests.
+            // The timer is started again on the next request.
             _timerTicksWithoutRequestsUntilIdle = (uint)(_timeWithoutRequestsUntilIdle.TotalMilliseconds / _timerInterval.TotalMilliseconds);
         }
 
+        /// <summary>
+        /// Returns a value representing the current server date/time for use in the HTTP "Date" response header
+        /// in accordance with http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.18
+        /// </summary>
+        /// <returns>The value.</returns>
         public string GetDateHeaderValue()
         {
             PumpTimer();
 
-            // The null-coalesce here is to protect against this getting called after Dispose() is called, at which point
-            // _dateValue will be null forever more.
-            return _dateValue ?? DateTime.UtcNow.ToString("r");
+            // See https://msdn.microsoft.com/en-us/library/az4se3k1(v=vs.110).aspx#RFC1123 for info on the format
+            // string used here.
+            // The null-coalesce here is to protect against returning null after Dispose() is called, at which
+            // point _dateValue will be null forever after.
+            return _dateValue ?? _systemClock.UtcNow.ToString("r");
         }
-        
+
+        /// <summary>
+        /// Releases all resources used by the current instance of <see cref="DateHeaderValueManager"/>.
+        /// </summary>
         public void Dispose()
         {
             lock (_timerLocker)
@@ -52,8 +78,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 if (_dateValueTimer != null)
                 {
                     DisposeTimer();
-                    _isDisposed = true;
                 }
+
+                _isDisposed = true;
             }
         }
 
@@ -63,15 +90,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             // If we're already disposed we don't care about starting the timer again. This avoids us having to worry
             // about requests in flight during dispose (not that that should actually happen) as those will just get
-            // DateTime.UtcNow (aka "the slow way").
+            // SystemClock.UtcNow (aka "the slow way").
             if (!_isDisposed && _dateValueTimer == null)
             {
                 lock (_timerLocker)
                 {
                     if (!_isDisposed && _dateValueTimer == null)
                     {
-                        // Immediately assign the date value and start the timer again
-                        _dateValue = DateTime.UtcNow.ToString("r");
+                        // Immediately assign the date value and start the timer again. We assign the value immediately
+                        // here as the timer won't fire until the timer interval has passed and we want a value assigned
+                        // inline now to serve requests that occur in the meantime.
+                        _dateValue = _systemClock.UtcNow.ToString("r");
                         _dateValueTimer = new Timer(UpdateDateValue, state: null, dueTime: _timerInterval, period: _timerInterval);
                     }
                 }
@@ -82,11 +111,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private void UpdateDateValue(object state)
         {
             // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.18 for required format of Date header
-            _dateValue = DateTime.UtcNow.ToString("r");
+            _dateValue = _systemClock.UtcNow.ToString("r");
 
             if (_hadRequestsSinceLastTimerTick)
             {
-                // We served requests since the last tick, just return as we're still active
+                // We served requests since the last tick, reset the flag and return as we're still active
                 _hadRequestsSinceLastTimerTick = false;
                 _timerTicksSinceLastRequest = 0;
                 return;
