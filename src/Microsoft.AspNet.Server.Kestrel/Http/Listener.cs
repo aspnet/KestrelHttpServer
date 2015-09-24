@@ -15,6 +15,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         protected Listener(ServiceContext serviceContext) : base(serviceContext)
         {
+
         }
 
         protected UvStreamHandle ListenSocket { get; private set; }
@@ -56,7 +57,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (error != null)
             {
                 listener.Log.LogError("Listener.ConnectionCallback ", error);
-            }
+        }
             else
             {
                 listener.OnConnection(stream, status);

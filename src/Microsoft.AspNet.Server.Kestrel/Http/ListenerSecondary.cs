@@ -18,6 +18,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         protected ListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
         {
+
         }
 
         UvPipeHandle DispatchPipe { get; set; }

@@ -13,6 +13,8 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public IMemoryPool Memory { get; set; }
 
+        public DateHeaderValueManager DateHeaderValueManager { get; set; }
+
         public IKestrelTrace Log { get; set; }
     }
 }

@@ -14,6 +14,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public ListenerContext(ServiceContext serviceContext)
         {
             Memory = serviceContext.Memory;
+            DateHeaderValueManager = serviceContext.DateHeaderValueManager;
             Log = serviceContext.Log;
         }
 
@@ -22,6 +23,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Thread = listenerContext.Thread;
             Application = listenerContext.Application;
             Memory = listenerContext.Memory;
+            DateHeaderValueManager = listenerContext.DateHeaderValueManager;
             Log = listenerContext.Log;
         }
 
@@ -30,6 +32,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public Func<Frame, Task> Application { get; set; }
 
         public IMemoryPool Memory { get; set; }
+
+        public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public IKestrelTrace Log { get; }
     }

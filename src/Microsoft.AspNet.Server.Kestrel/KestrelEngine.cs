@@ -75,6 +75,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             {
                 AppShutdown = appShutdownService,
                 Memory = new MemoryPool(),
+                DateHeaderValueManager = new DateHeaderValueManager(),
                 Log = new KestrelTrace(logger)
             };
 
@@ -82,6 +83,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         }
 
         public Libuv Libuv { get; private set; }
+
         public List<KestrelThread> Threads { get; private set; }
 
         public void Start(int count)
@@ -104,6 +106,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                 thread.Stop(TimeSpan.FromSeconds(2.5));
             }
             Threads.Clear();
+
+            _serviceContext.DateHeaderValueManager.Dispose();
         }
 
         public IDisposable CreateServer(string scheme, string host, int port, Func<Frame, Task> application)
