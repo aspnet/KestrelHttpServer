@@ -1,5 +1,10 @@
 language: csharp
 sudo: false
+env:
+  - MONO_THREADS_PER_CPU=2000
+os:
+  - linux
+  - osx
 install:
   - curl -sSL https://github.com/libuv/libuv/archive/v1.4.2.tar.gz | tar zxfv - -C /tmp && cd /tmp/libuv-1.4.2/
   - sh autogen.sh
