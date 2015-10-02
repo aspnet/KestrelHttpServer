@@ -89,11 +89,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                             parsedAddress.Scheme,
                             parsedAddress.Host,
                             parsedAddress.Port,
-                            async frame =>
-                            {
-                                var request = new ServerRequest(frame);
-                                await application.Invoke(request.Features).ConfigureAwait(false);
-                            }));
+                            application));
                     }
                 }
 

@@ -14,7 +14,7 @@ namespace SampleApp
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
             var ksi = app.ServerFeatures[typeof(IKestrelServerInformation)] as IKestrelServerInformation;
-            ksi.ThreadCount = 4;
+            //ksi.ThreadCount = 4;
 
             loggerFactory.MinimumLevel = LogLevel.Debug;
 
@@ -27,6 +27,8 @@ namespace SampleApp
                     context.Request.PathBase,
                     context.Request.Path,
                     context.Request.QueryString);
+
+                foreach (var q in context.Request.Query) { }
 
                 context.Response.ContentLength = 11;
                 context.Response.ContentType = "text/plain";

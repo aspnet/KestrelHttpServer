@@ -11,12 +11,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Framework.Logging;
 using Microsoft.Framework.Primitives;
+using Microsoft.AspNet.Http.Features;
+using System.Collections;
 
 // ReSharper disable AccessToModifiedClosure
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    public class Frame : FrameContext, IFrameControl
+    public partial class Frame : FrameContext, IFrameControl
     {
         private static readonly Encoding _ascii = Encoding.ASCII;
         private static readonly ArraySegment<byte> _endChunkBytes = CreateAsciiByteArraySegment("\r\n");
@@ -80,6 +82,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             _requestHeaders.Reset();
             ResetResponseHeaders();
+            ResetFeatureCollection();
 
             Method = null;
             RequestUri = null;
@@ -725,5 +728,5 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                    statusCode != 205 &&
                    statusCode != 304;
         }
-    }
+            }
 }
