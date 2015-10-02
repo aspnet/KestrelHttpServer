@@ -5,11 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Dnx.Runtime;
 using Microsoft.Extensions.Logging;
+using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
@@ -98,7 +100,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             Threads.Clear();
         }
 
-        public IDisposable CreateServer(ServerAddress address, Func<Frame, Task> application)
+        public IDisposable CreateServer(ServerAddress address, Func<IFeatureCollection, Task> application)
         {
             var listeners = new List<IDisposable>();
 
