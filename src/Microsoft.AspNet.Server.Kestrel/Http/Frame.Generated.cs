@@ -26,22 +26,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void FastReset()
         {
-            _currentIHttpRequestFeature = this as global::Microsoft.AspNet.Http.Features.IHttpRequestFeature;
-            _currentIHttpResponseFeature = this as global::Microsoft.AspNet.Http.Features.IHttpResponseFeature;
-            _currentIHttpRequestIdentifierFeature = this as global::Microsoft.AspNet.Http.Features.IHttpRequestIdentifierFeature;
-            _currentIHttpSendFileFeature = this as global::Microsoft.AspNet.Http.Features.IHttpSendFileFeature;
-            _currentIServiceProvidersFeature = this as global::Microsoft.AspNet.Http.Features.Internal.IServiceProvidersFeature;
-            _currentIHttpAuthenticationFeature = this as global::Microsoft.AspNet.Http.Features.Authentication.IHttpAuthenticationFeature;
-            _currentIHttpRequestLifetimeFeature = this as global::Microsoft.AspNet.Http.Features.IHttpRequestLifetimeFeature;
-            _currentIQueryFeature = this as global::Microsoft.AspNet.Http.Features.Internal.IQueryFeature;
-            _currentIFormFeature = this as global::Microsoft.AspNet.Http.Features.Internal.IFormFeature;
-            _currentIResponseCookiesFeature = this as global::Microsoft.AspNet.Http.Features.Internal.IResponseCookiesFeature;
-            _currentIItemsFeature = this as global::Microsoft.AspNet.Http.Features.Internal.IItemsFeature;
-            _currentIHttpConnectionFeature = this as global::Microsoft.AspNet.Http.Features.IHttpConnectionFeature;
-            _currentITlsConnectionFeature = this as global::Microsoft.AspNet.Http.Features.ITlsConnectionFeature;
-            _currentIHttpUpgradeFeature = this as global::Microsoft.AspNet.Http.Features.IHttpUpgradeFeature;
-            _currentIHttpWebSocketFeature = this as global::Microsoft.AspNet.Http.Features.IHttpWebSocketFeature;
-            _currentISessionFeature = this as global::Microsoft.AspNet.Http.Features.ISessionFeature;
+            _currentIHttpRequestFeature = this;
+            _currentIHttpResponseFeature = this;
+            _currentIHttpRequestIdentifierFeature = null;
+            _currentIHttpSendFileFeature = null;
+            _currentIServiceProvidersFeature = null;
+            _currentIHttpAuthenticationFeature = null;
+            _currentIHttpRequestLifetimeFeature = null;
+            _currentIQueryFeature = null;
+            _currentIFormFeature = null;
+            _currentIResponseCookiesFeature = null;
+            _currentIItemsFeature = null;
+            _currentIHttpConnectionFeature = null;
+            _currentITlsConnectionFeature = null;
+            _currentIHttpUpgradeFeature = this;
+            _currentIHttpWebSocketFeature = null;
+            _currentISessionFeature = null;
         }
 
         private object FastFeatureGet(Type key)

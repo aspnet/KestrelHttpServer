@@ -45,6 +45,15 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
                 typeof(ISessionFeature),
             };
 
+            // NOTE: This list MUST always match the set of feature interfaces implemented by Frame.
+            // See also: src/Microsoft.AspNet.Server.Kestrel/Http/Frame.FeatureCollection.cs
+            var implementedFeatures = new[]
+            {
+                typeof(IHttpRequestFeature),
+                typeof(IHttpResponseFeature),
+                typeof(IHttpUpgradeFeature),
+            };
+
             return $@"
 using System;
 using System.Collections.Generic;
@@ -57,8 +66,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private object _current{feature.Name};")}
 
         private void FastReset()
-        {{{Each(commonFeatures, feature => $@"
-            _current{feature.Name} = this as global::{feature.FullName};")}
+        {{{Each(commonFeatures, feature => implementedFeatures.Contains(feature) ? $@"
+            _current{feature.Name} = this;" : $@"
+            _current{feature.Name} = null;")}
         }}
 
         private object FastFeatureGet(Type key)
