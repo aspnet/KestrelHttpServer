@@ -128,6 +128,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return null;
         }}
 
+        private void SetExtra(Type type, object obj)
+        {{
+            if (MaybeExtra == null)
+            {{
+                MaybeExtra = new List<KeyValuePair<Type, object>>(2);
+            }}
+
+            for (var i = 0; i < MaybeExtra.Count; i++)
+            {{
+                if (MaybeExtra[i].Key == type)
+                {{
+                    MaybeExtra[i] = new KeyValuePair<Type, object>(type, obj);
+                    return;
+                }}
+            }}
+            MaybeExtra.Add(new KeyValuePair<Type, object>(type, obj));
+        }}
+
         private void FastFeatureSetInner(int flag, Type key, object feature)
         {{
             SetExtra(key, feature);
@@ -157,14 +175,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if ((_featureOverridenFlags & flag{feature.Name}) == 0)
             {{
                 yield return new KeyValuePair<Type, object>({feature.Name}Type, this as global::{feature.FullName});
-            }}
-            else
-            {{
-                var feature = SlowFeatureGet({feature.Name}Type);
-                if (feature != null)
-                {{
-                    yield return new KeyValuePair<Type, object>({feature.Name}Type, feature as global::{feature.FullName});
-                }}
             }}")};
 
             {Each(cachedFeatures, feature => $@"

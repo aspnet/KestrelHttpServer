@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
         // See also: tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode/FrameFeatureCollection.cs
-        
+
         private string _scheme;
         private string _pathBase;
         private int _featureRevision;
@@ -30,25 +30,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             FastReset();
             MaybeExtra?.Clear();
-            Interlocked.Increment(ref _featureRevision);
-        }
-
-        private void SetExtra(Type type, object obj)
-        {
-            if (MaybeExtra == null)
-            {
-                MaybeExtra = new List<KeyValuePair<Type, object>>(2);
-            }
-
-            for (var i = 0; i < MaybeExtra.Count; i++)
-            {
-                if (MaybeExtra[i].Key == type)
-                {
-                    MaybeExtra[i] = new KeyValuePair<Type, object>(type, obj);
-                    return;
-                }
-            }
-            MaybeExtra.Add(new KeyValuePair<Type, object>(type, obj));
+            _featureRevision++;
         }
 
         string IHttpRequestFeature.Protocol
