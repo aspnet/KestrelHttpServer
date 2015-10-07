@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
-using Microsoft.Framework.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -24,9 +24,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Task StartAsync(
             string pipeName,
+            ServerAddress address,
             KestrelThread thread,
             Func<Frame, Task> application)
         {
+            ServerAddress = address;
             Thread = thread;
             Application = application;
 

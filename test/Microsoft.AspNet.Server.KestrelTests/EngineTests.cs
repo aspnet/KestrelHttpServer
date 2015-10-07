@@ -8,10 +8,12 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel;
+using Microsoft.AspNet.Server.Kestrel.Filter;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.Dnx.Runtime;
 using Microsoft.Dnx.Runtime.Infrastructure;
 using Xunit;
+using Microsoft.AspNet.Http.Features;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
@@ -20,18 +22,39 @@ namespace Microsoft.AspNet.Server.KestrelTests
     /// </summary>
     public class EngineTests
     {
-        private async Task App(Frame frame)
+        public static TheoryData<ServiceContext> ConnectionFilterData
         {
-            frame.ResponseHeaders.Clear();
+            get
+            {
+                return new TheoryData<ServiceContext>
+                {
+                    {
+                        new TestServiceContext()
+                    },
+                    {
+                        new TestServiceContext
+                        {
+                            ConnectionFilter = new NoOpConnectionFilter()
+                        }
+                    }
+                };
+            }
+        }
+
+        private async Task App(IFeatureCollection frame)
+        {
+            var request = frame.Get<IHttpRequestFeature>();
+            var response = frame.Get<IHttpResponseFeature>();
+            response.Headers.Clear();
             while (true)
             {
                 var buffer = new byte[8192];
-                var count = await frame.RequestBody.ReadAsync(buffer, 0, buffer.Length);
+                var count = await request.Body.ReadAsync(buffer, 0, buffer.Length);
                 if (count == 0)
                 {
                     break;
                 }
-                await frame.ResponseBody.WriteAsync(buffer, 0, count);
+                await response.Body.WriteAsync(buffer, 0, count);
             }
         }
 
@@ -58,48 +81,54 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        private async Task AppChunked(Frame frame)
+        private async Task AppChunked(IFeatureCollection frame)
         {
+            var request = frame.Get<IHttpRequestFeature>();
+            var response = frame.Get<IHttpResponseFeature>();
             var data = new MemoryStream();
-            await frame.RequestBody.CopyToAsync(data);
+            await request.Body.CopyToAsync(data);
             var bytes = data.ToArray();
 
-            frame.ResponseHeaders.Clear();
-            frame.ResponseHeaders["Content-Length"] = new[] { bytes.Length.ToString() };
-            await frame.ResponseBody.WriteAsync(bytes, 0, bytes.Length);
+            response.Headers.Clear();
+            response.Headers["Content-Length"] = bytes.Length.ToString();
+            await response.Body.WriteAsync(bytes, 0, bytes.Length);
         }
 
-        private Task EmptyApp(Frame frame)
+        private Task EmptyApp(IFeatureCollection frame)
         {
-            frame.ResponseHeaders.Clear();
+            frame.Get<IHttpResponseFeature>().Headers.Clear();
             return Task.FromResult<object>(null);
         }
 
-        [Fact]
-        public void EngineCanStartAndStop()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public void EngineCanStartAndStop(ServiceContext testContext)
         {
-            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
+            var engine = new KestrelEngine(LibraryManager, testContext);
             engine.Start(1);
             engine.Dispose();
         }
 
-        [Fact]
-        public void ListenerCanCreateAndDispose()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public void ListenerCanCreateAndDispose(ServiceContext testContext)
         {
-            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
+            var engine = new KestrelEngine(LibraryManager, testContext);
             engine.Start(1);
-            var started = engine.CreateServer("http", "localhost", 54321, App);
+            var address = ServerAddress.FromUrl("http://localhost:54321/");
+            var started = engine.CreateServer(address, App);
             started.Dispose();
             engine.Dispose();
         }
 
-
-        [Fact]
-        public void ConnectionCanReadAndWrite()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public void ConnectionCanReadAndWrite(ServiceContext testContext)
         {
-            var engine = new KestrelEngine(LibraryManager, new TestServiceContext());
+            var engine = new KestrelEngine(LibraryManager, testContext);
             engine.Start(1);
-            var started = engine.CreateServer("http", "localhost", 54321, App);
+            var address = ServerAddress.FromUrl("http://localhost:54321/");
+            var started = engine.CreateServer(address, App);
 
             Console.WriteLine("Started");
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -117,10 +146,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             engine.Dispose();
         }
 
-        [Fact]
-        public async Task Http10()
+
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10(ServiceContext testContext)
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -136,10 +167,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task Http11()
+
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http11(ServiceContext testContext)
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -163,11 +196,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-
-        [Fact]
-        public async Task Http10ContentLength()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10ContentLength(ServiceContext testContext)
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -184,10 +217,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task Http10TransferEncoding()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10TransferEncoding(ServiceContext testContext)
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -204,11 +238,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-
-        [Fact]
-        public async Task Http10KeepAlive()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10KeepAlive(ServiceContext testContext)
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -233,10 +267,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task Http10KeepAliveNotUsedIfResponseContentLengthNotSet()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10KeepAliveNotUsedIfResponseContentLengthNotSet(ServiceContext testContext)
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -262,8 +297,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task Http10KeepAliveContentLength()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10KeepAliveContentLength(ServiceContext testContext)
         {
             using (var server = new TestServer(AppChunked))
             {
@@ -292,8 +328,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task Http10KeepAliveTransferEncoding()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Http10KeepAliveTransferEncoding(ServiceContext testContext)
         {
             using (var server = new TestServer(AppChunked))
             {
@@ -323,10 +360,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task Expect100ContinueForBody()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task Expect100ContinueForBody(ServiceContext testContext)
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -348,11 +386,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-
-        [Fact]
-        public async Task DisconnectingClient()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task DisconnectingClient(ServiceContext testContext)
         {
-            using (var server = new TestServer(App))
+            using (var server = new TestServer(App, testContext))
             {
                 var socket = new Socket(SocketType.Stream, ProtocolType.IP);
                 socket.Connect(IPAddress.Loopback, 54321);
@@ -373,10 +411,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ZeroContentLengthSetAutomaticallyAfterNoWrites()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ZeroContentLengthSetAutomaticallyAfterNoWrites(ServiceContext testContext)
         {
-            using (var server = new TestServer(EmptyApp))
+            using (var server = new TestServer(EmptyApp, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -400,10 +439,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ZeroContentLengthNotSetAutomaticallyForNonKeepAliveRequests()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ZeroContentLengthNotSetAutomaticallyForNonKeepAliveRequests(ServiceContext testContext)
         {
-            using (var server = new TestServer(EmptyApp))
+            using (var server = new TestServer(EmptyApp, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -433,10 +473,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ZeroContentLengthNotSetAutomaticallyForHeadRequests()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ZeroContentLengthNotSetAutomaticallyForHeadRequests(ServiceContext testContext)
         {
-            using (var server = new TestServer(EmptyApp))
+            using (var server = new TestServer(EmptyApp, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -452,19 +493,22 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes(ServiceContext testContext)
         {
             using (var server = new TestServer(async frame =>
             {
-                frame.ResponseHeaders.Clear();
+                var request = frame.Get<IHttpRequestFeature>();
+                var response = frame.Get<IHttpResponseFeature>();
+                response.Headers.Clear();
 
-                using (var reader = new StreamReader(frame.RequestBody, Encoding.ASCII))
+                using (var reader = new StreamReader(request.Body, Encoding.ASCII))
                 {
                     var statusString = await reader.ReadLineAsync();
-                    frame.StatusCode = int.Parse(statusString);
+                    response.StatusCode = int.Parse(statusString);
                 }
-            }))
+            }, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -502,24 +546,26 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ThrowingResultsIn500Response()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ThrowingResultsIn500Response(ServiceContext testContext)
         {
             bool onStartingCalled = false;
 
             using (var server = new TestServer(frame =>
             {
-                frame.OnStarting(_ =>
+                var response = frame.Get<IHttpResponseFeature>();
+                response.OnStarting(_ =>
                 {
                     onStartingCalled = true;
                     return Task.FromResult<object>(null);
                 }, null);
 
                 // Anything added to the ResponseHeaders dictionary is ignored
-                frame.ResponseHeaders.Clear();
-                frame.ResponseHeaders["Content-Length"] = new[] { "11" };
+                response.Headers.Clear();
+                response.Headers["Content-Length"] = "11";
                 throw new Exception();
-            }))
+            }, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -553,24 +599,26 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ThrowingAfterWritingKillsConnection()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ThrowingAfterWritingKillsConnection(ServiceContext testContext)
         {
             bool onStartingCalled = false;
 
             using (var server = new TestServer(async frame =>
             {
-                frame.OnStarting(_ =>
+                var response = frame.Get<IHttpResponseFeature>();
+                response.OnStarting(_ =>
                 {
                     onStartingCalled = true;
                     return Task.FromResult<object>(null);
                 }, null);
 
-                frame.ResponseHeaders.Clear();
-                frame.ResponseHeaders["Content-Length"] = new[] { "11" };
-                await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+                response.Headers.Clear();
+                response.Headers["Content-Length"] = new[] { "11" };
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
                 throw new Exception();
-            }))
+            }, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -589,24 +637,26 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ThrowingAfterPartialWriteKillsConnection()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ThrowingAfterPartialWriteKillsConnection(ServiceContext testContext)
         {
             bool onStartingCalled = false;
 
             using (var server = new TestServer(async frame =>
             {
-                frame.OnStarting(_ =>
+                var response = frame.Get<IHttpResponseFeature>();
+                response.OnStarting(_ =>
                 {
                     onStartingCalled = true;
                     return Task.FromResult<object>(null);
                 }, null);
 
-                frame.ResponseHeaders.Clear();
-                frame.ResponseHeaders["Content-Length"] = new[] { "11" };
-                await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Hello"), 0, 5);
+                response.Headers.Clear();
+                response.Headers["Content-Length"] = new[] { "11" };
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello"), 0, 5);
                 throw new Exception();
-            }))
+            }, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -625,10 +675,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ConnectionClosesWhenFinReceived()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ConnectionClosesWhenFinReceived(ServiceContext testContext)
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -651,10 +702,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ConnectionClosesWhenFinReceivedBeforeRequestCompletes()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ConnectionClosesWhenFinReceivedBeforeRequestCompletes(ServiceContext testContext)
         {
-            using (var server = new TestServer(AppChunked))
+            using (var server = new TestServer(AppChunked, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -692,23 +744,25 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ThrowingInOnStartingResultsIn500Response()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ThrowingInOnStartingResultsIn500Response(ServiceContext testContext)
         {
             using (var server = new TestServer(frame =>
             {
-                frame.OnStarting(_ =>
+                var response = frame.Get<IHttpResponseFeature>();
+                response.OnStarting(_ =>
                 {
                     throw new Exception();
                 }, null);
 
-                frame.ResponseHeaders.Clear();
-                frame.ResponseHeaders["Content-Length"] = new[] { "11" };
+                response.Headers.Clear();
+                response.Headers["Content-Length"] = new[] { "11" };
 
                 // If we write to the response stream, we will not get a 500.
 
                 return Task.FromResult<object>(null);
-            }))
+            }, testContext))
             {
                 using (var connection = new TestConnection())
                 {
@@ -740,29 +794,31 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public async Task ThrowingInOnStartingResultsInFailedWrites()
+        [Theory]
+        [MemberData(nameof(ConnectionFilterData))]
+        public async Task ThrowingInOnStartingResultsInFailedWrites(ServiceContext testContext)
         {
             using (var server = new TestServer(async frame =>
             {
                 var onStartingException = new Exception();
 
-                frame.OnStarting(_ =>
+                var response = frame.Get<IHttpResponseFeature>();
+                response.OnStarting(_ =>
                 {
                     throw onStartingException;
                 }, null);
 
-                frame.ResponseHeaders.Clear();
-                frame.ResponseHeaders["Content-Length"] = new[] { "11" };
+                response.Headers.Clear();
+                response.Headers["Content-Length"] = new[] { "11" };
 
                 var writeException = await Assert.ThrowsAsync<Exception>(async () =>
-                    await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11));
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11));
 
                 Assert.Same(onStartingException, writeException);
 
                 // The second write should succeed since the OnStarting callback will not be called again
-                await frame.ResponseBody.WriteAsync(Encoding.ASCII.GetBytes("Exception!!"), 0, 11);
-            }))
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Exception!!"), 0, 11);
+            }, testContext))
             {
                 using (var connection = new TestConnection())
                 {

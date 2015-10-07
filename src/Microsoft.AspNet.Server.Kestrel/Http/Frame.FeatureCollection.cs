@@ -6,27 +6,49 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http.Features;
-using Microsoft.Framework.Primitives;
-using System.Threading;
+using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public partial class Frame : IFeatureCollection, IHttpRequestFeature, IHttpResponseFeature, IHttpUpgradeFeature
     {
+        // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
+        // then the list of `implementedFeatures` in the generated code project MUST also be updated.
+        // See also: tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode/FrameFeatureCollection.cs
+        
         private string _scheme;
         private string _pathBase;
         private int _featureRevision;
 
-        private Dictionary<Type, object> Extra => MaybeExtra ?? Interlocked.CompareExchange(ref MaybeExtra, new Dictionary<Type, object>(), null);
-        private Dictionary<Type, object> MaybeExtra;
+        private List<KeyValuePair<Type, object>> MaybeExtra;
 
         public void ResetFeatureCollection()
         {
             FastReset();
             MaybeExtra?.Clear();
             Interlocked.Increment(ref _featureRevision);
+        }
+
+        private void SetExtra(Type type, object obj)
+        {
+            if (MaybeExtra == null)
+            {
+                MaybeExtra = new List<KeyValuePair<Type, object>>(2);
+            }
+
+            for (var i = 0; i < MaybeExtra.Count; i++)
+            {
+                if (MaybeExtra[i].Key == type)
+                {
+                    MaybeExtra[i] = new KeyValuePair<Type, object>(type, obj);
+                    return;
+                }
+            }
+            MaybeExtra.Add(new KeyValuePair<Type, object>(type, obj));
         }
 
         string IHttpRequestFeature.Protocol

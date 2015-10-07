@@ -9,8 +9,8 @@ using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Features;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.Dnx.Runtime;
-using Microsoft.Framework.Configuration;
-using Microsoft.Framework.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
@@ -59,7 +59,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                 {
                     AppShutdown = _appShutdownService,
                     Log = new KestrelTrace(_logger),
-                    DateHeaderValueManager = dateHeaderValueManager
+                    DateHeaderValueManager = dateHeaderValueManager,
+                    ConnectionFilter = information.ConnectionFilter
                 });
 
                 disposables.Push(engine);
@@ -86,9 +87,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                     {
                         atLeastOneListener = true;
                         disposables.Push(engine.CreateServer(
-                            parsedAddress.Scheme,
-                            parsedAddress.Host,
-                            parsedAddress.Port,
+                            parsedAddress,
                             application));
                     }
                 }
