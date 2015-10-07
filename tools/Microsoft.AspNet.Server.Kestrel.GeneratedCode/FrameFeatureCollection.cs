@@ -79,9 +79,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     public partial class Frame
     {{{Each(implementedFeatures.Select((feature, index) => new { feature, index }), entry => $@"
         private const int flag{entry.feature.Name} = {1 << entry.index};")}
-        {Each(allFeatures, feature => $@"
+{Each(allFeatures, feature => $@"
         private static readonly Type {feature.Name}Type = typeof(global::{feature.FullName});")}
-        {Each(cachedFeatures, feature => $@"
+{Each(cachedFeatures, feature => $@"
         private object _current{feature.Name};")}
 
         private int _featureOverridenFlags = 0;
@@ -95,7 +95,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private object FastFeatureGet(Type key)
         {{{Each(implementedFeatures, feature => $@"
-            if (key == {feature.Name}Type)
+            if (key == typeof(global::{feature.FullName}))
             {{
                 if ((_featureOverridenFlags & flag{feature.Name}) == 0)
                 {{
@@ -104,7 +104,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 return SlowFeatureGet(key);
             }}")}
             {Each(cachedFeatures, feature => $@"
-            if (key == {feature.Name}Type)
+            if (key == typeof(global::{feature.FullName}))
             {{
                 return _current{feature.Name};
             }}")}
@@ -156,13 +156,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {{
             _featureRevision++;
             {Each(implementedFeatures, feature => $@"
-            if (key == {feature.Name}Type)
+            if (key == typeof(global::{feature.FullName}))
             {{
                 FastFeatureSetInner(flag{feature.Name}, key, feature);
                 return;
             }}")};
             {Each(cachedFeatures, feature => $@"
-            if (key == {feature.Name}Type)
+            if (key == typeof(global::{feature.FullName}))
             {{
                 _current{feature.Name} = feature;
                 return;
