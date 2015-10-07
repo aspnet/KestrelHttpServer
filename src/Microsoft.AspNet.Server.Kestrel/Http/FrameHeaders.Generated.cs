@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Framework.Primitives;
+using Microsoft.AspNet.Server.Kestrel.Extensions;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
 {
@@ -589,13 +590,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         protected override int GetCountFast()
         {
-            // Parallel bit count for a 64-bit integer
-            var v = (ulong)_bits;
-            v = v - ((v >> 1) & 0x5555555555555555);
-            v = (v & 0x3333333333333333) + ((v >> 2) & 0x3333333333333333);
-            v = (v + (v >> 4) & 0x0f0f0f0f0f0f0f0f);
-            var count = (int)((v * 0x0101010101010101) >> 56);
-            return count + (MaybeUnknown?.Count ?? 0);
+            return _bits.BitCount() + (MaybeUnknown?.Count ?? 0);
         }
 
         protected override StringValues GetValueFast(string key)
@@ -5422,13 +5417,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         protected override int GetCountFast()
         {
-            // Parallel bit count for a 64-bit integer
-            var v = (ulong)_bits;
-            v = v - ((v >> 1) & 0x5555555555555555);
-            v = (v & 0x3333333333333333) + ((v >> 2) & 0x3333333333333333);
-            v = (v + (v >> 4) & 0x0f0f0f0f0f0f0f0f);
-            var count = (int)((v * 0x0101010101010101) >> 56);
-            return count + (MaybeUnknown?.Count ?? 0);
+            return _bits.BitCount() + (MaybeUnknown?.Count ?? 0);
         }
 
         protected override StringValues GetValueFast(string key)
