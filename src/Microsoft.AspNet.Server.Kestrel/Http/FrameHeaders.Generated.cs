@@ -1,7 +1,7 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Framework.Primitives;
+using Microsoft.Extensions.Primitives;
 using Microsoft.AspNet.Server.Kestrel.Extensions;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 

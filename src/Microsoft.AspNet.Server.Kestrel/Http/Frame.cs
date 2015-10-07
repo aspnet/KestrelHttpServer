@@ -9,8 +9,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Framework.Logging;
-using Microsoft.Framework.Primitives;
 
 // ReSharper disable AccessToModifiedClosure
 

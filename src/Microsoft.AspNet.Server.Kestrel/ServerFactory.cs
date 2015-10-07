@@ -9,7 +9,7 @@ using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Features;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.Dnx.Runtime;
-using Microsoft.Framework.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Framework.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel
