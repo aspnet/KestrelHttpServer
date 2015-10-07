@@ -98,7 +98,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
             Threads.Clear();
         }
-        
+
         public IDisposable CreateServer(ServerAddress address, Func<IFeatureCollection, Task> application)
         {
             var listeners = new List<IDisposable>();

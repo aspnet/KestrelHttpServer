@@ -51,8 +51,6 @@ namespace SampleApp
                     context.Request.Path,
                     context.Request.QueryString);
 
-                foreach (var q in context.Request.Query) { }
-
                 context.Response.ContentLength = 11;
                 context.Response.ContentType = "text/plain";
                 await context.Response.WriteAsync("Hello world");
