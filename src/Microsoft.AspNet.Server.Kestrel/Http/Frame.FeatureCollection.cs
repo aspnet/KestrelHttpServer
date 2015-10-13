@@ -266,15 +266,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             StatusCode = 101;
             ReasonPhrase = "Switching Protocols";
-            ResponseHeaders["Connection"] = "Upgrade";
-            if (!ResponseHeaders.ContainsKey("Upgrade"))
+            _responseHeaders.HeaderConnection = "Upgrade";
+
+            if (StringValues.IsNullOrEmpty(_responseHeaders.HeaderUpgrade) &&
+                !StringValues.IsNullOrEmpty(_requestHeaders.HeaderUpgrade))
             {
-                StringValues values;
-                if (RequestHeaders.TryGetValue("Upgrade", out values))
-                {
-                    ResponseHeaders["Upgrade"] = values;
-                }
+                _responseHeaders.HeaderUpgrade = _requestHeaders.HeaderUpgrade;
             }
+
             ProduceStart();
             return Task.FromResult(DuplexStream);
         }
