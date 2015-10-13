@@ -18,11 +18,20 @@ namespace Microsoft.AspNet.Server.Kestrel.LibuvCopier
                     var dnxFolder = Environment.GetEnvironmentVariable("DNX_HOME");
 
 #if DNX451
+                    var candidate = dnxFolder.Split(';')
+                                             .Select(path => Environment.ExpandEnvironmentVariables(path))
+                                             .Where(path => Directory.Exists(path))
+                                             .FirstOrDefault();
+
                     // DNXCore,Version=v5.0 error CS0117: 'Environment' does not contain a definition for 'SpecialFolder'
                     // DNXCore,Version=v5.0 error CS0117: 'Environment' does not contain a definition for 'GetFolderPath'
-                    if (string.IsNullOrEmpty(dnxFolder))
+                    if (candidate == null)
                     {
                         dnxFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dnx");
+                    }
+                    else
+                    {
+                        dnxFolder = candidate;
                     }
 #endif
 
@@ -53,7 +62,7 @@ namespace Microsoft.AspNet.Server.Kestrel.LibuvCopier
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 throw;
