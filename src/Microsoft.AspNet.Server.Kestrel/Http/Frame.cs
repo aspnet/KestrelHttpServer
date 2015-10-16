@@ -402,12 +402,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             if (_responseStarted) return;
 
-            StringValues expect;
-            if (HttpVersion.Equals("HTTP/1.1") &&
-                RequestHeaders.TryGetValue("Expect", out expect) &&
-                (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
+            if (HttpVersion.Equals("HTTP/1.1"))
             {
-                SocketOutput.Write(_continueBytes);
+                foreach(var expect in _requestHeaders.HeaderExpect)
+                {
+                    if (expect.Equals("100-continue", StringComparison.OrdinalIgnoreCase))
+                    {
+                        SocketOutput.Write(_continueBytes);
+                        return;
+                    }
+                }
             }
         }
 

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNet.Http.Features;
 using Microsoft.Dnx.Compilation.CSharp;
-using Microsoft.AspNet.Http.Features.Internal;
 using Microsoft.AspNet.Http.Features.Authentication;
 
 namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode

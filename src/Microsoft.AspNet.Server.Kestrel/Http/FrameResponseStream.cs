@@ -23,13 +23,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public override bool CanWrite => true;
 
-        public override long Length
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
+        public override long Length => Position;
 
         public override long Position { get; set; }
 
@@ -60,11 +54,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public override void Write(byte[] buffer, int offset, int count)
         {
+            Position += count;
             _context.FrameControl.Write(new ArraySegment<byte>(buffer, offset, count));
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
+            Position += count;
             return _context.FrameControl.WriteAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
         }
     }
