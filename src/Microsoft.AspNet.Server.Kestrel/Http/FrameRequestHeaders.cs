@@ -1,14 +1,16 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Extensions.Primitives;
 using System.Collections;
 using System.Collections.Generic;
+using Microsoft.AspNet.Http.Features.Enumerators;
+using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    public partial class FrameRequestHeaders : FrameHeaders
+    public partial class FrameRequestHeaders : FrameHeaders, IEnumeratorIndexer<string, StringValues>
     {
+
         public Enumerator GetEnumerator()
         {
             return new Enumerator(this);
@@ -17,6 +19,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         protected override IEnumerator<KeyValuePair<string, StringValues>> GetEnumeratorFast()
         {
             return GetEnumerator();
+        }
+
+        public override StringValuesDictEnumerator GetInterfaceEnumerator()
+        {
+            if (MaybeUnknown != null && MaybeUnknown.Count > 0)
+            {
+                return new StringValuesDictEnumerator(new IndexingEnumerator<string, StringValues>(this, MaybeUnknown.GetEnumerator()));
+            }
+            else
+            {
+                return new StringValuesDictEnumerator(new IndexingEnumerator<string, StringValues>(this));
+            }
+        }
+
+        IndexerMoveNextResult<KeyValuePair<string, StringValues>> IEnumeratorIndexer<string, StringValues>.MoveNext(int currentIndex, bool hasDictionaryState, ref Dictionary<string, StringValues>.Enumerator dictionaryState)
+        {
+            return MoveNextForEnumerator(currentIndex, hasDictionaryState, ref dictionaryState);
         }
 
         public partial struct Enumerator : IEnumerator<KeyValuePair<string, StringValues>>

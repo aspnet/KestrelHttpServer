@@ -167,6 +167,7 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             return $@"
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNet.Http.Features.Enumerators;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
@@ -405,6 +406,47 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _current = _unknownEnumerator.Current;
                     return true;
             }}
+        }}
+
+        public IndexerMoveNextResult<KeyValuePair<string, StringValues>> MoveNextForEnumerator(int currentIndex, bool hasDictionaryState, ref Dictionary<string, StringValues>.Enumerator dictionaryState)
+        {{
+            switch (currentIndex)
+            {{
+                {Each(loop.Headers, header => $@"
+                    case {header.Index}:
+                        goto state{header.Index};
+                ")}
+                default:
+                    goto state_default;
+            }}
+            {Each(loop.Headers, header => $@"
+            state{header.Index}:
+                if ({header.TestBit()})
+                {{
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {{
+                        Current = new KeyValuePair<string, StringValues>(""{header.Name}"", _{header.Identifier}),
+                        NewIndex = {header.Index + 1},
+                        Sucessful = true
+                    }};
+                }}
+            ")}
+            state_default:
+                if (!hasDictionaryState || !dictionaryState.MoveNext())
+                {{
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {{
+                        Current = default(KeyValuePair<string, StringValues>),
+                        NewIndex = currentIndex,
+                        Sucessful = false
+                    }};
+                }}
+                return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                {{
+                    Current = dictionaryState.Current,
+                    NewIndex = currentIndex,
+                    Sucessful = true
+                }};
         }}
     }}
 ")}}}

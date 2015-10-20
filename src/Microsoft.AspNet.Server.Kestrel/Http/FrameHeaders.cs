@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNet.Http;
+using Microsoft.AspNet.Http.Features.Enumerators;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -16,7 +17,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
 
-        StringValues IHeaderDictionary.this[string key]
+        StringValues IHttpDictionary.this[string key]
         {
             get
             {
@@ -100,8 +101,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         protected virtual void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
         { throw new NotImplementedException(); }
 
-        protected virtual IEnumerator<KeyValuePair<string, StringValues>> GetEnumeratorFast()
-        { throw new NotImplementedException(); }
+        protected abstract IEnumerator<KeyValuePair<string, StringValues>> GetEnumeratorFast();
 
         void ICollection<KeyValuePair<string, StringValues>>.Add(KeyValuePair<string, StringValues> item)
         {
@@ -123,7 +123,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             StringValues value;
             return
                 TryGetValueFast(item.Key, out value) &&
-                object.Equals(value, item.Value);
+                StringValues.Equals(value, item.Value);
         }
 
         bool IDictionary<string, StringValues>.ContainsKey(string key)
@@ -135,6 +135,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         void ICollection<KeyValuePair<string, StringValues>>.CopyTo(KeyValuePair<string, StringValues>[] array, int arrayIndex)
         {
             CopyToFast(array, arrayIndex);
+        }
+
+        public abstract StringValuesDictEnumerator GetInterfaceEnumerator();
+
+        StringValuesDictEnumerator IHttpDictionary.GetEnumerator()
+        {
+            return GetInterfaceEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNet.Http.Features.Enumerators;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
@@ -4984,6 +4985,607 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return true;
             }
         }
+
+        public IndexerMoveNextResult<KeyValuePair<string, StringValues>> MoveNextForEnumerator(int currentIndex, bool hasDictionaryState, ref Dictionary<string, StringValues>.Enumerator dictionaryState)
+        {
+            switch (currentIndex)
+            {
+                
+                    case 0:
+                        goto state0;
+                
+                    case 1:
+                        goto state1;
+                
+                    case 2:
+                        goto state2;
+                
+                    case 3:
+                        goto state3;
+                
+                    case 4:
+                        goto state4;
+                
+                    case 5:
+                        goto state5;
+                
+                    case 6:
+                        goto state6;
+                
+                    case 7:
+                        goto state7;
+                
+                    case 8:
+                        goto state8;
+                
+                    case 9:
+                        goto state9;
+                
+                    case 10:
+                        goto state10;
+                
+                    case 11:
+                        goto state11;
+                
+                    case 12:
+                        goto state12;
+                
+                    case 13:
+                        goto state13;
+                
+                    case 14:
+                        goto state14;
+                
+                    case 15:
+                        goto state15;
+                
+                    case 16:
+                        goto state16;
+                
+                    case 17:
+                        goto state17;
+                
+                    case 18:
+                        goto state18;
+                
+                    case 19:
+                        goto state19;
+                
+                    case 20:
+                        goto state20;
+                
+                    case 21:
+                        goto state21;
+                
+                    case 22:
+                        goto state22;
+                
+                    case 23:
+                        goto state23;
+                
+                    case 24:
+                        goto state24;
+                
+                    case 25:
+                        goto state25;
+                
+                    case 26:
+                        goto state26;
+                
+                    case 27:
+                        goto state27;
+                
+                    case 28:
+                        goto state28;
+                
+                    case 29:
+                        goto state29;
+                
+                    case 30:
+                        goto state30;
+                
+                    case 31:
+                        goto state31;
+                
+                    case 32:
+                        goto state32;
+                
+                    case 33:
+                        goto state33;
+                
+                    case 34:
+                        goto state34;
+                
+                    case 35:
+                        goto state35;
+                
+                    case 36:
+                        goto state36;
+                
+                    case 37:
+                        goto state37;
+                
+                    case 38:
+                        goto state38;
+                
+                    case 39:
+                        goto state39;
+                
+                    case 40:
+                        goto state40;
+                
+                default:
+                    goto state_default;
+            }
+            
+            state0:
+                if (((_bits & 1L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Cache-Control", _CacheControl),
+                        NewIndex = 1,
+                        Sucessful = true
+                    };
+                }
+            
+            state1:
+                if (((_bits & 2L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Connection", _Connection),
+                        NewIndex = 2,
+                        Sucessful = true
+                    };
+                }
+            
+            state2:
+                if (((_bits & 4L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Date", _Date),
+                        NewIndex = 3,
+                        Sucessful = true
+                    };
+                }
+            
+            state3:
+                if (((_bits & 8L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Keep-Alive", _KeepAlive),
+                        NewIndex = 4,
+                        Sucessful = true
+                    };
+                }
+            
+            state4:
+                if (((_bits & 16L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Pragma", _Pragma),
+                        NewIndex = 5,
+                        Sucessful = true
+                    };
+                }
+            
+            state5:
+                if (((_bits & 32L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Trailer", _Trailer),
+                        NewIndex = 6,
+                        Sucessful = true
+                    };
+                }
+            
+            state6:
+                if (((_bits & 64L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Transfer-Encoding", _TransferEncoding),
+                        NewIndex = 7,
+                        Sucessful = true
+                    };
+                }
+            
+            state7:
+                if (((_bits & 128L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Upgrade", _Upgrade),
+                        NewIndex = 8,
+                        Sucessful = true
+                    };
+                }
+            
+            state8:
+                if (((_bits & 256L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Via", _Via),
+                        NewIndex = 9,
+                        Sucessful = true
+                    };
+                }
+            
+            state9:
+                if (((_bits & 512L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Warning", _Warning),
+                        NewIndex = 10,
+                        Sucessful = true
+                    };
+                }
+            
+            state10:
+                if (((_bits & 1024L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Allow", _Allow),
+                        NewIndex = 11,
+                        Sucessful = true
+                    };
+                }
+            
+            state11:
+                if (((_bits & 2048L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Length", _ContentLength),
+                        NewIndex = 12,
+                        Sucessful = true
+                    };
+                }
+            
+            state12:
+                if (((_bits & 4096L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Type", _ContentType),
+                        NewIndex = 13,
+                        Sucessful = true
+                    };
+                }
+            
+            state13:
+                if (((_bits & 8192L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Encoding", _ContentEncoding),
+                        NewIndex = 14,
+                        Sucessful = true
+                    };
+                }
+            
+            state14:
+                if (((_bits & 16384L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Language", _ContentLanguage),
+                        NewIndex = 15,
+                        Sucessful = true
+                    };
+                }
+            
+            state15:
+                if (((_bits & 32768L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Location", _ContentLocation),
+                        NewIndex = 16,
+                        Sucessful = true
+                    };
+                }
+            
+            state16:
+                if (((_bits & 65536L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-MD5", _ContentMD5),
+                        NewIndex = 17,
+                        Sucessful = true
+                    };
+                }
+            
+            state17:
+                if (((_bits & 131072L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Range", _ContentRange),
+                        NewIndex = 18,
+                        Sucessful = true
+                    };
+                }
+            
+            state18:
+                if (((_bits & 262144L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Expires", _Expires),
+                        NewIndex = 19,
+                        Sucessful = true
+                    };
+                }
+            
+            state19:
+                if (((_bits & 524288L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Last-Modified", _LastModified),
+                        NewIndex = 20,
+                        Sucessful = true
+                    };
+                }
+            
+            state20:
+                if (((_bits & 1048576L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Accept", _Accept),
+                        NewIndex = 21,
+                        Sucessful = true
+                    };
+                }
+            
+            state21:
+                if (((_bits & 2097152L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Accept-Charset", _AcceptCharset),
+                        NewIndex = 22,
+                        Sucessful = true
+                    };
+                }
+            
+            state22:
+                if (((_bits & 4194304L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Accept-Encoding", _AcceptEncoding),
+                        NewIndex = 23,
+                        Sucessful = true
+                    };
+                }
+            
+            state23:
+                if (((_bits & 8388608L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Accept-Language", _AcceptLanguage),
+                        NewIndex = 24,
+                        Sucessful = true
+                    };
+                }
+            
+            state24:
+                if (((_bits & 16777216L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Authorization", _Authorization),
+                        NewIndex = 25,
+                        Sucessful = true
+                    };
+                }
+            
+            state25:
+                if (((_bits & 33554432L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Cookie", _Cookie),
+                        NewIndex = 26,
+                        Sucessful = true
+                    };
+                }
+            
+            state26:
+                if (((_bits & 67108864L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Expect", _Expect),
+                        NewIndex = 27,
+                        Sucessful = true
+                    };
+                }
+            
+            state27:
+                if (((_bits & 134217728L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("From", _From),
+                        NewIndex = 28,
+                        Sucessful = true
+                    };
+                }
+            
+            state28:
+                if (((_bits & 268435456L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Host", _Host),
+                        NewIndex = 29,
+                        Sucessful = true
+                    };
+                }
+            
+            state29:
+                if (((_bits & 536870912L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("If-Match", _IfMatch),
+                        NewIndex = 30,
+                        Sucessful = true
+                    };
+                }
+            
+            state30:
+                if (((_bits & 1073741824L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("If-Modified-Since", _IfModifiedSince),
+                        NewIndex = 31,
+                        Sucessful = true
+                    };
+                }
+            
+            state31:
+                if (((_bits & 2147483648L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("If-None-Match", _IfNoneMatch),
+                        NewIndex = 32,
+                        Sucessful = true
+                    };
+                }
+            
+            state32:
+                if (((_bits & 4294967296L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("If-Range", _IfRange),
+                        NewIndex = 33,
+                        Sucessful = true
+                    };
+                }
+            
+            state33:
+                if (((_bits & 8589934592L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("If-Unmodified-Since", _IfUnmodifiedSince),
+                        NewIndex = 34,
+                        Sucessful = true
+                    };
+                }
+            
+            state34:
+                if (((_bits & 17179869184L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Max-Forwards", _MaxForwards),
+                        NewIndex = 35,
+                        Sucessful = true
+                    };
+                }
+            
+            state35:
+                if (((_bits & 34359738368L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Proxy-Authorization", _ProxyAuthorization),
+                        NewIndex = 36,
+                        Sucessful = true
+                    };
+                }
+            
+            state36:
+                if (((_bits & 68719476736L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Referer", _Referer),
+                        NewIndex = 37,
+                        Sucessful = true
+                    };
+                }
+            
+            state37:
+                if (((_bits & 137438953472L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Range", _Range),
+                        NewIndex = 38,
+                        Sucessful = true
+                    };
+                }
+            
+            state38:
+                if (((_bits & 274877906944L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("TE", _TE),
+                        NewIndex = 39,
+                        Sucessful = true
+                    };
+                }
+            
+            state39:
+                if (((_bits & 549755813888L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Translate", _Translate),
+                        NewIndex = 40,
+                        Sucessful = true
+                    };
+                }
+            
+            state40:
+                if (((_bits & 1099511627776L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("User-Agent", _UserAgent),
+                        NewIndex = 41,
+                        Sucessful = true
+                    };
+                }
+            
+            state_default:
+                if (!hasDictionaryState || !dictionaryState.MoveNext())
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = default(KeyValuePair<string, StringValues>),
+                        NewIndex = currentIndex,
+                        Sucessful = false
+                    };
+                }
+                return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                {
+                    Current = dictionaryState.Current,
+                    NewIndex = currentIndex,
+                    Sucessful = true
+                };
+        }
     }
 
     public partial class FrameResponseHeaders 
@@ -8668,6 +9270,453 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _current = _unknownEnumerator.Current;
                     return true;
             }
+        }
+
+        public IndexerMoveNextResult<KeyValuePair<string, StringValues>> MoveNextForEnumerator(int currentIndex, bool hasDictionaryState, ref Dictionary<string, StringValues>.Enumerator dictionaryState)
+        {
+            switch (currentIndex)
+            {
+                
+                    case 0:
+                        goto state0;
+                
+                    case 1:
+                        goto state1;
+                
+                    case 2:
+                        goto state2;
+                
+                    case 3:
+                        goto state3;
+                
+                    case 4:
+                        goto state4;
+                
+                    case 5:
+                        goto state5;
+                
+                    case 6:
+                        goto state6;
+                
+                    case 7:
+                        goto state7;
+                
+                    case 8:
+                        goto state8;
+                
+                    case 9:
+                        goto state9;
+                
+                    case 10:
+                        goto state10;
+                
+                    case 11:
+                        goto state11;
+                
+                    case 12:
+                        goto state12;
+                
+                    case 13:
+                        goto state13;
+                
+                    case 14:
+                        goto state14;
+                
+                    case 15:
+                        goto state15;
+                
+                    case 16:
+                        goto state16;
+                
+                    case 17:
+                        goto state17;
+                
+                    case 18:
+                        goto state18;
+                
+                    case 19:
+                        goto state19;
+                
+                    case 20:
+                        goto state20;
+                
+                    case 21:
+                        goto state21;
+                
+                    case 22:
+                        goto state22;
+                
+                    case 23:
+                        goto state23;
+                
+                    case 24:
+                        goto state24;
+                
+                    case 25:
+                        goto state25;
+                
+                    case 26:
+                        goto state26;
+                
+                    case 27:
+                        goto state27;
+                
+                    case 28:
+                        goto state28;
+                
+                    case 29:
+                        goto state29;
+                
+                default:
+                    goto state_default;
+            }
+            
+            state0:
+                if (((_bits & 1L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Cache-Control", _CacheControl),
+                        NewIndex = 1,
+                        Sucessful = true
+                    };
+                }
+            
+            state1:
+                if (((_bits & 2L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Connection", _Connection),
+                        NewIndex = 2,
+                        Sucessful = true
+                    };
+                }
+            
+            state2:
+                if (((_bits & 4L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Date", _Date),
+                        NewIndex = 3,
+                        Sucessful = true
+                    };
+                }
+            
+            state3:
+                if (((_bits & 8L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Keep-Alive", _KeepAlive),
+                        NewIndex = 4,
+                        Sucessful = true
+                    };
+                }
+            
+            state4:
+                if (((_bits & 16L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Pragma", _Pragma),
+                        NewIndex = 5,
+                        Sucessful = true
+                    };
+                }
+            
+            state5:
+                if (((_bits & 32L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Trailer", _Trailer),
+                        NewIndex = 6,
+                        Sucessful = true
+                    };
+                }
+            
+            state6:
+                if (((_bits & 64L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Transfer-Encoding", _TransferEncoding),
+                        NewIndex = 7,
+                        Sucessful = true
+                    };
+                }
+            
+            state7:
+                if (((_bits & 128L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Upgrade", _Upgrade),
+                        NewIndex = 8,
+                        Sucessful = true
+                    };
+                }
+            
+            state8:
+                if (((_bits & 256L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Via", _Via),
+                        NewIndex = 9,
+                        Sucessful = true
+                    };
+                }
+            
+            state9:
+                if (((_bits & 512L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Warning", _Warning),
+                        NewIndex = 10,
+                        Sucessful = true
+                    };
+                }
+            
+            state10:
+                if (((_bits & 1024L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Allow", _Allow),
+                        NewIndex = 11,
+                        Sucessful = true
+                    };
+                }
+            
+            state11:
+                if (((_bits & 2048L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Length", _ContentLength),
+                        NewIndex = 12,
+                        Sucessful = true
+                    };
+                }
+            
+            state12:
+                if (((_bits & 4096L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Type", _ContentType),
+                        NewIndex = 13,
+                        Sucessful = true
+                    };
+                }
+            
+            state13:
+                if (((_bits & 8192L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Encoding", _ContentEncoding),
+                        NewIndex = 14,
+                        Sucessful = true
+                    };
+                }
+            
+            state14:
+                if (((_bits & 16384L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Language", _ContentLanguage),
+                        NewIndex = 15,
+                        Sucessful = true
+                    };
+                }
+            
+            state15:
+                if (((_bits & 32768L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Location", _ContentLocation),
+                        NewIndex = 16,
+                        Sucessful = true
+                    };
+                }
+            
+            state16:
+                if (((_bits & 65536L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-MD5", _ContentMD5),
+                        NewIndex = 17,
+                        Sucessful = true
+                    };
+                }
+            
+            state17:
+                if (((_bits & 131072L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Content-Range", _ContentRange),
+                        NewIndex = 18,
+                        Sucessful = true
+                    };
+                }
+            
+            state18:
+                if (((_bits & 262144L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Expires", _Expires),
+                        NewIndex = 19,
+                        Sucessful = true
+                    };
+                }
+            
+            state19:
+                if (((_bits & 524288L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Last-Modified", _LastModified),
+                        NewIndex = 20,
+                        Sucessful = true
+                    };
+                }
+            
+            state20:
+                if (((_bits & 1048576L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Accept-Ranges", _AcceptRanges),
+                        NewIndex = 21,
+                        Sucessful = true
+                    };
+                }
+            
+            state21:
+                if (((_bits & 2097152L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Age", _Age),
+                        NewIndex = 22,
+                        Sucessful = true
+                    };
+                }
+            
+            state22:
+                if (((_bits & 4194304L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("ETag", _ETag),
+                        NewIndex = 23,
+                        Sucessful = true
+                    };
+                }
+            
+            state23:
+                if (((_bits & 8388608L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Location", _Location),
+                        NewIndex = 24,
+                        Sucessful = true
+                    };
+                }
+            
+            state24:
+                if (((_bits & 16777216L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Proxy-Autheticate", _ProxyAutheticate),
+                        NewIndex = 25,
+                        Sucessful = true
+                    };
+                }
+            
+            state25:
+                if (((_bits & 33554432L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Retry-After", _RetryAfter),
+                        NewIndex = 26,
+                        Sucessful = true
+                    };
+                }
+            
+            state26:
+                if (((_bits & 67108864L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Server", _Server),
+                        NewIndex = 27,
+                        Sucessful = true
+                    };
+                }
+            
+            state27:
+                if (((_bits & 134217728L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Set-Cookie", _SetCookie),
+                        NewIndex = 28,
+                        Sucessful = true
+                    };
+                }
+            
+            state28:
+                if (((_bits & 268435456L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("Vary", _Vary),
+                        NewIndex = 29,
+                        Sucessful = true
+                    };
+                }
+            
+            state29:
+                if (((_bits & 536870912L) != 0))
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = new KeyValuePair<string, StringValues>("WWW-Authenticate", _WWWAuthenticate),
+                        NewIndex = 30,
+                        Sucessful = true
+                    };
+                }
+            
+            state_default:
+                if (!hasDictionaryState || !dictionaryState.MoveNext())
+                {
+                    return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                    {
+                        Current = default(KeyValuePair<string, StringValues>),
+                        NewIndex = currentIndex,
+                        Sucessful = false
+                    };
+                }
+                return new IndexerMoveNextResult<KeyValuePair<string, StringValues>>()
+                {
+                    Current = dictionaryState.Current,
+                    NewIndex = currentIndex,
+                    Sucessful = true
+                };
         }
     }
 }
