@@ -12,6 +12,7 @@ using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.WebEncoders;
 
 // ReSharper disable AccessToModifiedClosure
 
@@ -420,8 +421,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (_responseStarted) return;
 
             await FireOnStarting();
-           
-            if (_applicationException != null) 
+
+            if (_applicationException != null)
             {
                 throw new ObjectDisposedException(
                     "The response has been aborted due to an unhandled application exception.",
@@ -596,7 +597,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var requestUri = begin.GetString(scan);
+
+                var beginPath = begin;
+                var endPath = scan;
 
                 var queryString = "";
                 if (chFound == '?')
@@ -622,6 +625,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
+
+                char[] requestUriChars;
+                var rawPathLength = beginPath.GetCharArray(endPath, out requestUriChars);
+                var decodedLength = UrlPathDecoder.DecodeInPlace(requestUriChars, rawPathLength);
+                var requestUri = new string(requestUriChars, 0, decodedLength);
 
                 consumed = scan;
                 Method = method;
