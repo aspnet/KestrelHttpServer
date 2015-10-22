@@ -9,6 +9,7 @@
     "Microsoft.AspNet.Hosting": "1.0.0-*",
     "Microsoft.Dnx.Runtime.Abstractions": "1.0.0-*",
     "Microsoft.Extensions.Logging.Abstractions": "1.0.0-*",
+    "Microsoft.Extensions.WebEncoders.Core": "1.0.0-*",
     "System.Numerics.Vectors": "4.1.1-beta-*",
     "Microsoft.StandardsPolice": {
       "version": "1.0.0-*",
@@ -16,7 +17,7 @@
     },
     "Microsoft.AspNet.Internal.libuv-Darwin": {
       "version": "1.0.0-*",
-        "type":"build"
+      "type": "build"
     },
     "Microsoft.AspNet.Internal.libuv-Windows": {
       "version": "1.0.0-*",
@@ -64,6 +65,6 @@
     "runtimes/win7-x64/native/": "runtimes/win7-x64/native/*",
     "runtimes/win7-x86/native/": "runtimes/win7-x86/native/*",
     "runtimes/win10-arm/native/": "runtimes/win10-arm/native/*",
-    "runtimes/osx/native/":  "runtimes/osx/native/*"
+    "runtimes/osx/native/": "runtimes/osx/native/*"
   }
 }

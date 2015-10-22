@@ -11,7 +11,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// Array of "minus one" bytes of the length of SIMD operations on the current hardware. Used as an argument in the
         /// vector dot product that counts matching character occurence.
         /// </summary>
-        private static Vector<byte> _dotCount = new Vector<byte>(Byte.MaxValue); 
+        private static Vector<byte> _dotCount = new Vector<byte>(Byte.MaxValue);
 
         /// <summary>
         /// Array of negative numbers starting at 0 and continuing for the length of SIMD operations on the current hardware.
@@ -324,15 +324,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public string GetString(MemoryPoolIterator2 end)
+        public int GetCharArray(MemoryPoolIterator2 end, out char[] buffer)
         {
             if (IsDefault || end.IsDefault)
             {
-                return default(string);
+                buffer = new char[0];
+                return 0;
             }
             if (end._block == _block)
             {
-                return _utf8.GetString(_block.Array, _index, end._index - _index);
+                buffer = _utf8.GetChars(_block.Array, _index, end._index - _index);
+                return buffer.Length;
             }
 
             var decoder = _utf8.GetDecoder();
@@ -364,7 +366,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         out bytesUsed,
                         out charsUsed,
                         out completed);
-                    return new string(chars, 0, charIndex + charsUsed);
+
+                    buffer = chars;
+                    return charIndex + charsUsed;
                 }
                 else if (block.Next == null)
                 {
@@ -379,7 +383,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         out bytesUsed,
                         out charsUsed,
                         out completed);
-                    return new string(chars, 0, charIndex + charsUsed);
+
+                    buffer = chars;
+                    return charIndex + charsUsed;
                 }
                 else
                 {
@@ -400,6 +406,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     index = block.Start;
                 }
             }
+        }
+
+        public string GetString(MemoryPoolIterator2 end)
+        {
+            if (IsDefault || end.IsDefault)
+            {
+                return default(string);
+            }
+
+            if (end._block == _block)
+            {
+                return _utf8.GetString(_block.Array, _index, end._index - _index);
+            }
+
+            char[] buffer;
+            var len = GetCharArray(end, out buffer);
+
+            return new string(buffer, 0, len);
         }
 
         public ArraySegment<byte> GetArraySegment(MemoryPoolIterator2 end)
