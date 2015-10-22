@@ -10,7 +10,7 @@ using System.IO;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    public abstract class MessageBody
+    public abstract class MessageBody : IDisposable
     {
         private FrameContext _context;
         private int _send100Continue = 1;
@@ -98,6 +98,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return true;
         }
 
+        protected abstract void Dispose(bool disposing);
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
         class ForRemainingData : MessageBody
         {
@@ -109,6 +116,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             public override Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 return _context.SocketInput.ReadAsync(buffer);
+            }
+            
+            protected override void Dispose(bool disposing)
+            {
+                
             }
         }
 
@@ -145,6 +157,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
 
                 return actual;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (_inputLength > 0)
+                {
+                    var input = _context.SocketInput;
+                    var begin = input.ConsumingStart();
+                    var end = begin.Skip(_inputLength);
+                    input.ConsumingComplete(end, end);
+                }
             }
         }
 
@@ -323,6 +346,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 finally
                 {
                     baton.ConsumingComplete(consumed, scan);
+                }
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (_inputLength > 0)
+                {
+                    var input = _context.SocketInput;
+                    var begin = input.ConsumingStart();
+                    var end = begin.Skip(_inputLength);
+                    input.ConsumingComplete(end, end);
                 }
             }
 

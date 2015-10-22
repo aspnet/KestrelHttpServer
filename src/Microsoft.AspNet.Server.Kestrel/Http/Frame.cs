@@ -168,34 +168,36 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                     if (!terminated && !_requestProcessingStopping)
                     {
-                        MessageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
-                        _keepAlive = MessageBody.RequestKeepAlive;
-                        RequestBody = new FrameRequestStream(MessageBody);
-                        ResponseBody = new FrameResponseStream(this);
-                        DuplexStream = new FrameDuplexStream(RequestBody, ResponseBody);
-
-                        try
+                        using (MessageBody = MessageBody.For(HttpVersion, _requestHeaders, this))
                         {
-                            await Application.Invoke(this).ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            ReportApplicationError(ex);
-                        }
-                        finally
-                        {
-                            // Trigger OnStarting if it hasn't been called yet and the app hasn't
-                            // already failed. If an OnStarting callback throws we can go through
-                            // our normal error handling in ProduceEnd.
-                            // https://github.com/aspnet/KestrelHttpServer/issues/43
-                            if (!_responseStarted && _applicationException == null)
+                            _keepAlive = MessageBody.RequestKeepAlive;
+                            RequestBody = new FrameRequestStream(MessageBody);
+                            ResponseBody = new FrameResponseStream(this);
+                            DuplexStream = new FrameDuplexStream(RequestBody, ResponseBody);
+    
+                            try
                             {
-                                await FireOnStarting();
+                                await Application.Invoke(this).ConfigureAwait(false);
                             }
-
-                            await FireOnCompleted();
-
-                            await ProduceEnd();
+                            catch (Exception ex)
+                            {
+                                ReportApplicationError(ex);
+                            }
+                            finally
+                            {
+                                // Trigger OnStarting if it hasn't been called yet and the app hasn't
+                                // already failed. If an OnStarting callback throws we can go through
+                                // our normal error handling in ProduceEnd.
+                                // https://github.com/aspnet/KestrelHttpServer/issues/43
+                                if (!_responseStarted && _applicationException == null)
+                                {
+                                    await FireOnStarting();
+                                }
+    
+                                await FireOnCompleted();
+    
+                                await ProduceEnd();
+                            }
                         }
 
                         terminated = !_keepAlive;

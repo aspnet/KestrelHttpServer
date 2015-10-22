@@ -137,6 +137,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
+        public MemoryPoolIterator2 Skip(int length)
+        {
+            var block = _block;
+            var index = _index;
+            var remaining = length;
+            var following = block.End - index;
+            while (true)
+            {
+                if (remaining <= following)
+                {
+                    return new MemoryPoolIterator2(block, index + remaining);
+                }
+                if (block.Next == null)
+                {
+                    return new MemoryPoolIterator2(block, index + following);
+                }
+                remaining -= following;
+                block = block.Next;
+                index = block.Start;
+            }
+        }
+
         public int Seek(int char0)
         {
             if (IsDefault)
