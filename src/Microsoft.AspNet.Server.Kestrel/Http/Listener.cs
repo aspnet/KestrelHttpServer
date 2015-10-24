@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +21,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         protected UvStreamHandle ListenSocket { get; private set; }
 
-        public Task StartAsync(
+        public StateCompletionSource<Listener, int> StartAsync(
             ServerAddress address,
             KestrelThread thread,
             Func<Frame, Task> application)
@@ -29,20 +30,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Thread = thread;
             Application = application;
 
-            var tcs = new TaskCompletionSource<int>();
-            Thread.Post(_ =>
+            var scs = new StateCompletionSource<Listener, int>(this);
+            Thread.Post(scs2 =>
             {
                 try
                 {
-                    ListenSocket = CreateListenSocket();
-                    tcs.SetResult(0);
+                    scs2.State.ListenSocket = scs2.State.CreateListenSocket();
+                    scs2.SetResult(0);
                 }
                 catch (Exception ex)
                 {
-                    tcs.SetException(ex);
+                    scs2.SetException(ex);
                 }
-            }, null);
-            return tcs.Task;
+            }, scs);
+            return scs;
         }
 
         /// <summary>
@@ -84,24 +85,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             // the exception that stopped the event loop will never be surfaced.
             if (Thread.FatalError == null && ListenSocket != null)
             {
-                var tcs = new TaskCompletionSource<int>();
+                var scs = new StateCompletionSource<UvStreamHandle, int>(ListenSocket);
                 Thread.Post(
-                    _ =>
+                    scs2 =>
                     {
                         try
                         {
-                            ListenSocket.Dispose();
-                            tcs.SetResult(0);
+                            scs2.State.Dispose();
+                            scs2.SetResult(0);
                         }
                         catch (Exception ex)
                         {
-                            tcs.SetException(ex);
+                            scs2.SetException(ex);
                         }
                     },
-                    null);
+                    scs);
 
                 // REVIEW: Should we add a timeout here to be safe?
-                tcs.Task.Wait();
+                scs.Wait();
             }
 
             ListenSocket = null;

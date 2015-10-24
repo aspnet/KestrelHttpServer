@@ -10,7 +10,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvStreamHandle : UvHandle
     {
-        private readonly static Libuv.uv_connection_cb _uv_connection_cb = UvConnectionCb;
+        private readonly static Libuv.uv_connection_cb _uv_connection_cb = (ptr, status) => UvConnectionCb(ptr, status);
         private readonly static Libuv.uv_alloc_cb _uv_alloc_cb = UvAllocCb;
         private readonly static Libuv.uv_read_cb _uv_read_cb = UvReadCb;
 

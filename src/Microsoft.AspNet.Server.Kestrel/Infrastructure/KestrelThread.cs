@@ -58,13 +58,13 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public void Stop(TimeSpan timeout)
         {
-            Post(OnStop, null);
+            Post((thread) => thread.OnStop(), this);
             if (!_thread.Join((int)timeout.TotalMilliseconds))
             {
-                Post(OnStopRude, null);
+                Post((thread) => thread.OnStopRude(), this);
                 if (!_thread.Join((int)timeout.TotalMilliseconds))
                 {
-                    Post(OnStopImmediate, null);
+                    Post((thread) => thread.OnStopImmediate(), this);
                     if (!_thread.Join((int)timeout.TotalMilliseconds))
                     {
 #if NET451
@@ -79,12 +79,12 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
         }
 
-        private void OnStop(object obj)
+        private void OnStop()
         {
             _post.Unreference();
         }
 
-        private void OnStopRude(object obj)
+        private void OnStopRude()
         {
             _engine.Libuv.walk(
                 _loop,
@@ -99,7 +99,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 IntPtr.Zero);
         }
 
-        private void OnStopImmediate(object obj)
+        private void OnStopImmediate()
         {
             _stopImmediate = true;
             _loop.Stop();
@@ -120,13 +120,14 @@ namespace Microsoft.AspNet.Server.Kestrel
             {
                 _workAdding.Enqueue(new Work
                 {
-                    CallbackAdapter = (callback2, state2) => ((Action<T>)callback2).Invoke((T)state2),
+                    CallbackAdapter = CallbackAdapter<T>,
                     Callback = callback,
                     State = state
                 });
             }
             _post.Send();
         }
+
 
         public Task PostAsync(Action<object> callback, object state)
         {
@@ -152,7 +153,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             {
                 _workAdding.Enqueue(new Work
                 {
-                    CallbackAdapter = (state1, state2) => ((Action<T>)state1).Invoke((T)state2),
+                    CallbackAdapter = CallbackAdapter<T>,
                     Callback = callback,
                     State = state,
                     Completion = tcs
@@ -160,6 +161,11 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
             _post.Send();
             return tcs.Task;
+        }
+
+        private static void CallbackAdapter<T>(object callback, object state)
+        {
+            ((Action<T>)callback).Invoke((T)state);
         }
 
         public void Send(Action<object> callback, object state)
@@ -271,7 +277,12 @@ namespace Microsoft.AspNet.Server.Kestrel
                 {
                     if (work.Completion != null)
                     {
-                        ThreadPool.QueueUserWorkItem(_ => work.Completion.SetException(ex), null);
+                        ThreadPool.QueueUserWorkItem(
+                            tcs =>
+                            {
+                                ((TaskCompletionSource<int>)tcs).SetException(ex);
+                            }, 
+                            work.Completion);
                     }
                     else
                     {
