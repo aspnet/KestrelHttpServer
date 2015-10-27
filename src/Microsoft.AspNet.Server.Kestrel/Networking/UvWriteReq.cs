@@ -14,7 +14,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public class UvWriteReq : UvRequest
     {
-        private readonly static Libuv.uv_write_cb _uv_write_cb = UvWriteCb;
+        private readonly static Libuv.uv_write_cb _uv_write_cb = (ptr, staus) => UvWriteCb(ptr, staus);
 
         private IntPtr _bufs;
 

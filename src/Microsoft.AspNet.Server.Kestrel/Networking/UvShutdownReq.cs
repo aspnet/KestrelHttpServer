@@ -11,7 +11,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public class UvShutdownReq : UvRequest
     {
-        private readonly static Libuv.uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
+        private readonly static Libuv.uv_shutdown_cb _uv_shutdown_cb = (ptr, status) => UvShutdownCb(ptr, status);
 
         private Action<UvShutdownReq, int, object> _callback;
         private object _state;
