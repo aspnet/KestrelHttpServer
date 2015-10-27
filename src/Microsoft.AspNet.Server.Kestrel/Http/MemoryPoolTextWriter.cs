@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    public class MemoryPoolTextWriter : TextWriter
+    public class MemoryPoolTextWriter : IDisposable
     {
         private readonly IMemoryPool _memory;
 
@@ -39,7 +39,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public override Encoding Encoding
+        public Encoding Encoding
         {
             get
             {
@@ -47,27 +47,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
-            try
+            if (_textArray != null)
             {
-                if (disposing)
-                {
-                    if (_textArray != null)
-                    {
-                        _memory.FreeChar(_textArray);
-                        _textArray = null;
-                    }
-                    if (_dataArray != null)
-                    {
-                        _memory.FreeByte(_dataArray);
-                        _dataArray = null;
-                    }
-                }
+                _memory.FreeChar(_textArray);
+                _textArray = null;
             }
-            finally
+            if (_dataArray != null)
             {
-                base.Dispose(disposing);
+                _memory.FreeByte(_dataArray);
+                _dataArray = null;
             }
         }
 
@@ -107,7 +97,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _dataArray = newArray;
         }
 
-        public override void Write(char value)
+        public void Write(char value)
         {
             if (_textLength == _textEnd)
             {
@@ -121,7 +111,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _textArray[_textEnd++] = value;
         }
 
-        public override void Write(string value)
+        public void Write(string value)
         {
             var sourceIndex = 0;
             var sourceLength = value.Length;
@@ -144,7 +134,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public override void Flush()
+        public void Flush()
         {
             while (_textBegin != _textEnd)
             {

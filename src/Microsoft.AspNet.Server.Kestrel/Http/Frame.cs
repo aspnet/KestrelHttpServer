@@ -19,6 +19,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public partial class Frame : FrameContext, IFrameControl
     {
+        private const string _endLine = "\r\n";
+        private const string _endDelimiter = ": ";
+
         private static readonly Encoding _ascii = Encoding.ASCII;
         private static readonly ArraySegment<byte> _endChunkBytes = CreateAsciiByteArraySegment("\r\n");
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
@@ -26,9 +29,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
         private static readonly byte[] _hex = Encoding.ASCII.GetBytes("0123456789abcdef");
 
-        private readonly object _onStartingSync = new Object();
-        private readonly object _onCompletedSync = new Object();
+        private readonly object _onStartingSync = new object();
+        private readonly object _onCompletedSync = new object();
         private readonly FrameRequestHeaders _requestHeaders = new FrameRequestHeaders();
+        private readonly byte[] _nullBuffer = new byte[4096];
         private readonly FrameResponseHeaders _responseHeaders = new FrameResponseHeaders();
 
         private List<KeyValuePair<Func<object, Task>, object>> _onStarting;
@@ -197,8 +201,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                             await ProduceEnd();
 
-                            // Finish reading the request body in case the app did not.
-                            await RequestBody.CopyToAsync(Stream.Null);
+                            while (await RequestBody.ReadAsync(_nullBuffer, 0, _nullBuffer.Length) != 0)
+                            {
+                                // Finish reading the request body in case the app did not.
+                            }
                         }
 
                         terminated = !_keepAlive;
@@ -492,8 +498,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             writer.Write(HttpVersion);
             writer.Write(' ');
             writer.Write(status);
-            writer.Write('\r');
-            writer.Write('\n');
+            writer.Write(_endLine);
 
             var hasConnection = false;
             var hasTransferEncoding = false;
@@ -524,8 +529,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     writer.Write(':');
                     writer.Write(' ');
                     writer.Write(value);
-                    writer.Write('\r');
-                    writer.Write('\n');
+                    writer.Write(_endLine);
 
                     if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
                     {
@@ -572,8 +576,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                writer.Write('\r');
-                writer.Write('\n');
+                writer.Write(_endLine);
             }
             writer.Flush();
             return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
@@ -751,7 +754,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         var value = beginValue.GetString(endValue);
                         if (wrapping)
                         {
-                            value = value.Replace("\r\n", " ");
+                            value = value.Replace(_endLine, " ");
                         }
 
                         consumed = scan;

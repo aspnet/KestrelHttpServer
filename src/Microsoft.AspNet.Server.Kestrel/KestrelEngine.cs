@@ -7,10 +7,8 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Http;
-using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Extensions.PlatformAbstractions;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {

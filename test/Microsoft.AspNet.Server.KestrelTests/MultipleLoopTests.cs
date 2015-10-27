@@ -81,12 +81,16 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     return;
                 }
 
+                var buffer = new byte[] { 1, 2, 3, 4 };
+                var msg = MemoryPoolBlock2.Create(new ArraySegment<byte>(buffer), IntPtr.Zero, null, null);
+                msg.End = msg.Start + buffer.Length;
+
                 var writeRequest = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                 writeRequest.Init(loop);
                 writeRequest.Write(
                     serverConnectionPipe,
-                    new ArraySegment<ArraySegment<byte>>(new ArraySegment<byte>[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) }),
-                    (_3, status2, error2, _4) =>
+                    new ArraySegment<MemoryPoolBlock2>(new[] { msg }),
+                    (socket2, status2, error2, bytesWritten, state) =>
                     {
                         writeRequest.Dispose();
                         serverConnectionPipe.Dispose();
@@ -175,13 +179,17 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
                 serverConnectionPipeAcceptedEvent.WaitOne();
 
+                var buffer = new byte[] { 1, 2, 3, 4 };
+                var msg = MemoryPoolBlock2.Create(new ArraySegment<byte>(buffer), IntPtr.Zero, null, null);
+                msg.End = msg.Start + buffer.Length;
+
                 var writeRequest = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                 writeRequest.Init(loop);
                 writeRequest.Write2(
                     serverConnectionPipe,
-                    new ArraySegment<ArraySegment<byte>>(new ArraySegment<byte>[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) }),
+                    new ArraySegment<MemoryPoolBlock2>(new[] { msg }),
                     serverConnectionTcp,
-                    (_3, status2, error2, _4) =>
+                    (socket2, status2, error2, bytesWritten, state) =>
                     {
                         writeRequest.Dispose();
                         serverConnectionTcp.Dispose();

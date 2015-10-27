@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -95,29 +95,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         class Pool<T>
         {
-            private readonly Stack<T[]> _stack = new Stack<T[]>();
-            private readonly object _sync = new object();
+            private readonly ConcurrentQueue<T[]> _queue = new ConcurrentQueue<T[]>();
 
             public T[] Alloc(int size)
             {
-                lock (_sync)
+                T[] item;
+                if (_queue.TryDequeue(out item))
                 {
-                    if (_stack.Count != 0)
-                    {
-                        return _stack.Pop();
-                    }
+                    return item;
                 }
                 return new T[size];
             }
 
             public void Free(T[] value, int limit)
             {
-                lock (_sync)
+                if (_queue.Count < limit)
                 {
-                    if (_stack.Count < limit)
-                    {
-                        _stack.Push(value);
-                    }
+                    _queue.Enqueue(value);
                 }
             }
         }
