@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         {
             get
             {
-                return Host.StartsWith(Constants.UnixPipeHostPrefix);
+                return Host.StartsWith(Constants.UnixPipeHostPrefix, StringComparison.Ordinal);
             }
         }
 

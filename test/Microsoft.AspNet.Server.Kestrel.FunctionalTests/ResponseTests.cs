@@ -13,6 +13,10 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
 {
     public class ResponseTests
     {
+        const int BufferSize = 1024;
+        const int SendCount = 1024;
+        const int TotalSize = BufferSize * SendCount;
+
         [Fact]
         public async Task LargeDownload()
         {
@@ -29,20 +33,20 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
             {
                 app.Run(async context =>
                 {
-                    var bytes = new byte[1024];
+                    var bytes = new byte[BufferSize];
                     for (int i = 0; i < bytes.Length; i++)
                     {
                         bytes[i] = (byte)i;
                     }
 
-                    context.Response.ContentLength = bytes.Length * 1024;
+                    context.Response.ContentLength = bytes.Length * SendCount;
 
-                    for (int i = 0; i < 1024; i++)
+                    for (int i = 0; i < SendCount; i++)
                     {
                         await context.Response.Body.WriteAsync(bytes, 0, bytes.Length);
                     }
                 });
-            });            
+            });
 
             using (var app = hostBuilder.Build().Start())
             {
@@ -54,7 +58,7 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
 
                     // Read the full response body
                     var total = 0;
-                    var bytes = new byte[1024];
+                    var bytes = new byte[BufferSize];
                     var count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
                     while (count > 0)
                     {
@@ -65,6 +69,7 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
                         }
                         count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
                     }
+                    Assert.Equal(total, TotalSize);
                 }
             }
         }

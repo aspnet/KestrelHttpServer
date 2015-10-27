@@ -10,13 +10,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         public ListenerContext()
         {
-            Memory2 = new MemoryPool2();
+            InputMemory = new MemoryPool();
+            OutputMemory = new MemoryPool();
         }
 
         public ListenerContext(ServiceContext serviceContext) 
             : base(serviceContext)
         {
-            Memory2 = new MemoryPool2();
+            InputMemory = new MemoryPool();
+            OutputMemory = new MemoryPool();
         }
 
         public ListenerContext(ListenerContext listenerContext)
@@ -25,7 +27,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             ServerAddress = listenerContext.ServerAddress;
             Thread = listenerContext.Thread;
             Application = listenerContext.Application;
-            Memory2 = listenerContext.Memory2;
+            InputMemory = listenerContext.InputMemory;
+            OutputMemory = listenerContext.OutputMemory;
             Log = listenerContext.Log;
         }
 
@@ -35,6 +38,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public RequestDelegate Application { get; set; }
 
-        public MemoryPool2 Memory2 { get; set; }
+        public MemoryPool InputMemory { get; set; }
+
+        public MemoryPool OutputMemory { get; set; }
     }
 }

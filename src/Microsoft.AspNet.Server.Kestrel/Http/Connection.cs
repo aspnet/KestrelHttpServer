@@ -13,8 +13,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private static readonly Action<UvStreamHandle, int, object> _readCallback = ReadCallback;
-        private static readonly Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback = AllocCallback;
+        private static readonly Action<UvStreamHandle, int, object> _readCallback = (handle, status, state) => ReadCallback(handle, status, state);
+        private static readonly Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback = (handle, suggestedSize, state) => AllocCallback(handle, suggestedSize, state);
 
         private static long _lastConnectionId;
 
@@ -39,8 +39,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             _connectionId = Interlocked.Increment(ref _lastConnectionId);
 
-            _rawSocketInput = new SocketInput(Memory2);
-            _rawSocketOutput = new SocketOutput(Thread, _socket, _connectionId, Log);
+            _rawSocketInput = new SocketInput(InputMemory);
+            _rawSocketOutput = new SocketOutput(OutputMemory, Thread, _socket, _connectionId, Log);
         }
 
         public void Start()
@@ -83,12 +83,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     if (task.IsFaulted)
                     {
                         connection.Log.LogError("ConnectionFilter.OnConnection", task.Exception);
-                        ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                        connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
                     }
                     else if (task.IsCanceled)
                     {
                         connection.Log.LogError("ConnectionFilter.OnConnection Canceled");
-                        ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                        connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
                     }
                     else
                     {
@@ -100,7 +100,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void ApplyConnectionFilter()
         {
-            var filteredStreamAdapter = new FilteredStreamAdapter(_filterContext.Connection, Memory2, Log);
+            var filteredStreamAdapter = new FilteredStreamAdapter(_filterContext.Connection, InputMemory, Log);
 
             SocketInput = filteredStreamAdapter.SocketInput;
             SocketOutput = filteredStreamAdapter.SocketOutput;

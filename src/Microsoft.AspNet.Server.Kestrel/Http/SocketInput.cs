@@ -15,18 +15,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly Action _awaitableIsCompleted = () => { };
         private static readonly Action _awaitableIsNotCompleted = () => { };
 
-        private readonly MemoryPool2 _memory;
+        private readonly MemoryPool _memory;
         private readonly ManualResetEventSlim _manualResetEvent = new ManualResetEventSlim(false);
 
         private Action _awaitableState;
         private Exception _awaitableError;
 
-        private MemoryPoolBlock2 _head;
-        private MemoryPoolBlock2 _tail;
-        private MemoryPoolBlock2 _pinned;
-        private readonly object _sync = new Object();
+        private MemoryPoolBlock _head;
+        private MemoryPoolBlock _tail;
+        private MemoryPoolBlock _pinned;
+        private readonly object _sync = new object();
 
-        public SocketInput(MemoryPool2 memory)
+        public SocketInput(MemoryPool memory)
         {
             _memory = memory;
             _awaitableState = _awaitableIsNotCompleted;
@@ -97,11 +97,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         _head = _tail = _pinned;
                     }
-                    else if (_tail == _pinned)
-                    {
-                        // NO-OP: this was a read into unoccupied tail-space
-                    }
-                    else
+                    else if (_tail != _pinned)
                     {
                         _tail.Next = _pinned;
                         _tail = _pinned;
@@ -132,20 +128,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public MemoryPoolIterator2 ConsumingStart()
+        public MemoryPoolIterator ConsumingStart()
         {
             lock (_sync)
             {
-                return new MemoryPoolIterator2(_head);
+                return new MemoryPoolIterator(_head);
             }
         }
 
         public void ConsumingComplete(
-            MemoryPoolIterator2 consumed,
-            MemoryPoolIterator2 examined)
+            MemoryPoolIterator consumed,
+            MemoryPoolIterator examined)
         {
-            MemoryPoolBlock2 returnStart = null;
-            MemoryPoolBlock2 returnEnd = null;
+            MemoryPoolBlock returnStart = null;
+            MemoryPoolBlock returnEnd = null;
             lock (_sync)
             {
                 if (!consumed.IsDefault)
@@ -194,7 +190,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else if (awaitableState == _awaitableIsCompleted)
             {
-                Task.Run(continuation);
+                ThreadPool.QueueUserWorkItem((o) => continuation());
             }
             else
             {

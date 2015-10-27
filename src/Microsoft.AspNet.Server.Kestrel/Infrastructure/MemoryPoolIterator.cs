@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
-    public struct MemoryPoolIterator2
+    public struct MemoryPoolIterator
     {
         /// <summary>
         /// Array of "minus one" bytes of the length of SIMD operations on the current hardware. Used as an argument in the
@@ -24,15 +24,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         private static Encoding _utf8 = Encoding.UTF8;
 
-        private MemoryPoolBlock2 _block;
+        private MemoryPoolBlock _block;
         private int _index;
 
-        public MemoryPoolIterator2(MemoryPoolBlock2 block)
+        public MemoryPoolIterator(MemoryPoolBlock block)
         {
             _block = block;
             _index = _block?.Start ?? 0;
         }
-        public MemoryPoolIterator2(MemoryPoolBlock2 block, int index)
+        public MemoryPoolIterator(MemoryPoolBlock block, int index)
         {
             _block = block;
             _index = index;
@@ -68,7 +68,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public MemoryPoolBlock2 Block => _block;
+        public MemoryPoolBlock Block => _block;
 
         public int Index => _index;
 
@@ -430,7 +430,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             {
                 return false;
             }
-            else if (_index < _block.End)
+
+            if (_index < _block.End)
             {
                 _block.Array[_index++] = data;
                 return true;
@@ -447,19 +448,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     block.Array[index] = data;
                     return true;
                 }
-                else if (block.Next == null)
+
+                if (block.Next == null)
                 {
                     return false;
                 }
-                else
-                {
-                    block = block.Next;
-                    index = block.Start;
-                }
+
+                block = block.Next;
+                index = block.Start;
             }
         }
 
-        public int GetLength(MemoryPoolIterator2 end)
+        public int GetLength(MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -488,7 +488,76 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public string GetString(MemoryPoolIterator2 end)
+        private static unsafe string SingleBlockAsciiString(byte[] input, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            char* output = stackalloc char[length];
+
+            return SingleBlockAsciiIter(output, input, offset, length);
+        }
+
+        private static unsafe string SingleBlockAsciiIter(char* output, byte[] input, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            for (var i = 0; i < length; i++)
+            {
+                output[i] = (char)input[i + offset];
+            }
+            return new string(output, 0, length);
+        }
+
+        private static unsafe string MultiBlockAsciiString(MemoryPoolBlock block, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            char* output = stackalloc char[length];
+
+            return MultiBlockAsciiIter(output, block, offset, length);
+        }
+
+        private static unsafe string MultiBlockAsciiIter(char* output, MemoryPoolBlock block, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            while (length > 0)
+            {
+                var following = block.End - offset;
+                var input = block.Array;
+
+                for (var i = 0; i < following; i++)
+                {
+                    output[i] = (char)input[i + offset];
+                }
+
+                length -= following;
+
+                block = block.Next;
+                offset = block.Start;
+            }
+
+            return new string(output, 0, length);
+        }
+
+        public string GetAsciiString(MemoryPoolIterator end)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            if (IsDefault || end.IsDefault)
+            {
+                return default(string);
+            }
+
+            if (end._block == _block)
+            {
+                return SingleBlockAsciiString(_block.Array, _index, end._index - _index);
+            }
+
+            return MultiBlockAsciiString(_block, _index, GetLength(end));
+        }
+
+        public string GetUtf8String(MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -566,7 +635,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public ArraySegment<byte> GetArraySegment(MemoryPoolIterator2 end)
+        public ArraySegment<byte> GetArraySegment(byte[] scratchBuffer, MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -578,12 +647,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var length = GetLength(end);
-            var array = new byte[length];
-            CopyTo(array, 0, length, out length);
-            return new ArraySegment<byte>(array, 0, length);
+
+            byte[] buffer;
+            if (length > scratchBuffer.Length)
+            {
+                buffer = new byte[length];
+            }
+            else
+            {
+                buffer = scratchBuffer;
+            }
+
+            CopyTo(buffer, 0, length, out length);
+            return new ArraySegment<byte>(buffer, 0, length);
         }
 
-        public MemoryPoolIterator2 CopyTo(byte[] array, int offset, int count, out int actual)
+        public MemoryPoolIterator CopyTo(byte[] array, int offset, int count, out int actual)
         {
             if (IsDefault)
             {
@@ -601,13 +680,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 {
                     actual = count;
                     Buffer.BlockCopy(block.Array, index, array, offset, remaining);
-                    return new MemoryPoolIterator2(block, index + remaining);
+                    return new MemoryPoolIterator(block, index + remaining);
                 }
                 else if (block.Next == null)
                 {
                     actual = count - remaining + following;
                     Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    return new MemoryPoolIterator2(block, index + following);
+                    return new MemoryPoolIterator(block, index + following);
                 }
                 else
                 {

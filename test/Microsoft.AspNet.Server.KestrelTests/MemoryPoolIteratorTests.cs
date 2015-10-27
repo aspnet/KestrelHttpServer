@@ -5,13 +5,13 @@ using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
-    public class MemoryPoolIterator2Tests : IDisposable
+    public class MemoryPoolIteratorTests : IDisposable
     {
-        private readonly MemoryPool2 _pool;
+        private readonly MemoryPool _pool;
 
-        public MemoryPoolIterator2Tests()
+        public MemoryPoolIteratorTests()
         {
-            _pool = new MemoryPool2();
+            _pool = new MemoryPool();
         }
 
         public void Dispose()
@@ -74,7 +74,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         public void Put()
         {
-            var blocks = new MemoryPoolBlock2[4];
+            var blocks = new MemoryPoolBlock[4];
             for (var i = 0; i < 4; ++i)
             {
                 blocks[i] = _pool.Lease(16);
