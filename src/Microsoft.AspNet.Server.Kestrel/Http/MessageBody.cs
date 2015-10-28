@@ -21,6 +21,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         public bool RequestKeepAlive { get; protected set; }
+        public bool LocalIntakeFin { get; protected set; }
 
         public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -98,7 +99,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return true;
         }
 
-
         class ForRemainingData : MessageBody
         {
             public ForRemainingData(FrameContext context)
@@ -106,9 +106,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
             }
 
-            public override Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                return _context.SocketInput.ReadAsync(buffer);
+                var actual = await _context.SocketInput.ReadAsync(buffer);
+                
+                if (actual == 0)
+                {
+                    LocalIntakeFin = true;
+                }
+
+                return actual;
             }
         }
 
@@ -122,7 +129,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 RequestKeepAlive = keepAlive;
                 _contentLength = contentLength;
-                _inputLength = _contentLength;
+                _inputLength = contentLength;
+
+                if (contentLength == 0)
+                {
+                    LocalIntakeFin = true;
+                }
             }
 
             public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
@@ -141,13 +153,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 if (actual == 0)
                 {
+                    LocalIntakeFin = true;
                     throw new InvalidDataException("Unexpected end of request content");
+                }
+
+                if (_inputLength == 0)
+                {
+                    LocalIntakeFin = true;
                 }
 
                 return actual;
             }
         }
-
 
         /// <summary>
         ///   http://tools.ietf.org/html/rfc2616#section-3.6.1
@@ -180,6 +197,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         else if (chunkSize == 0)
                         {
                             _mode = Mode.Complete;
+                            LocalIntakeFin = true;
                         }
                         else
                         {
