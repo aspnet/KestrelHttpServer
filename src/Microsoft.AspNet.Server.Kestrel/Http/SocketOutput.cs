@@ -247,12 +247,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         // This is called on the libuv event loop
         private void OnWriteCompleted(int status, Exception error)
         {
-            _log.ConnectionWriteCallback(_connectionId, status);
 
             CallbackContext callbackContext;
             while (_callbacksPending.TryPeek(out callbackContext) && callbackContext.BytesWrittenThreshold <= _bytesWritten)
             {
                 _lastWriteError = error;
+                _log.ConnectionWriteCallback(_connectionId, status);
 
                 if (_callbacksPending.TryDequeue(out callbackContext))
                 {
