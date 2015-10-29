@@ -228,8 +228,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                             await ProduceEnd();
 
-                            // Finish reading the request body in case the app did not.
-                            await RequestBody.CopyToAsync(Stream.Null);
+                            if (!MessageBody.LocalIntakeFin)
+                            {
+                                // Finish reading the request body in case the app did not.
+                                await RequestBody.CopyToAsync(Stream.Null);
+                            }
                         }
 
                         terminated = !_keepAlive;
