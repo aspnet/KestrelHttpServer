@@ -34,8 +34,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private Exception _lastWriteError;
         private readonly Queue<CallbackContext> _callbacksPending;
 
-        private object _writeLock = new object();
-
         public int ShutdownSendStatus;
 
         private int pendingWriteBitFlag = 0;
@@ -65,45 +63,43 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var queuedBytes = _bytesQueued;
 
             var inputLength = buffer.Array != null ? buffer.Count : 0;
+            MemoryPoolBlock2 memoryBlock;
 
-            lock (_writeLock)
+            if (inputLength > 0)
             {
+                memoryBlock = Interlocked.Exchange(ref _currentWriteBlock.Block, null);
 
-                if (inputLength > 0)
+                _log.ConnectionWrite(_connectionId, inputLength);
+
+                int blockRemaining = memoryBlock != null ? memoryBlock.Data.Count - (memoryBlock.End - memoryBlock.Start) : 0;
+
+                var remaining = inputLength;
+                var offset = buffer.Offset;
+
+                while (remaining > 0)
                 {
-                    var memoryBlock = _currentWriteBlock.Block;
-
-                    _log.ConnectionWrite(_connectionId, inputLength);
-                    
-                    int blockRemaining = memoryBlock != null ? memoryBlock.Data.Count - (memoryBlock.End - memoryBlock.Start) : 0;
-
-                    var remaining = inputLength;
-                    var offset = buffer.Offset;
-
-                    while (remaining > 0)
+                    if (memoryBlock == null)
                     {
-                        if (memoryBlock == null)
-                        {
-                            memoryBlock = _memory.Lease(MemoryPool2.NativeBlockSize);
-                            blockRemaining = memoryBlock.Data.Count;
-                        }
-
-                        var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
-                        Buffer.BlockCopy(buffer.Array, offset, memoryBlock.Array, memoryBlock.End, copyAmount);
-
-                        remaining -= copyAmount;
-                        blockRemaining -= copyAmount;
-                        memoryBlock.End += copyAmount;
-                        offset += copyAmount;
-
-                        if (blockRemaining == 0)
-                        {
-                            _memoryBlocks.Enqueue(new WriteBlock() { Block = memoryBlock });
-                            memoryBlock = null;
-                        }
+                        memoryBlock = _memory.Lease(MemoryPool2.NativeBlockSize);
+                        blockRemaining = memoryBlock.Data.Count;
                     }
-                    _currentWriteBlock.Block = memoryBlock;
+
+                    var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
+                    Buffer.BlockCopy(buffer.Array, offset, memoryBlock.Array, memoryBlock.End, copyAmount);
+
+                    remaining -= copyAmount;
+                    blockRemaining -= copyAmount;
+                    memoryBlock.End += copyAmount;
+                    offset += copyAmount;
+
+                    if (blockRemaining == 0)
+                    {
+                        _memoryBlocks.Enqueue(new WriteBlock() { Block = memoryBlock });
+                        memoryBlock = null;
+                    }
                 }
+                
+                Interlocked.Exchange(ref _currentWriteBlock.Block, memoryBlock);
 
                 if (immediate)
                 {
@@ -188,27 +184,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (count < UvWriteReq.BUFFER_COUNT)
             {
-                lock (_writeLock)
-                {
-                    var block = _currentWriteBlock.Block;
+                var block = Interlocked.Exchange(ref _currentWriteBlock.Block, null); ;
 
-                    if (block != null)
+                if (block != null)
+                {
+                    if (data == null)
                     {
-                        if (data == null)
-                        {
-                            data = new MemoryPoolBlock2[UvWriteReq.BUFFER_COUNT];
-                        }
-                        var length = block.End - block.Start;
-                        data[count] = block;
-                        dataLength += length;
-                        count++;
-                        _currentWriteBlock.Block = null;
+                        data = new MemoryPoolBlock2[UvWriteReq.BUFFER_COUNT];
                     }
-                    else
-                    {
-                        socketDisconnect = _currentWriteBlock.SocketDisconnect;
-                        socketShutdownSend = _currentWriteBlock.SocketShutdownSend;
-                    }
+                    var length = block.End - block.Start;
+                    data[count] = block;
+                    dataLength += length;
+                    count++;
+                }
+                else
+                {
+                    socketDisconnect = _currentWriteBlock.SocketDisconnect;
+                    socketShutdownSend = _currentWriteBlock.SocketShutdownSend;
                 }
             }
 
@@ -221,7 +213,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             return new WriteContext()
             {
-                Data =  new ArraySegment<MemoryPoolBlock2>(data??_emptyBlocks, 0, count),
+                Data = new ArraySegment<MemoryPoolBlock2>(data ?? _emptyBlocks, 0, count),
                 Output = this,
                 SocketDisconnect = socketDisconnect,
                 SocketShutdownSend = socketShutdownSend
@@ -254,12 +246,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     break;
             }
         }
-        
+
         // This is called on the libuv event loop
         private void OnWriteCompleted(int status, Exception error)
         {
             _log.ConnectionWriteCallback(_connectionId, status);
-            
+
             Monitor.Enter(_callbacksPending);
             var hasLock = true;
             try
@@ -291,7 +283,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         hasLock = true;
                     }
                 }
-                
+
             }
             finally
             {
@@ -433,7 +425,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 socketOutput.pendingWriteBitFlag = 0;
                 Interlocked.MemoryBarrier();
-                
+
                 WriteContext context;
                 while ((context = socketOutput.GetContext()) != null)
                 {
