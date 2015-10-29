@@ -526,8 +526,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 foreach (var value in header.Value)
                 {
                     writer.Write(header.Key);
-                    writer.Write(':');
-                    writer.Write(' ');
+                    writer.Write(_endDelimiter);
                     writer.Write(value);
                     writer.Write(_endLine);
 

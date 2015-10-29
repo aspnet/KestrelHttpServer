@@ -38,7 +38,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public int ShutdownSendStatus;
 
-        private int pendingWritBitFlag = 0;
+        private int pendingWriteBitFlag = 0;
         private bool SocketDisconnected;
         private bool SocketShutdownSent;
 
@@ -230,7 +230,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void SendBufferedData()
         {
-            if (Interlocked.CompareExchange(ref pendingWritBitFlag, 1, 0) == 0)
+            if (Interlocked.CompareExchange(ref pendingWriteBitFlag, 1, 0) == 0)
             {
                 _thread.Post(so => WriteContext.DoWriteIfNeeded(so), this);
             }
@@ -431,7 +431,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             /// </summary>
             public static void DoWriteIfNeeded(SocketOutput socketOutput)
             {
-                socketOutput.pendingWritBitFlag = 0;
+                socketOutput.pendingWriteBitFlag = 0;
                 Interlocked.MemoryBarrier();
                 
                 WriteContext context;
