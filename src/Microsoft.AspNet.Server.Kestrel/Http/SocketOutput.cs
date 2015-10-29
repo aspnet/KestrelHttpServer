@@ -32,7 +32,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private int _numBytesPreCompleted = 0;
         private Exception _lastWriteError;
-        private readonly Queue<CallbackContext> _callbacksPending;
+        private readonly ConcurrentQueue<CallbackContext> _callbacksPending;
 
         public int ShutdownSendStatus;
 
@@ -46,7 +46,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
             _connectionId = connectionId;
             _log = log;
-            _callbacksPending = new Queue<CallbackContext>();
+            _callbacksPending = new ConcurrentQueue<CallbackContext>();
             _memory = memory;
             _memoryBlocks = new ConcurrentQueue<WriteBlock>();
         }
@@ -133,15 +133,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                lock (_callbacksPending)
+                _callbacksPending.Enqueue(new CallbackContext
                 {
-                    _callbacksPending.Enqueue(new CallbackContext
-                    {
-                        Callback = callback,
-                        State = state,
-                        BytesWrittenThreshold = queuedBytes
-                    });
-                }
+                    Callback = callback,
+                    State = state,
+                    BytesWrittenThreshold = queuedBytes
+                });
             }
 
             Interlocked.Add(ref _numBytesPreCompleted, inputLength);
@@ -252,44 +249,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             _log.ConnectionWriteCallback(_connectionId, status);
 
-            Monitor.Enter(_callbacksPending);
-            var hasLock = true;
-            try
+            CallbackContext callbackContext;
+            while (_callbacksPending.TryPeek(out callbackContext) && callbackContext.BytesWrittenThreshold <= _bytesWritten)
             {
-                if (_callbacksPending.Count == 0)
-                {
-                    return;
-                }
-
-                var hasAvailableCallback = _callbacksPending.Peek().BytesWrittenThreshold <= _bytesWritten;
-
                 _lastWriteError = error;
-                while (hasAvailableCallback)
+
+                if (_callbacksPending.TryDequeue(out callbackContext))
                 {
-                    var callbackContext = _callbacksPending.Dequeue();
-
-                    Monitor.Exit(_callbacksPending);
-                    hasLock = false;
-
                     // callback(error, state, calledInline)
                     callbackContext.Callback(error, callbackContext.State, status, false);
-
-                    hasAvailableCallback = _callbacksPending.Count > 0 &&
-                       _callbacksPending.Peek().BytesWrittenThreshold <= _bytesWritten;
-
-                    if (hasAvailableCallback)
-                    {
-                        Monitor.Enter(_callbacksPending);
-                        hasLock = true;
-                    }
-                }
-
-            }
-            finally
-            {
-                if (hasLock)
-                {
-                    Monitor.Exit(_callbacksPending);
                 }
             }
         }
