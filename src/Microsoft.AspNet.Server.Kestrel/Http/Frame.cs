@@ -22,16 +22,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     public partial class Frame : FrameContext, IFrameControl
     {
         private static readonly Encoding _ascii = Encoding.ASCII;
-        private static readonly ArraySegment<byte> _endChunkBytes = CreateAsciiByteArraySegment("\r\n");
+        private static readonly ArraySegment<byte> _endLineBytes = CreateAsciiByteArraySegment("\r\n");
+        private static readonly ArraySegment<byte> _endChunkBytes = _endLineBytes;
+        private static readonly ArraySegment<byte> _headerDelimiterBytes = CreateAsciiByteArraySegment(": ");
+        private static readonly ArraySegment<byte> _spaceBytes = CreateAsciiByteArraySegment(" ");
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
         private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
+        private static readonly ArraySegment<byte> _contentLengthZeroBytes = CreateAsciiByteArraySegment("Content-Length: 0\r\n");
+        private static readonly ArraySegment<byte> _transferEncodingChunkedBytes = CreateAsciiByteArraySegment("Transfer-Encoding: chunked\r\n");
+        private static readonly ArraySegment<byte> _connectionCloseBytes = CreateAsciiByteArraySegment("Connection: close\r\n\r\n");
+        private static readonly ArraySegment<byte> _connectionKeepAliveBytes = CreateAsciiByteArraySegment("Connection: keep-alive\r\n\r\n");
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
         private static readonly byte[] _hex = Encoding.ASCII.GetBytes("0123456789abcdef");
 
-        private readonly object _onStartingSync = new Object();
-        private readonly object _onCompletedSync = new Object();
+        private readonly object _onStartingSync = new object();
+        private readonly object _onCompletedSync = new object();
         private readonly FrameRequestHeaders _requestHeaders = new FrameRequestHeaders();
-        private readonly byte[] _nullBuffer = new byte[4096];
+        private readonly byte[] _scratchBuffer = new byte[4096];
         private readonly FrameResponseHeaders _responseHeaders = new FrameResponseHeaders();
 
         private List<KeyValuePair<Func<object, Task>, object>> _onStarting;
@@ -189,7 +196,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, _scratchBuffer))
                     {
                         terminated = SocketInput.RemoteIntakeFin;
                         if (!terminated)
@@ -217,6 +224,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                         finally
                         {
+                            var FlushTask = RequestBody.ReadAsync(_scratchBuffer, 0, _scratchBuffer.Length);
                             // Trigger OnStarting if it hasn't been called yet and the app hasn't
                             // already failed. If an OnStarting callback throws we can go through
                             // our normal error handling in ProduceEnd.
@@ -232,9 +240,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                             await ProduceEnd();
 
-                            while (await RequestBody.ReadAsync(_nullBuffer, 0, _nullBuffer.Length) != 0)
+                            while (await FlushTask != 0)
                             {
                                 // Finish reading the request body in case the app did not.
+                                FlushTask = RequestBody.ReadAsync(_scratchBuffer, 0, _scratchBuffer.Length);
                             }
                         }
 
@@ -471,19 +480,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             await ProduceStart(immediate, appCompleted: false);
         }
 
-        private async Task ProduceStart(bool immediate, bool appCompleted)
+        private Task ProduceStart(bool immediate, bool appCompleted)
         {
-            if (_responseStarted) return;
+            if (_responseStarted) return TaskUtilities.CompletedTask;
             _responseStarted = true;
 
             var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
 
-            var responseHeader = CreateResponseHeader(status, appCompleted);
-
-            using (responseHeader.Item2)
-            {
-                await SocketOutput.WriteAsync(responseHeader.Item1, immediate: immediate);
-            }
+            return CreateResponseHeader(status, appCompleted, immediate);
         }
 
         private async Task ProduceEnd()
@@ -521,16 +525,54 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private Tuple<ArraySegment<byte>, IDisposable> CreateResponseHeader(
-            string status,
-            bool appCompleted)
+        ArraySegment<byte> ShortAsciiToBytes(string input)
         {
-            var writer = new MemoryPoolTextWriter(Memory);
-            writer.Write(HttpVersion);
-            writer.Write(' ');
-            writer.Write(status);
-            writer.Write('\r');
-            writer.Write('\n');
+
+            var scratch = _scratchBuffer;
+            var len = input.Length;
+
+            var i = 0;
+            for (; i < scratch.Length; i++)
+            {
+                if (i >= len)
+                {
+                    break;
+                }
+                scratch[i] = (byte)input[i];
+            }
+            var buffer = new ArraySegment<byte>(scratch, 0, i);
+            return buffer;
+        }
+        bool LongAsciiToBytes(string input, int offset, out int newOffset, out ArraySegment<byte> buffer)
+        {
+            var scratch = _scratchBuffer;
+            var len = input.Length;
+            
+            newOffset = offset;
+            var i = 0;
+            for (; i < scratch.Length; i++)
+            {
+                if (newOffset >= len)
+                {
+                    break;
+                }
+                scratch[i] = (byte)input[newOffset];
+                newOffset++;
+            }
+
+            buffer = new ArraySegment<byte>(scratch, 0, i);
+            return newOffset < len;
+        }
+
+        private Task CreateResponseHeader(
+            string status,
+            bool appCompleted,
+            bool immediate)
+        {
+            SocketOutput.Write(ShortAsciiToBytes(HttpVersion), immediate: false);
+            SocketOutput.Write(_spaceBytes, immediate: false);
+            SocketOutput.Write(ShortAsciiToBytes(status), immediate: false);
+            SocketOutput.Write(_endLineBytes, immediate: false);
 
             var hasConnection = false;
             var hasTransferEncoding = false;
@@ -555,21 +597,33 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     hasContentLength = true;
                 }
 
+                ArraySegment<byte> buffer;
+                int inputOffset;
                 foreach (var value in header.Value)
                 {
-                    writer.Write(header.Key);
-                    writer.Write(':');
-                    writer.Write(' ');
-                    writer.Write(value);
-                    writer.Write('\r');
-                    writer.Write('\n');
+                    inputOffset = 0;
+                    while (LongAsciiToBytes(header.Key, inputOffset, out inputOffset, out buffer))
+                    {
+                        SocketOutput.Write(buffer, immediate: false);
+                    }
+                    SocketOutput.Write(buffer, immediate: false);
+
+                    SocketOutput.Write(_headerDelimiterBytes, immediate: false);
+
+                    inputOffset = 0;
+                    while (LongAsciiToBytes(value, inputOffset, out inputOffset, out buffer))
+                    {
+                        SocketOutput.Write(buffer, immediate: false);
+                    }
+                    SocketOutput.Write(buffer, immediate: false);
+
+                    SocketOutput.Write(_endLineBytes, immediate: false);
 
                     if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
                     {
                         _keepAlive = false;
                     }
                 }
-
             }
 
             if (_keepAlive && !hasTransferEncoding && !hasContentLength)
@@ -582,7 +636,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         // Since the app has completed and we are only now generating
                         // the headers we can safely set the Content-Length to 0.
-                        writer.Write("Content-Length: 0\r\n");
+                        SocketOutput.Write(_contentLengthZeroBytes, immediate: false);
                     }
                 }
                 else
@@ -590,7 +644,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     if (HttpVersion == "HTTP/1.1")
                     {
                         _autoChunk = true;
-                        writer.Write("Transfer-Encoding: chunked\r\n");
+                        SocketOutput.Write(_transferEncodingChunkedBytes, immediate: false);
                     }
                     else
                     {
@@ -601,19 +655,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
             {
-                writer.Write("Connection: close\r\n\r\n");
+                return SocketOutput.WriteAsync(_connectionCloseBytes, immediate: immediate);
             }
             else if (_keepAlive && hasConnection == false && HttpVersion == "HTTP/1.0")
             {
-                writer.Write("Connection: keep-alive\r\n\r\n");
+                return SocketOutput.WriteAsync(_connectionKeepAliveBytes, immediate: immediate);
             }
             else
             {
-                writer.Write('\r');
-                writer.Write('\n');
+                return SocketOutput.WriteAsync(_endLineBytes, immediate: immediate);
             }
-            writer.Flush();
-            return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
+
         }
 
         private bool TakeStartLine(SocketInput input)
@@ -694,7 +746,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return Encoding.UTF8.GetString(range.Array, range.Offset + startIndex, endIndex - startIndex);
         }
 
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, byte[] scratchBuffer)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
