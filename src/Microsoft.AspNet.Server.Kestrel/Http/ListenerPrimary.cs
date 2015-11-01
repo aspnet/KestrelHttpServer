@@ -22,7 +22,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         // this message is passed to write2 because it must be non-zero-length, 
         // but it has no other functional significance
-        private readonly ArraySegment<ArraySegment<byte>> _dummyMessage = new ArraySegment<ArraySegment<byte>>(new[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) });
+        private readonly byte[] _dummyBuffer = { 1, 2, 3, 4 };
 
         protected ListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
         {
@@ -80,14 +80,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
+                var msg = MemoryPoolBlock2.Create(new ArraySegment<byte>(_dummyBuffer), IntPtr.Zero, null, null);
+                msg.End = msg.Start + _dummyBuffer.Length;
+
                 var dispatchPipe = _dispatchPipes[index];
                 var write = new UvWriteReq(Log);
                 write.Init(Thread.Loop);
                 write.Write2(
                     dispatchPipe,
-                    _dummyMessage,
+                    new ArraySegment<MemoryPoolBlock2>(new[] { msg }),
                     socket,
-                    (write2, status, error, state) => 
+                    (write2, status, error, bytesWritten, state) =>
                     {
                         write2.Dispose();
                         ((UvStreamHandle)state).Dispose();

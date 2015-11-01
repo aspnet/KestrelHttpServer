@@ -31,6 +31,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private const int _blockLength = _blockStride - _blockUnused;
 
+        public const int WritableBlockSize = _blockLength;
+
         /// <summary>
         /// 4096 * 32 gives you a slabLength of 128k contiguous bytes allocated per slab
         /// </summary>

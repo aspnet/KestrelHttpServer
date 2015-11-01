@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
@@ -13,104 +12,145 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public class SocketOutput : ISocketOutput
     {
-        private const int _maxPendingWrites = 3;
-        private const int _maxBytesPreCompleted = 65536;
+        // ~64k; act=64512
+        internal const int MaxBytesPreCompleted = 2 * (MemoryPool2.WritableBlockSize * UvWriteReq.BUFFER_COUNT) - 1;
+
+        private static MemoryPoolBlock2[] _emptyBlocks = new MemoryPoolBlock2[0];
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly long _connectionId;
         private readonly IKestrelTrace _log;
 
-        // This locks access to to all of the below fields
-        private readonly object _lockObj = new object();
+        private readonly MemoryPool2 _memory;
 
-        // The number of write operations that have been scheduled so far
-        // but have not completed.
-        private int _writesPending = 0;
+        private WriteBlock _currentWriteBlock;
+        private ConcurrentQueue<WriteBlock> _memoryBlocks;
+
+        private long _bytesQueued;
+        private long _bytesWritten;
 
         private int _numBytesPreCompleted = 0;
         private Exception _lastWriteError;
-        private WriteContext _nextWriteContext;
-        private readonly Queue<CallbackContext> _callbacksPending;
+        private int _lastStatus = 0;
+        private readonly ConcurrentQueue<CallbackContext> _callbacksPending;
 
-        public SocketOutput(KestrelThread thread, UvStreamHandle socket, long connectionId, IKestrelTrace log)
+        public int ShutdownSendStatus;
+
+        private volatile int pendingWriteBitFlag = 0;
+        private bool SocketShutdownSent;
+
+        public SocketOutput(MemoryPool2 memory, KestrelThread thread, UvStreamHandle socket, long connectionId, IKestrelTrace log)
         {
             _thread = thread;
             _socket = socket;
             _connectionId = connectionId;
             _log = log;
-            _callbacksPending = new Queue<CallbackContext>();
+            _callbacksPending = new ConcurrentQueue<CallbackContext>();
+            _memory = memory;
+            _memoryBlocks = new ConcurrentQueue<WriteBlock>();
         }
 
-        public void Write(
+        internal void Write(
             ArraySegment<byte> buffer,
-            Action<Exception, object, bool> callback,
+            Action<Exception, object, int, bool> callback,
             object state,
             bool immediate = true,
             bool socketShutdownSend = false,
             bool socketDisconnect = false)
         {
-            //TODO: need buffering that works
-            if (buffer.Array != null)
+            bool triggerCallbackNow;
+            var queuedBytes = _bytesQueued;
+            bool blockFilled = false;
+
+            var inputLength = buffer.Array != null ? buffer.Count : 0;
+            MemoryPoolBlock2 memoryBlock;
+
+            if (inputLength > 0)
             {
-                var copy = new byte[buffer.Count];
-                Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
-                buffer = new ArraySegment<byte>(copy);
-                _log.ConnectionWrite(_connectionId, buffer.Count);
-            }
+                memoryBlock = Interlocked.Exchange(ref _currentWriteBlock.Block, null);
 
-            bool triggerCallbackNow = false;
+                _log.ConnectionWrite(_connectionId, inputLength);
 
-            lock (_lockObj)
-            {
-                if (_nextWriteContext == null)
-                {
-                    _nextWriteContext = new WriteContext(this);
-                }
+                int blockRemaining = memoryBlock != null ? memoryBlock.Data.Count - (memoryBlock.End - memoryBlock.Start) : 0;
 
-                if (buffer.Array != null)
+                var remaining = inputLength;
+                var offset = buffer.Offset;
+
+                while (remaining > 0)
                 {
-                    _nextWriteContext.Buffers.Enqueue(buffer);
-                }
-                if (socketShutdownSend)
-                {
-                    _nextWriteContext.SocketShutdownSend = true;
-                }
-                if (socketDisconnect)
-                {
-                    _nextWriteContext.SocketDisconnect = true;
-                }
-                // Complete the write task immediately if all previous write tasks have been completed,
-                // the buffers haven't grown too large, and the last write to the socket succeeded.
-                triggerCallbackNow = _lastWriteError == null &&
-                                     _callbacksPending.Count == 0 &&
-                                     _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted;
-                if (triggerCallbackNow)
-                {
-                    _numBytesPreCompleted += buffer.Count;
-                }
-                else
-                {
-                    _callbacksPending.Enqueue(new CallbackContext
+                    if (memoryBlock == null)
                     {
-                        Callback = callback,
-                        State = state,
-                        BytesToWrite = buffer.Count
-                    });
+                        memoryBlock = _memory.Lease(MemoryPool2.WritableBlockSize);
+                        blockRemaining = memoryBlock.Data.Count;
+                    }
+
+                    var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
+                    Buffer.BlockCopy(buffer.Array, offset, memoryBlock.Array, memoryBlock.End, copyAmount);
+
+                    remaining -= copyAmount;
+                    blockRemaining -= copyAmount;
+                    memoryBlock.End += copyAmount;
+                    offset += copyAmount;
+
+                    if (blockRemaining == 0)
+                    {
+                        _memoryBlocks.Enqueue(new WriteBlock() { Block = memoryBlock });
+                        memoryBlock = null;
+                        blockFilled = true;
+                    }
                 }
 
-                if (_writesPending < _maxPendingWrites && immediate)
-                {
-                    ScheduleWrite();
-                    _writesPending++;
-                }
+                Interlocked.Exchange(ref _currentWriteBlock.Block, memoryBlock);
+            }
+            
+            CallbackContext callbackContext;
+            var nextPendingBytes = inputLength + _numBytesPreCompleted;
+            if (_lastWriteError == null &&
+                _callbacksPending.TryPeek(out callbackContext) &&
+                nextPendingBytes <= MaxBytesPreCompleted)
+            {
+                triggerCallbackNow = true;
+            }
+            else
+            {
+                triggerCallbackNow = queuedBytes <= _bytesWritten;
             }
 
-            // Make sure we call user code outside of the lock.
+            if (!triggerCallbackNow)
+            {
+                callbackContext = new CallbackContext
+                {
+                    Callback = callback,
+                    State = state,
+                    BytesWrittenThreshold = queuedBytes
+                };
+                _callbacksPending.Enqueue(callbackContext);
+            }
+
+            if (immediate)
+            {
+                _currentWriteBlock.SocketDisconnect |= socketDisconnect;
+                _currentWriteBlock.SocketShutdownSend |= socketShutdownSend;
+            }
+            if (immediate || blockFilled)
+            {
+                SendBufferedData();
+            }
+
             if (triggerCallbackNow)
             {
-                // callback(error, state, calledInline)
-                callback(null, state, true);
+                callback(null, state, 0, true);
+            }
+
+            Interlocked.Add(ref _numBytesPreCompleted, inputLength);
+        }
+
+        private void SendBufferedData()
+        {
+            if (Interlocked.CompareExchange(ref pendingWriteBitFlag, 1, 0) == 0)
+            {
+                _thread.Post(so => so.DoWriteIfNeeded(), this);
             }
         }
 
@@ -119,13 +159,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             switch (endType)
             {
                 case ProduceEndType.SocketShutdownSend:
-                    Write(default(ArraySegment<byte>), (error, state, calledInline) => { }, null,
+                    Write(default(ArraySegment<byte>), (error, state, status, calledInline) => { }, null,
                         immediate: true,
                         socketShutdownSend: true,
                         socketDisconnect: false);
                     break;
                 case ProduceEndType.SocketDisconnect:
-                    Write(default(ArraySegment<byte>), (error, state, calledInline) => { }, null,
+                    Write(default(ArraySegment<byte>), (error, state, status, calledInline) => { }, null,
                         immediate: true,
                         socketShutdownSend: false,
                         socketDisconnect: true);
@@ -133,90 +173,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private void ScheduleWrite()
-        {
-            _thread.Post(_this => _this.WriteAllPending(), this);
-        }
-
         // This is called on the libuv event loop
-        private void WriteAllPending()
+        private void OnWriteCompleted(int status, Exception error)
         {
-            WriteContext writingContext;
+            _lastWriteError = error;
+            _lastStatus = status;
 
-            lock (_lockObj)
+            CallbackContext callbackContext;
+            while (_callbacksPending.TryPeek(out callbackContext) && callbackContext.BytesWrittenThreshold <= _bytesWritten)
             {
-                if (_nextWriteContext != null)
+                _log.ConnectionWriteCallback(_connectionId, status);
+
+                if (_callbacksPending.TryDequeue(out callbackContext))
                 {
-                    writingContext = _nextWriteContext;
-                    _nextWriteContext = null;
+                    //Callback(error, state, calledInline)
+                    callbackContext.Callback(error, callbackContext.State, status, false);
                 }
-                else
-                {
-                    _writesPending--;
-                    return;
-                }
-            }
-
-            try
-            {
-                writingContext.DoWriteIfNeeded();
-            }
-            catch
-            {
-                lock (_lockObj)
-                {
-                    // Lock instead of using Interlocked.Decrement so _writesSending
-                    // doesn't change in the middle of executing other synchronized code.
-                    _writesPending--;
-                }
-
-                throw;
-            }
-        }
-
-        // This is called on the libuv event loop
-        private void OnWriteCompleted(Queue<ArraySegment<byte>> writtenBuffers, int status, Exception error)
-        {
-            _log.ConnectionWriteCallback(_connectionId, status);
-
-            lock (_lockObj)
-            {
-                _lastWriteError = error;
-
-                if (_nextWriteContext != null)
-                {
-                    ScheduleWrite();
-                }
-                else
-                {
-                    _writesPending--;
-                }
-
-                foreach (var writeBuffer in writtenBuffers)
-                {
-                    // _numBytesPreCompleted can temporarily go negative in the event there are
-                    // completed writes that we haven't triggered callbacks for yet.
-                    _numBytesPreCompleted -= writeBuffer.Count;
-                }
-
-
-                // bytesLeftToBuffer can be greater than _maxBytesPreCompleted
-                // This allows large writes to complete once they've actually finished.
-                var bytesLeftToBuffer = _maxBytesPreCompleted - _numBytesPreCompleted;
-                while (_callbacksPending.Count > 0 &&
-                       _callbacksPending.Peek().BytesToWrite <= bytesLeftToBuffer)
-                {
-                    var callbackContext = _callbacksPending.Dequeue();
-
-                    _numBytesPreCompleted += callbackContext.BytesToWrite;
-
-                    // callback(error, state, calledInline)
-                    callbackContext.Callback(_lastWriteError, callbackContext.State, false);
-                }
-
-                // Now that the while loop has completed the following invariants should hold true:
-                Debug.Assert(_numBytesPreCompleted >= 0);
-                Debug.Assert(_numBytesPreCompleted <= _maxBytesPreCompleted);
             }
         }
 
@@ -228,9 +200,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 // to be a subsequent immediate==true call which will go down the following code-path
                 Write(
                     buffer,
-                    (error, state, calledInline) => { },
+                    (error, state, status, calledInline) => { },
                     null,
                     immediate: false);
+
                 return;
             }
 
@@ -239,15 +212,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             Write(
                 buffer,
-                (error, state, calledInline) =>
+                (error, state, status, calledInline) =>
                 {
+                    var cs = (TaskCompletionSource<int>)state;
                     if (error != null)
                     {
-                        tcs.SetException(error);
+                        cs.SetException(error);
                     }
                     else
                     {
-                        tcs.SetResult(0);
+                        cs.SetResult(0);
                     }
                 },
                 tcs,
@@ -267,9 +241,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 // to be a subsequent immediate==true call which will go down the following code-path
                 Write(
                     buffer,
-                    (error, state, calledInline) => { },
+                    (error, state, status, calledInline) => { },
                     null,
                     immediate: false);
+
                 return TaskUtilities.CompletedTask;
             }
 
@@ -278,13 +253,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             Write(
                 buffer,
-                (error, state, calledInline) =>
+                (error, state2, status, calledInline) =>
                 {
-                    if (!calledInline)
+                    var tcs2 = (TaskCompletionSource<int>)state2;
+                    if (status < 0)
                     {
-                        ThreadPool.QueueUserWorkItem(state2 =>
+                        if (!calledInline)
                         {
-                            var tcs2 = (TaskCompletionSource<int>)state2;
+                            ThreadPool.QueueUserWorkItem((state3) =>
+                            {
+                                var tcs3 = (TaskCompletionSource<int>)state3;
+                                if (error != null)
+                                {
+                                    tcs3.SetException(error);
+                                }
+                                else
+                                {
+                                    tcs3.SetResult(0);
+                                }
+                            }, tcs2);
+                        }
+                        else
+                        {
                             if (error != null)
                             {
                                 tcs2.SetException(error);
@@ -293,14 +283,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 tcs2.SetResult(0);
                             }
-                        }, state);
+                        }
                     }
                     else
                     {
-                        var tcs2 = (TaskCompletionSource<int>)state;
-                        if (error != null)
+                        if (!calledInline)
                         {
-                            tcs2.SetException(error);
+                            ThreadPool.QueueUserWorkItem((state3) =>
+                            {
+                                var tcs3 = (TaskCompletionSource<int>)state3;
+                                tcs3.SetResult(0);
+                            }, tcs2);
                         }
                         else
                         {
@@ -314,118 +307,183 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return tcs.Task;
         }
 
-        private class CallbackContext
+        private WriteContext GetContext()
         {
-            // callback(error, state, calledInline)
-            public Action<Exception, object, bool> Callback;
-            public object State;
-            public int BytesToWrite;
+            MemoryPoolBlock2[] data = null;
+
+            var count = 0;
+            var dataLength = 0;
+
+            bool socketDisconnect = false;
+            bool socketShutdownSend = false;
+
+            WriteBlock writeBlock;
+            while (_memoryBlocks.TryDequeue(out writeBlock))
+            {
+                var block = writeBlock.Block;
+                if (block != null)
+                {
+                    if (data == null)
+                    {
+                        data = new MemoryPoolBlock2[UvWriteReq.BUFFER_COUNT];
+                    }
+                    var length = block.End - block.Start;
+                    data[count] = block;
+                    dataLength += length;
+                    count++;
+                }
+
+                socketDisconnect |= writeBlock.SocketDisconnect;
+                socketShutdownSend |= writeBlock.SocketShutdownSend;
+
+                if (count == UvWriteReq.BUFFER_COUNT)
+                {
+                    break;
+                }
+            }
+
+            if (count < UvWriteReq.BUFFER_COUNT)
+            {
+                var block = Interlocked.Exchange(ref _currentWriteBlock.Block, null);
+
+                if (block != null)
+                {
+                    if (data == null)
+                    {
+                        data = new MemoryPoolBlock2[UvWriteReq.BUFFER_COUNT];
+                    }
+                    var length = block.End - block.Start;
+                    data[count] = block;
+                    dataLength += length;
+                    count++;
+                }
+                socketDisconnect |= _currentWriteBlock.SocketDisconnect;
+                socketShutdownSend |= _currentWriteBlock.SocketShutdownSend;
+            }
+
+            Interlocked.Add(ref _bytesQueued, dataLength);
+
+            return new WriteContext()
+            {
+                Data = new ArraySegment<MemoryPoolBlock2>(data ?? _emptyBlocks, 0, count),
+                SocketDisconnect = socketDisconnect,
+                SocketShutdownSend = socketShutdownSend
+            };
         }
 
-        private class WriteContext
+        /// <summary>
+        /// First step: initiate async write if needed, otherwise go to next step
+        /// </summary>
+        public void DoWriteIfNeeded()
         {
-            public SocketOutput Self;
+            pendingWriteBitFlag = 0;
+            Interlocked.MemoryBarrier();
 
-            public Queue<ArraySegment<byte>> Buffers;
+            WriteContext context;
+            while (true)
+            {
+                context = GetContext();
+                var data = context.Data;
+
+                if (data.Count == 0 || _socket.IsClosed)
+                {
+                    DoShutdownIfNeeded(context.SocketDisconnect, context.SocketShutdownSend, 0, null);
+                    return;
+                }
+                
+                var writeReq = new UvWriteReq(_log);
+                writeReq.Init(_thread.Loop);
+
+                writeReq.SocketDisconnect = context.SocketDisconnect;
+                writeReq.SocketShutdownSend = context.SocketShutdownSend;
+                writeReq.Write(_socket,
+                    data,
+                    (_writeReq, status, error, bytesWritten, state) => WriteCallback(_writeReq, status, error, bytesWritten, state),
+                    this);
+            }
+        }
+
+        private static void WriteCallback(UvWriteReq writeReq, int status, Exception error, int bytesWritten, object state)
+        {
+            var socketOutput = (SocketOutput)state;
+            writeReq.Dispose();
+
+            Interlocked.Add(ref socketOutput._bytesWritten, bytesWritten);
+            Interlocked.Add(ref socketOutput._numBytesPreCompleted, -bytesWritten);
+
+            socketOutput.DoShutdownIfNeeded(writeReq.SocketDisconnect, writeReq.SocketShutdownSend, status, error);
+        }
+
+        /// <summary>
+        /// Second step: initiate async shutdown if needed, otherwise go to next step
+        /// </summary>
+        private void DoShutdownIfNeeded(bool socketDisconnect, bool socketShutdownSend, int status, Exception error)
+        {
+            if (socketShutdownSend == false || SocketShutdownSent == true || _socket.IsClosed)
+            {
+                DoDisconnectIfNeeded(socketDisconnect, status, error);
+                return;
+            }
+            SocketShutdownSent = true;
+            
+            var shutdownReq = new UvShutdownReq(_log);
+            shutdownReq.Init(_thread.Loop);
+
+            shutdownReq.SocketDisconnect = socketDisconnect;
+            shutdownReq.SocketStatus = status;
+            shutdownReq.SocketException = error;
+
+            shutdownReq.Shutdown(_socket,
+                (shutdownReq2, status2, state) => ShutdownCallback(shutdownReq2, status2, state), this);
+        }
+
+        private static void ShutdownCallback(UvShutdownReq shutdownReq, int status, object state)
+        {
+            shutdownReq.Dispose();
+            var socketOutput = (SocketOutput)state;
+            socketOutput.ShutdownSendStatus = status;
+
+            socketOutput._log.ConnectionWroteFin(socketOutput._connectionId, status);
+
+            socketOutput.DoDisconnectIfNeeded(shutdownReq.SocketDisconnect, shutdownReq.SocketStatus, shutdownReq.SocketException);
+        }
+
+        /// <summary>
+        /// Third step: disconnect socket if needed, otherwise this work item is complete
+        /// </summary>
+        private void DoDisconnectIfNeeded(bool socketDisconnect, int status, Exception error)
+        {
+            if (socketDisconnect == false || _socket.IsClosed)
+            {
+                OnWriteCompleted(status, error);
+                return;
+            }
+
+            _socket.Dispose();
+            _log.ConnectionStop(_connectionId);
+            OnWriteCompleted(status, error);
+        }
+
+        private struct CallbackContext
+        {
+            //Callback(error, state, calledInline)
+            public Action<Exception, object, int, bool> Callback;
+            public object State;
+            public long BytesWrittenThreshold;
+        }
+
+        private struct WriteContext
+        {
+            public ArraySegment<MemoryPoolBlock2> Data;
             public bool SocketShutdownSend;
             public bool SocketDisconnect;
+        }
 
-            public int WriteStatus;
-            public Exception WriteError;
-
-            public int ShutdownSendStatus;
-
-            public WriteContext(SocketOutput self)
-            {
-                Self = self;
-                Buffers = new Queue<ArraySegment<byte>>();
-            }
-
-            /// <summary>
-            /// Perform any actions needed by this work item. The individual tasks are non-blocking and
-            /// will continue through to each other in order.
-            /// </summary>
-            public void Execute()
-            {
-                DoWriteIfNeeded();
-            }
-
-            /// <summary>
-            /// First step: initiate async write if needed, otherwise go to next step
-            /// </summary>
-            public void DoWriteIfNeeded()
-            {
-                if (Buffers.Count == 0 || Self._socket.IsClosed)
-                {
-                    DoShutdownIfNeeded();
-                    return;
-                }
-
-                var buffers = new ArraySegment<byte>[Buffers.Count];
-
-                var i = 0;
-                foreach (var buffer in Buffers)
-                {
-                    buffers[i++] = buffer;
-                }
-
-                var writeReq = new UvWriteReq(Self._log);
-                writeReq.Init(Self._thread.Loop);
-                writeReq.Write(Self._socket, new ArraySegment<ArraySegment<byte>>(buffers), (_writeReq, status, error, state) =>
-                {
-                    _writeReq.Dispose();
-                    var _this = (WriteContext)state;
-                    _this.WriteStatus = status;
-                    _this.WriteError = error;
-                    DoShutdownIfNeeded();
-                }, this);
-            }
-
-            /// <summary>
-            /// Second step: initiate async shutdown if needed, otherwise go to next step
-            /// </summary>
-            public void DoShutdownIfNeeded()
-            {
-                if (SocketShutdownSend == false || Self._socket.IsClosed)
-                {
-                    DoDisconnectIfNeeded();
-                    return;
-                }
-
-                var shutdownReq = new UvShutdownReq(Self._log);
-                shutdownReq.Init(Self._thread.Loop);
-                shutdownReq.Shutdown(Self._socket, (_shutdownReq, status, state) =>
-                {
-                    _shutdownReq.Dispose();
-                    var _this = (WriteContext)state;
-                    _this.ShutdownSendStatus = status;
-
-                    Self._log.ConnectionWroteFin(Self._connectionId, status);
-
-                    DoDisconnectIfNeeded();
-                }, this);
-            }
-
-            /// <summary>
-            /// Third step: disconnect socket if needed, otherwise this work item is complete
-            /// </summary>
-            public void DoDisconnectIfNeeded()
-            {
-                if (SocketDisconnect == false || Self._socket.IsClosed)
-                {
-                    Complete();
-                    return;
-                }
-
-                Self._socket.Dispose();
-                Self._log.ConnectionStop(Self._connectionId);
-                Complete();
-            }
-
-            public void Complete()
-            {
-                Self.OnWriteCompleted(Buffers, WriteStatus, WriteError);
-            }
+        private struct WriteBlock
+        {
+            public MemoryPoolBlock2 Block;
+            public bool SocketShutdownSend;
+            public bool SocketDisconnect;
         }
     }
 }
