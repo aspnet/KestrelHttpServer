@@ -390,9 +390,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     DoShutdownIfNeeded(context.SocketDisconnect, context.SocketShutdownSend, 0, null);
                     return;
                 }
-                
-                var writeReq = new UvWriteReq(_log);
-                writeReq.Init(_thread.Loop);
+
+                var writeReq = _thread.LeaseWriteRequest();
 
                 writeReq.SocketDisconnect = context.SocketDisconnect;
                 writeReq.SocketShutdownSend = context.SocketShutdownSend;
@@ -406,7 +405,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static void WriteCallback(UvWriteReq writeReq, int status, Exception error, int bytesWritten, object state)
         {
             var socketOutput = (SocketOutput)state;
-            writeReq.Dispose();
+            socketOutput._thread.ReturnWriteRequest(writeReq);
 
             Interlocked.Add(ref socketOutput._bytesWritten, bytesWritten);
             Interlocked.Add(ref socketOutput._numBytesPreCompleted, -bytesWritten);

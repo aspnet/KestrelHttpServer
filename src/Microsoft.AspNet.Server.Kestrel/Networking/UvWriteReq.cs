@@ -173,5 +173,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 req.Unpin();
             }
         }
+
+        public void Reset()
+        {
+            _callback = null;
+            _state = null;
+            _segments = default(ArraySegment<MemoryPoolBlock2>);
+        }
     }
 }

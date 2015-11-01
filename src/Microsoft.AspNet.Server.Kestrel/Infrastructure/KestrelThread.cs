@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -18,6 +19,8 @@ namespace Microsoft.AspNet.Server.Kestrel
     /// </summary>
     public class KestrelThread
     {
+        private const int _maxPooledWriteRequests = 64;
+
         private static Action<object, object> _objectCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private KestrelEngine _engine;
         private readonly IApplicationLifetime _appLifetime;
@@ -28,6 +31,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         private Queue<Work> _workRunning = new Queue<Work>();
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>();
         private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>();
+        private ConcurrentQueue<UvWriteReq> _writeRequestPool = new ConcurrentQueue<UvWriteReq>();
         private object _workSync = new Object();
         private bool _stopImmediate = false;
         private bool _initCompleted = false;
@@ -87,6 +91,18 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnStop(object obj)
         {
+            if (_writeRequestPool != null)
+            {
+                var writeRequests = _writeRequestPool;
+                _writeRequestPool = null;
+
+                UvWriteReq writeReq;
+                while (writeRequests.TryDequeue(out writeReq))
+                {
+                    writeReq.Dispose();
+                }
+            }
+
             _post.Unreference();
         }
 
@@ -311,6 +327,33 @@ namespace Microsoft.AspNet.Server.Kestrel
                     _log.LogError("KestrelThread.DoPostCloseHandle", ex);
                     throw;
                 }
+            }
+        }
+
+        public UvWriteReq LeaseWriteRequest()
+        {
+            UvWriteReq writeReq;
+
+            var writeRequests = _writeRequestPool;
+            if (writeRequests == null || !writeRequests.TryDequeue(out writeReq))
+            {
+                writeReq = new UvWriteReq(_log);
+                writeReq.Init(_loop);
+            }
+
+            return writeReq;
+        }
+
+        public void ReturnWriteRequest(UvWriteReq writeReq)
+        {
+            if ((_writeRequestPool?.Count ?? _maxPooledWriteRequests) < _maxPooledWriteRequests)
+            {
+                writeReq.Reset();
+                _writeRequestPool.Enqueue(writeReq);
+            }
+            else
+            {
+                writeReq.Dispose();
             }
         }
 
