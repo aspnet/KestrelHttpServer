@@ -836,7 +836,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             continue;
                         }
 
-                        var name = beginName.GetArraySegment(endName);
+                        var name = beginName.GetArraySegment(scratchBuffer, endName);
                         var value = beginValue.GetString(endValue);
                         if (wrapping)
                         {
