@@ -290,7 +290,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     ResponseHeaders["Upgrade"] = values;
                 }
             }
-            ProduceStartAndFireOnStarting(immediate: true).GetAwaiter().GetResult();
+            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
             return Task.FromResult(DuplexStream);
         }
 
