@@ -68,14 +68,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (inputLength > 0)
             {
-                memoryBlock = Interlocked.Exchange(ref _currentWriteBlock.Block, null);
-
-                _log.ConnectionWrite(_connectionId, inputLength);
-
-                int blockRemaining = memoryBlock != null ? memoryBlock.Data.Count - (memoryBlock.End - memoryBlock.Start) : 0;
-
                 var remaining = inputLength;
                 var offset = buffer.Offset;
+
+                memoryBlock = Interlocked.Exchange(ref _currentWriteBlock.Block, null);
+                int blockRemaining = memoryBlock != null ? memoryBlock.Data.Count - (memoryBlock.End - memoryBlock.Start) : 0;
 
                 while (remaining > 0)
                 {
@@ -90,6 +87,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                     remaining -= copyAmount;
                     blockRemaining -= copyAmount;
+
                     memoryBlock.End += copyAmount;
                     offset += copyAmount;
 
@@ -101,7 +99,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                 }
 
-                Interlocked.Exchange(ref _currentWriteBlock.Block, memoryBlock);
+                if (memoryBlock != null)
+                {
+                    Interlocked.Exchange(ref _currentWriteBlock.Block, memoryBlock);
+                }
             }
             
             CallbackContext callbackContext;
@@ -133,6 +134,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _currentWriteBlock.SocketDisconnect |= socketDisconnect;
                 _currentWriteBlock.SocketShutdownSend |= socketShutdownSend;
             }
+
             if (immediate || blockFilled)
             {
                 SendBufferedData();
@@ -143,7 +145,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 callback(null, state, 0, true);
             }
 
-            Interlocked.Add(ref _numBytesPreCompleted, inputLength);
+            if (inputLength > 0)
+            {
+                _log.ConnectionWrite(_connectionId, inputLength);
+                Interlocked.Add(ref _numBytesPreCompleted, inputLength);
+            }
         }
 
         private void SendBufferedData()
@@ -327,12 +333,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         data = new MemoryPoolBlock2[UvWriteReq.BUFFER_COUNT];
                     }
+
                     var length = block.End - block.Start;
                     data[count] = block;
                     dataLength += length;
                     count++;
                 }
-
                 socketDisconnect |= writeBlock.SocketDisconnect;
                 socketShutdownSend |= writeBlock.SocketShutdownSend;
 
@@ -344,6 +350,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (count < UvWriteReq.BUFFER_COUNT)
             {
+                // Steal incomplete block
                 var block = Interlocked.Exchange(ref _currentWriteBlock.Block, null);
 
                 if (block != null)
