@@ -655,15 +655,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
             {
-                return SocketOutput.WriteAsync(_connectionCloseBytes, immediate: immediate);
+                return SocketOutput.WriteAsync(_connectionCloseBytes, immediate: true);
             }
             else if (_keepAlive && hasConnection == false && HttpVersion == "HTTP/1.0")
             {
-                return SocketOutput.WriteAsync(_connectionKeepAliveBytes, immediate: immediate);
+                return SocketOutput.WriteAsync(_connectionKeepAliveBytes, immediate: true);
             }
             else
             {
-                return SocketOutput.WriteAsync(_endLineBytes, immediate: immediate);
+                return SocketOutput.WriteAsync(_endLineBytes, immediate: true);
             }
 
         }
