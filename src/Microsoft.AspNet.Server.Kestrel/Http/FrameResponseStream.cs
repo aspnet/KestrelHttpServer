@@ -90,6 +90,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
         public void StopAcceptingWrites()
         {
+            // Can't use dispose (or close) as can be disposed too early by user code
+            // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
             _stopped = true;
         }
     }
