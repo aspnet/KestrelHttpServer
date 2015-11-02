@@ -190,7 +190,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else if (awaitableState == _awaitableIsCompleted)
             {
-                ThreadPool.QueueUserWorkItem((o) => continuation());
+                ThreadPool.QueueUserWorkItem((o) => ((Action)o)(), continuation);
             }
             else
             {
