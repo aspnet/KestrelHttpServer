@@ -10,6 +10,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
     public struct MemoryPoolIterator
     {
+        private const int _maxHeaderStackLength = 16384;
+
         /// <summary>
         /// Array of "minus one" bytes of the length of SIMD operations on the current hardware. Used as an argument in the
         /// vector dot product that counts matching character occurrence.
@@ -459,7 +461,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public int GetLength(MemoryPoolIterator end)
+        public int GetLength(ref MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -508,39 +510,51 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             return new string(output, 0, length);
         }
 
-        private static unsafe string MultiBlockAsciiString(MemoryPoolBlock block, int offset, int length)
+        private static unsafe string MultiBlockAsciiString(MemoryPoolBlock startBlock, ref MemoryPoolIterator end, int offset, int length)
         {
             // avoid declaring other local vars, or doing work with stackalloc
             // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
             char* output = stackalloc char[length];
 
-            return MultiBlockAsciiIter(output, block, offset, length);
+            return MultiBlockAsciiIter(output, startBlock, ref end, offset, length);
         }
 
-        private static unsafe string MultiBlockAsciiIter(char* output, MemoryPoolBlock block, int offset, int length)
+        private static unsafe string MultiBlockAsciiIter(char* output, MemoryPoolBlock startBlock, ref MemoryPoolIterator end, int inputOffset, int length)
         {
             // avoid declaring other local vars, or doing work with stackalloc
             // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
-            while (length > 0)
-            {
-                var following = block.End - offset;
-                var input = block.Array;
 
-                for (var i = 0; i < following; i++)
+            var outputOffset = 0;
+            var block = startBlock;
+            var remaining = length;
+
+            while (true)
+            {
+                int following = (block != end._block ? block.End : end._index) - inputOffset;
+
+                if (following > 0)
                 {
-                    output[i] = (char)input[i + offset];
+                    var input = block.Array;
+                    for (var i = 0; i < following; i++)
+                    {
+                        output[i + outputOffset] = (char)input[i + inputOffset];
+                    }
+
+                    remaining -= following;
+                    outputOffset += following;
                 }
 
-                length -= following;
+                if (remaining == 0)
+                {
+                    return new string(output, 0, length);
+                }
 
                 block = block.Next;
-                offset = block.Start;
+                inputOffset = block.Start;
             }
-
-            return new string(output, 0, length);
         }
 
-        public string GetAsciiString(MemoryPoolIterator end)
+        public string GetAsciiString(ref MemoryPoolIterator end)
         {
             // avoid declaring other local vars, or doing work with stackalloc
             // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
@@ -549,15 +563,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return default(string);
             }
 
-            if (end._block == _block)
+            var length = GetLength(ref end);
+
+            if (length > _maxHeaderStackLength)
             {
-                return SingleBlockAsciiString(_block.Array, _index, end._index - _index);
+                return GetUtf8String(ref end);
             }
 
-            return MultiBlockAsciiString(_block, _index, GetLength(end));
+            if (end._block == _block)
+            {
+                return SingleBlockAsciiString(_block.Array, _index, length);
+            }
+
+            return MultiBlockAsciiString(_block, ref end, _index, length);
         }
 
-        public string GetUtf8String(MemoryPoolIterator end)
+        public string GetUtf8String(ref MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -570,7 +591,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
             var decoder = _utf8.GetDecoder();
 
-            var length = GetLength(end);
+            var length = GetLength(ref end);
             var charLength = length * 2;
             var chars = new char[charLength];
             var charIndex = 0;
@@ -635,7 +656,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public ArraySegment<byte> GetArraySegment(byte[] scratchBuffer, MemoryPoolIterator end)
+        public ArraySegment<byte> GetArraySegment(byte[] scratchBuffer, ref MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -646,7 +667,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return new ArraySegment<byte>(_block.Array, _index, end._index - _index);
             }
 
-            var length = GetLength(end);
+            var length = GetLength(ref end);
 
             byte[] buffer;
             if (length > scratchBuffer.Length)

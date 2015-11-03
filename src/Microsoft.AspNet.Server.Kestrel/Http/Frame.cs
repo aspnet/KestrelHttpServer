@@ -679,7 +679,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetAsciiString(scan);
+                var method = begin.GetAsciiString(ref scan);
 
                 scan.Take();
                 begin = scan;
@@ -703,7 +703,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetAsciiString(scan);
+                    queryString = begin.GetAsciiString(ref scan);
                 }
 
                 scan.Take();
@@ -712,7 +712,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetAsciiString(scan);
+                var httpVersion = begin.GetAsciiString(ref scan);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -724,11 +724,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 if (needDecode)
                 {
                     pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
-                    requestUrlPath = pathBegin.GetUtf8String(pathEnd);
+                    requestUrlPath = pathBegin.GetUtf8String(ref pathEnd);
                 }
                 else
                 {
-                    requestUrlPath = pathBegin.GetAsciiString(pathEnd);
+                    requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
                 }
                 
                 consumed = scan;
@@ -840,8 +840,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             continue;
                         }
 
-                        var name = beginName.GetArraySegment(scratchBuffer, endName);
-                        var value = beginValue.GetUtf8String(endValue);
+                        var name = beginName.GetArraySegment(scratchBuffer, ref endName);
+                        var value = beginValue.GetUtf8String(ref endValue);
                         if (wrapping)
                         {
                             value = value.Replace("\r\n", " ");

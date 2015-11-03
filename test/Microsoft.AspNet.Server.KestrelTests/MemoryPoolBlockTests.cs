@@ -21,15 +21,15 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 {
                     var hit = iterator;
                     hit.Seek(ch);
-                    Assert.Equal(ch, iterator.GetLength(hit));
+                    Assert.Equal(ch, iterator.GetLength(ref hit));
 
                     hit = iterator;
                     hit.Seek(ch, byte.MaxValue);
-                    Assert.Equal(ch, iterator.GetLength(hit));
+                    Assert.Equal(ch, iterator.GetLength(ref hit));
 
                     hit = iterator;
                     hit.Seek(byte.MaxValue, ch);
-                    Assert.Equal(ch, iterator.GetLength(hit));
+                    Assert.Equal(ch, iterator.GetLength(ref hit));
                 }
             }
         }
@@ -72,9 +72,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 {
                     var first = block.GetIterator().Add(firstIndex);
                     var last = block.GetIterator().Add(lastIndex);
-                    Assert.Equal(firstIndex, block.GetIterator().GetLength(first));
-                    Assert.Equal(lastIndex, block.GetIterator().GetLength(last));
-                    Assert.Equal(lastIndex - firstIndex, first.GetLength(last));
+                    Assert.Equal(firstIndex, block.GetIterator().GetLength(ref first));
+                    Assert.Equal(lastIndex, block.GetIterator().GetLength(ref last));
+                    Assert.Equal(lastIndex - firstIndex, first.GetLength(ref last));
                 }
             }
         }
