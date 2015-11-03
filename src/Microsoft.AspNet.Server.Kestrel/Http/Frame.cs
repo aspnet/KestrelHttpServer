@@ -841,7 +841,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
 
                         var name = beginName.GetArraySegment(scratchBuffer, ref endName);
-                        var value = beginValue.GetUtf8String(ref endValue);
+                        var value = beginValue.GetAsciiString(ref endValue);
                         if (wrapping)
                         {
                             value = value.Replace("\r\n", " ");
