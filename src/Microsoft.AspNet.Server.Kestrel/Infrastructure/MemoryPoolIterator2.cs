@@ -566,7 +566,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public ArraySegment<byte> GetArraySegment(MemoryPoolIterator2 end)
+        public ArraySegment<byte> GetArraySegment(byte[] scratchBuffer, MemoryPoolIterator2 end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -578,9 +578,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var length = GetLength(end);
-            var array = new byte[length];
-            CopyTo(array, 0, length, out length);
-            return new ArraySegment<byte>(array, 0, length);
+            byte[] buffer;
+
+            if (length > scratchBuffer.Length)
+            {
+                buffer = new byte[length];
+            }
+            else
+            {
+                buffer = scratchBuffer;
+            }
+
+            CopyTo(buffer, 0, length, out length);
+            return new ArraySegment<byte>(buffer, 0, length);
         }
 
         public MemoryPoolIterator2 CopyTo(byte[] array, int offset, int count, out int actual)

@@ -29,7 +29,8 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
             {
                 app.Run(async context =>
                 {
-                    var bytes = new byte[1024];
+                    // Larger than MemoryPoolBlock2.WritableBlockSize, but power of 2 for verify
+                    var bytes = new byte[8192];
                     for (int i = 0; i < bytes.Length; i++)
                     {
                         bytes[i] = (byte)i;
@@ -65,6 +66,8 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
                         }
                         count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
                     }
+
+                    Assert.Equal(8192 * 1024, total);
                 }
             }
         }
