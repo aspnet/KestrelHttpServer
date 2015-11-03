@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     public class SocketOutput : ISocketOutput
     {
         // ~64k; act=64512
-        internal const int MaxBytesPreCompleted = 2 * (MemoryPool.NativeBlockSize * UvWriteReq.BUFFER_COUNT) - 1;
+        internal const int MaxBytesPreCompleted = 4 * (MemoryPool.NativeBlockSize * UvWriteReq.BUFFER_COUNT) - 1;
 
         private static MemoryPoolBlock[] _emptyBlocks = new MemoryPoolBlock[0];
 
@@ -313,15 +313,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return tcs.Task;
         }
 
-        private WriteContext GetContext()
+        private UvWriteReq GetWriteRequest()
         {
-            MemoryPoolBlock[] data = null;
+            UvWriteReq writeReq = _thread.LeaseWriteRequest();
 
             var count = 0;
             var dataLength = 0;
-
-            bool socketDisconnect = false;
-            bool socketShutdownSend = false;
 
             WriteBlock writeBlock;
             while (_memoryBlocks.TryDequeue(out writeBlock))
@@ -329,18 +326,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 var block = writeBlock.Block;
                 if (block != null)
                 {
-                    if (data == null)
-                    {
-                        data = new MemoryPoolBlock[UvWriteReq.BUFFER_COUNT];
-                    }
-
                     var length = block.End - block.Start;
-                    data[count] = block;
+                    writeReq.Data[count] = block;
                     dataLength += length;
                     count++;
                 }
-                socketDisconnect |= writeBlock.SocketDisconnect;
-                socketShutdownSend |= writeBlock.SocketShutdownSend;
+                writeReq.SocketDisconnect |= writeBlock.SocketDisconnect;
+                writeReq.SocketShutdownSend |= writeBlock.SocketShutdownSend;
 
                 if (count == UvWriteReq.BUFFER_COUNT)
                 {
@@ -355,27 +347,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 if (block != null)
                 {
-                    if (data == null)
+                    if (writeReq == null)
                     {
-                        data = new MemoryPoolBlock[UvWriteReq.BUFFER_COUNT];
+                        writeReq = _thread.LeaseWriteRequest();
                     }
                     var length = block.End - block.Start;
-                    data[count] = block;
+                    writeReq.Data[count] = block;
                     dataLength += length;
                     count++;
                 }
-                socketDisconnect |= _currentWriteBlock.SocketDisconnect;
-                socketShutdownSend |= _currentWriteBlock.SocketShutdownSend;
+                writeReq.SocketDisconnect |= _currentWriteBlock.SocketDisconnect;
+                writeReq.SocketShutdownSend |= _currentWriteBlock.SocketShutdownSend;
             }
 
-            Interlocked.Add(ref _bytesQueued, dataLength);
-
-            return new WriteContext()
+            if (count > 0)
             {
-                Data = new ArraySegment<MemoryPoolBlock>(data ?? _emptyBlocks, 0, count),
-                SocketDisconnect = socketDisconnect,
-                SocketShutdownSend = socketShutdownSend
-            };
+                Interlocked.Add(ref _bytesQueued, dataLength);
+                writeReq.Count = count;
+            }
+
+            return writeReq;
         }
 
         /// <summary>
@@ -384,26 +375,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public void DoWriteIfNeeded()
         {
             pendingWriteBitFlag = 0;
-            Interlocked.MemoryBarrier();
 
-            WriteContext context;
+            UvWriteReq writeReq;
             while (true)
             {
-                context = GetContext();
-                var data = context.Data;
+                writeReq = GetWriteRequest();
 
-                if (data.Count == 0 || _socket.IsClosed)
+                if (writeReq.Count == 0 || _socket.IsClosed)
                 {
-                    DoShutdownIfNeeded(context.SocketDisconnect, context.SocketShutdownSend, 0, null);
+                    var SocketDisconnect = writeReq.SocketDisconnect; 
+                    var SocketShutdownSend = writeReq.SocketShutdownSend;
+
+                    _thread.ReturnWriteRequest(writeReq);
+
+                    DoShutdownIfNeeded(SocketDisconnect, SocketShutdownSend, 0, null);
                     return;
                 }
 
-                var writeReq = _thread.LeaseWriteRequest();
-
-                writeReq.SocketDisconnect = context.SocketDisconnect;
-                writeReq.SocketShutdownSend = context.SocketShutdownSend;
                 writeReq.Write(_socket,
-                    data,
+                    new ArraySegment<MemoryPoolBlock>(writeReq.Data ?? _emptyBlocks, 0, writeReq.Count),
                     (_writeReq, status, error, bytesWritten, state) => WriteCallback(_writeReq, status, error, bytesWritten, state),
                     this);
             }

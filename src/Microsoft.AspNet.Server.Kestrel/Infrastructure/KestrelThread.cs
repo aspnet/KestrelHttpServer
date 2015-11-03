@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,7 +10,6 @@ using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
@@ -18,7 +18,7 @@ namespace Microsoft.AspNet.Server.Kestrel
     /// </summary>
     public class KestrelThread
     {
-        private const int _maxPooledWriteRequests = 64;
+        private const int _maxPooledWriteRequests = 512;
 
         private static Action<object, object> _objectCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private KestrelEngine _engine;

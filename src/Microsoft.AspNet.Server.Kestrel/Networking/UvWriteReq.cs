@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -14,6 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public class UvWriteReq : UvRequest
     {
+        public const int BUFFER_COUNT = 4;
         private readonly static Libuv.uv_write_cb _uv_write_cb = (ptr, status) => UvWriteCb(ptr, status);
 
         private IntPtr _nativePointers;
@@ -21,10 +21,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private Action<UvWriteReq, int, Exception, int, object> _callback;
         private object _state;
-        public const int BUFFER_COUNT = 8;
         
         public bool SocketShutdownSend;
         public bool SocketDisconnect;
+
+        public readonly MemoryPoolBlock[] Data = new MemoryPoolBlock[BUFFER_COUNT];
+        public int Count;
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -178,6 +180,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             _callback = null;
             _state = null;
+
+            SocketShutdownSend = false;
+            SocketDisconnect = false;
+            Count = 0;
+
+            for (var i=0; i < Data.Length; i++)
+            {
+                Data[i] = null;
+            }
+
             _segments = default(ArraySegment<MemoryPoolBlock>);
         }
     }

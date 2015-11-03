@@ -39,8 +39,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             _connectionId = Interlocked.Increment(ref _lastConnectionId);
 
-            _rawSocketInput = new SocketInput(InputMemory);
-            _rawSocketOutput = new SocketOutput(OutputMemory, Thread, _socket, _connectionId, Log);
+            _rawSocketInput = new SocketInput(Memory);
+            _rawSocketOutput = new SocketOutput(Memory, Thread, _socket, _connectionId, Log);
         }
 
         public void Start()
@@ -100,7 +100,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void ApplyConnectionFilter()
         {
-            var filteredStreamAdapter = new FilteredStreamAdapter(_filterContext.Connection, InputMemory, Log);
+            var filteredStreamAdapter = new FilteredStreamAdapter(_filterContext.Connection, Memory, Log);
 
             SocketInput = filteredStreamAdapter.SocketInput;
             SocketOutput = filteredStreamAdapter.SocketOutput;
