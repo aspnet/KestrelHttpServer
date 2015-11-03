@@ -82,7 +82,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
             _socketInput.IncomingComplete(count, error: null);
         }
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             Write(buffer, offset, count);
             return _emptyTask;

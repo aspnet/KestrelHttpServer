@@ -122,7 +122,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 var errorName = err_name(statusCode);
                 var errorDescription = strerror(statusCode);
-                error = new UvException("Error " + statusCode + " " + errorName + " " + errorDescription);
+                error = new UvException("Error " + statusCode.ToString() + " " + errorName + " " + errorDescription);
             }
             else
             {

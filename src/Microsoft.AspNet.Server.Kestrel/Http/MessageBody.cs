@@ -94,7 +94,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 value = values[0];
                 return true;
             }
-            value = String.Join(",", values);
+            value = string.Join(",", values.ToArray());
             return true;
         }
 

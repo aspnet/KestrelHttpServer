@@ -8,8 +8,10 @@ using System.Text;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
-    public struct MemoryPoolIterator2
+    public struct MemoryPoolIterator
     {
+        private const int _maxHeaderStackLength = 16384;
+
         /// <summary>
         /// Array of "minus one" bytes of the length of SIMD operations on the current hardware. Used as an argument in the
         /// vector dot product that counts matching character occurrence.
@@ -24,15 +26,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         private static Encoding _utf8 = Encoding.UTF8;
 
-        private MemoryPoolBlock2 _block;
+        private MemoryPoolBlock _block;
         private int _index;
 
-        public MemoryPoolIterator2(MemoryPoolBlock2 block)
+        public MemoryPoolIterator(MemoryPoolBlock block)
         {
             _block = block;
             _index = _block?.Start ?? 0;
         }
-        public MemoryPoolIterator2(MemoryPoolBlock2 block, int index)
+        public MemoryPoolIterator(MemoryPoolBlock block, int index)
         {
             _block = block;
             _index = index;
@@ -68,7 +70,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public MemoryPoolBlock2 Block => _block;
+        public MemoryPoolBlock Block => _block;
 
         public int Index => _index;
 
@@ -430,7 +432,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             {
                 return false;
             }
-            else if (_index < _block.End)
+
+            if (_index < _block.End)
             {
                 _block.Array[_index++] = data;
                 return true;
@@ -447,19 +450,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     block.Array[index] = data;
                     return true;
                 }
-                else if (block.Next == null)
+
+                if (block.Next == null)
                 {
                     return false;
                 }
-                else
-                {
-                    block = block.Next;
-                    index = block.Start;
-                }
+
+                block = block.Next;
+                index = block.Start;
             }
         }
 
-        public int GetLength(MemoryPoolIterator2 end)
+        public int GetLength(ref MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -488,7 +490,95 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public string GetString(MemoryPoolIterator2 end)
+        private static unsafe string SingleBlockAsciiString(byte[] input, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            char* output = stackalloc char[length];
+
+            return SingleBlockAsciiIter(output, input, offset, length);
+        }
+
+        private static unsafe string SingleBlockAsciiIter(char* output, byte[] input, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            for (var i = 0; i < length; i++)
+            {
+                output[i] = (char)input[i + offset];
+            }
+            return new string(output, 0, length);
+        }
+
+        private static unsafe string MultiBlockAsciiString(MemoryPoolBlock startBlock, ref MemoryPoolIterator end, int offset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            char* output = stackalloc char[length];
+
+            return MultiBlockAsciiIter(output, startBlock, ref end, offset, length);
+        }
+
+        private static unsafe string MultiBlockAsciiIter(char* output, MemoryPoolBlock startBlock, ref MemoryPoolIterator end, int inputOffset, int length)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+
+            var outputOffset = 0;
+            var block = startBlock;
+            var remaining = length;
+
+            while (true)
+            {
+                int following = (block != end._block ? block.End : end._index) - inputOffset;
+
+                if (following > 0)
+                {
+                    var input = block.Array;
+                    for (var i = 0; i < following; i++)
+                    {
+                        output[i + outputOffset] = (char)input[i + inputOffset];
+                    }
+
+                    remaining -= following;
+                    outputOffset += following;
+                }
+
+                if (remaining == 0)
+                {
+                    return new string(output, 0, length);
+                }
+
+                block = block.Next;
+                inputOffset = block.Start;
+            }
+        }
+
+        public string GetAsciiString(ref MemoryPoolIterator end)
+        {
+            // avoid declaring other local vars, or doing work with stackalloc
+            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
+            if (IsDefault || end.IsDefault)
+            {
+                return default(string);
+            }
+
+            var length = GetLength(ref end);
+
+            if (length > _maxHeaderStackLength)
+            {
+                return GetUtf8String(ref end);
+            }
+
+            if (end._block == _block)
+            {
+                return SingleBlockAsciiString(_block.Array, _index, length);
+            }
+
+            return MultiBlockAsciiString(_block, ref end, _index, length);
+        }
+
+        public string GetUtf8String(ref MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -501,7 +591,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
             var decoder = _utf8.GetDecoder();
 
-            var length = GetLength(end);
+            var length = GetLength(ref end);
             var charLength = length * 2;
             var chars = new char[charLength];
             var charIndex = 0;
@@ -566,7 +656,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public ArraySegment<byte> GetArraySegment(MemoryPoolIterator2 end)
+        public ArraySegment<byte> GetArraySegment(byte[] scratchBuffer, ref MemoryPoolIterator end)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -577,13 +667,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return new ArraySegment<byte>(_block.Array, _index, end._index - _index);
             }
 
-            var length = GetLength(end);
-            var array = new byte[length];
-            CopyTo(array, 0, length, out length);
-            return new ArraySegment<byte>(array, 0, length);
+            var length = GetLength(ref end);
+
+            byte[] buffer;
+            if (length > scratchBuffer.Length)
+            {
+                buffer = new byte[length];
+            }
+            else
+            {
+                buffer = scratchBuffer;
+            }
+
+            CopyTo(buffer, 0, length, out length);
+            return new ArraySegment<byte>(buffer, 0, length);
         }
 
-        public MemoryPoolIterator2 CopyTo(byte[] array, int offset, int count, out int actual)
+        public MemoryPoolIterator CopyTo(byte[] array, int offset, int count, out int actual)
         {
             if (IsDefault)
             {
@@ -601,13 +701,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 {
                     actual = count;
                     Buffer.BlockCopy(block.Array, index, array, offset, remaining);
-                    return new MemoryPoolIterator2(block, index + remaining);
+                    return new MemoryPoolIterator(block, index + remaining);
                 }
                 else if (block.Next == null)
                 {
                     actual = count - remaining + following;
                     Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    return new MemoryPoolIterator2(block, index + following);
+                    return new MemoryPoolIterator(block, index + following);
                 }
                 else
                 {

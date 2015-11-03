@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -14,15 +13,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// </summary>
     public class UvWriteReq : UvRequest
     {
-        private readonly static Libuv.uv_write_cb _uv_write_cb = UvWriteCb;
+        public const int BUFFER_COUNT = 4;
+        private readonly static Libuv.uv_write_cb _uv_write_cb = (ptr, status) => UvWriteCb(ptr, status);
 
-        private IntPtr _bufs;
+        private IntPtr _nativePointers;
+        private ArraySegment<MemoryPoolBlock> _segments;
 
-        private Action<UvWriteReq, int, Exception, object> _callback;
+        private Action<UvWriteReq, int, Exception, int, object> _callback;
         private object _state;
-        private const int BUFFER_COUNT = 4;
+        
+        public bool SocketShutdownSend;
+        public bool SocketDisconnect;
 
-        private List<GCHandle> _pins = new List<GCHandle>();
+        public readonly MemoryPoolBlock[] Data = new MemoryPoolBlock[BUFFER_COUNT];
+        public int Count;
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -32,45 +36,37 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         {
             var requestSize = loop.Libuv.req_size(Libuv.RequestType.WRITE);
             var bufferSize = Marshal.SizeOf<Libuv.uv_buf_t>() * BUFFER_COUNT;
+
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
                 requestSize + bufferSize);
-            _bufs = handle + requestSize;
+            _nativePointers = handle + requestSize;
         }
 
         public unsafe void Write(
             UvStreamHandle handle,
-            ArraySegment<ArraySegment<byte>> bufs,
-            Action<UvWriteReq, int, Exception, object> callback,
+            ArraySegment<MemoryPoolBlock> segments,
+            Action<UvWriteReq, int, Exception, int, object> callback,
             object state)
         {
             try
             {
+                _segments = segments;
                 // add GCHandle to keeps this SafeHandle alive while request processing
-                _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
+                Pin();
 
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
-                var nBuffers = bufs.Count;
-                if (nBuffers > BUFFER_COUNT)
-                {
-                    // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
-                    var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
-                }
+                var pBuffers = (Libuv.uv_buf_t*)_nativePointers;
+                var nBuffers = segments.Count;
 
                 for (var index = 0; index < nBuffers; index++)
                 {
+                    var buf = segments.Array[segments.Offset + index];
+                    var len = buf.End - buf.Start;
                     // create and pin each segment being written
-                    var buf = bufs.Array[bufs.Offset + index];
-
-                    var gcHandle = GCHandle.Alloc(buf.Array, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
                     pBuffers[index] = Libuv.buf_init(
-                        gcHandle.AddrOfPinnedObject() + buf.Offset,
-                        buf.Count);
+                        buf.Pin() - len,
+                        buf.End - buf.Start);
                 }
 
                 _callback = callback;
@@ -81,44 +77,37 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _callback = null;
                 _state = null;
-                Unpin(this);
+                Unpin();
+                ProcessBlocks();
                 throw;
             }
         }
 
         public unsafe void Write2(
             UvStreamHandle handle,
-            ArraySegment<ArraySegment<byte>> bufs,
+            ArraySegment<MemoryPoolBlock> segments,
             UvStreamHandle sendHandle,
-            Action<UvWriteReq, int, Exception, object> callback,
+            Action<UvWriteReq, int, Exception, int, object> callback,
             object state)
         {
             try
             {
+                _segments = segments;
                 // add GCHandle to keeps this SafeHandle alive while request processing
-                _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
+                Pin();
 
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
-                var nBuffers = bufs.Count;
-                if (nBuffers > BUFFER_COUNT)
-                {
-                    // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
-                    var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
-                }
+                var pBuffers = (Libuv.uv_buf_t*)_nativePointers;
+                var nBuffers = segments.Count;
 
                 for (var index = 0; index < nBuffers; index++)
                 {
-                    // create and pin each segment being written
-                    var buf = bufs.Array[bufs.Offset + index];
+                    var buf = segments.Array[segments.Offset + index];
+                    var len = buf.End - buf.Start;
 
-                    var gcHandle = GCHandle.Alloc(buf.Array, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
+                    // create and pin each segment being written
                     pBuffers[index] = Libuv.buf_init(
-                        gcHandle.AddrOfPinnedObject() + buf.Offset,
-                        buf.Count);
+                        buf.Pin() - len,
+                        buf.End - buf.Start);
                 }
 
                 _callback = callback;
@@ -129,24 +118,36 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             {
                 _callback = null;
                 _state = null;
-                Unpin(this);
+                Unpin();
+                ProcessBlocks();
                 throw;
             }
         }
 
-        private static void Unpin(UvWriteReq req)
+        private int ProcessBlocks()
         {
-            foreach (var pin in req._pins)
+            var bytesWritten = 0;
+            var end = _segments.Offset + _segments.Count;
+            for (var i = _segments.Offset; i < end; i++)
             {
-                pin.Free();
+                var block = _segments.Array[i];
+                bytesWritten += block.End - block.Start;
+
+                block.Unpin();
+
+                if (block.Pool != null)
+                {
+                    block.Pool.Return(block);
+                }
             }
-            req._pins.Clear();
+
+            return bytesWritten;
         }
 
         private static void UvWriteCb(IntPtr ptr, int status)
         {
             var req = FromIntPtr<UvWriteReq>(ptr);
-            Unpin(req);
+            var bytesWritten = req.ProcessBlocks();
 
             var callback = req._callback;
             req._callback = null;
@@ -162,13 +163,34 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
             try
             {
-                callback(req, status, error, state);
+                callback(req, status, error, bytesWritten, state);
             }
             catch (Exception ex)
             {
                 req._log.LogError("UvWriteCb", ex);
                 throw;
             }
+            finally
+            {
+                req.Unpin();
+            }
+        }
+
+        public void Reset()
+        {
+            _callback = null;
+            _state = null;
+
+            SocketShutdownSend = false;
+            SocketDisconnect = false;
+            Count = 0;
+
+            for (var i=0; i < Data.Length; i++)
+            {
+                Data[i] = null;
+            }
+
+            _segments = default(ArraySegment<MemoryPoolBlock>);
         }
     }
 }

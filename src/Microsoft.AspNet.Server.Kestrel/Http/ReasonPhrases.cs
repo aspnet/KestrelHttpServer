@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 return ToStatusPhrase(statusCode);
             }
-            return statusCode.ToString(CultureInfo.InvariantCulture) + " " + reasonPhrase;
+            return $"{statusCode.ToString(CultureInfo.InvariantCulture)} {reasonPhrase}";
         }
 
         public static string ToReasonPhrase(int statusCode)
@@ -238,7 +238,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 case 510:
                     return "510 Not Extended";
                 default:
-                    return statusCode.ToString(CultureInfo.InvariantCulture) + " Unknown";
+                    return $"{statusCode.ToString(CultureInfo.InvariantCulture)} Unknown";
             }
         }
     }

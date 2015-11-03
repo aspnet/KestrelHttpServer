@@ -133,7 +133,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             // the exception that stopped the event loop will never be surfaced.
             if (Thread.FatalError == null)
             {
-                Thread.Send(_ => DispatchPipe.Dispose(), null);
+                Thread.Send(listener => ((ListenerSecondary)listener).DispatchPipe.Dispose(), this);
             }
         }
     }

@@ -9,7 +9,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 {
     public abstract class UvHandle : UvMemory
     {
-        private static Libuv.uv_close_cb _destroyMemory = DestroyMemory;
+        private static Libuv.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
         protected UvHandle(IKestrelTrace logger) : base (logger)
@@ -42,7 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                     // This can be called from the finalizer.
                     // Ensure the closure doesn't reference "this".
                     var uv = _uv;
-                    _queueCloseHandle(memory2 => uv.close(memory2, _destroyMemory), memory);
+                    _queueCloseHandle(mem => uv.close(mem, _destroyMemory), memory);
                 }
             }
             return true;

@@ -16,7 +16,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
     public class SocketOutputTests
     {
         [Fact]
-        public void CanWrite1MB()
+        public void CanWriteOver1MB()
         {
             // This test was added because when initially implementing write-behind buffering in
             // SocketOutput, the write callback would never be invoked for writes larger than
@@ -39,24 +39,27 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 var kestrelThread = kestrelEngine.Threads[0];
                 var socket = new MockSocket(kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
-                var socketOutput = new SocketOutput(kestrelThread, socket, 0, trace);
-
-                // I doubt _maxBytesPreCompleted will ever be over a MB. If it is, we should change this test.
-                var bufferSize = 1048576;
-                var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
-                var completedWh = new ManualResetEventSlim();
-                Action<Exception, object, bool> onCompleted = (ex, state, calledInline) =>
+                using (var memory = new MemoryPool())
                 {
-                    Assert.Null(ex);
-                    Assert.Null(state);
-                    completedWh.Set();
-                };
+                    var socketOutput = new SocketOutput(memory, kestrelThread, socket, 0, trace);
 
-                // Act
-                socketOutput.Write(buffer, onCompleted, null);
+                    // I doubt _maxBytesPreCompleted will ever be over a MB. If it is, we should change this test.
+                    var bufferSize = 1048576 + SocketOutput.MaxBytesPreCompleted;
+                    var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
+                    var completedWh = new ManualResetEventSlim();
+                    Action<Exception, object, int, bool> onCompleted = (ex, state, status, calledInline) =>
+                    {
+                        Assert.Null(ex);
+                        Assert.Null(state);
+                        completedWh.Set();
+                    };
 
-                // Assert
-                Assert.True(completedWh.Wait(1000));
+                    // Act
+                    socketOutput.Write(buffer, onCompleted, null);
+
+                    // Assert
+                    Assert.True(completedWh.Wait(1000));
+                }
             }
         }
 
@@ -64,7 +67,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public void WritesDontCompleteImmediatelyWhenTooManyBytesAreAlreadyPreCompleted()
         {
             // This should match _maxBytesPreCompleted in SocketOutput
-            var maxBytesPreCompleted = 65536;
+            var maxBytesPreCompleted = SocketOutput.MaxBytesPreCompleted;
             var completeQueue = new Queue<Action<int>>();
 
             // Arrange
@@ -84,35 +87,38 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 var kestrelThread = kestrelEngine.Threads[0];
                 var socket = new MockSocket(kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
-                var socketOutput = new SocketOutput(kestrelThread, socket, 0, trace);
-
-                var bufferSize = maxBytesPreCompleted;
-                var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
-                var completedWh = new ManualResetEventSlim();
-                Action<Exception, object, bool> onCompleted = (ex, state, calledInline) =>
+                using (var memory = new MemoryPool())
                 {
-                    Assert.Null(ex);
-                    Assert.Null(state);
-                    completedWh.Set();
-                };
+                    var socketOutput = new SocketOutput(memory, kestrelThread, socket, 0, trace);
 
-                // Act 
-                socketOutput.Write(buffer, onCompleted, null);
-                // Assert
-                // The first write should pre-complete since it is <= _maxBytesPreCompleted.
-                Assert.True(completedWh.Wait(1000));
-                // Arrange
-                completedWh.Reset();
-                // Act
-                socketOutput.Write(buffer, onCompleted, null);
-                // Assert 
-                // Too many bytes are already pre-completed for the second write to pre-complete.
-                Assert.False(completedWh.Wait(1000));
-                // Act
-                completeQueue.Dequeue()(0);
-                // Assert
-                // Finishing the first write should allow the second write to pre-complete.
-                Assert.True(completedWh.Wait(1000));
+                    var bufferSize = maxBytesPreCompleted;
+                    var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
+                    var completedWh = new ManualResetEventSlim();
+                    Action<Exception, object, int, bool> onCompleted = (ex, state, status, calledInline) =>
+                    {
+                        Assert.Null(ex);
+                        Assert.Null(state);
+                        completedWh.Set();
+                    };
+
+                    // Act 
+                    socketOutput.Write(buffer, onCompleted, null);
+                    // Assert
+                    // The first write should pre-complete since it is <= _maxBytesPreCompleted.
+                    Assert.True(completedWh.Wait(200));
+                    // Arrange
+                    completedWh.Reset();
+                    // Act
+                    socketOutput.Write(buffer, onCompleted, null);
+                    // Assert 
+                    // Too many bytes are already pre-completed for the second write to pre-complete.
+                    Assert.False(completedWh.Wait(200));
+                    // Act
+                    completeQueue.Dequeue()(0);
+                    // Assert
+                    // Finishing the first write should allow the second write to pre-complete.
+                    Assert.True(completedWh.Wait(200));
+                }
             }
         }
 

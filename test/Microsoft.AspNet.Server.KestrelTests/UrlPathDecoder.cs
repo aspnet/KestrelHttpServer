@@ -115,22 +115,22 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var end = GetIterator(begin, rawLength);
 
             var end2 = UrlPathDecoder.Unescape(begin, end);
-            var result = begin.GetString(end2);
+            var result = begin.GetUtf8String(ref end2);
 
             Assert.Equal(expectLength, result.Length);
             Assert.Equal(expect, result);
         }
 
-        private MemoryPoolIterator2 BuildSample(string data)
+        private MemoryPoolIterator BuildSample(string data)
         {
             var store = data.Select(c => (byte)c).ToArray();
-            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(store), IntPtr.Zero, null, null);
+            var mem = MemoryPoolBlock.Create(new ArraySegment<byte>(store), IntPtr.Zero, null, null);
             mem.End = store.Length;
 
             return mem.GetIterator();
         }
 
-        private MemoryPoolIterator2 GetIterator(MemoryPoolIterator2 begin, int displacement)
+        private MemoryPoolIterator GetIterator(MemoryPoolIterator begin, int displacement)
         {
             var result = begin;
             for (int i = 0; i < displacement; ++i)
@@ -147,7 +147,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var end = GetIterator(begin, raw.Length);
 
             var result = UrlPathDecoder.Unescape(begin, end);
-            Assert.Equal(expect, begin.GetString(result));
+            Assert.Equal(expect, begin.GetUtf8String(ref result));
         }
 
         private void PositiveAssert(string raw)
@@ -156,7 +156,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var end = GetIterator(begin, raw.Length);
 
             var result = UrlPathDecoder.Unescape(begin, end);
-            Assert.NotEqual(raw.Length, begin.GetString(result).Length);
+            Assert.NotEqual(raw.Length, begin.GetUtf8String(ref result).Length);
         }
 
         private void NegativeAssert(string raw)
@@ -165,7 +165,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var end = GetIterator(begin, raw.Length);
 
             var resultEnd = UrlPathDecoder.Unescape(begin, end);
-            var result = begin.GetString(resultEnd);
+            var result = begin.GetUtf8String(ref resultEnd);
             Assert.Equal(raw, result);
         }
     }
