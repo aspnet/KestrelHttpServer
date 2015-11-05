@@ -92,11 +92,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 DispatchPipe.ReadStart(
                     (handle, status2, state) => ((ListenerSecondary)state)._buf,
-                    (handle, status2, state) => 
-                        {
-                            var listener = ((ListenerSecondary)state);
-                            listener.ReadStartCallback(handle, status2, listener._ptr);
-                        }, this);
+                    (handle, status2, state) => ((ListenerSecondary)state).ReadStartCallback(handle, status2), 
+                    this);
 
                 tcs.SetResult(0);
             }
@@ -107,7 +104,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private void ReadStartCallback(UvStreamHandle handle, int status, IntPtr ptr)
+        private void ReadStartCallback(UvStreamHandle handle, int status)
         {
             if (status < 0)
             {
@@ -119,7 +116,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
 
                 DispatchPipe.Dispose();
-                Marshal.FreeHGlobal(ptr);
+                if (_ptr != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(_ptr);
+                    _ptr = IntPtr.Zero;
+                }
                 return;
             }
 
@@ -152,7 +153,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void Dispose()
         {
-            Marshal.FreeHGlobal(_ptr);
+            if (_ptr != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_ptr);
+                _ptr = IntPtr.Zero;
+            }
 
             // Ensure the event loop is still running.
             // If the event loop isn't running and we try to wait on this Post
