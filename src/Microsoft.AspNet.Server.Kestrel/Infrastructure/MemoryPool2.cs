@@ -32,6 +32,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _blockLength = _blockStride - _blockUnused;
 
         /// <summary>
+        /// Default allocation block size for pooled blocks.
+        /// </summary>
+        public const int DefaultBlockLength = _blockLength;
+		
+
+        /// <summary>
         /// 4096 * 32 gives you a slabLength of 128k contiguous bytes allocated per slab
         /// </summary>
         private const int _slabLength = _blockStride * _blockCount;

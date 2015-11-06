@@ -31,7 +31,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
         private readonly FrameRequestHeaders _requestHeaders = new FrameRequestHeaders();
-        private readonly byte[] _nullBuffer = new byte[4096];
         private readonly FrameResponseHeaders _responseHeaders = new FrameResponseHeaders();
 
         private List<KeyValuePair<Func<object, Task>, object>> _onStarting;
@@ -232,9 +231,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                             await ProduceEnd();
 
-                            while (await RequestBody.ReadAsync(_nullBuffer, 0, _nullBuffer.Length) != 0)
+                            var block = Memory2.Lease(MemoryPool2.DefaultBlockLength);
+                            try
                             {
-                                // Finish reading the request body in case the app did not.
+                                var segment = block.Data;
+                                while (await RequestBody.ReadAsync(segment.Array, segment.Offset, segment.Count) != 0)
+                                {
+                                    // Finish reading the request body in case the app did not. 
+                                }
+                            }
+                            finally
+                            {
+                                Memory2.Return(block);
                             }
                         }
 
