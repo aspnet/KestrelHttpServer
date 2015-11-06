@@ -140,6 +140,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 _thread.Post(_this => _this.WriteAllPending(), this);
             }
+            else
+            {
+                CompleteAllCallbacksWithError(_lastWriteError ?? new InvalidOperationException("Socket is closed"));
+            }
         }
 
         // This is called on the libuv event loop
@@ -175,6 +179,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
 
                 throw;
+            }
+        }
+        
+        private void CompleteAllCallbacksWithError(Exception error)
+        {
+            lock (_lockObj)
+            {
+                while (_callbacksPending.Count > 0)
+                {
+                    var callbackContext = _callbacksPending.Dequeue();
+
+                    // callback(error, state, calledInline)
+                    callbackContext.Callback(error, callbackContext.State, false);
+                }
             }
         }
 
