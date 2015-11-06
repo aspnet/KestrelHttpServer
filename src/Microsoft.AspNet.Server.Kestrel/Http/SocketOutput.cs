@@ -135,7 +135,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void ScheduleWrite()
         {
-            _thread.Post(_this => _this.WriteAllPending(), this);
+            // Don't post write to closed socket
+            if (!_socket.IsClosed)
+            {
+                _thread.Post(_this => _this.WriteAllPending(), this);
+            }
         }
 
         // This is called on the libuv event loop
