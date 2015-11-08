@@ -135,7 +135,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void ScheduleWrite()
         {
-            _thread.Post(_this => _this.WriteAllPending(), this);
+            // Don't post write to closed socket
+            if (!_socket.IsClosed)
+            {
+                _thread.Post(_this => _this.WriteAllPending(), this);
+            }
+            else
+            {
+                CompleteAllCallbacksWithError(_lastWriteError ?? new InvalidOperationException("Socket is closed"));
+            }
         }
 
         // This is called on the libuv event loop
@@ -171,6 +179,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
 
                 throw;
+            }
+        }
+        
+        private void CompleteAllCallbacksWithError(Exception error)
+        {
+            lock (_lockObj)
+            {
+                while (_callbacksPending.Count > 0)
+                {
+                    var callbackContext = _callbacksPending.Dequeue();
+
+                    // callback(error, state, calledInline)
+                    callbackContext.Callback(error, callbackContext.State, false);
+                }
             }
         }
 

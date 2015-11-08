@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNet.Server.Kestrel.Networking
@@ -199,6 +200,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         protected Func<UvAsyncHandle, int> _uv_async_send;
         public void async_send(UvAsyncHandle handle)
         {
+            // Can't Assert with .Validate as that checks threadId
+            // and this function is to post to correct thread.
+            Debug.Assert(!handle.IsInvalid, "Handle is invalid");
             Check(_uv_async_send(handle));
         }
 
