@@ -87,8 +87,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 result1 = dateHeaderValueManager.GetDateHeaderValue();
                 systemClock.UtcNow = future;
-                // Wait for twice the idle timeout to ensure the timer is stopped
-                await Task.Delay(timeWithoutRequestsUntilIdle.Add(timeWithoutRequestsUntilIdle));
+                // Wait for 3 times the idle timeout to ensure the timer is stopped
+                await Task.Delay(
+                    timeWithoutRequestsUntilIdle
+                    .Add(timeWithoutRequestsUntilIdle)
+                    .Add(timeWithoutRequestsUntilIdle)
+                );
                 result2 = dateHeaderValueManager.GetDateHeaderValue();
             }
             finally
