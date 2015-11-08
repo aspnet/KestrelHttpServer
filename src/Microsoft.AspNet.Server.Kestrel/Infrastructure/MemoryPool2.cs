@@ -49,11 +49,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private readonly ConcurrentStack<MemoryPoolSlab2> _slabs = new ConcurrentStack<MemoryPoolSlab2>();
 
         /// <summary>
-        /// This is part of implementing the IDisposable pattern.
-        /// </summary>
-        private bool _disposedValue = false; // To detect redundant calls
-
-        /// <summary>
         /// Called to take a block from the pool.
         /// </summary>
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
@@ -137,39 +132,35 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposedValue)
+            MemoryPoolSlab2 slab;
+            while (_slabs.TryPop(out slab))
             {
-                if (disposing)
-                {
-                    MemoryPoolSlab2 slab;
-                    while (_slabs.TryPop(out slab))
-                    {
-                        // dispose managed state (managed objects).
-                        slab.Dispose();
-                    }
-                }
+                // Free pinned objects
+                slab.Dispose();
+            }
 
-                // N/A: free unmanaged resources (unmanaged objects) and override a finalizer below.
-
-                // N/A: set large fields to null.
-
-                _disposedValue = true;
+            MemoryPoolBlock2 block;
+            while (_blocks.TryPop(out block))
+            {
+                // Deactivate finalizers
+                block.Dispose();
             }
         }
 
-        // N/A: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~MemoryPool2() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
+        // Disposing slabs unpin memory so finalizer is needed.
+        ~MemoryPool2()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(false);
+        }
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
-            // N/A: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+
+            GC.SuppressFinalize(this);
         }
     }
 }
