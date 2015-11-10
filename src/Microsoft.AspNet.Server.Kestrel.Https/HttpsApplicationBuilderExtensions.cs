@@ -12,6 +12,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
     {
         public static IApplicationBuilder UseKestrelHttps(this IApplicationBuilder app, X509Certificate2 cert)
         {
+            return app.UseKestrelHttps(cert, ClientCertificateMode.NoCertificate);
+        }
+
+        public static IApplicationBuilder UseKestrelHttps(this IApplicationBuilder app, X509Certificate2 cert, ClientCertificateMode mode)
+        {
             var serverInfo = app.ServerFeatures.Get<IKestrelServerInformation>();
 
             if (serverInfo == null)
@@ -21,7 +26,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
 
             var prevFilter = serverInfo.ConnectionFilter ?? new NoOpConnectionFilter();
 
-            serverInfo.ConnectionFilter = new HttpsConnectionFilter(cert, prevFilter);
+            serverInfo.ConnectionFilter = new HttpsConnectionFilter(cert, mode, prevFilter);
 
             return app;
         }

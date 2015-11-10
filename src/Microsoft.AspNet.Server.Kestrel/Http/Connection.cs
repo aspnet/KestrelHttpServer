@@ -8,6 +8,7 @@ using Microsoft.AspNet.Server.Kestrel.Filter;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -65,7 +66,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 SocketInput = _rawSocketInput;
                 SocketOutput = _rawSocketOutput;
 
-                _frame = CreateFrame();
+                _frame = CreateFrame(clientCertificate: null);
                 _frame.Start();
             }
             else
@@ -107,7 +108,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             SocketInput = filteredStreamAdapter.SocketInput;
             SocketOutput = filteredStreamAdapter.SocketOutput;
 
-            _frame = CreateFrame();
+            _frame = CreateFrame(_filterContext.ClientCertificate);
             _frame.Start();
         }
 
@@ -155,9 +156,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _rawSocketInput.IncomingComplete(readCount, error);
         }
 
-        private Frame CreateFrame()
+        private Frame CreateFrame(X509Certificate2 clientCertificate)
         {
-            return new Frame(this, _remoteEndPoint, _localEndPoint);
+            return new Frame(this, _remoteEndPoint, _localEndPoint, clientCertificate);
         }
 
         void IConnectionControl.Pause()
