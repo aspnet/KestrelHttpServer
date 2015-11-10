@@ -6,15 +6,21 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Filter;
+using System.Security.Authentication;
 
 namespace Microsoft.AspNet.Server.Kestrel.Https
 {
     public class HttpsConnectionFilter : IConnectionFilter
     {
         private readonly X509Certificate2 _cert;
+        private readonly ClientCertificateMode _clientCertMode;
         private readonly IConnectionFilter _previous;
 
-        public HttpsConnectionFilter(X509Certificate2 cert, IConnectionFilter previous)
+        public HttpsConnectionFilter(X509Certificate2 cert, IConnectionFilter previous) :
+            this(cert, ClientCertificateMode.NoCertificate, previous)
+        { }
+
+        public HttpsConnectionFilter(X509Certificate2 cert, ClientCertificateMode mode, IConnectionFilter previous)
         {
             if (cert == null)
             {
@@ -26,6 +32,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
             }
 
             _cert = cert;
+            _clientCertMode = mode;
             _previous = previous;
         }
 
@@ -35,8 +42,29 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
 
             if (string.Equals(context.Address.Scheme, "https", StringComparison.OrdinalIgnoreCase))
             {
-                var sslStream = new SslStream(context.Connection);
-                await sslStream.AuthenticateAsServerAsync(_cert);
+                SslStream sslStream;
+                if (_clientCertMode == ClientCertificateMode.NoCertificate)
+                {
+                    sslStream = new SslStream(context.Connection);
+                    await sslStream.AuthenticateAsServerAsync(_cert);
+                }
+                else
+                {
+                    sslStream = new SslStream(context.Connection, false,
+                        (sender, certificate, chain, sslPolicyErrors) =>
+                        {
+                            context.ClientCertificate = certificate as X509Certificate2;
+                            if (sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable))
+                            {
+                                return _clientCertMode != ClientCertificateMode.RequireCertificate;
+                            }
+                            else
+                            {
+                                return sslPolicyErrors == SslPolicyErrors.None;
+                            }
+                        });
+                    await sslStream.AuthenticateAsServerAsync(_cert, true, SslProtocols.Default, false);
+                }
                 context.Connection = sslStream;
             }
         }
