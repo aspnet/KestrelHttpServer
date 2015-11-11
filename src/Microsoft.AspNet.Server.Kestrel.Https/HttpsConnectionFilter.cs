@@ -17,23 +17,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
         private readonly ClientCertificateMode _clientCertMode;
         private readonly IConnectionFilter _previous;
 
-        public HttpsConnectionFilter(X509Certificate2 cert, IConnectionFilter previous) :
-            this(cert, ClientCertificateMode.NoCertificate, previous)
-        { }
-
-        public HttpsConnectionFilter(X509Certificate2 cert, ClientCertificateMode mode, IConnectionFilter previous)
+        public HttpsConnectionFilter(HttpsConnectionFilterOptions options, IConnectionFilter previous)
         {
-            if (cert == null)
+            if (options.ServerCertificate == null)
             {
-                throw new ArgumentNullException(nameof(cert));
+                throw new ArgumentNullException(nameof(options.ServerCertificate));
             }
             if (previous == null)
             {
                 throw new ArgumentNullException(nameof(previous));
             }
 
-            _cert = cert;
-            _clientCertMode = mode;
+            _cert = options.ServerCertificate;
+            _clientCertMode = options.ClientCertificateMode;
             _previous = previous;
         }
 
