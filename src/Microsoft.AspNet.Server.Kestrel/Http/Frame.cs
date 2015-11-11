@@ -188,7 +188,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, Memory2))
                     {
                         terminated = SocketInput.RemoteIntakeFin;
                         if (!terminated)
@@ -697,12 +697,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        static string GetString(ArraySegment<byte> range, int startIndex, int endIndex)
-        {
-            return Encoding.UTF8.GetString(range.Array, range.Offset + startIndex, endIndex - startIndex);
-        }
-
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, MemoryPool2 memorypool)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -762,6 +757,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     scan = beginValue;
 
                     var wrapping = false;
+
                     while (!scan.IsEnd)
                     {
                         if (scan.Seek('\r') == -1)
@@ -792,16 +788,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             continue;
                         }
 
-                        var name = beginName.GetArraySegment(endName);
-                        var value = beginValue.GetString(endValue);
-                        if (wrapping)
+                        var block = memorypool.Lease(MemoryPool2.DefaultBlockLength);
+                        try
                         {
-                            value = value.Replace("\r\n", " ");
-                        }
+                            var name = beginName.GetArraySegment(endName, block.Data);
+                            var value = beginValue.GetString(endValue);
+                            if (wrapping)
+                            {
+                                value = value.Replace("\r\n", " ");
+                            }
 
-                        consumed = scan;
-                        requestHeaders.Append(name.Array, name.Offset, name.Count, value);
-                        break;
+                            consumed = scan;
+                            requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                            break;
+                        }
+                        finally
+                        {
+                            memorypool.Return(block);
+                        }
                     }
                 }
                 return false;
