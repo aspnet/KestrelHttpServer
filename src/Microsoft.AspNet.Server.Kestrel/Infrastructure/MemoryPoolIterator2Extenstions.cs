@@ -187,7 +187,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public static ArraySegment<byte> GetArraySegment(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
+        public static ArraySegment<byte> GetArraySegment(this MemoryPoolIterator2 start, MemoryPoolIterator2 end, ArraySegment<byte> pooledBuffer)
         {
             if (start.IsDefault || end.IsDefault)
             {
@@ -199,9 +199,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var length = start.GetLength(end);
-            var array = new byte[length];
-            start.CopyTo(array, 0, length, out length);
-            return new ArraySegment<byte>(array, 0, length);
+
+            if (length < pooledBuffer.Count)
+            {
+                start.CopyTo(pooledBuffer.Array, pooledBuffer.Offset, length, out length);
+                return new ArraySegment<byte>(pooledBuffer.Array, pooledBuffer.Offset, length);
+            }
+            else
+            {
+                var array = new byte[length];
+                start.CopyTo(array, 0, length, out length);
+                return new ArraySegment<byte>(array, 0, length);
+            }
         }
     }
 }
