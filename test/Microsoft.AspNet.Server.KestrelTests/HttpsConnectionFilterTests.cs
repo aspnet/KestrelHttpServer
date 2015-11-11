@@ -59,7 +59,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 var serviceContext = new TestServiceContext()
                 {
                     ConnectionFilter = new HttpsConnectionFilter(
-                        new X509Certificate2(@"TestResources/testCert.pfx", "testPassword"),
+                        new HttpsConnectionFilterOptions
+                        { ServerCertificate = new X509Certificate2(@"TestResources/testCert.pfx", "testPassword")},
                         new NoOpConnectionFilter())
                 };
 
