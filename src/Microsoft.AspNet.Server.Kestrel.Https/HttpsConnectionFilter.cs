@@ -68,7 +68,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                             }
                         });
                     await sslStream.AuthenticateAsServerAsync(_cert, clientCertificateRequired: true,
-                        enabledSslProtocols: SslProtocols.Default, checkCertificateRevocation: false);
+                        enabledSslProtocols: SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls,
+                        checkCertificateRevocation: false);
                 }
                 context.Connection = sslStream;
             }
