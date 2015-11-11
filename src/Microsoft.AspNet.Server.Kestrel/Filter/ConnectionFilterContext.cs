@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.IO;
-using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNet.Http.Features;
 
 namespace Microsoft.AspNet.Server.Kestrel.Filter
 {
@@ -10,6 +10,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
     {
         public ServerAddress Address { get; set; }
         public Stream Connection { get; set; }
-        public X509Certificate2 ClientCertificate { get; set; }
+        public ITlsConnectionFeature TlsConnectionFeature { get; set; }
     }
 }
