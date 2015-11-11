@@ -93,6 +93,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     Data = Data,
                     Pool = Pool,
                     Slab = Slab,
+                    Start = Start,
+                    End = End
                 });
             }
         }
@@ -128,7 +130,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 _pinHandle.Free();
             }
         }
-
+        
+        public static MemoryPoolBlock2 Create(ArraySegment<byte> data)
+        {
+            return Create(data, IntPtr.Zero, null, null);
+        }
+        
         public static MemoryPoolBlock2 Create(
             ArraySegment<byte> data,
             IntPtr dataPtr,
@@ -142,7 +149,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 Pool = pool,
                 Slab = slab,
                 Start = data.Offset,
-                End = data.Offset,
+                End = data.Offset
             };
         }
 
