@@ -4,11 +4,11 @@
 using System;
 using System.Net;
 using System.Threading;
+using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Filter;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -34,6 +34,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private IPEndPoint _remoteEndPoint;
         private IPEndPoint _localEndPoint;
+        private ITlsConnectionFeature _tlsConnectionFeature;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -66,7 +67,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 SocketInput = _rawSocketInput;
                 SocketOutput = _rawSocketOutput;
 
-                _frame = CreateFrame(clientCertificate: null);
+                _frame = CreateFrame();
                 _frame.Start();
             }
             else
@@ -107,8 +108,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             SocketInput = filteredStreamAdapter.SocketInput;
             SocketOutput = filteredStreamAdapter.SocketOutput;
+            _tlsConnectionFeature = _filterContext.TlsConnectionFeature;
 
-            _frame = CreateFrame(_filterContext.ClientCertificate);
+            _frame = CreateFrame();
             _frame.Start();
         }
 
@@ -156,9 +158,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _rawSocketInput.IncomingComplete(readCount, error);
         }
 
-        private Frame CreateFrame(X509Certificate2 clientCertificate)
+        private Frame CreateFrame()
         {
-            return new Frame(this, _remoteEndPoint, _localEndPoint, clientCertificate);
+            return new Frame(this, _remoteEndPoint, _localEndPoint, _tlsConnectionFeature);
         }
 
         void IConnectionControl.Pause()

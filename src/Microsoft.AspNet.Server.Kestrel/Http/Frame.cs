@@ -14,8 +14,6 @@ using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.AspNet.Http.Features.Internal;
 
 // ReSharper disable AccessToModifiedClosure
 
@@ -51,22 +49,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _remoteEndPoint;
-        private readonly X509Certificate2 _clientCertificate;
+        private readonly ITlsConnectionFeature _tlsConnectionFeature;
 
         public Frame(ConnectionContext context)
-            : this(context, remoteEndPoint: null, localEndPoint: null, clientCertificate: null)
+            : this(context, remoteEndPoint: null, localEndPoint: null, tlsConnectionFeature: null)
         {
         }
 
         public Frame(ConnectionContext context,
                      IPEndPoint remoteEndPoint,
                      IPEndPoint localEndPoint,
-                     X509Certificate2 clientCertificate)
+                     ITlsConnectionFeature tlsConnectionFeature)
             : base(context)
         {
             _remoteEndPoint = remoteEndPoint;
             _localEndPoint = localEndPoint;
-            _clientCertificate = clientCertificate;
+            _tlsConnectionFeature = tlsConnectionFeature;
 
             FrameControl = this;
             Reset();
@@ -139,10 +137,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 httpConnectionFeature.IsLocal = false;
             }
 
-            if (_clientCertificate != null)
-            {
-                _currentITlsConnectionFeature = new TlsConnectionFeature { ClientCertificate = _clientCertificate };
-            }
+            _currentITlsConnectionFeature = _tlsConnectionFeature;
         }
 
         public void ResetResponseHeaders()
