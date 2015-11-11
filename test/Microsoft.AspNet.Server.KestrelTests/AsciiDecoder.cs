@@ -15,7 +15,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             var byteRange = Enumerable.Range(0, 255).Select(x => (byte)x).ToArray();
 
-            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
+            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
             mem.End = byteRange.Length;
 
             var begin = mem.GetIterator();
@@ -44,10 +44,10 @@ namespace Microsoft.AspNet.Server.KestrelTests
                                     .Concat(byteRange)
                                     .ToArray();
 
-            var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem2 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem3 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
+            var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
+            var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
+            var mem2 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
+            var mem3 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
             mem0.End = byteRange.Length;
             mem1.End = byteRange.Length;
             mem2.End = byteRange.Length;
@@ -79,8 +79,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var byteRange = Enumerable.Range(0, 16384 + 64).Select(x => (byte)x).ToArray();
             var expectedByteRange = byteRange.Concat(byteRange).ToArray();
 
-            var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
+            var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
+            var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange));
             mem0.End = byteRange.Length;
             mem1.End = byteRange.Length;
 

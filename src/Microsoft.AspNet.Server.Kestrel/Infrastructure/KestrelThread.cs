@@ -42,6 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
+            Memory2 = new MemoryPool2();
             QueueCloseHandle = PostCloseHandle;
         }
 
@@ -49,6 +50,8 @@ namespace Microsoft.AspNet.Server.Kestrel
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; internal set; }
+
+        public MemoryPool2 Memory2 { get; }
 
         public Task StartAsync()
         {

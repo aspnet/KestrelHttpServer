@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime;
 using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Hosting.Server;
 using Microsoft.AspNet.Http;
@@ -106,6 +107,24 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
 
                 engine.Start(threadCount);
+
+                for (var i = 0; i < engine.Threads.Count; i++)
+                {
+                    engine.Threads[i].Memory2.PopulatePools();
+                }
+
+                // Move all MemoryPoolBlock2 into Gen2
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+                GC.WaitForPendingFinalizers();
+
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+                GC.WaitForPendingFinalizers();
+
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+
                 var atLeastOneListener = false;
 
                 foreach (var address in information.Addresses)
