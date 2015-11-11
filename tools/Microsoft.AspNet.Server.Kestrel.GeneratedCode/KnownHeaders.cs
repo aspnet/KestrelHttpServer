@@ -167,13 +167,18 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             return $@"
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
 {{
 {Each(loops, loop => $@"
     public partial class {loop.ClassName} 
-    {{
+    {{{(loop.ClassName == "FrameResponseHeaders" ? 
+        $@"{Each(loop.Headers, header => @"
+        private static byte[] _bytes" + header.Identifier + " = Encoding.ASCII.GetBytes(\"" + header.Name + ": \");")}"
+        :"")}
+
         private long _bits = 0;
         {Each(loop.Headers, header => @"
         private StringValues _" + header.Identifier + ";")}
@@ -186,7 +191,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }}
             set
             {{
-                {header.SetBit()};
+                {header.SetBit()};{(header.Name == "Connection" ? $@"
+                HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                HasContentLength = true;" : "")}
                 _{header.Identifier} = value;
             }}
         }}
@@ -258,7 +266,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {{
                             {header.SetBit()};
-                            _{header.Identifier} = value;
+                            _{header.Identifier} = value;{(header.Name == "Connection" ? $@"
+                            HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                            HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                            HasContentLength = true;" : "")}
                             return;
                         }}
                     ")}}}
@@ -280,7 +291,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 throw new ArgumentException(""An item with the same key has already been added."");
                             }}
                             {header.SetBit()};
-                            _{header.Identifier} = value;
+                            _{header.Identifier} = value;{(header.Name == "Connection" ? $@"
+                            HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                            HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                            HasContentLength = true;" : "")}
                             return;
                         }}
                     ")}}}
@@ -300,7 +314,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             if ({header.TestBit()})
                             {{
                                 {header.ClearBit()};
-                                _{header.Identifier} = StringValues.Empty;
+                                _{header.Identifier} = StringValues.Empty;{(header.Name == "Connection" ? $@"
+                                HasConnection = false;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                                HasTransferEncoding = false;" : "")}{(header.Name == "Content-Length" ? $@"
+                                HasContentLength = false;" : "")}
                                 return true;
                             }}
                             else
@@ -320,6 +337,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {Each(loop.Headers, header => $@"
             _{header.Identifier} = StringValues.Empty;")}
             MaybeUnknown?.Clear();
+            HasConnection = false;
+            HasTransferEncoding = false;
+            HasContentLength = false;
         }}
         
         protected override void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
@@ -359,7 +379,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }}
                             else
                             {{
-                                {header.SetBit()};
+                                {header.SetBit()};{(header.Name == "Connection" ? $@"
+                                HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                                HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                                HasContentLength = true;" : "")}
                                 _{header.Identifier} = new StringValues(value);
                             }}
                             return;
@@ -405,6 +428,41 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return true;
             }}
         }}
+{(loop.ClassName == "FrameResponseHeaders" ?$@"
+        public partial struct ByteEnumerator
+        {{
+            public bool MoveNext()
+            {{
+                switch (_state)
+                {{
+                    {Each(loop.Headers, header => $@"
+                        case {header.Index}:
+                            goto state{header.Index};
+                    ")}
+                    default:
+                        goto state_default;
+                }}
+                {Each(loop.Headers, header => $@"
+                state{header.Index}:
+                    if ({header.TestBit()})
+                    {{
+                        _current = new KeyValuePair<byte[], StringValues>(_bytes{header.Identifier}, _collection._{header.Identifier});
+                        _state = {header.Index + 1};
+                        return true;
+                    }}
+                ")}
+                state_default:
+                    if (!_hasUnknown || !_unknownEnumerator.MoveNext())
+                    {{
+                        _current = default(KeyValuePair<byte[], StringValues>);
+                        return false;
+                    }}
+                    var kv = _unknownEnumerator.Current;
+                    _current = new KeyValuePair<byte[], StringValues>(Encoding.ASCII.GetBytes(kv.Key + "": ""), kv.Value);
+                    return true;
+            }}
+        }}"
+        : "")}
     }}
 ")}}}
 ";

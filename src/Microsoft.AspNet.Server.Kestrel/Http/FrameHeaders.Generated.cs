@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
@@ -8,6 +9,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
     public partial class FrameRequestHeaders 
     {
+
         private long _bits = 0;
         
         private StringValues _CacheControl;
@@ -74,6 +76,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 2L;
+                HasConnection = true;
                 _Connection = value;
             }
         }
@@ -139,6 +142,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 64L;
+                HasTransferEncoding = true;
                 _TransferEncoding = value;
             }
         }
@@ -204,6 +208,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 2048L;
+                HasContentLength = true;
                 _ContentLength = value;
             }
         }
@@ -1860,6 +1865,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 2L;
                             _Connection = value;
+                            HasConnection = true;
                             return;
                         }
                     
@@ -1981,6 +1987,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 64L;
                             _TransferEncoding = value;
+                            HasTransferEncoding = true;
                             return;
                         }
                     
@@ -2028,6 +2035,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 2048L;
                             _ContentLength = value;
+                            HasContentLength = true;
                             return;
                         }
                     
@@ -2246,6 +2254,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 2L;
                             _Connection = value;
+                            HasConnection = true;
                             return;
                         }
                     
@@ -2427,6 +2436,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 64L;
                             _TransferEncoding = value;
+                            HasTransferEncoding = true;
                             return;
                         }
                     
@@ -2494,6 +2504,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 2048L;
                             _ContentLength = value;
+                            HasContentLength = true;
                             return;
                         }
                     
@@ -2785,6 +2796,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~2L;
                                 _Connection = StringValues.Empty;
+                                HasConnection = false;
                                 return true;
                             }
                             else
@@ -3011,6 +3023,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~64L;
                                 _TransferEncoding = StringValues.Empty;
+                                HasTransferEncoding = false;
                                 return true;
                             }
                             else
@@ -3093,6 +3106,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~2048L;
                                 _ContentLength = StringValues.Empty;
+                                HasContentLength = false;
                                 return true;
                             }
                             else
@@ -3394,6 +3408,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _Translate = StringValues.Empty;
             _UserAgent = StringValues.Empty;
             MaybeUnknown?.Clear();
+            HasConnection = false;
+            HasTransferEncoding = false;
+            HasContentLength = false;
         }
         
         protected override void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
@@ -3948,6 +3965,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 2L;
+                                HasConnection = true;
                                 _Connection = new StringValues(value);
                             }
                             return;
@@ -4174,6 +4192,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 64L;
+                                HasTransferEncoding = true;
                                 _TransferEncoding = new StringValues(value);
                             }
                             return;
@@ -4256,6 +4275,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 2048L;
+                                HasContentLength = true;
                                 _ContentLength = new StringValues(value);
                             }
                             return;
@@ -4983,10 +5003,42 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return true;
             }
         }
+
     }
 
     public partial class FrameResponseHeaders 
     {
+        private static byte[] _bytesCacheControl = Encoding.ASCII.GetBytes("Cache-Control: ");
+        private static byte[] _bytesConnection = Encoding.ASCII.GetBytes("Connection: ");
+        private static byte[] _bytesDate = Encoding.ASCII.GetBytes("Date: ");
+        private static byte[] _bytesKeepAlive = Encoding.ASCII.GetBytes("Keep-Alive: ");
+        private static byte[] _bytesPragma = Encoding.ASCII.GetBytes("Pragma: ");
+        private static byte[] _bytesTrailer = Encoding.ASCII.GetBytes("Trailer: ");
+        private static byte[] _bytesTransferEncoding = Encoding.ASCII.GetBytes("Transfer-Encoding: ");
+        private static byte[] _bytesUpgrade = Encoding.ASCII.GetBytes("Upgrade: ");
+        private static byte[] _bytesVia = Encoding.ASCII.GetBytes("Via: ");
+        private static byte[] _bytesWarning = Encoding.ASCII.GetBytes("Warning: ");
+        private static byte[] _bytesAllow = Encoding.ASCII.GetBytes("Allow: ");
+        private static byte[] _bytesContentLength = Encoding.ASCII.GetBytes("Content-Length: ");
+        private static byte[] _bytesContentType = Encoding.ASCII.GetBytes("Content-Type: ");
+        private static byte[] _bytesContentEncoding = Encoding.ASCII.GetBytes("Content-Encoding: ");
+        private static byte[] _bytesContentLanguage = Encoding.ASCII.GetBytes("Content-Language: ");
+        private static byte[] _bytesContentLocation = Encoding.ASCII.GetBytes("Content-Location: ");
+        private static byte[] _bytesContentMD5 = Encoding.ASCII.GetBytes("Content-MD5: ");
+        private static byte[] _bytesContentRange = Encoding.ASCII.GetBytes("Content-Range: ");
+        private static byte[] _bytesExpires = Encoding.ASCII.GetBytes("Expires: ");
+        private static byte[] _bytesLastModified = Encoding.ASCII.GetBytes("Last-Modified: ");
+        private static byte[] _bytesAcceptRanges = Encoding.ASCII.GetBytes("Accept-Ranges: ");
+        private static byte[] _bytesAge = Encoding.ASCII.GetBytes("Age: ");
+        private static byte[] _bytesETag = Encoding.ASCII.GetBytes("ETag: ");
+        private static byte[] _bytesLocation = Encoding.ASCII.GetBytes("Location: ");
+        private static byte[] _bytesProxyAutheticate = Encoding.ASCII.GetBytes("Proxy-Autheticate: ");
+        private static byte[] _bytesRetryAfter = Encoding.ASCII.GetBytes("Retry-After: ");
+        private static byte[] _bytesServer = Encoding.ASCII.GetBytes("Server: ");
+        private static byte[] _bytesSetCookie = Encoding.ASCII.GetBytes("Set-Cookie: ");
+        private static byte[] _bytesVary = Encoding.ASCII.GetBytes("Vary: ");
+        private static byte[] _bytesWWWAuthenticate = Encoding.ASCII.GetBytes("WWW-Authenticate: ");
+
         private long _bits = 0;
         
         private StringValues _CacheControl;
@@ -5042,6 +5094,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 2L;
+                HasConnection = true;
                 _Connection = value;
             }
         }
@@ -5107,6 +5160,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 64L;
+                HasTransferEncoding = true;
                 _TransferEncoding = value;
             }
         }
@@ -5172,6 +5226,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 2048L;
+                HasContentLength = true;
                 _ContentLength = value;
             }
         }
@@ -6360,6 +6415,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 2L;
                             _Connection = value;
+                            HasConnection = true;
                             return;
                         }
                     
@@ -6460,6 +6516,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 64L;
                             _TransferEncoding = value;
+                            HasTransferEncoding = true;
                             return;
                         }
                     
@@ -6507,6 +6564,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 2048L;
                             _ContentLength = value;
+                            HasContentLength = true;
                             return;
                         }
                     }
@@ -6649,6 +6707,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 2L;
                             _Connection = value;
+                            HasConnection = true;
                             return;
                         }
                     
@@ -6797,6 +6856,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 64L;
                             _TransferEncoding = value;
+                            HasTransferEncoding = true;
                             return;
                         }
                     
@@ -6864,6 +6924,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 2048L;
                             _ContentLength = value;
+                            HasContentLength = true;
                             return;
                         }
                     }
@@ -7048,6 +7109,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~2L;
                                 _Connection = StringValues.Empty;
+                                HasConnection = false;
                                 return true;
                             }
                             else
@@ -7232,6 +7294,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~64L;
                                 _TransferEncoding = StringValues.Empty;
+                                HasTransferEncoding = false;
                                 return true;
                             }
                             else
@@ -7314,6 +7377,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~2048L;
                                 _ContentLength = StringValues.Empty;
+                                HasContentLength = false;
                                 return true;
                             }
                             else
@@ -7490,6 +7554,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _Vary = StringValues.Empty;
             _WWWAuthenticate = StringValues.Empty;
             MaybeUnknown?.Clear();
+            HasConnection = false;
+            HasTransferEncoding = false;
+            HasContentLength = false;
         }
         
         protected override void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
@@ -7909,6 +7976,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 2L;
+                                HasConnection = true;
                                 _Connection = new StringValues(value);
                             }
                             return;
@@ -8093,6 +8161,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 64L;
+                                HasTransferEncoding = true;
                                 _TransferEncoding = new StringValues(value);
                             }
                             return;
@@ -8175,6 +8244,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 2048L;
+                                HasContentLength = true;
                                 _ContentLength = new StringValues(value);
                             }
                             return;
@@ -8664,6 +8734,359 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         return false;
                     }
                     _current = _unknownEnumerator.Current;
+                    return true;
+            }
+        }
+
+        public partial struct ByteEnumerator
+        {
+            public bool MoveNext()
+            {
+                switch (_state)
+                {
+                    
+                        case 0:
+                            goto state0;
+                    
+                        case 1:
+                            goto state1;
+                    
+                        case 2:
+                            goto state2;
+                    
+                        case 3:
+                            goto state3;
+                    
+                        case 4:
+                            goto state4;
+                    
+                        case 5:
+                            goto state5;
+                    
+                        case 6:
+                            goto state6;
+                    
+                        case 7:
+                            goto state7;
+                    
+                        case 8:
+                            goto state8;
+                    
+                        case 9:
+                            goto state9;
+                    
+                        case 10:
+                            goto state10;
+                    
+                        case 11:
+                            goto state11;
+                    
+                        case 12:
+                            goto state12;
+                    
+                        case 13:
+                            goto state13;
+                    
+                        case 14:
+                            goto state14;
+                    
+                        case 15:
+                            goto state15;
+                    
+                        case 16:
+                            goto state16;
+                    
+                        case 17:
+                            goto state17;
+                    
+                        case 18:
+                            goto state18;
+                    
+                        case 19:
+                            goto state19;
+                    
+                        case 20:
+                            goto state20;
+                    
+                        case 21:
+                            goto state21;
+                    
+                        case 22:
+                            goto state22;
+                    
+                        case 23:
+                            goto state23;
+                    
+                        case 24:
+                            goto state24;
+                    
+                        case 25:
+                            goto state25;
+                    
+                        case 26:
+                            goto state26;
+                    
+                        case 27:
+                            goto state27;
+                    
+                        case 28:
+                            goto state28;
+                    
+                        case 29:
+                            goto state29;
+                    
+                    default:
+                        goto state_default;
+                }
+                
+                state0:
+                    if (((_bits & 1L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesCacheControl, _collection._CacheControl);
+                        _state = 1;
+                        return true;
+                    }
+                
+                state1:
+                    if (((_bits & 2L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesConnection, _collection._Connection);
+                        _state = 2;
+                        return true;
+                    }
+                
+                state2:
+                    if (((_bits & 4L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesDate, _collection._Date);
+                        _state = 3;
+                        return true;
+                    }
+                
+                state3:
+                    if (((_bits & 8L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesKeepAlive, _collection._KeepAlive);
+                        _state = 4;
+                        return true;
+                    }
+                
+                state4:
+                    if (((_bits & 16L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesPragma, _collection._Pragma);
+                        _state = 5;
+                        return true;
+                    }
+                
+                state5:
+                    if (((_bits & 32L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesTrailer, _collection._Trailer);
+                        _state = 6;
+                        return true;
+                    }
+                
+                state6:
+                    if (((_bits & 64L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesTransferEncoding, _collection._TransferEncoding);
+                        _state = 7;
+                        return true;
+                    }
+                
+                state7:
+                    if (((_bits & 128L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesUpgrade, _collection._Upgrade);
+                        _state = 8;
+                        return true;
+                    }
+                
+                state8:
+                    if (((_bits & 256L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesVia, _collection._Via);
+                        _state = 9;
+                        return true;
+                    }
+                
+                state9:
+                    if (((_bits & 512L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesWarning, _collection._Warning);
+                        _state = 10;
+                        return true;
+                    }
+                
+                state10:
+                    if (((_bits & 1024L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesAllow, _collection._Allow);
+                        _state = 11;
+                        return true;
+                    }
+                
+                state11:
+                    if (((_bits & 2048L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentLength, _collection._ContentLength);
+                        _state = 12;
+                        return true;
+                    }
+                
+                state12:
+                    if (((_bits & 4096L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentType, _collection._ContentType);
+                        _state = 13;
+                        return true;
+                    }
+                
+                state13:
+                    if (((_bits & 8192L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentEncoding, _collection._ContentEncoding);
+                        _state = 14;
+                        return true;
+                    }
+                
+                state14:
+                    if (((_bits & 16384L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentLanguage, _collection._ContentLanguage);
+                        _state = 15;
+                        return true;
+                    }
+                
+                state15:
+                    if (((_bits & 32768L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentLocation, _collection._ContentLocation);
+                        _state = 16;
+                        return true;
+                    }
+                
+                state16:
+                    if (((_bits & 65536L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentMD5, _collection._ContentMD5);
+                        _state = 17;
+                        return true;
+                    }
+                
+                state17:
+                    if (((_bits & 131072L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesContentRange, _collection._ContentRange);
+                        _state = 18;
+                        return true;
+                    }
+                
+                state18:
+                    if (((_bits & 262144L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesExpires, _collection._Expires);
+                        _state = 19;
+                        return true;
+                    }
+                
+                state19:
+                    if (((_bits & 524288L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesLastModified, _collection._LastModified);
+                        _state = 20;
+                        return true;
+                    }
+                
+                state20:
+                    if (((_bits & 1048576L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesAcceptRanges, _collection._AcceptRanges);
+                        _state = 21;
+                        return true;
+                    }
+                
+                state21:
+                    if (((_bits & 2097152L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesAge, _collection._Age);
+                        _state = 22;
+                        return true;
+                    }
+                
+                state22:
+                    if (((_bits & 4194304L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesETag, _collection._ETag);
+                        _state = 23;
+                        return true;
+                    }
+                
+                state23:
+                    if (((_bits & 8388608L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesLocation, _collection._Location);
+                        _state = 24;
+                        return true;
+                    }
+                
+                state24:
+                    if (((_bits & 16777216L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesProxyAutheticate, _collection._ProxyAutheticate);
+                        _state = 25;
+                        return true;
+                    }
+                
+                state25:
+                    if (((_bits & 33554432L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesRetryAfter, _collection._RetryAfter);
+                        _state = 26;
+                        return true;
+                    }
+                
+                state26:
+                    if (((_bits & 67108864L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesServer, _collection._Server);
+                        _state = 27;
+                        return true;
+                    }
+                
+                state27:
+                    if (((_bits & 134217728L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesSetCookie, _collection._SetCookie);
+                        _state = 28;
+                        return true;
+                    }
+                
+                state28:
+                    if (((_bits & 268435456L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesVary, _collection._Vary);
+                        _state = 29;
+                        return true;
+                    }
+                
+                state29:
+                    if (((_bits & 536870912L) != 0))
+                    {
+                        _current = new KeyValuePair<byte[], StringValues>(_bytesWWWAuthenticate, _collection._WWWAuthenticate);
+                        _state = 30;
+                        return true;
+                    }
+                
+                state_default:
+                    if (!_hasUnknown || !_unknownEnumerator.MoveNext())
+                    {
+                        _current = default(KeyValuePair<byte[], StringValues>);
+                        return false;
+                    }
+                    var kv = _unknownEnumerator.Current;
+                    _current = new KeyValuePair<byte[], StringValues>(Encoding.ASCII.GetBytes(kv.Key + ": "), kv.Value);
                     return true;
             }
         }

@@ -28,6 +28,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
         private static readonly byte[] _hex = Encoding.ASCII.GetBytes("0123456789abcdef");
 
+        private static readonly byte[] _bytesEndLine = Encoding.ASCII.GetBytes("\r\n");
+        private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("Connection: close\r\n\r\n");
+        private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("Connection: keep-alive\r\n\r\n");
+        private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("Transfer-Encoding: chunked\r\n");
+        private static readonly byte[] _bytesContentLengthZero = Encoding.ASCII.GetBytes("Content-Length: 0\r\n");
+        private static readonly byte[] _bytesSpace = Encoding.ASCII.GetBytes(" ");
+
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
         private readonly FrameRequestHeaders _requestHeaders = new FrameRequestHeaders();
@@ -471,19 +478,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             await ProduceStart(immediate, appCompleted: false);
         }
 
-        private async Task ProduceStart(bool immediate, bool appCompleted)
+        private Task ProduceStart(bool immediate, bool appCompleted)
         {
-            if (_responseStarted) return;
+            if (_responseStarted) return TaskUtilities.CompletedTask;
             _responseStarted = true;
 
-            var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
+            var statusBytes = ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase);
 
-            var responseHeader = CreateResponseHeader(status, appCompleted);
-
-            using (responseHeader.Item2)
-            {
-                await SocketOutput.WriteAsync(responseHeader.Item1, immediate: immediate);
-            }
+            return CreateResponseHeader(statusBytes, appCompleted, immediate);
         }
 
         private async Task ProduceEnd()
@@ -521,99 +523,128 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private Tuple<ArraySegment<byte>, IDisposable> CreateResponseHeader(
-            string status,
-            bool appCompleted)
+        private static void OutputAsciiBlock(string data, MemoryPoolBlock2 memoryBlock, ISocketOutput output)
         {
-            var writer = new MemoryPoolTextWriter(Memory);
-            writer.Write(HttpVersion);
-            writer.Write(' ');
-            writer.Write(status);
-            writer.Write('\r');
-            writer.Write('\n');
+            var end = memoryBlock.Start + memoryBlock.Data.Count;
 
-            var hasConnection = false;
-            var hasTransferEncoding = false;
-            var hasContentLength = false;
-
-            foreach (var header in _responseHeaders)
+            foreach (var chr in data)
             {
-                var isConnection = false;
-                if (!hasConnection &&
-                    string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasConnection = isConnection = true;
-                }
-                else if (!hasTransferEncoding &&
-                    string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasTransferEncoding = true;
-                }
-                else if (!hasContentLength &&
-                    string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasContentLength = true;
-                }
+                memoryBlock.Array[memoryBlock.End] = (byte)chr;
 
-                foreach (var value in header.Value)
+                memoryBlock.End++;
+
+                if (memoryBlock.End == end)
                 {
-                    writer.Write(header.Key);
-                    writer.Write(':');
-                    writer.Write(' ');
-                    writer.Write(value);
-                    writer.Write('\r');
-                    writer.Write('\n');
-
-                    if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
-                    {
-                        _keepAlive = false;
-                    }
+                    output.Write(memoryBlock.Data, immediate: false);
+                    memoryBlock.End = memoryBlock.Start;
                 }
-
             }
+        }
 
-            if (_keepAlive && !hasTransferEncoding && !hasContentLength)
+        private static void OutputAsciiBlock(byte[] data, MemoryPoolBlock2 memoryBlock, ISocketOutput output)
+        {
+            var offset = 0;
+            var remaining = data.Length;
+            var end = memoryBlock.Start + memoryBlock.Data.Count;
+
+            while (remaining > 0)
             {
-                if (appCompleted)
+                var blockRemaining = end - memoryBlock.End;
+                var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
+                Buffer.BlockCopy(data, offset, memoryBlock.Array, memoryBlock.End, copyAmount);
+
+                memoryBlock.End += copyAmount;
+                remaining -= copyAmount;
+                offset += copyAmount;
+
+                if (memoryBlock.End == end)
                 {
-                    // Don't set the Content-Length or Transfer-Encoding headers
-                    // automatically for HEAD requests or 101, 204, 205, 304 responses.
-                    if (Method != "HEAD" && StatusCanHaveBody(StatusCode))
-                    {
-                        // Since the app has completed and we are only now generating
-                        // the headers we can safely set the Content-Length to 0.
-                        writer.Write("Content-Length: 0\r\n");
-                    }
+                    output.Write(memoryBlock.Data, immediate: false);
+                    memoryBlock.End = memoryBlock.Start;
                 }
-                else
+            }
+        }
+
+        private Task CreateResponseHeader(
+            byte[] statusBytes,
+            bool appCompleted,
+            bool immediate)
+        {
+            var memoryBlock = Memory2.Lease();
+            try
+            {
+                var blockRemaining = memoryBlock.Data.Count;
+
+                OutputAsciiBlock(HttpVersion, memoryBlock, SocketOutput);
+                OutputAsciiBlock(_bytesSpace, memoryBlock, SocketOutput);
+                OutputAsciiBlock(statusBytes, memoryBlock, SocketOutput);
+
+                foreach (var header in _responseHeaders.AsOutputEnumerable())
                 {
-                    if (HttpVersion == "HTTP/1.1")
+                    foreach (var value in header.Value)
                     {
-                        _autoChunk = true;
-                        writer.Write("Transfer-Encoding: chunked\r\n");
+                        OutputAsciiBlock(header.Key, memoryBlock, SocketOutput);
+                        OutputAsciiBlock(value, memoryBlock, SocketOutput);
+                        OutputAsciiBlock(_bytesEndLine, memoryBlock, SocketOutput);
+
+                        if (_responseHeaders.HasConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
+                        {
+                            _keepAlive = false;
+                        }
+                    }
+
+                }
+
+                if (_keepAlive && !_responseHeaders.HasTransferEncoding && !_responseHeaders.HasContentLength)
+                {
+                    if (appCompleted)
+                    {
+                        // Don't set the Content-Length or Transfer-Encoding headers
+                        // automatically for HEAD requests or 101, 204, 205, 304 responses.
+                        if (Method != "HEAD" && StatusCanHaveBody(StatusCode))
+                        {
+                            // Since the app has completed and we are only now generating
+                            // the headers we can safely set the Content-Length to 0.
+                            OutputAsciiBlock(_bytesContentLengthZero, memoryBlock, SocketOutput);
+                        }
                     }
                     else
                     {
-                        _keepAlive = false;
+                        if (HttpVersion == "HTTP/1.1")
+                        {
+                            _autoChunk = true;
+                            OutputAsciiBlock(_bytesTransferEncodingChunked, memoryBlock, SocketOutput);
+                        }
+                        else
+                        {
+                            _keepAlive = false;
+                        }
                     }
                 }
-            }
 
-            if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
-            {
-                writer.Write("Connection: close\r\n\r\n");
+                if (_keepAlive == false && _responseHeaders.HasConnection == false && HttpVersion == "HTTP/1.1")
+                {
+                    OutputAsciiBlock(_bytesConnectionClose, memoryBlock, SocketOutput);
+                }
+                else if (_keepAlive && _responseHeaders.HasConnection == false && HttpVersion == "HTTP/1.0")
+                {
+                    OutputAsciiBlock(_bytesConnectionKeepAlive, memoryBlock, SocketOutput);
+                }
+                else
+                {
+                    OutputAsciiBlock(_bytesEndLine, memoryBlock, SocketOutput);
+                }
+
+                return SocketOutput.WriteAsync(
+                    (memoryBlock.Start == memoryBlock.End) ?
+                    default(ArraySegment<byte>) :
+                    new ArraySegment<byte>(memoryBlock.Array, memoryBlock.Start, memoryBlock.End - memoryBlock.Start),
+                    immediate);
             }
-            else if (_keepAlive && hasConnection == false && HttpVersion == "HTTP/1.0")
+            finally
             {
-                writer.Write("Connection: keep-alive\r\n\r\n");
+                Memory2.Return(memoryBlock);
             }
-            else
-            {
-                writer.Write('\r');
-                writer.Write('\n');
-            }
-            writer.Flush();
-            return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
         }
 
         private bool TakeStartLine(SocketInput input)

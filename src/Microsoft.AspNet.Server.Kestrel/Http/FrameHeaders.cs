@@ -12,6 +12,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public abstract class FrameHeaders : IHeaderDictionary
     {
+        public bool HasConnection { get; protected set; }
+
+        public bool HasTransferEncoding { get; protected set; }
+
+        public bool HasContentLength { get; protected set; }
+
         protected Dictionary<string, StringValues> MaybeUnknown;
 
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
