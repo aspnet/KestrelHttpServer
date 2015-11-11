@@ -53,6 +53,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private bool _disposedValue = false; // To detect redundant calls
 
+        public MemoryPool2()
+        {
+            // Allocate on creation or multiple simultaneous connections
+            // will all allocate rather than reuse the pooled buffers
+            Return(AllocateSlab());
+        }
+
         /// <summary>
         /// Called to take a block from the pool.
         /// </summary>
