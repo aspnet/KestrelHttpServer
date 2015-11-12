@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Filter;
 using System.Security.Authentication;
 using Microsoft.AspNet.Http.Features.Internal;
+using System.Diagnostics;
 
 namespace Microsoft.AspNet.Server.Kestrel.Https
 {
@@ -50,18 +51,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                     sslStream = new SslStream(context.Connection, leaveInnerStreamOpen: false,
                         userCertificateValidationCallback: (sender, certificate, chain, sslPolicyErrors) =>
                         {
-                            context.TlsConnectionFeature = new TlsConnectionFeature()
-                            {
-                                ClientCertificate = certificate as X509Certificate2
-                            };
                             if (sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable))
                             {
                                 return _clientCertMode != ClientCertificateMode.RequireCertificate;
                             }
-                            else
+
+                            if (sslPolicyErrors != SslPolicyErrors.None)
                             {
-                                return sslPolicyErrors == SslPolicyErrors.None;
+                                return false;
                             }
+
+                            context.TlsConnectionFeature = new TlsConnectionFeature()
+                            {
+                                ClientCertificate = certificate as X509Certificate2 ?? new X509Certificate2(certificate)
+                            };
+                            return true;
                         });
                     await sslStream.AuthenticateAsServerAsync(_cert, clientCertificateRequired: true,
                         enabledSslProtocols: SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls,
