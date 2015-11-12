@@ -561,44 +561,53 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private static void OutputAsciiBlock(string data, MemoryPoolBlock2 memoryBlock, ISocketOutput output)
         {
-            var end = memoryBlock.Start + memoryBlock.Data.Count;
+            var start = memoryBlock.Start;
+            var end = start + memoryBlock.Data.Count;
+            var array = memoryBlock.Array;
+            var current = memoryBlock.End;
 
             foreach (var chr in data)
             {
-                memoryBlock.Array[memoryBlock.End] = (byte)chr;
+                array[current] = (byte)chr;
 
-                memoryBlock.End++;
+                current++;
 
-                if (memoryBlock.End == end)
+                if (current == end)
                 {
                     output.Write(memoryBlock.Data, immediate: false);
-                    memoryBlock.End = memoryBlock.Start;
+                    current = start;
                 }
             }
+            memoryBlock.End = current;
         }
 
         private static void OutputAsciiBlock(byte[] data, MemoryPoolBlock2 memoryBlock, ISocketOutput output)
         {
             var offset = 0;
             var remaining = data.Length;
-            var end = memoryBlock.Start + memoryBlock.Data.Count;
+
+            var start = memoryBlock.Start;
+            var end = start + memoryBlock.Data.Count;
+            var array = memoryBlock.Array;
+            var current = memoryBlock.End;
 
             while (remaining > 0)
             {
-                var blockRemaining = end - memoryBlock.End;
+                var blockRemaining = end - current;
                 var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
-                Buffer.BlockCopy(data, offset, memoryBlock.Array, memoryBlock.End, copyAmount);
+                Buffer.BlockCopy(data, offset, array, current, copyAmount);
 
-                memoryBlock.End += copyAmount;
+                current += copyAmount;
                 remaining -= copyAmount;
                 offset += copyAmount;
 
-                if (memoryBlock.End == end)
+                if (current == end)
                 {
                     output.Write(memoryBlock.Data, immediate: false);
-                    memoryBlock.End = memoryBlock.Start;
+                    current = start;
                 }
             }
+            memoryBlock.End = current;
         }
 
         private Task CreateResponseHeader(
