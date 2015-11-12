@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 #if DNX451
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -9,6 +10,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http;
+using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Filter;
 using Microsoft.AspNet.Server.Kestrel.Https;
 using Microsoft.AspNet.Testing.xunit;
@@ -49,7 +51,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             {
                 ServicePointManager.ServerCertificateValidationCallback += validationCallback;
 
-                var sereverAddress = "https://localhost:54321/";
+                var serverAddress = "https://localhost:54321/";
                 var serviceContext = new TestServiceContext()
                 {
                     ConnectionFilter = new HttpsConnectionFilter(
@@ -58,15 +60,104 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         new NoOpConnectionFilter())
                 };
 
-                using (var server = new TestServer(App, serviceContext, sereverAddress))
+                using (var server = new TestServer(App, serviceContext, serverAddress))
                 {
                     using (var client = new HttpClient())
                     {
-                        var result = await client.PostAsync(sereverAddress, new FormUrlEncodedContent(new[] {
+                        var result = await client.PostAsync(serverAddress, new FormUrlEncodedContent(new[] {
                             new KeyValuePair<string, string>("content", "Hello World?")
                         }));
 
                         Assert.Equal("content=Hello+World%3F", await result.Content.ReadAsStringAsync());
+                    }
+                }
+            }
+            finally
+            {
+                ServicePointManager.ServerCertificateValidationCallback -= validationCallback;
+            }
+        }
+
+        // https://github.com/aspnet/KestrelHttpServer/issues/240
+        // This test currently fails on mono because of an issue with SslStream.
+        [ConditionalFact]
+        [OSSkipCondition(OperatingSystems.Linux)]
+        [OSSkipCondition(OperatingSystems.MacOSX)]
+        public async Task RequireCertificateFailsWhenNoCertificate()
+        {
+            RemoteCertificateValidationCallback validationCallback =
+                    (sender, cert, chain, sslPolicyErrors) => true;
+
+            try
+            {
+                ServicePointManager.ServerCertificateValidationCallback += validationCallback;
+
+                var serverAddress = "https://localhost:54321/";
+                var serviceContext = new TestServiceContext()
+                {
+                    ConnectionFilter = new HttpsConnectionFilter(
+                        new HttpsConnectionFilterOptions
+                        {
+                            ServerCertificate = new X509Certificate2(@"TestResources/testCert.pfx", "testPassword"),
+                            ClientCertificateMode = ClientCertificateMode.RequireCertificate
+                        },
+                        new NoOpConnectionFilter())
+                };
+
+                using (var server = new TestServer(App, serviceContext, serverAddress))
+                {
+                    using (var client = new HttpClient())
+                    {
+                        await Assert.ThrowsAnyAsync<Exception>(
+                            () => client.GetAsync(serverAddress));
+                    }
+                }
+            }
+            finally
+            {
+                ServicePointManager.ServerCertificateValidationCallback -= validationCallback;
+            }
+        }
+
+        // https://github.com/aspnet/KestrelHttpServer/issues/240
+        // This test currently fails on mono because of an issue with SslStream.
+        [ConditionalFact]
+        [OSSkipCondition(OperatingSystems.Linux)]
+        [OSSkipCondition(OperatingSystems.MacOSX)]
+        public async Task AllowCertificateContinuesWhenNoCertificate()
+        {
+            RemoteCertificateValidationCallback validationCallback =
+                    (sender, cert, chain, sslPolicyErrors) => true;
+
+            try
+            {
+                ServicePointManager.ServerCertificateValidationCallback += validationCallback;
+
+                var serverAddress = "https://localhost:54321/";
+                var serviceContext = new TestServiceContext()
+                {
+                    ConnectionFilter = new HttpsConnectionFilter(
+                        new HttpsConnectionFilterOptions
+                        {
+                            ServerCertificate = new X509Certificate2(@"TestResources/testCert.pfx", "testPassword"),
+                            ClientCertificateMode = ClientCertificateMode.AllowCertificate
+                        },
+                        new NoOpConnectionFilter())
+                };
+
+                RequestDelegate app = context =>
+                {
+                    Assert.Equal(context.Features.Get<ITlsConnectionFeature>(), null);
+                    return context.Response.WriteAsync("hello world");
+                };
+
+                using (var server = new TestServer(app, serviceContext, serverAddress))
+                {
+                    using (var client = new HttpClient())
+                    {
+                        var result = await client.GetAsync(serverAddress);
+
+                        Assert.Equal("hello world", await result.Content.ReadAsStringAsync());
                     }
                 }
             }
