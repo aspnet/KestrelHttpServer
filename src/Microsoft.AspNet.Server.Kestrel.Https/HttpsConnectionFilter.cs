@@ -3,12 +3,11 @@
 
 using System;
 using System.Net.Security;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using Microsoft.AspNet.Server.Kestrel.Filter;
-using System.Security.Authentication;
 using Microsoft.AspNet.Http.Features.Internal;
-using System.Diagnostics;
+using Microsoft.AspNet.Server.Kestrel.Filter;
 
 namespace Microsoft.AspNet.Server.Kestrel.Https
 {
