@@ -36,6 +36,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly byte[] _bytesHttpVersion1_1 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
         private static readonly byte[] _bytesContentLengthZero = Encoding.ASCII.GetBytes("Content-Length: 0\r\n");
         private static readonly byte[] _bytesSpace = Encoding.ASCII.GetBytes(" ");
+        private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("Server: Kestrel\r\n");
+        private static readonly byte[] _bytesDate = Encoding.ASCII.GetBytes("Date: ");
 
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
@@ -112,6 +114,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
         }
+
         public IHeaderDictionary RequestHeaders { get; set; }
         public MessageBody MessageBody { get; set; }
         public Stream RequestBody { get; set; }
@@ -176,8 +179,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public void ResetResponseHeaders()
         {
             _responseHeaders.Reset();
-            _responseHeaders.HeaderServer = "Kestrel";
-            _responseHeaders.HeaderDate = DateHeaderValueManager.GetDateHeaderValue();
+            _responseHeaders.HasDefaultDate = true; 
+            _responseHeaders.HasDefaultServer = true;
         }
 
         /// <summary>
@@ -612,6 +615,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 OutputAsciiBlock(statusBytes, memoryBlock, SocketOutput);
 
+                if (_responseHeaders.HasDefaultDate)
+                {
+                    OutputAsciiBlock(_bytesDate, memoryBlock, SocketOutput);
+                    OutputAsciiBlock(DateHeaderValueManager.GetDateHeaderValueBytes(), memoryBlock, SocketOutput);
+                    OutputAsciiBlock(_bytesEndLine, memoryBlock, SocketOutput);
+                }
+
                 foreach (var header in _responseHeaders.AsOutputEnumerable())
                 {
                     foreach (var value in header.Value)
@@ -625,7 +635,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _keepAlive = false;
                         }
                     }
+                }
 
+                if (_responseHeaders.HasDefaultServer)
+                {
+                    OutputAsciiBlock(_bytesServer, memoryBlock, SocketOutput);
                 }
 
                 if (_keepAlive && !_responseHeaders.HasTransferEncoding && !_responseHeaders.HasContentLength)

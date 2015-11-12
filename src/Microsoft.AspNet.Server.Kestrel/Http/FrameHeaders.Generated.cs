@@ -2,14 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
 {
 
-    public partial class FrameRequestHeaders 
+    public partial class FrameRequestHeaders
     {
-
         private long _bits = 0;
         
         private StringValues _CacheControl;
@@ -66,7 +66,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _CacheControl = value;
             }
         }
-        
+
         public StringValues HeaderConnection
         {
             get
@@ -80,7 +80,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Connection = value;
             }
         }
-        
+
         public StringValues HeaderDate
         {
             get
@@ -93,7 +93,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Date = value;
             }
         }
-        
+
         public StringValues HeaderKeepAlive
         {
             get
@@ -106,7 +106,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _KeepAlive = value;
             }
         }
-        
+
         public StringValues HeaderPragma
         {
             get
@@ -119,7 +119,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Pragma = value;
             }
         }
-        
+
         public StringValues HeaderTrailer
         {
             get
@@ -132,7 +132,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Trailer = value;
             }
         }
-        
+
         public StringValues HeaderTransferEncoding
         {
             get
@@ -146,7 +146,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _TransferEncoding = value;
             }
         }
-        
+
         public StringValues HeaderUpgrade
         {
             get
@@ -159,7 +159,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Upgrade = value;
             }
         }
-        
+
         public StringValues HeaderVia
         {
             get
@@ -172,7 +172,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Via = value;
             }
         }
-        
+
         public StringValues HeaderWarning
         {
             get
@@ -185,7 +185,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Warning = value;
             }
         }
-        
+
         public StringValues HeaderAllow
         {
             get
@@ -198,7 +198,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Allow = value;
             }
         }
-        
+
         public StringValues HeaderContentLength
         {
             get
@@ -212,7 +212,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentLength = value;
             }
         }
-        
+
         public StringValues HeaderContentType
         {
             get
@@ -225,7 +225,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentType = value;
             }
         }
-        
+
         public StringValues HeaderContentEncoding
         {
             get
@@ -238,7 +238,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentEncoding = value;
             }
         }
-        
+
         public StringValues HeaderContentLanguage
         {
             get
@@ -251,7 +251,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentLanguage = value;
             }
         }
-        
+
         public StringValues HeaderContentLocation
         {
             get
@@ -264,7 +264,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentLocation = value;
             }
         }
-        
+
         public StringValues HeaderContentMD5
         {
             get
@@ -277,7 +277,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentMD5 = value;
             }
         }
-        
+
         public StringValues HeaderContentRange
         {
             get
@@ -290,7 +290,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentRange = value;
             }
         }
-        
+
         public StringValues HeaderExpires
         {
             get
@@ -303,7 +303,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Expires = value;
             }
         }
-        
+
         public StringValues HeaderLastModified
         {
             get
@@ -316,7 +316,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _LastModified = value;
             }
         }
-        
+
         public StringValues HeaderAccept
         {
             get
@@ -329,7 +329,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Accept = value;
             }
         }
-        
+
         public StringValues HeaderAcceptCharset
         {
             get
@@ -342,7 +342,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _AcceptCharset = value;
             }
         }
-        
+
         public StringValues HeaderAcceptEncoding
         {
             get
@@ -355,7 +355,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _AcceptEncoding = value;
             }
         }
-        
+
         public StringValues HeaderAcceptLanguage
         {
             get
@@ -368,7 +368,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _AcceptLanguage = value;
             }
         }
-        
+
         public StringValues HeaderAuthorization
         {
             get
@@ -381,7 +381,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Authorization = value;
             }
         }
-        
+
         public StringValues HeaderCookie
         {
             get
@@ -394,7 +394,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Cookie = value;
             }
         }
-        
+
         public StringValues HeaderExpect
         {
             get
@@ -407,7 +407,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Expect = value;
             }
         }
-        
+
         public StringValues HeaderFrom
         {
             get
@@ -420,7 +420,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _From = value;
             }
         }
-        
+
         public StringValues HeaderHost
         {
             get
@@ -433,7 +433,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Host = value;
             }
         }
-        
+
         public StringValues HeaderIfMatch
         {
             get
@@ -446,7 +446,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _IfMatch = value;
             }
         }
-        
+
         public StringValues HeaderIfModifiedSince
         {
             get
@@ -459,7 +459,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _IfModifiedSince = value;
             }
         }
-        
+
         public StringValues HeaderIfNoneMatch
         {
             get
@@ -472,7 +472,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _IfNoneMatch = value;
             }
         }
-        
+
         public StringValues HeaderIfRange
         {
             get
@@ -485,7 +485,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _IfRange = value;
             }
         }
-        
+
         public StringValues HeaderIfUnmodifiedSince
         {
             get
@@ -498,7 +498,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _IfUnmodifiedSince = value;
             }
         }
-        
+
         public StringValues HeaderMaxForwards
         {
             get
@@ -511,7 +511,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _MaxForwards = value;
             }
         }
-        
+
         public StringValues HeaderProxyAuthorization
         {
             get
@@ -524,7 +524,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ProxyAuthorization = value;
             }
         }
-        
+
         public StringValues HeaderReferer
         {
             get
@@ -537,7 +537,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Referer = value;
             }
         }
-        
+
         public StringValues HeaderRange
         {
             get
@@ -550,7 +550,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Range = value;
             }
         }
-        
+
         public StringValues HeaderTE
         {
             get
@@ -563,7 +563,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _TE = value;
             }
         }
-        
+
         public StringValues HeaderTranslate
         {
             get
@@ -576,7 +576,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Translate = value;
             }
         }
-        
+
         public StringValues HeaderUserAgent
         {
             get
@@ -589,10 +589,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _UserAgent = value;
             }
         }
-        
+
         protected override int GetCountFast()
         {
-            return BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
+            return BitCount(_bits)  
+                + (MaybeUnknown?.Count ?? 0);
         }
 
         protected override StringValues GetValueFast(string key)
@@ -601,7 +602,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 case 13:
                     {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1L) != 0))
                             {
@@ -613,7 +614,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 131072L) != 0))
                             {
@@ -625,7 +626,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 524288L) != 0))
                             {
@@ -637,7 +638,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16777216L) != 0))
                             {
@@ -649,7 +650,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2147483648L) != 0))
                             {
@@ -662,10 +663,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 10:
                     {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2L) != 0))
                             {
@@ -677,7 +678,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8L) != 0))
                             {
@@ -689,7 +690,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1099511627776L) != 0))
                             {
@@ -702,10 +703,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4L) != 0))
                             {
@@ -717,7 +718,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 134217728L) != 0))
                             {
@@ -729,7 +730,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 268435456L) != 0))
                             {
@@ -742,10 +743,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 6:
                     {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16L) != 0))
                             {
@@ -757,7 +758,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1048576L) != 0))
                             {
@@ -769,7 +770,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 33554432L) != 0))
                             {
@@ -781,7 +782,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 67108864L) != 0))
                             {
@@ -794,10 +795,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32L) != 0))
                             {
@@ -809,7 +810,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 128L) != 0))
                             {
@@ -821,7 +822,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 512L) != 0))
                             {
@@ -833,7 +834,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 262144L) != 0))
                             {
@@ -845,7 +846,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 68719476736L) != 0))
                             {
@@ -858,10 +859,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 17:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 64L) != 0))
                             {
@@ -873,7 +874,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1073741824L) != 0))
                             {
@@ -886,10 +887,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 3:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 256L) != 0))
                             {
@@ -902,10 +903,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 5:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1024L) != 0))
                             {
@@ -917,7 +918,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 137438953472L) != 0))
                             {
@@ -930,10 +931,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 14:
                     {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2048L) != 0))
                             {
@@ -945,7 +946,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2097152L) != 0))
                             {
@@ -958,10 +959,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 12:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4096L) != 0))
                             {
@@ -973,7 +974,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 17179869184L) != 0))
                             {
@@ -986,10 +987,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8192L) != 0))
                             {
@@ -1001,7 +1002,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16384L) != 0))
                             {
@@ -1013,7 +1014,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32768L) != 0))
                             {
@@ -1026,10 +1027,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 11:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 65536L) != 0))
                             {
@@ -1042,10 +1043,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 15:
                     {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4194304L) != 0))
                             {
@@ -1057,7 +1058,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8388608L) != 0))
                             {
@@ -1070,10 +1071,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 8:
                     {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 536870912L) != 0))
                             {
@@ -1085,7 +1086,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4294967296L) != 0))
                             {
@@ -1098,10 +1099,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8589934592L) != 0))
                             {
@@ -1113,7 +1114,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 34359738368L) != 0))
                             {
@@ -1126,10 +1127,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 2:
                     {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 274877906944L) != 0))
                             {
@@ -1142,10 +1143,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 9:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 549755813888L) != 0))
                             {
@@ -1158,7 +1159,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            }
+}
             if (MaybeUnknown == null) 
             {
                 throw new System.Collections.Generic.KeyNotFoundException();
@@ -1243,7 +1244,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 10:
                     {
                         if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1289,7 +1290,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 4:
                     {
                         if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1335,7 +1336,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 6:
                     {
                         if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1395,7 +1396,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 7:
                     {
                         if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1469,7 +1470,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 17:
                     {
                         if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1501,7 +1502,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 3:
                     {
                         if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1519,7 +1520,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 5:
                     {
                         if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1551,7 +1552,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 14:
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1583,7 +1584,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 12:
                     {
                         if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1615,7 +1616,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 16:
                     {
                         if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1661,7 +1662,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 11:
                     {
                         if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1679,7 +1680,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 15:
                     {
                         if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1711,7 +1712,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 8:
                     {
                         if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1743,7 +1744,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 19:
                     {
                         if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1775,7 +1776,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 2:
                     {
                         if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1793,7 +1794,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 9:
                     {
                         if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1811,7 +1812,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            }
+}
             value = StringValues.Empty;
             return MaybeUnknown?.TryGetValue(key, out value) ?? false;
         }
@@ -1858,7 +1859,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 10:
                     {
                         if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1884,7 +1885,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 4:
                     {
                         if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1909,7 +1910,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 6:
                     {
                         if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1941,7 +1942,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 7:
                     {
                         if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1980,7 +1981,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 17:
                     {
                         if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -1999,7 +2000,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 3:
                     {
                         if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2010,7 +2011,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 5:
                     {
                         if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2028,7 +2029,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 14:
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2047,7 +2048,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 12:
                     {
                         if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2065,7 +2066,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 16:
                     {
                         if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2090,7 +2091,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 11:
                     {
                         if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2101,7 +2102,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 15:
                     {
                         if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2119,7 +2120,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 8:
                     {
                         if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2137,7 +2138,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 19:
                     {
                         if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2155,7 +2156,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 2:
                     {
                         if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2166,7 +2167,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 9:
                     {
                         if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -2177,7 +2178,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            }
+}
             Unknown[key] = value;
         }
 
@@ -2187,7 +2188,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 case 13:
                     {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1L) != 0))
                             {
@@ -2198,7 +2199,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 131072L) != 0))
                             {
@@ -2209,7 +2210,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 524288L) != 0))
                             {
@@ -2220,7 +2221,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16777216L) != 0))
                             {
@@ -2231,7 +2232,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2147483648L) != 0))
                             {
@@ -2246,7 +2247,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 10:
                     {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2L) != 0))
                             {
@@ -2258,7 +2259,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8L) != 0))
                             {
@@ -2269,7 +2270,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1099511627776L) != 0))
                             {
@@ -2284,7 +2285,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4L) != 0))
                             {
@@ -2295,7 +2296,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 134217728L) != 0))
                             {
@@ -2306,7 +2307,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 268435456L) != 0))
                             {
@@ -2321,7 +2322,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 6:
                     {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16L) != 0))
                             {
@@ -2332,7 +2333,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1048576L) != 0))
                             {
@@ -2343,7 +2344,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 33554432L) != 0))
                             {
@@ -2354,7 +2355,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 67108864L) != 0))
                             {
@@ -2369,7 +2370,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32L) != 0))
                             {
@@ -2380,7 +2381,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 128L) != 0))
                             {
@@ -2391,7 +2392,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 512L) != 0))
                             {
@@ -2402,7 +2403,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 262144L) != 0))
                             {
@@ -2413,7 +2414,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 68719476736L) != 0))
                             {
@@ -2428,7 +2429,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 17:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 64L) != 0))
                             {
@@ -2440,7 +2441,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1073741824L) != 0))
                             {
@@ -2455,7 +2456,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 3:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 256L) != 0))
                             {
@@ -2470,7 +2471,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 5:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1024L) != 0))
                             {
@@ -2481,7 +2482,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 137438953472L) != 0))
                             {
@@ -2496,7 +2497,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 14:
                     {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2048L) != 0))
                             {
@@ -2508,7 +2509,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2097152L) != 0))
                             {
@@ -2523,7 +2524,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 12:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4096L) != 0))
                             {
@@ -2534,7 +2535,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 17179869184L) != 0))
                             {
@@ -2549,7 +2550,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8192L) != 0))
                             {
@@ -2560,7 +2561,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16384L) != 0))
                             {
@@ -2571,7 +2572,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32768L) != 0))
                             {
@@ -2586,7 +2587,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 11:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 65536L) != 0))
                             {
@@ -2601,7 +2602,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 15:
                     {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4194304L) != 0))
                             {
@@ -2612,7 +2613,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8388608L) != 0))
                             {
@@ -2627,7 +2628,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 8:
                     {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 536870912L) != 0))
                             {
@@ -2638,7 +2639,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4294967296L) != 0))
                             {
@@ -2653,7 +2654,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8589934592L) != 0))
                             {
@@ -2664,7 +2665,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 34359738368L) != 0))
                             {
@@ -2679,7 +2680,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 2:
                     {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 274877906944L) != 0))
                             {
@@ -2694,7 +2695,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 9:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 549755813888L) != 0))
                             {
@@ -5006,7 +5007,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
     }
 
-    public partial class FrameResponseHeaders 
+    public partial class FrameResponseHeaders
     {
         private static byte[] _bytesCacheControl = Encoding.ASCII.GetBytes("Cache-Control: ");
         private static byte[] _bytesConnection = Encoding.ASCII.GetBytes("Connection: ");
@@ -5038,7 +5039,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static byte[] _bytesSetCookie = Encoding.ASCII.GetBytes("Set-Cookie: ");
         private static byte[] _bytesVary = Encoding.ASCII.GetBytes("Vary: ");
         private static byte[] _bytesWWWAuthenticate = Encoding.ASCII.GetBytes("WWW-Authenticate: ");
-
         private long _bits = 0;
         
         private StringValues _CacheControl;
@@ -5071,6 +5071,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private StringValues _SetCookie;
         private StringValues _Vary;
         private StringValues _WWWAuthenticate;
+        private bool _hasDefaultServer;
+        private bool _hasDefaultDate;
+
+        public bool HasDefaultServer { 
+            get { return _hasDefaultServer; }
+            set 
+            {
+                _hasDefaultServer = value;
+                _bits &= ~67108864L;
+            }
+        }
+
+        public bool HasDefaultDate { 
+            get { return _hasDefaultDate; }
+            set 
+            {
+                _hasDefaultDate = value;
+                _bits &= ~4L;
+            }
+        }
         
         public StringValues HeaderCacheControl
         {
@@ -5084,7 +5104,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _CacheControl = value;
             }
         }
-        
+
         public StringValues HeaderConnection
         {
             get
@@ -5098,7 +5118,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Connection = value;
             }
         }
-        
+
         public StringValues HeaderDate
         {
             get
@@ -5108,10 +5128,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 4L;
+                HasDefaultDate = false;
                 _Date = value;
             }
         }
-        
+
         public StringValues HeaderKeepAlive
         {
             get
@@ -5124,7 +5145,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _KeepAlive = value;
             }
         }
-        
+
         public StringValues HeaderPragma
         {
             get
@@ -5137,7 +5158,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Pragma = value;
             }
         }
-        
+
         public StringValues HeaderTrailer
         {
             get
@@ -5150,7 +5171,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Trailer = value;
             }
         }
-        
+
         public StringValues HeaderTransferEncoding
         {
             get
@@ -5164,7 +5185,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _TransferEncoding = value;
             }
         }
-        
+
         public StringValues HeaderUpgrade
         {
             get
@@ -5177,7 +5198,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Upgrade = value;
             }
         }
-        
+
         public StringValues HeaderVia
         {
             get
@@ -5190,7 +5211,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Via = value;
             }
         }
-        
+
         public StringValues HeaderWarning
         {
             get
@@ -5203,7 +5224,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Warning = value;
             }
         }
-        
+
         public StringValues HeaderAllow
         {
             get
@@ -5216,7 +5237,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Allow = value;
             }
         }
-        
+
         public StringValues HeaderContentLength
         {
             get
@@ -5230,7 +5251,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentLength = value;
             }
         }
-        
+
         public StringValues HeaderContentType
         {
             get
@@ -5243,7 +5264,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentType = value;
             }
         }
-        
+
         public StringValues HeaderContentEncoding
         {
             get
@@ -5256,7 +5277,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentEncoding = value;
             }
         }
-        
+
         public StringValues HeaderContentLanguage
         {
             get
@@ -5269,7 +5290,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentLanguage = value;
             }
         }
-        
+
         public StringValues HeaderContentLocation
         {
             get
@@ -5282,7 +5303,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentLocation = value;
             }
         }
-        
+
         public StringValues HeaderContentMD5
         {
             get
@@ -5295,7 +5316,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentMD5 = value;
             }
         }
-        
+
         public StringValues HeaderContentRange
         {
             get
@@ -5308,7 +5329,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ContentRange = value;
             }
         }
-        
+
         public StringValues HeaderExpires
         {
             get
@@ -5321,7 +5342,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Expires = value;
             }
         }
-        
+
         public StringValues HeaderLastModified
         {
             get
@@ -5334,7 +5355,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _LastModified = value;
             }
         }
-        
+
         public StringValues HeaderAcceptRanges
         {
             get
@@ -5347,7 +5368,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _AcceptRanges = value;
             }
         }
-        
+
         public StringValues HeaderAge
         {
             get
@@ -5360,7 +5381,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Age = value;
             }
         }
-        
+
         public StringValues HeaderETag
         {
             get
@@ -5373,7 +5394,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ETag = value;
             }
         }
-        
+
         public StringValues HeaderLocation
         {
             get
@@ -5386,7 +5407,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Location = value;
             }
         }
-        
+
         public StringValues HeaderProxyAutheticate
         {
             get
@@ -5399,7 +5420,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _ProxyAutheticate = value;
             }
         }
-        
+
         public StringValues HeaderRetryAfter
         {
             get
@@ -5412,7 +5433,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _RetryAfter = value;
             }
         }
-        
+
         public StringValues HeaderServer
         {
             get
@@ -5422,10 +5443,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set
             {
                 _bits |= 67108864L;
+                HasDefaultServer = false;
                 _Server = value;
             }
         }
-        
+
         public StringValues HeaderSetCookie
         {
             get
@@ -5438,7 +5460,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _SetCookie = value;
             }
         }
-        
+
         public StringValues HeaderVary
         {
             get
@@ -5451,7 +5473,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _Vary = value;
             }
         }
-        
+
         public StringValues HeaderWWWAuthenticate
         {
             get
@@ -5464,10 +5486,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _WWWAuthenticate = value;
             }
         }
-        
+
         protected override int GetCountFast()
         {
-            return BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
+            return BitCount(_bits) + (HasDefaultDate ? 1 : 0)
+                + (HasDefaultServer ? 1 : 0) 
+                + (MaybeUnknown?.Count ?? 0);
         }
 
         protected override StringValues GetValueFast(string key)
@@ -5476,7 +5500,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 case 13:
                     {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1L) != 0))
                             {
@@ -5488,7 +5512,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 131072L) != 0))
                             {
@@ -5500,7 +5524,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 524288L) != 0))
                             {
@@ -5512,7 +5536,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1048576L) != 0))
                             {
@@ -5525,10 +5549,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 10:
                     {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2L) != 0))
                             {
@@ -5540,7 +5564,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8L) != 0))
                             {
@@ -5552,7 +5576,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 134217728L) != 0))
                             {
@@ -5565,10 +5589,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4L) != 0))
                             {
@@ -5580,7 +5604,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4194304L) != 0))
                             {
@@ -5592,7 +5616,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 268435456L) != 0))
                             {
@@ -5605,10 +5629,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 6:
                     {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16L) != 0))
                             {
@@ -5620,7 +5644,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 67108864L) != 0))
                             {
@@ -5633,10 +5657,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32L) != 0))
                             {
@@ -5648,7 +5672,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 128L) != 0))
                             {
@@ -5660,7 +5684,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 512L) != 0))
                             {
@@ -5672,7 +5696,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 262144L) != 0))
                             {
@@ -5685,10 +5709,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 17:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 64L) != 0))
                             {
@@ -5700,7 +5724,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Proxy-Autheticate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Proxy-Autheticate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16777216L) != 0))
                             {
@@ -5713,10 +5737,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 3:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 256L) != 0))
                             {
@@ -5728,7 +5752,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2097152L) != 0))
                             {
@@ -5741,10 +5765,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 5:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1024L) != 0))
                             {
@@ -5757,10 +5781,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 14:
                     {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2048L) != 0))
                             {
@@ -5773,10 +5797,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 12:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4096L) != 0))
                             {
@@ -5789,10 +5813,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8192L) != 0))
                             {
@@ -5804,7 +5828,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16384L) != 0))
                             {
@@ -5816,7 +5840,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32768L) != 0))
                             {
@@ -5828,7 +5852,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 536870912L) != 0))
                             {
@@ -5841,10 +5865,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 11:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 65536L) != 0))
                             {
@@ -5856,7 +5880,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 33554432L) != 0))
                             {
@@ -5869,10 +5893,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 8:
                     {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8388608L) != 0))
                             {
@@ -5885,7 +5909,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            }
+}
             if (MaybeUnknown == null) 
             {
                 throw new System.Collections.Generic.KeyNotFoundException();
@@ -5956,7 +5980,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 10:
                     {
                         if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6002,11 +6026,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 4:
                     {
                         if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
+                            if (HasDefaultDate)
+                            {
+                                value = DateTime.UtcNow.ToString(Constants.RFC1123DateFormat);
+                                return true;
+                            }
                             if (((_bits & 4L) != 0))
                             {
                                 value = _Date;
@@ -6048,7 +6077,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 6:
                     {
                         if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6067,6 +6096,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     
                         if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
+                            if (HasDefaultServer)
+                            {
+                                value = "Kestrel";
+                                return true;
+                            }
                             if (((_bits & 67108864L) != 0))
                             {
                                 value = _Server;
@@ -6080,7 +6114,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 7:
                     {
                         if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6140,7 +6174,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 17:
                     {
                         if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6172,7 +6206,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 3:
                     {
                         if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6204,7 +6238,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 5:
                     {
                         if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6222,7 +6256,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 14:
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6240,7 +6274,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 12:
                     {
                         if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6258,7 +6292,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 16:
                     {
                         if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6318,7 +6352,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 11:
                     {
                         if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6350,7 +6384,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 8:
                     {
                         if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6368,7 +6402,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            }
+}
             value = StringValues.Empty;
             return MaybeUnknown?.TryGetValue(key, out value) ?? false;
         }
@@ -6408,7 +6442,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 10:
                     {
                         if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6434,13 +6468,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 4:
                     {
                         if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
                             _bits |= 4L;
                             _Date = value;
+                            HasDefaultDate = false;
                             return;
                         }
                     
@@ -6459,7 +6494,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 6:
                     {
                         if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6473,11 +6508,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         {
                             _bits |= 67108864L;
                             _Server = value;
+                            HasDefaultServer = false;
                             return;
                         }
                     }
                     break;
-            
+
                 case 7:
                     {
                         if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6509,7 +6545,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 17:
                     {
                         if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6528,7 +6564,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 3:
                     {
                         if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6546,7 +6582,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 5:
                     {
                         if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6557,7 +6593,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 14:
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6569,7 +6605,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 12:
                     {
                         if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6580,7 +6616,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 16:
                     {
                         if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6612,7 +6648,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 11:
                     {
                         if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6630,7 +6666,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            
+
                 case 8:
                     {
                         if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
@@ -6641,7 +6677,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
                     break;
-            }
+}
             Unknown[key] = value;
         }
 
@@ -6651,7 +6687,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 case 13:
                     {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1L) != 0))
                             {
@@ -6662,7 +6698,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 131072L) != 0))
                             {
@@ -6673,7 +6709,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 524288L) != 0))
                             {
@@ -6684,7 +6720,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1048576L) != 0))
                             {
@@ -6699,7 +6735,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 10:
                     {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2L) != 0))
                             {
@@ -6711,7 +6747,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8L) != 0))
                             {
@@ -6722,7 +6758,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 134217728L) != 0))
                             {
@@ -6737,7 +6773,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4L) != 0))
                             {
@@ -6745,10 +6781,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 4L;
                             _Date = value;
+                            HasDefaultDate = false;
                             return;
                         }
                     
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4194304L) != 0))
                             {
@@ -6759,7 +6796,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 268435456L) != 0))
                             {
@@ -6774,7 +6811,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 6:
                     {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16L) != 0))
                             {
@@ -6785,7 +6822,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 67108864L) != 0))
                             {
@@ -6793,6 +6830,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 67108864L;
                             _Server = value;
+                            HasDefaultServer = false;
                             return;
                         }
                     }
@@ -6800,7 +6838,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32L) != 0))
                             {
@@ -6811,7 +6849,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 128L) != 0))
                             {
@@ -6822,7 +6860,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 512L) != 0))
                             {
@@ -6833,7 +6871,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 262144L) != 0))
                             {
@@ -6848,7 +6886,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 17:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 64L) != 0))
                             {
@@ -6860,7 +6898,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Proxy-Autheticate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Proxy-Autheticate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16777216L) != 0))
                             {
@@ -6875,7 +6913,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 3:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 256L) != 0))
                             {
@@ -6886,7 +6924,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2097152L) != 0))
                             {
@@ -6901,7 +6939,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 5:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 1024L) != 0))
                             {
@@ -6916,7 +6954,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 14:
                     {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 2048L) != 0))
                             {
@@ -6932,7 +6970,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 12:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 4096L) != 0))
                             {
@@ -6947,7 +6985,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8192L) != 0))
                             {
@@ -6958,7 +6996,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 16384L) != 0))
                             {
@@ -6969,7 +7007,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 32768L) != 0))
                             {
@@ -6980,7 +7018,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 536870912L) != 0))
                             {
@@ -6995,7 +7033,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 11:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 65536L) != 0))
                             {
@@ -7006,7 +7044,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 33554432L) != 0))
                             {
@@ -7021,7 +7059,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 8:
                     {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 8388608L) != 0))
                             {
@@ -7156,6 +7194,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~4L;
                                 _Date = StringValues.Empty;
+                                HasDefaultDate = false;
                                 return true;
                             }
                             else
@@ -7216,6 +7255,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits &= ~67108864L;
                                 _Server = StringValues.Empty;
+                                HasDefaultServer = false;
                                 return true;
                             }
                             else
@@ -7557,6 +7597,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             HasConnection = false;
             HasTransferEncoding = false;
             HasContentLength = false;
+            HasDefaultServer = false;
+            HasDefaultDate = false;
         }
         
         protected override void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
@@ -8023,6 +8065,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 4L;
+                                HasDefaultDate = false;
                                 _Date = new StringValues(value);
                             }
                             return;
@@ -8083,6 +8126,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             else
                             {
                                 _bits |= 67108864L;
+                                HasDefaultServer = false;
                                 _Server = new StringValues(value);
                             }
                             return;
@@ -8504,6 +8548,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                 
                 state2:
+                    if (_collection.HasDefaultDate)
+                    {
+                        _current = new KeyValuePair<string, StringValues>("Date", DateTime.UtcNow.ToString(Constants.RFC1123DateFormat));
+                        _state = 3;
+                        return true;
+                    }
                     if (((_bits & 4L) != 0))
                     {
                         _current = new KeyValuePair<string, StringValues>("Date", _collection._Date);
@@ -8696,6 +8746,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                 
                 state26:
+                    if (_collection.HasDefaultServer)
+                    {
+                        _current = new KeyValuePair<string, StringValues>("Server", "Kestrel");
+                        _state = 27;
+                        return true;
+                    }
                     if (((_bits & 67108864L) != 0))
                     {
                         _current = new KeyValuePair<string, StringValues>("Server", _collection._Server);
