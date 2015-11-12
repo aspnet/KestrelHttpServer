@@ -14,5 +14,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
 
         public X509Certificate2 ServerCertificate { get; set; }
         public ClientCertificateMode ClientCertificateMode { get; set; }
+        public ClientCertificateValidationCallback ClientCertificateValidation { get; set; }
     }
 }

@@ -16,6 +16,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
     {
         private readonly X509Certificate2 _cert;
         private readonly ClientCertificateMode _clientCertMode;
+        private readonly ClientCertificateValidationCallback _clientValidationCallback;
         private readonly IConnectionFilter _previous;
 
         public HttpsConnectionFilter(HttpsConnectionFilterOptions options, IConnectionFilter previous)
@@ -31,6 +32,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
 
             _cert = options.ServerCertificate;
             _clientCertMode = options.ClientCertificateMode;
+            _clientValidationCallback = options.ClientCertificateValidation;
             _previous = previous;
         }
 
@@ -56,14 +58,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                                 return _clientCertMode != ClientCertificateMode.RequireCertificate;
                             }
 
-                            if (sslPolicyErrors != SslPolicyErrors.None)
+
+                            if (_clientValidationCallback == null)
                             {
-                                return false;
+                                if (sslPolicyErrors != SslPolicyErrors.None)
+                                {
+                                    return false;
+                                }
+                            }
+                            X509Certificate2 certificate2 = certificate as X509Certificate2 ??
+                                                            new X509Certificate2(certificate);
+                            if (_clientValidationCallback != null)
+                            {
+                                if (!_clientValidationCallback(certificate2, chain, sslPolicyErrors))
+                                {
+                                    return false;
+                                }
                             }
 
                             context.TlsConnectionFeature = new TlsConnectionFeature()
                             {
-                                ClientCertificate = certificate as X509Certificate2 ?? new X509Certificate2(certificate)
+                                ClientCertificate = certificate2
                             };
                             return true;
                         });
