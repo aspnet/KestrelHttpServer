@@ -18,9 +18,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly TimeSpan _timerInterval;
 
         private volatile string _dateValue;
-        private volatile int _activeDateBytes;
-        private byte[] _dateBytes0 = Encoding.ASCII.GetBytes("DDD, dd mmm yyyy hh:mm:ss GMT");
-        private byte[] _dateBytes1 = Encoding.ASCII.GetBytes("DDD, dd mmm yyyy hh:mm:ss GMT");
+        private volatile bool _activeDateBytes;
+        private readonly byte[] _dateBytes0 = Encoding.ASCII.GetBytes("DDD, dd mmm yyyy hh:mm:ss GMT");
+        private readonly byte[] _dateBytes1 = Encoding.ASCII.GetBytes("DDD, dd mmm yyyy hh:mm:ss GMT");
         private object _timerLocker = new object();
         private bool _isDisposed = false;
         private bool _hadRequestsSinceLastTimerTick = false;
@@ -69,7 +69,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public byte[] GetDateHeaderValueBytes()
         {
             PumpTimer();
-            return _activeDateBytes == 0 ? _dateBytes0 : _dateBytes1;
+            return _activeDateBytes ? _dateBytes0 : _dateBytes1;
         }
 
         /// <summary>
@@ -102,8 +102,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         // here as the timer won't fire until the timer interval has passed and we want a value assigned
                         // inline now to serve requests that occur in the meantime.
                         _dateValue = _systemClock.UtcNow.ToString(Constants.RFC1123DateFormat);
-                        Encoding.ASCII.GetBytes(_dateValue, 0, _dateValue.Length, (_activeDateBytes ^ 1) == 0 ? _dateBytes0 : _dateBytes1, 0);
-                        _activeDateBytes ^= 1;
+                        Encoding.ASCII.GetBytes(_dateValue, 0, _dateValue.Length, !_activeDateBytes ? _dateBytes0 : _dateBytes1, 0);
+                        _activeDateBytes = !_activeDateBytes;
                         _dateValueTimer = new Timer(UpdateDateValue, state: null, dueTime: _timerInterval, period: _timerInterval);
                     }
                 }
@@ -117,8 +117,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.18 for required format of Date header
             _dateValue = now.ToString(Constants.RFC1123DateFormat);
-            Encoding.ASCII.GetBytes(_dateValue, 0, _dateValue.Length, (_activeDateBytes ^ 1) == 0 ? _dateBytes0 : _dateBytes1, 0);
-            _activeDateBytes ^= 1;
+            Encoding.ASCII.GetBytes(_dateValue, 0, _dateValue.Length, !_activeDateBytes ? _dateBytes0 : _dateBytes1, 0);
+            _activeDateBytes = !_activeDateBytes;
 
             if (_hadRequestsSinceLastTimerTick)
             {
