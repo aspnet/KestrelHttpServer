@@ -15,6 +15,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         private const int _maxPendingWrites = 3;
         private const int _maxBytesPreCompleted = 65536;
+        private const int _maxPooledWriteContexts = 16;
+        private const int _maxPooledBufferQueues = 16;
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
@@ -32,6 +34,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private Exception _lastWriteError;
         private WriteContext _nextWriteContext;
         private readonly Queue<TaskCompletionSource<object>> _tasksPending;
+        private readonly Queue<WriteContext> _writeContexts;
 
         public SocketOutput(KestrelThread thread, UvStreamHandle socket, long connectionId, IKestrelTrace log)
         {
@@ -39,7 +42,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
             _connectionId = connectionId;
             _log = log;
-            _tasksPending = new Queue<TaskCompletionSource<object>>();
+            _tasksPending = new Queue<TaskCompletionSource<object>>(16);
+            _writeContexts = new Queue<WriteContext>(_maxPooledWriteContexts);
         }
 
         public Task WriteAsync(
@@ -63,7 +67,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 if (_nextWriteContext == null)
                 {
-                    _nextWriteContext = new WriteContext(this);
+                    if (_writeContexts.Count > 0)
+                    {
+                        _nextWriteContext = _writeContexts.Dequeue();
+                    }
+                    else
+                    {
+                        _nextWriteContext = new WriteContext(this);
+                    }
                 }
 
                 if (buffer.Array != null)
@@ -172,13 +183,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         // This is called on the libuv event loop
-        private void OnWriteCompleted(Queue<ArraySegment<byte>> writtenBuffers, int status, Exception error)
+        private void OnWriteCompleted(WriteContext write)
         {
-            _log.ConnectionWriteCallback(_connectionId, status);
+            var status = write.WriteStatus;
 
             lock (_lockObj)
             {
-                _lastWriteError = error;
+                _lastWriteError = write.WriteError;
 
                 if (_nextWriteContext != null)
                 {
@@ -189,7 +200,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _writesPending--;
                 }
 
-                foreach (var writeBuffer in writtenBuffers)
+                foreach (var writeBuffer in write.Buffers)
                 {
                     // _numBytesPreCompleted can temporarily go negative in the event there are
                     // completed writes that we haven't triggered callbacks for yet.
@@ -208,7 +219,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _numBytesPreCompleted += bytesToWrite;
                     bytesLeftToBuffer -= bytesToWrite;
 
-                    if (error == null)
+                    if (write.WriteError == null)
                     {
                         ThreadPool.QueueUserWorkItem(
                             (o) => ((TaskCompletionSource<object>)o).SetResult(null), 
@@ -216,6 +227,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     else
                     {
+                        var error = write.WriteError;
                         // error is closure captured 
                         ThreadPool.QueueUserWorkItem(
                             (o) => ((TaskCompletionSource<object>)o).SetException(error), 
@@ -223,9 +235,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                 }
 
+                if (_writeContexts.Count < _maxPooledWriteContexts 
+                    && write.Buffers.Count <= _maxPooledBufferQueues)
+                {
+                    write.Reset();
+                    _writeContexts.Enqueue(write);
+                }
+
                 // Now that the while loop has completed the following invariants should hold true:
                 Debug.Assert(_numBytesPreCompleted >= 0);
             }
+
+            _log.ConnectionWriteCallback(_connectionId, status);
         }
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool immediate)
@@ -263,7 +284,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             public WriteContext(SocketOutput self)
             {
                 Self = self;
-                Buffers = new Queue<ArraySegment<byte>>();
+                Buffers = new Queue<ArraySegment<byte>>(_maxPooledBufferQueues);
             }
 
             /// <summary>
@@ -340,7 +361,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             public void Complete()
             {
-                Self.OnWriteCompleted(Buffers, WriteStatus, WriteError);
+                Self.OnWriteCompleted(this);
+            }
+
+            public void Reset()
+            {
+                Buffers.Clear();
+                SocketDisconnect = false;
+                SocketShutdownSend = false;
+                WriteStatus = 0;
+                WriteError = null;
+                ShutdownSendStatus = 0;
             }
         }
     }
