@@ -247,8 +247,15 @@ namespace Microsoft.AspNet.Server.Kestrel
                     IntPtr.Zero);
 
                 // Ensure the Dispose operations complete in the event loop.
-                var ran2 = _loop.Run();
+                // UV_RUN_NOWAIT - Poll for i/o once but don't block if there are no pending callbacks.
+                var ran2 = _loop.Run(2);
+                if (ran2 != 0)
+                {
+                    // Callbacks still outstanding tear down the loop
 
+                    // or wait?
+                    // ran2 = _loop.Run();
+                }
                 _loop.Dispose();
             }
             catch (Exception ex)
