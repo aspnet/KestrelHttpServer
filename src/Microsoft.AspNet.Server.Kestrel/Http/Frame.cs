@@ -231,7 +231,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                             await ProduceEnd();
 
-                            var block = Memory2.Lease(MemoryPool2.DefaultBlockLength);
+                            var block = Memory2.Lease();
                             try
                             {
                                 var segment = block.Data;
@@ -788,7 +788,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             continue;
                         }
 
-                        var block = memorypool.Lease(MemoryPool2.DefaultBlockLength);
+                        var block = memorypool.Lease();
                         try
                         {
                             var name = beginName.GetArraySegment(endName, block.Data);

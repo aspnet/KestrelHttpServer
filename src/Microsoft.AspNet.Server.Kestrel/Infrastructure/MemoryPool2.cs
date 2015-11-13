@@ -32,11 +32,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _blockLength = _blockStride - _blockUnused;
 
         /// <summary>
-        /// Default allocation block size for pooled blocks.
+        /// Max allocation block size for pooled blocks, 
+        /// larger values can be leased but they will be disposed after use rather than returned to the pool.
         /// </summary>
-        public const int DefaultBlockLength = _blockLength;
-		
-
+        public const int MaxPooledBlockLength = _blockLength;
+        
         /// <summary>
         /// 4096 * 32 gives you a slabLength of 128k contiguous bytes allocated per slab
         /// </summary>
@@ -65,7 +65,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
         /// the caller may write to the block's entire size rather than being limited to the minumumSize requested.</param>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock2 Lease(int minimumSize)
+        public MemoryPoolBlock2 Lease(int minimumSize = MaxPooledBlockLength)
         {
             if (minimumSize > _blockLength)
             {
