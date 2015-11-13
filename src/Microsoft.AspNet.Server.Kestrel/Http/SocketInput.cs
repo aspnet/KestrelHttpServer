@@ -200,6 +200,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             else
             {
                 // THIS IS AN ERROR STATE - ONLY ONE WAITER CAN WAIT
+                throw new InvalidOperationException("Already an awaited read");
             }
         }
 
