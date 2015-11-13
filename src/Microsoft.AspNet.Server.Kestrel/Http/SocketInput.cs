@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -40,7 +39,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             get
             {
-                return Equals(_awaitableState, _awaitableIsCompleted);
+                return _awaitableState == _awaitableIsCompleted;
             }
         }
 
@@ -128,6 +127,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (awaitableState != _awaitableIsCompleted &&
                 awaitableState != _awaitableIsNotCompleted)
             {
+                // Waiting read, run it on thread pool rather than IO thread
                 ThreadPool.QueueUserWorkItem((o) => ((Action)o)(), awaitableState);
             }
         }
@@ -194,7 +194,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else if (awaitableState == _awaitableIsCompleted)
             {
-                ThreadPool.QueueUserWorkItem((o) => ((Action)o)(), continuation);
+                // Read already completed, continue on calling thread
+                continuation();
             }
             else
             {
