@@ -10,6 +10,5 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
     {
         public ServerAddress Address { get; set; }
         public Stream Connection { get; set; }
-        public ITlsConnectionFeature TlsConnectionFeature { get; set; }
     }
 }
