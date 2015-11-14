@@ -749,40 +749,40 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                     var wrapping = false;
 
-                    while (!scan.IsEnd)
+                    var memoryBlock = memorypool.Lease();
+                    try
                     {
-                        if (scan.Seek('\r') == -1)
+                        while (!scan.IsEnd)
                         {
-                            // no "\r" in sight, burn used bytes and go back to await more data
-                            return false;
-                        }
+                            if (scan.Seek('\r') == -1)
+                            {
+                                // no "\r" in sight, burn used bytes and go back to await more data
+                                return false;
+                            }
 
-                        var endValue = scan;
-                        chFirst = scan.Take(); // expecting: /r
-                        chSecond = scan.Take(); // expecting: /n
+                            var endValue = scan;
+                            chFirst = scan.Take(); // expecting: /r
+                            chSecond = scan.Take(); // expecting: /n
 
-                        if (chSecond != '\n')
-                        {
-                            // "\r" was all by itself, move just after it and try again
-                            scan = endValue;
-                            scan.Take();
-                            continue;
-                        }
+                            if (chSecond != '\n')
+                            {
+                                // "\r" was all by itself, move just after it and try again
+                                scan = endValue;
+                                scan.Take();
+                                continue;
+                            }
 
-                        var chThird = scan.Peek();
-                        if (chThird == ' ' || chThird == '\t')
-                        {
-                            // special case, "\r\n " or "\r\n\t".
-                            // this is considered wrapping"linear whitespace" and is actually part of the header value
-                            // continue past this for the next
-                            wrapping = true;
-                            continue;
-                        }
+                            var chThird = scan.Peek();
+                            if (chThird == ' ' || chThird == '\t')
+                            {
+                                // special case, "\r\n " or "\r\n\t".
+                                // this is considered wrapping"linear whitespace" and is actually part of the header value
+                                // continue past this for the next
+                                wrapping = true;
+                                continue;
+                            }
 
-                        var block = memorypool.Lease();
-                        try
-                        {
-                            var name = beginName.GetArraySegment(endName, block.Data);
+                            var name = beginName.GetArraySegment(endName, memoryBlock.Data);
                             var value = beginValue.GetString(endValue);
                             if (wrapping)
                             {
@@ -793,10 +793,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             requestHeaders.Append(name.Array, name.Offset, name.Count, value);
                             break;
                         }
-                        finally
-                        {
-                            memorypool.Return(block);
-                        }
+                    }
+                    finally
+                    {
+                        memorypool.Return(memoryBlock);
                     }
                 }
                 return false;
