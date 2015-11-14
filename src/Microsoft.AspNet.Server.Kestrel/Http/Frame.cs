@@ -230,19 +230,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             HttpContextFactory.Dispose(httpContext);
 
                             await ProduceEnd();
-
-                            var block = Memory2.Lease();
-                            try
+                            
+                            while (await MessageBody.SkipAsync() != 0)
                             {
-                                var segment = block.Data;
-                                while (await RequestBody.ReadAsync(segment.Array, segment.Offset, segment.Count) != 0)
-                                {
-                                    // Finish reading the request body in case the app did not. 
-                                }
-                            }
-                            finally
-                            {
-                                Memory2.Return(block);
+                                // Finish reading the request body in case the app did not.
                             }
                         }
 
