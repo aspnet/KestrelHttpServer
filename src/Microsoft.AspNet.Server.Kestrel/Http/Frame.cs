@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Features;
+using Microsoft.AspNet.Server.Kestrel.Filter;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -49,22 +50,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _remoteEndPoint;
-        private readonly ITlsConnectionFeature _tlsConnectionFeature;
+        private readonly IConnectionFilter _connectionFilter;
 
         public Frame(ConnectionContext context)
-            : this(context, remoteEndPoint: null, localEndPoint: null, tlsConnectionFeature: null)
+            : this(context, remoteEndPoint: null, localEndPoint: null, connectionFilter: null)
         {
         }
 
         public Frame(ConnectionContext context,
                      IPEndPoint remoteEndPoint,
                      IPEndPoint localEndPoint,
-                     ITlsConnectionFeature tlsConnectionFeature)
+                     IConnectionFilter connectionFilter)
             : base(context)
         {
             _remoteEndPoint = remoteEndPoint;
             _localEndPoint = localEndPoint;
-            _tlsConnectionFeature = tlsConnectionFeature;
+            _connectionFilter = connectionFilter;
 
             FrameControl = this;
             Reset();
@@ -137,7 +138,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 httpConnectionFeature.IsLocal = false;
             }
 
-            _currentITlsConnectionFeature = _tlsConnectionFeature;
+            _connectionFilter?.PrepareRequest(this);
         }
 
         public void ResetResponseHeaders()

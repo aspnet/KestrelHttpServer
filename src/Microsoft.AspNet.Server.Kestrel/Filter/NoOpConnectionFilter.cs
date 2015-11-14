@@ -12,5 +12,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
         {
             return TaskUtilities.CompletedTask;
         }
+
+        public void PrepareRequest(IFeatureCollection features)
+        {}
     }
 }

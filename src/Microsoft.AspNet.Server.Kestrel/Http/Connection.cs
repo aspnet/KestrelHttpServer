@@ -4,7 +4,6 @@
 using System;
 using System.Net;
 using System.Threading;
-using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Server.Kestrel.Filter;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
@@ -34,7 +33,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private IPEndPoint _remoteEndPoint;
         private IPEndPoint _localEndPoint;
-        private ITlsConnectionFeature _tlsConnectionFeature;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -108,7 +106,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             SocketInput = filteredStreamAdapter.SocketInput;
             SocketOutput = filteredStreamAdapter.SocketOutput;
-            _tlsConnectionFeature = _filterContext.TlsConnectionFeature;
 
             _frame = CreateFrame();
             _frame.Start();
@@ -160,7 +157,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private Frame CreateFrame()
         {
-            return new Frame(this, _remoteEndPoint, _localEndPoint, _tlsConnectionFeature);
+            return new Frame(this, _remoteEndPoint, _localEndPoint, ConnectionFilter);
         }
 
         void IConnectionControl.Pause()

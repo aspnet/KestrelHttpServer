@@ -6,6 +6,7 @@ using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Http.Features;
 using Microsoft.AspNet.Http.Features.Internal;
 using Microsoft.AspNet.Server.Kestrel.Filter;
 
@@ -13,10 +14,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
 {
     public class HttpsConnectionFilter : IConnectionFilter
     {
-        private readonly X509Certificate2 _cert;
+        private readonly X509Certificate2 _serverCert;
         private readonly ClientCertificateMode _clientCertMode;
         private readonly ClientCertificateValidationCallback _clientValidationCallback;
         private readonly IConnectionFilter _previous;
+        private X509Certificate2 _clientCert;
 
         public HttpsConnectionFilter(HttpsConnectionFilterOptions options, IConnectionFilter previous)
         {
@@ -29,7 +31,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                 throw new ArgumentNullException(nameof(previous));
             }
 
-            _cert = options.ServerCertificate;
+            _serverCert = options.ServerCertificate;
             _clientCertMode = options.ClientCertificateMode;
             _clientValidationCallback = options.ClientCertificateValidation;
             _previous = previous;
@@ -45,7 +47,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                 if (_clientCertMode == ClientCertificateMode.NoCertificate)
                 {
                     sslStream = new SslStream(context.Connection);
-                    await sslStream.AuthenticateAsServerAsync(_cert);
+                    await sslStream.AuthenticateAsServerAsync(_serverCert);
                 }
                 else
                 {
@@ -75,17 +77,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                                 }
                             }
 
-                            context.TlsConnectionFeature = new TlsConnectionFeature()
-                            {
-                                ClientCertificate = certificate2
-                            };
+                            _clientCert = certificate2;
                             return true;
                         });
-                    await sslStream.AuthenticateAsServerAsync(_cert, clientCertificateRequired: true,
+                    await sslStream.AuthenticateAsServerAsync(_serverCert, clientCertificateRequired: true,
                         enabledSslProtocols: SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls,
                         checkCertificateRevocation: false);
                 }
                 context.Connection = sslStream;
+            }
+        }
+
+        public void PrepareRequest(IFeatureCollection features)
+        {
+            _previous.PrepareRequest(features);
+
+            if (_clientCert != null)
+            {
+                features.Set<ITlsConnectionFeature>(
+                    new TlsConnectionFeature { ClientCertificate = _clientCert });
             }
         }
     }
