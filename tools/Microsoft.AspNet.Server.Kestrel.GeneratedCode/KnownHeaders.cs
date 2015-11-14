@@ -167,16 +167,43 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             return $@"
 using System;
 using System.Collections.Generic;
+using System.Text;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http 
 {{
 {Each(loops, loop => $@"
-    public partial class {loop.ClassName} 
-    {{
+    public partial class {loop.ClassName}
+    {{{(loop.ClassName == "FrameResponseHeaders" ?
+        $@"{Each(loop.Headers, header => @"
+        private static byte[] _bytes" + header.Identifier + " = Encoding.ASCII.GetBytes(\"" + header.Name + ": \");")}"
+        :"")}
         private long _bits = 0;
         {Each(loop.Headers, header => @"
-        private StringValues _" + header.Identifier + ";")}
+        private StringValues _" + header.Identifier + ";")}{
+(loop.ClassName == "FrameResponseHeaders" ?$@"
+        private bool _hasDefaultServer;
+        private bool _hasDefaultDate;
+
+        public bool HasDefaultServer {{ 
+            get {{ return _hasDefaultServer; }}
+            set 
+            {{
+                _hasDefaultServer = value;
+                {responseHeaders.First((h) => h.Name == "Server").ClearBit()};
+            }}
+        }}
+
+        public bool HasDefaultDate {{ 
+            get {{ return _hasDefaultDate; }}
+            set 
+            {{
+                _hasDefaultDate = value;
+                {responseHeaders.First((h) => h.Name == "Date").ClearBit()};
+            }}
+        }}"
+: "")}
         {Each(loop.Headers, header => $@"
         public StringValues Header{header.Identifier}
         {{
@@ -186,14 +213,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }}
             set
             {{
-                {header.SetBit()};
+                {header.SetBit()};{(header.Name == "Connection" ? $@"
+                HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                HasContentLength = true;" : "")}{
+                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                HasDefaultDate = false;" : "")}{
+                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                HasDefaultServer = false;" : "")}
                 _{header.Identifier} = value;
             }}
         }}
-        ")}
+")}
         protected override int GetCountFast()
         {{
-            return BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
+            return BitCount(_bits) {(loop.ClassName == "FrameResponseHeaders" ?
+                $@"+ (HasDefaultDate ? 1 : 0)
+                + (HasDefaultServer ? 1 : 0)" :"")} 
+                + (MaybeUnknown?.Count ?? 0);
         }}
 
         protected override StringValues GetValueFast(string key)
@@ -202,7 +239,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {{{Each(loop.HeadersByLength, byLength => $@"
                 case {byLength.Key}:
                     {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {{
                             if ({header.TestBit()})
                             {{
@@ -215,7 +252,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }}
                     ")}}}
                     break;
-            ")}}}
+")}}}
             if (MaybeUnknown == null) 
             {{
                 throw new System.Collections.Generic.KeyNotFoundException();
@@ -230,7 +267,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 case {byLength.Key}:
                     {{{Each(byLength, header => $@"
                         if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {{
+                        {{{
+                            (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                            if (HasDefaultDate)
+                            {{
+                                value = DateTime.UtcNow.ToString(Constants.RFC1123DateFormat);
+                                return true;
+                            }}" : "")}{
+                            (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                            if (HasDefaultServer)
+                            {{
+                                value = ""Kestrel"";
+                                return true;
+                            }}" : "")}
                             if ({header.TestBit()})
                             {{
                                 value = _{header.Identifier};
@@ -244,7 +293,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }}
                     ")}}}
                     break;
-            ")}}}
+")}}}
             value = StringValues.Empty;
             return MaybeUnknown?.TryGetValue(key, out value) ?? false;
         }}
@@ -258,12 +307,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {{
                             {header.SetBit()};
-                            _{header.Identifier} = value;
+                            _{header.Identifier} = value;{(header.Name == "Connection" ? $@"
+                            HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                            HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                            HasContentLength = true;" : "")}{
+                                (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                            HasDefaultDate = false;" : "")}{
+                                (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                            HasDefaultServer = false;" : "")}
                             return;
                         }}
                     ")}}}
                     break;
-            ")}}}
+")}}}
             Unknown[key] = value;
         }}
 
@@ -273,14 +329,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {{{Each(loop.HeadersByLength, byLength => $@"
                 case {byLength.Key}:
                     {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {{
                             if ({header.TestBit()})
                             {{
                                 throw new ArgumentException(""An item with the same key has already been added."");
                             }}
                             {header.SetBit()};
-                            _{header.Identifier} = value;
+                            _{header.Identifier} = value;{(header.Name == "Connection" ? $@"
+                            HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                            HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                            HasContentLength = true;" : "")}{
+                                (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                            HasDefaultDate = false;" : "")}{
+                                (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                            HasDefaultServer = false;" : "")}
                             return;
                         }}
                     ")}}}
@@ -300,7 +363,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             if ({header.TestBit()})
                             {{
                                 {header.ClearBit()};
-                                _{header.Identifier} = StringValues.Empty;
+                                _{header.Identifier} = StringValues.Empty;{(header.Name == "Connection" ? $@"
+                                HasConnection = false;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                                HasTransferEncoding = false;" : "")}{(header.Name == "Content-Length" ? $@"
+                                HasContentLength = false;" : "")}{
+                                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                                HasDefaultDate = false;" : "")}{
+                                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                                HasDefaultServer = false;" : "")}
                                 return true;
                             }}
                             else
@@ -320,6 +390,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {Each(loop.Headers, header => $@"
             _{header.Identifier} = StringValues.Empty;")}
             MaybeUnknown?.Clear();
+            HasConnection = false;
+            HasTransferEncoding = false;
+            HasContentLength = false;{(loop.ClassName == "FrameResponseHeaders" ? @"
+            HasDefaultServer = false;
+            HasDefaultDate = false;": 
+            "")}
         }}
         
         protected override void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
@@ -359,7 +435,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }}
                             else
                             {{
-                                {header.SetBit()};
+                                {header.SetBit()};{(header.Name == "Connection" ? $@"
+                                HasConnection = true;" : "")}{(header.Name == "Transfer-Encoding" ? $@"
+                                HasTransferEncoding = true;" : "")}{(header.Name == "Content-Length" ? $@"
+                                HasContentLength = true;" : "")}{
+                                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                                HasDefaultDate = false;" : "")}{
+                                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                                HasDefaultServer = false;" : "")}
                                 _{header.Identifier} = new StringValues(value);
                             }}
                             return;
@@ -387,7 +470,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         goto state_default;
                 }}
                 {Each(loop.Headers, header => $@"
-                state{header.Index}:
+                state{header.Index}:{
+                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Date" ? $@"
+                    if (_collection.HasDefaultDate)
+                    {{
+                        _current = new KeyValuePair<string, StringValues>(""{header.Name}"", DateTime.UtcNow.ToString(Constants.RFC1123DateFormat));
+                        _state = {header.Index + 1};
+                        return true;
+                    }}" : "")}{
+                    (loop.ClassName == "FrameResponseHeaders" && header.Name == "Server" ? $@"
+                    if (_collection.HasDefaultServer)
+                    {{
+                        _current = new KeyValuePair<string, StringValues>(""{header.Name}"", ""Kestrel"");
+                        _state = {header.Index + 1};
+                        return true;
+                    }}" : "")}
                     if ({header.TestBit()})
                     {{
                         _current = new KeyValuePair<string, StringValues>(""{header.Name}"", _collection._{header.Identifier});
@@ -405,6 +502,41 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return true;
             }}
         }}
+{(loop.ClassName == "FrameResponseHeaders" ?$@"
+        public partial struct ByteEnumerator
+        {{
+            public bool MoveNext()
+            {{
+                switch (_state)
+                {{
+                    {Each(loop.Headers, header => $@"
+                        case {header.Index}:
+                            goto state{header.Index};
+                    ")}
+                    default:
+                        goto state_default;
+                }}
+                {Each(loop.Headers, header => $@"
+                state{header.Index}:
+                    if ({header.TestBit()})
+                    {{
+                        _current = new KeyValuePair<byte[], StringValues>(_bytes{header.Identifier}, _collection._{header.Identifier});
+                        _state = {header.Index + 1};
+                        return true;
+                    }}
+                ")}
+                state_default:
+                    if (!_hasUnknown || !_unknownEnumerator.MoveNext())
+                    {{
+                        _current = default(KeyValuePair<byte[], StringValues>);
+                        return false;
+                    }}
+                    var kv = _unknownEnumerator.Current;
+                    _current = new KeyValuePair<byte[], StringValues>(Encoding.ASCII.GetBytes(kv.Key + "": ""), kv.Value);
+                    return true;
+            }}
+        }}"
+        : "")}
     }}
 ")}}}
 ";

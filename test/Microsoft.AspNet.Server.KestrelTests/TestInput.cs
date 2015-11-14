@@ -15,12 +15,10 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         public TestInput()
         {
-            var memory = new MemoryPool();
             _memory2 = new MemoryPool2();
             FrameContext = new FrameContext
             {
                 SocketInput = new SocketInput(_memory2),
-                Memory = memory,
                 ConnectionControl = this,
                 FrameControl = this
             };

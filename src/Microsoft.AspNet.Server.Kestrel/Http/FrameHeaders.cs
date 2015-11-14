@@ -16,6 +16,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
 
+        public bool HasConnection { get; protected set; }
+
+        public bool HasTransferEncoding { get; protected set; }
+
+        public bool HasContentLength { get; protected set; }
+
         StringValues IHeaderDictionary.this[string key]
         {
             get

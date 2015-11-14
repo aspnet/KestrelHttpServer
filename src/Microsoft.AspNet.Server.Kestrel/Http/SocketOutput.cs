@@ -57,7 +57,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (buffer.Array != null)
             {
                 var copy = new byte[buffer.Count];
-                Array.Copy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
+                Buffer.BlockCopy(buffer.Array, buffer.Offset, copy, 0, buffer.Count);
                 buffer = new ArraySegment<byte>(copy);
                 _log.ConnectionWrite(_connectionId, buffer.Count);
             }
