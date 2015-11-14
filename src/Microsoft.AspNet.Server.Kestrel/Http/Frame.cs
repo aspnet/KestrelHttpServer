@@ -628,7 +628,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetString(scan);
+                var method = begin.GetAsciiString(ref scan);
 
                 scan.Take();
                 begin = scan;
@@ -652,7 +652,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetString(scan);
+                    queryString = begin.GetAsciiString(ref scan);
                 }
 
                 scan.Take();
@@ -661,7 +661,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetString(scan);
+                var httpVersion = begin.GetAsciiString(ref scan);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -669,12 +669,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return false;
                 }
 
+                string requestUrlPath;
                 if (needDecode)
                 {
                     pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
+                    requestUrlPath = pathBegin.GetUtf8String(ref pathEnd);
                 }
-
-                var requestUrlPath = pathBegin.GetString(pathEnd);
+                else
+                {
+                    requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
+                }
 
                 consumed = scan;
                 Method = method;
@@ -784,8 +788,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 continue;
                             }
 
-                            var name = beginName.GetArraySegment(endName, memoryBlock.Data);
-                            var value = beginValue.GetString(endValue);
+                            var name = beginName.GetArraySegment(ref endName, memoryBlock.Data);
+                            var value = beginValue.GetAsciiString(ref endValue);
                             if (wrapping)
                             {
                                 value = value.Replace("\r\n", " ");
