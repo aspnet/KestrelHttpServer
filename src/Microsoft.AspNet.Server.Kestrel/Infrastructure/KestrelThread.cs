@@ -37,6 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         public KestrelThread(KestrelEngine engine)
         {
             _engine = engine;
+            Memory2 = new MemoryPool2();
             _appLifetime = engine.AppLifetime;
             _log = engine.Log;
             _loop = new UvLoopHandle(_log);
@@ -46,6 +47,9 @@ namespace Microsoft.AspNet.Server.Kestrel
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
+
+        public MemoryPool2 Memory2 { get; }
+
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; internal set; }
@@ -61,6 +65,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         {
             if (!_initCompleted)
             {
+                Memory2.Dispose();
                 return;
             }
 
@@ -93,6 +98,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                     }
                 }
             }
+
+            Memory2.Dispose();
 
             if (_closeError != null)
             {

@@ -173,5 +173,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         {
             return new MemoryPoolIterator2(this);
         }
+
+        internal void Dispose()
+        {
+            GC.SuppressFinalize(this);
+        }
     }
 }
