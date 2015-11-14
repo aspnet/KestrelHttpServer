@@ -11,15 +11,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
     public struct MemoryPoolIterator2
     {
-        // TODO: should be configurable? Default .NET 4.5 lengths are, configurable upwards:
-        // maxUrlLength = 260 (windows path length?)
-        // maxQueryStringLength = 2048
-        // Needs cooperation of reverse proxy if used
-        // In wild max cookie size ~4093 bytes http://stackoverflow.com/questions/640938/what-is-the-maximum-size-of-a-web-browsers-cookies-key
-        // In wild max url length ~2000 bytes http://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
-        // Security issues around unbounded limits
-        private const int _maxHeaderLength = 16384;
-
         /// <summary>
         /// Array of "minus one" bytes of the length of SIMD operations on the current hardware. Used as an argument in the
         /// vector dot product that counts matching character occurrence.
