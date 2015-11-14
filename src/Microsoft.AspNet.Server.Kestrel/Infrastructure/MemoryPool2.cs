@@ -55,6 +55,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private readonly ConcurrentStack<MemoryPoolSlab2> _slabs = new ConcurrentStack<MemoryPoolSlab2>();
 
         /// <summary>
+        /// This is part of implementing the IDisposable pattern.
+        /// </summary>
+        private bool _disposed = false; // To detect redundant calls
+
+        public MemoryPool2()
+        {
+            // Allocate on creation or multiple simultaneous connections
+            // will all allocate rather than reuse the pooled buffers
+            Return(AllocateSlab());
+        }
+
+        /// <summary>
         /// Called to take a block from the pool.
         /// </summary>
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
@@ -166,7 +178,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
 
-            GC.SuppressFinalize(this);
+            if (!_disposed)
+            {
+                _disposed = true;
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }
