@@ -290,6 +290,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private class WriteContext : IDisposable
         {
+            private const int BUFFER_COUNT = 4;
+
             public SocketOutput Self;
 
             public Queue<ArraySegment<byte>> Buffers;
@@ -298,7 +300,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             public int WriteStatus;
             public Exception WriteError;
+
             private UvWriteReq _writeReq;
+            public ArraySegment<byte>[] _segments;
 
             public int ShutdownSendStatus;
 
@@ -306,6 +310,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 Self = self;
                 Buffers = new Queue<ArraySegment<byte>>(_maxPooledBufferQueues);
+                _segments = new ArraySegment<byte>[BUFFER_COUNT];
                 _writeReq = new UvWriteReq(Self._log);
                 _writeReq.Init(Self._thread.Loop);
             }
@@ -321,15 +326,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return;
                 }
 
-                var buffers = new ArraySegment<byte>[Buffers.Count];
+                ArraySegment<byte>[] segments;
+                if (Buffers.Count > BUFFER_COUNT)
+                {
+                    segments = new ArraySegment<byte>[Buffers.Count];
+                }
+                else
+                {
+                    segments = _segments;
+                }
 
                 var i = 0;
                 foreach (var buffer in Buffers)
                 {
-                    buffers[i++] = buffer;
+                    segments[i++] = buffer;
                 }
                 
-                _writeReq.Write(Self._socket, new ArraySegment<ArraySegment<byte>>(buffers), (_writeReq, status, error, state) =>
+                _writeReq.Write(Self._socket, new ArraySegment<ArraySegment<byte>>(segments, 0, Buffers.Count), (_writeReq, status, error, state) =>
                 {
                     var _this = (WriteContext)state;
                     _this.WriteStatus = status;
@@ -398,6 +411,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 WriteStatus = 0;
                 WriteError = null;
                 ShutdownSendStatus = 0;
+
+                var segments = _segments;
+                for (var i = 0; i < segments.Length; i++)
+                {
+                    segments[i] = default(ArraySegment<byte>);
+                }
             }
 
             public void Dispose()
