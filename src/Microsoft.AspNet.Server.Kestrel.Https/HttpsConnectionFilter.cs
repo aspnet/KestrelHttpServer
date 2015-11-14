@@ -67,8 +67,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Https
                                     return false;
                                 }
                             }
+#if DOTNET5_4
+                            // conversion X509Certificate to X509Certificate2 not supported
+                            // https://github.com/dotnet/corefx/issues/4510
+                            X509Certificate2 certificate2 = null;
+                            return false;
+#else
                             X509Certificate2 certificate2 = certificate as X509Certificate2 ??
                                                             new X509Certificate2(certificate);
+
+#endif
                             if (_clientValidationCallback != null)
                             {
                                 if (!_clientValidationCallback(certificate2, chain, sslPolicyErrors))

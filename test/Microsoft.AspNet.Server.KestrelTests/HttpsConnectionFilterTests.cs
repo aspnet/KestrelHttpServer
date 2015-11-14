@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-#if DNX451
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -137,6 +137,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
+        // https://github.com/dotnet/corefx/issues/4512
+#if DNX451
+
         // https://github.com/aspnet/KestrelHttpServer/issues/240
         // This test currently fails on mono because of an issue with SslStream.
         [ConditionalFact]
@@ -192,6 +195,10 @@ namespace Microsoft.AspNet.Server.KestrelTests
 #endif
             }
         }
+#endif
+
+        // https://github.com/dotnet/corefx/issues/4510
+#if DNX451
 
         // https://github.com/aspnet/KestrelHttpServer/issues/240
         // This test currently fails on mono because of an issue with SslStream.
@@ -205,7 +212,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
             try
             {
+#if DNX451
                 ServicePointManager.ServerCertificateValidationCallback += validationCallback;
+#endif
 
                 var serverAddress = "https://localhost:54321/";
                 var serviceContext = new TestServiceContext()
@@ -253,8 +262,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
             finally
             {
+#if DNX451
                 ServicePointManager.ServerCertificateValidationCallback -= validationCallback;
+#endif
             }
         }
+#endif
+
     }
 }
