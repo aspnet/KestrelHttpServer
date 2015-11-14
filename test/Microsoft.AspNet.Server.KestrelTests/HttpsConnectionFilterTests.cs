@@ -265,8 +265,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
 #if DNX451
                 ServicePointManager.ServerCertificateValidationCallback -= validationCallback;
 #endif
-            }
-        }
+    }
+}
 #endif
 
     }
