@@ -370,7 +370,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     var _this = (WriteContext)state;
                     _this.ShutdownSendStatus = status;
 
-                    _this.Self._log.ConnectionWroteFin(Self._connectionId, status);
+                    _this.Self._log.ConnectionWroteFin(_this.Self._connectionId, status);
 
                     _this.DoDisconnectIfNeeded();
                 }, this);
