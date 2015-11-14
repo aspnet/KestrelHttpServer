@@ -22,7 +22,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private object _state;
         private const int BUFFER_COUNT = 4;
 
-        private List<GCHandle> _pins = new List<GCHandle>();
+        private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
