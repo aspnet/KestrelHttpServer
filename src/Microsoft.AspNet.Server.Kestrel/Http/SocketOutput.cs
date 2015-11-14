@@ -15,6 +15,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         private const int _maxPendingWrites = 3;
         private const int _maxBytesPreCompleted = 65536;
+        private const int _maxPooledWriteContexts = 16;
+        private const int _maxPooledBufferQueues = 16;
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
@@ -23,6 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         // This locks access to to all of the below fields
         private readonly object _lockObj = new object();
+        private bool _isDisposed; 
 
         // The number of write operations that have been scheduled so far
         // but have not completed.
@@ -32,6 +35,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private Exception _lastWriteError;
         private WriteContext _nextWriteContext;
         private readonly Queue<TaskCompletionSource<object>> _tasksPending;
+        private readonly Queue<WriteContext> _writeContexts;
 
         public SocketOutput(KestrelThread thread, UvStreamHandle socket, long connectionId, IKestrelTrace log)
         {
@@ -39,7 +43,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _socket = socket;
             _connectionId = connectionId;
             _log = log;
-            _tasksPending = new Queue<TaskCompletionSource<object>>();
+            _tasksPending = new Queue<TaskCompletionSource<object>>(16);
+            _writeContexts = new Queue<WriteContext>(_maxPooledWriteContexts);
         }
 
         public Task WriteAsync(
@@ -63,7 +68,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 if (_nextWriteContext == null)
                 {
-                    _nextWriteContext = new WriteContext(this);
+                    if (_writeContexts.Count > 0)
+                    {
+                        _nextWriteContext = _writeContexts.Dequeue();
+                    }
+                    else
+                    {
+                        _nextWriteContext = new WriteContext(this);
+                    }
                 }
 
                 if (buffer.Array != null)
@@ -172,13 +184,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         // This is called on the libuv event loop
-        private void OnWriteCompleted(Queue<ArraySegment<byte>> writtenBuffers, int status, Exception error)
+        private void OnWriteCompleted(WriteContext write)
         {
-            _log.ConnectionWriteCallback(_connectionId, status);
+            var status = write.WriteStatus;
 
             lock (_lockObj)
             {
-                _lastWriteError = error;
+                _lastWriteError = write.WriteError;
 
                 if (_nextWriteContext != null)
                 {
@@ -189,7 +201,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _writesPending--;
                 }
 
-                foreach (var writeBuffer in writtenBuffers)
+                foreach (var writeBuffer in write.Buffers)
                 {
                     // _numBytesPreCompleted can temporarily go negative in the event there are
                     // completed writes that we haven't triggered callbacks for yet.
@@ -208,7 +220,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _numBytesPreCompleted += bytesToWrite;
                     bytesLeftToBuffer -= bytesToWrite;
 
-                    if (error == null)
+                    if (write.WriteError == null)
                     {
                         ThreadPool.QueueUserWorkItem(
                             (o) => ((TaskCompletionSource<object>)o).SetResult(null), 
@@ -216,6 +228,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     else
                     {
+                        var error = write.WriteError;
                         // error is closure captured 
                         ThreadPool.QueueUserWorkItem(
                             (o) => ((TaskCompletionSource<object>)o).SetException(error), 
@@ -223,9 +236,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                 }
 
+                if (_writeContexts.Count < _maxPooledWriteContexts 
+                    && write.Buffers.Count <= _maxPooledBufferQueues
+                    && !_isDisposed)
+                {
+                    write.Reset();
+                    _writeContexts.Enqueue(write);
+                }
+                else
+                {
+                    write.Dispose();
+                }
+
                 // Now that the while loop has completed the following invariants should hold true:
                 Debug.Assert(_numBytesPreCompleted >= 0);
             }
+
+            _log.ConnectionWriteCallback(_connectionId, status);
         }
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool immediate)
@@ -247,8 +274,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return WriteAsync(buffer, immediate);
         }
 
-        private class WriteContext
+        private void Dispose()
         {
+            lock (_lockObj)
+            {
+                _isDisposed = true;
+
+                while (_writeContexts.Count > 0)
+                {
+                    _writeContexts.Dequeue().Dispose();
+                }
+            }
+
+        }
+
+        private class WriteContext : IDisposable
+        {
+            private const int BUFFER_COUNT = 4;
+
             public SocketOutput Self;
 
             public Queue<ArraySegment<byte>> Buffers;
@@ -258,12 +301,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             public int WriteStatus;
             public Exception WriteError;
 
+            private UvWriteReq _writeReq;
+            public ArraySegment<byte>[] _segments;
+
             public int ShutdownSendStatus;
 
             public WriteContext(SocketOutput self)
             {
                 Self = self;
-                Buffers = new Queue<ArraySegment<byte>>();
+                Buffers = new Queue<ArraySegment<byte>>(_maxPooledBufferQueues);
+                _segments = new ArraySegment<byte>[BUFFER_COUNT];
+                _writeReq = new UvWriteReq(Self._log);
+                _writeReq.Init(Self._thread.Loop);
             }
 
             /// <summary>
@@ -277,19 +326,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return;
                 }
 
-                var buffers = new ArraySegment<byte>[Buffers.Count];
+                ArraySegment<byte>[] segments;
+                if (Buffers.Count > BUFFER_COUNT)
+                {
+                    segments = new ArraySegment<byte>[Buffers.Count];
+                }
+                else
+                {
+                    segments = _segments;
+                }
 
                 var i = 0;
                 foreach (var buffer in Buffers)
                 {
-                    buffers[i++] = buffer;
+                    segments[i++] = buffer;
                 }
-
-                var writeReq = new UvWriteReq(Self._log);
-                writeReq.Init(Self._thread.Loop);
-                writeReq.Write(Self._socket, new ArraySegment<ArraySegment<byte>>(buffers), (_writeReq, status, error, state) =>
+                
+                _writeReq.Write(Self._socket, new ArraySegment<ArraySegment<byte>>(segments, 0, Buffers.Count), (_writeReq, status, error, state) =>
                 {
-                    _writeReq.Dispose();
                     var _this = (WriteContext)state;
                     _this.WriteStatus = status;
                     _this.WriteError = error;
@@ -316,7 +370,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     var _this = (WriteContext)state;
                     _this.ShutdownSendStatus = status;
 
-                    _this.Self._log.ConnectionWroteFin(Self._connectionId, status);
+                    _this.Self._log.ConnectionWroteFin(_this.Self._connectionId, status);
 
                     _this.DoDisconnectIfNeeded();
                 }, this);
@@ -327,8 +381,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             /// </summary>
             public void DoDisconnectIfNeeded()
             {
-                if (SocketDisconnect == false || Self._socket.IsClosed)
+                if (SocketDisconnect == false)
                 {
+                    Complete();
+                    return;
+                }
+                else if (Self._socket.IsClosed)
+                {
+                    Self.Dispose();
                     Complete();
                     return;
                 }
@@ -340,7 +400,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             public void Complete()
             {
-                Self.OnWriteCompleted(Buffers, WriteStatus, WriteError);
+                Self.OnWriteCompleted(this);
+            }
+
+            public void Reset()
+            {
+                Buffers.Clear();
+                SocketDisconnect = false;
+                SocketShutdownSend = false;
+                WriteStatus = 0;
+                WriteError = null;
+                ShutdownSendStatus = 0;
+
+                var segments = _segments;
+                for (var i = 0; i < segments.Length; i++)
+                {
+                    segments[i] = default(ArraySegment<byte>);
+                }
+            }
+
+            public void Dispose()
+            {
+                _writeReq.Dispose();
             }
         }
     }
