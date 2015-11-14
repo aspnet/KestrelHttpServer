@@ -566,7 +566,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public ArraySegment<byte> GetArraySegment(MemoryPoolIterator2 end)
+        public ArraySegment<byte> GetArraySegment(MemoryPoolIterator2 end, ArraySegment<byte> scratchBuffer)
         {
             if (IsDefault || end.IsDefault)
             {
@@ -578,9 +578,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var length = GetLength(end);
-            var array = new byte[length];
-            CopyTo(array, 0, length, out length);
-            return new ArraySegment<byte>(array, 0, length);
+
+            if (length < scratchBuffer.Count)
+            {
+                CopyTo(scratchBuffer.Array, scratchBuffer.Offset, length, out length);
+                return new ArraySegment<byte>(scratchBuffer.Array, scratchBuffer.Offset, length);
+            }
+            else
+            {
+                var array = new byte[length];
+                CopyTo(array, 0, length, out length);
+                return new ArraySegment<byte>(array, 0, length);
+            }
         }
 
         public MemoryPoolIterator2 CopyTo(byte[] array, int offset, int count, out int actual)
@@ -613,6 +622,38 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 {
                     Buffer.BlockCopy(block.Array, index, array, offset, following);
                     offset += following;
+                    remaining -= following;
+                    block = block.Next;
+                    index = block.Start;
+                }
+            }
+        }
+        public MemoryPoolIterator2 Skip(int limit, out int actual)
+        {
+            if (IsDefault)
+            {
+                actual = 0;
+                return this;
+            }
+
+            var block = _block;
+            var index = _index;
+            var remaining = limit;
+            while (true)
+            {
+                var following = block.End - index;
+                if (remaining <= following)
+                {
+                    actual = limit;
+                    return new MemoryPoolIterator2(block, index + remaining);
+                }
+                else if (block.Next == null)
+                {
+                    actual = limit - remaining + following;
+                    return new MemoryPoolIterator2(block, index + following);
+                }
+                else
+                {
                     remaining -= following;
                     block = block.Next;
                     index = block.Start;

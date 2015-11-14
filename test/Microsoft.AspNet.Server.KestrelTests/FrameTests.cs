@@ -56,11 +56,13 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Buffer.BlockCopy(headerArray, 0, inputBuffer.Data.Array, inputBuffer.Data.Offset, headerArray.Length);
             socketInput.IncomingComplete(headerArray.Length, null);
 
-            var success = Frame.TakeMessageHeaders(socketInput, headerCollection);
+            using (var memorypool = new MemoryPool2())
+            {
+                var success = Frame.TakeMessageHeaders(socketInput, headerCollection, memorypool);
 
-            Assert.True(success);
-            Assert.Equal(numHeaders, headerCollection.Count());
-
+                Assert.True(success);
+                Assert.Equal(numHeaders, headerCollection.Count());
+            }
             // Assert TakeMessageHeaders consumed all the input
             var scan = socketInput.ConsumingStart();
             Assert.True(scan.IsEnd);
