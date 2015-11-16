@@ -960,13 +960,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             testContext.Log = new KestrelTrace(testLogger);
             using (var server = new TestServer(async httpContext =>
             {
-                var response = httpContext.Response;
-                response.OnStarting(_ =>
-                {
-                    onStartingCalled = true;
-                    return Task.FromResult<object>(null);
-                }, null);
-                await response.WriteAsync("Hello World");
+                await httpContext.Response.WriteAsync("Hello World");
                 throw new Exception();
             }, testContext))
             {
