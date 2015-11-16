@@ -32,6 +32,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _blockLength = _blockStride - _blockUnused;
 
         /// <summary>
+        /// Max allocation block size for pooled blocks, 
+        /// larger values can be leased but they will be disposed after use rather than returned to the pool.
+        /// </summary>
+        public const int MaxPooledBlockLength = _blockLength;
+        
+        /// <summary>
         /// 4096 * 32 gives you a slabLength of 128k contiguous bytes allocated per slab
         /// </summary>
         private const int _slabLength = _blockStride * _blockCount;
@@ -40,7 +46,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// Thread-safe collection of blocks which are currently in the pool. A slab will pre-allocate all of the block tracking objects
         /// and add them to this collection. When memory is requested it is taken from here first, and when it is returned it is re-added.
         /// </summary>
-        private readonly ConcurrentStack<MemoryPoolBlock2> _blocks = new ConcurrentStack<MemoryPoolBlock2>();
+        private readonly ConcurrentQueue<MemoryPoolBlock2> _blocks = new ConcurrentQueue<MemoryPoolBlock2>();
 
         /// <summary>
         /// Thread-safe collection of slabs which have been allocated by this pool. As long as a slab is in this collection and slab.IsActive, 
@@ -51,7 +57,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <summary>
         /// This is part of implementing the IDisposable pattern.
         /// </summary>
-        private bool _disposedValue = false; // To detect redundant calls
+        private bool _disposed = false; // To detect redundant calls
+
+        public MemoryPool2()
+        {
+            // Allocate on creation or multiple simultaneous connections
+            // will all allocate rather than reuse the pooled buffers
+            Return(AllocateSlab());
+        }
 
         /// <summary>
         /// Called to take a block from the pool.
@@ -59,7 +72,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
         /// the caller may write to the block's entire size rather than being limited to the minumumSize requested.</param>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock2 Lease(int minimumSize)
+        public MemoryPoolBlock2 Lease(int minimumSize = MaxPooledBlockLength)
         {
             if (minimumSize > _blockLength)
             {
@@ -75,7 +88,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             MemoryPoolBlock2 block;
-            if (_blocks.TryPop(out block))
+            if (_blocks.TryDequeue(out block))
             {
                 // block successfully taken from the stack - return it
                 return block;
@@ -132,44 +145,44 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         public void Return(MemoryPoolBlock2 block)
         {
             block.Reset();
-            _blocks.Push(block);
+            _blocks.Enqueue(block);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposedValue)
+            MemoryPoolSlab2 slab;
+            while (_slabs.TryPop(out slab))
             {
-                if (disposing)
-                {
-                    MemoryPoolSlab2 slab;
-                    while (_slabs.TryPop(out slab))
-                    {
-                        // dispose managed state (managed objects).
-                        slab.Dispose();
-                    }
-                }
+                // Free pinned objects
+                slab.Dispose();
+            }
 
-                // N/A: free unmanaged resources (unmanaged objects) and override a finalizer below.
-
-                // N/A: set large fields to null.
-
-                _disposedValue = true;
+            MemoryPoolBlock2 block;
+            while (_blocks.TryDequeue(out block))
+            {
+                // Deactivate finalizers
+                block.Dispose();
             }
         }
 
-        // N/A: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~MemoryPool2() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
+        // Disposing slabs unpin memory so finalizer is needed.
+        ~MemoryPool2()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(false);
+        }
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
-            // N/A: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+
+            if (!_disposed)
+            {
+                _disposed = true;
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }

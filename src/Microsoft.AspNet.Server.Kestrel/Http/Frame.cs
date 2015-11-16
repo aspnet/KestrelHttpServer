@@ -28,10 +28,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
         private static readonly byte[] _hex = Encoding.ASCII.GetBytes("0123456789abcdef");
 
+        private static readonly byte[] _bytesEndLine = Encoding.ASCII.GetBytes("\r\n");
+        private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("Connection: close\r\n\r\n");
+        private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("Connection: keep-alive\r\n\r\n");
+        private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("Transfer-Encoding: chunked\r\n");
+        private static readonly byte[] _bytesHttpVersion1_0 = Encoding.ASCII.GetBytes("HTTP/1.0 ");
+        private static readonly byte[] _bytesHttpVersion1_1 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
+        private static readonly byte[] _bytesContentLengthZero = Encoding.ASCII.GetBytes("Content-Length: 0\r\n");
+        private static readonly byte[] _bytesSpace = Encoding.ASCII.GetBytes(" ");
+        private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("Server: Kestrel\r\n");
+        private static readonly byte[] _bytesDate = Encoding.ASCII.GetBytes("Date: ");
+
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
         private readonly FrameRequestHeaders _requestHeaders = new FrameRequestHeaders();
-        private readonly byte[] _nullBuffer = new byte[4096];
         private readonly FrameResponseHeaders _responseHeaders = new FrameResponseHeaders();
 
         private List<KeyValuePair<Func<object, Task>, object>> _onStarting;
@@ -46,6 +56,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private bool _keepAlive;
         private bool _autoChunk;
         private Exception _applicationException;
+        
+        private HttpVersionType _httpVersion;
 
         private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _remoteEndPoint;
@@ -72,7 +84,37 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public string RequestUri { get; set; }
         public string Path { get; set; }
         public string QueryString { get; set; }
-        public string HttpVersion { get; set; }
+        public string HttpVersion
+        {
+            get
+            {
+                if (_httpVersion == HttpVersionType.Http1_1)
+                {
+                    return "HTTP/1.1";
+                }
+                if (_httpVersion == HttpVersionType.Http1_0)
+                {
+                    return "HTTP/1.0";
+                }
+                return "";
+            }
+            set
+            {
+                if (value == "HTTP/1.1")
+                {
+                    _httpVersion = HttpVersionType.Http1_1;
+                }
+                else if (value == "HTTP/1.0")
+                {
+                    _httpVersion = HttpVersionType.Http1_0;
+                }
+                else
+                {
+                    _httpVersion = HttpVersionType.Unknown;
+                }
+            }
+        }
+
         public IHeaderDictionary RequestHeaders { get; set; }
         public MessageBody MessageBody { get; set; }
         public Stream RequestBody { get; set; }
@@ -108,7 +150,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             RequestUri = null;
             Path = null;
             QueryString = null;
-            HttpVersion = null;
+            _httpVersion = HttpVersionType.Unknown;
             RequestHeaders = _requestHeaders;
             MessageBody = null;
             RequestBody = null;
@@ -138,8 +180,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public void ResetResponseHeaders()
         {
             _responseHeaders.Reset();
-            _responseHeaders.HeaderServer = "Kestrel";
-            _responseHeaders.HeaderDate = DateHeaderValueManager.GetDateHeaderValue();
+            _responseHeaders.HasDefaultDate = true; 
+            _responseHeaders.HasDefaultServer = true;
         }
 
         /// <summary>
@@ -191,7 +233,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, Memory2))
                     {
                         terminated = SocketInput.RemoteIntakeFin;
                         if (!terminated)
@@ -233,8 +275,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             HttpContextFactory.Dispose(httpContext);
 
                             await ProduceEnd();
-
-                            while (await RequestBody.ReadAsync(_nullBuffer, 0, _nullBuffer.Length) != 0)
+                            
+                            while (await MessageBody.SkipAsync() != 0)
                             {
                                 // Finish reading the request body in case the app did not.
                             }
@@ -449,7 +491,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (_responseStarted) return;
 
             StringValues expect;
-            if (HttpVersion.Equals("HTTP/1.1") &&
+            if (_httpVersion == HttpVersionType.Http1_1 &&
                 RequestHeaders.TryGetValue("Expect", out expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
@@ -473,19 +515,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             await ProduceStart(immediate, appCompleted: false);
         }
 
-        private async Task ProduceStart(bool immediate, bool appCompleted)
+        private Task ProduceStart(bool immediate, bool appCompleted)
         {
-            if (_responseStarted) return;
+            if (_responseStarted) return TaskUtilities.CompletedTask;
             _responseStarted = true;
 
-            var status = ReasonPhrases.ToStatus(StatusCode, ReasonPhrase);
+            var statusBytes = ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase);
 
-            var responseHeader = CreateResponseHeader(status, appCompleted);
-
-            using (responseHeader.Item2)
-            {
-                await SocketOutput.WriteAsync(responseHeader.Item1, immediate: immediate);
-            }
+            return CreateResponseHeader(statusBytes, appCompleted, immediate);
         }
 
         private async Task ProduceEnd()
@@ -523,99 +560,148 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private Tuple<ArraySegment<byte>, IDisposable> CreateResponseHeader(
-            string status,
-            bool appCompleted)
+        private static void OutputAsciiBlock(string data, MemoryPoolBlock2 memoryBlock, ISocketOutput output)
         {
-            var writer = new MemoryPoolTextWriter(Memory);
-            writer.Write(HttpVersion);
-            writer.Write(' ');
-            writer.Write(status);
-            writer.Write('\r');
-            writer.Write('\n');
+            var start = memoryBlock.Start;
+            var end = start + memoryBlock.Data.Count;
+            var array = memoryBlock.Array;
+            var current = memoryBlock.End;
 
-            var hasConnection = false;
-            var hasTransferEncoding = false;
-            var hasContentLength = false;
-
-            foreach (var header in _responseHeaders)
+            foreach (var chr in data)
             {
-                var isConnection = false;
-                if (!hasConnection &&
-                    string.Equals(header.Key, "Connection", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasConnection = isConnection = true;
-                }
-                else if (!hasTransferEncoding &&
-                    string.Equals(header.Key, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasTransferEncoding = true;
-                }
-                else if (!hasContentLength &&
-                    string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasContentLength = true;
-                }
+                array[current] = (byte)chr;
 
-                foreach (var value in header.Value)
+                current++;
+
+                if (current == end)
                 {
-                    writer.Write(header.Key);
-                    writer.Write(':');
-                    writer.Write(' ');
-                    writer.Write(value);
-                    writer.Write('\r');
-                    writer.Write('\n');
-
-                    if (isConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
-                    {
-                        _keepAlive = false;
-                    }
+                    output.Write(memoryBlock.Data, immediate: false);
+                    current = start;
                 }
-
             }
+            memoryBlock.End = current;
+        }
 
-            if (_keepAlive && !hasTransferEncoding && !hasContentLength)
+        private static void OutputAsciiBlock(byte[] data, MemoryPoolBlock2 memoryBlock, ISocketOutput output)
+        {
+            var offset = 0;
+            var remaining = data.Length;
+
+            var start = memoryBlock.Start;
+            var end = start + memoryBlock.Data.Count;
+            var array = memoryBlock.Array;
+            var current = memoryBlock.End;
+
+            while (remaining > 0)
             {
-                if (appCompleted)
+                var blockRemaining = end - current;
+                var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
+                Buffer.BlockCopy(data, offset, array, current, copyAmount);
+
+                current += copyAmount;
+                remaining -= copyAmount;
+                offset += copyAmount;
+
+                if (current == end)
                 {
-                    // Don't set the Content-Length or Transfer-Encoding headers
-                    // automatically for HEAD requests or 101, 204, 205, 304 responses.
-                    if (Method != "HEAD" && StatusCanHaveBody(StatusCode))
+                    output.Write(memoryBlock.Data, immediate: false);
+                    current = start;
+                }
+            }
+            memoryBlock.End = current;
+        }
+
+        private Task CreateResponseHeader(
+            byte[] statusBytes,
+            bool appCompleted,
+            bool immediate)
+        {
+            var memoryBlock = Memory2.Lease();
+            try
+            {
+                var blockRemaining = memoryBlock.Data.Count;
+
+                OutputAsciiBlock(_httpVersion == HttpVersionType.Http1_1 ? _bytesHttpVersion1_1 : _bytesHttpVersion1_0, memoryBlock, SocketOutput);
+
+                OutputAsciiBlock(statusBytes, memoryBlock, SocketOutput);
+
+                if (_responseHeaders.HasDefaultDate)
+                {
+                    OutputAsciiBlock(_bytesDate, memoryBlock, SocketOutput);
+                    OutputAsciiBlock(DateHeaderValueManager.GetDateHeaderValueBytes(), memoryBlock, SocketOutput);
+                    OutputAsciiBlock(_bytesEndLine, memoryBlock, SocketOutput);
+                }
+
+                foreach (var header in _responseHeaders.AsOutputEnumerable())
+                {
+                    foreach (var value in header.Value)
                     {
-                        // Since the app has completed and we are only now generating
-                        // the headers we can safely set the Content-Length to 0.
-                        writer.Write("Content-Length: 0\r\n");
+                        OutputAsciiBlock(header.Key, memoryBlock, SocketOutput);
+                        OutputAsciiBlock(value, memoryBlock, SocketOutput);
+                        OutputAsciiBlock(_bytesEndLine, memoryBlock, SocketOutput);
+
+                        if (_responseHeaders.HasConnection && value.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
+                        {
+                            _keepAlive = false;
+                        }
                     }
                 }
-                else
+
+                if (_responseHeaders.HasDefaultServer)
                 {
-                    if (HttpVersion == "HTTP/1.1")
+                    OutputAsciiBlock(_bytesServer, memoryBlock, SocketOutput);
+                }
+
+                if (_keepAlive && !_responseHeaders.HasTransferEncoding && !_responseHeaders.HasContentLength)
+                {
+                    if (appCompleted)
                     {
-                        _autoChunk = true;
-                        writer.Write("Transfer-Encoding: chunked\r\n");
+                        // Don't set the Content-Length or Transfer-Encoding headers
+                        // automatically for HEAD requests or 101, 204, 205, 304 responses.
+                        if (Method != "HEAD" && StatusCanHaveBody(StatusCode))
+                        {
+                            // Since the app has completed and we are only now generating
+                            // the headers we can safely set the Content-Length to 0.
+                            OutputAsciiBlock(_bytesContentLengthZero, memoryBlock, SocketOutput);
+                        }
                     }
                     else
                     {
-                        _keepAlive = false;
+                        if (_httpVersion == HttpVersionType.Http1_1)
+                        {
+                            _autoChunk = true;
+                            OutputAsciiBlock(_bytesTransferEncodingChunked, memoryBlock, SocketOutput);
+                        }
+                        else
+                        {
+                            _keepAlive = false;
+                        }
                     }
                 }
-            }
 
-            if (_keepAlive == false && hasConnection == false && HttpVersion == "HTTP/1.1")
-            {
-                writer.Write("Connection: close\r\n\r\n");
+                if (_keepAlive == false && _responseHeaders.HasConnection == false && _httpVersion == HttpVersionType.Http1_1)
+                {
+                    OutputAsciiBlock(_bytesConnectionClose, memoryBlock, SocketOutput);
+                }
+                else if (_keepAlive && _responseHeaders.HasConnection == false && _httpVersion == HttpVersionType.Http1_0)
+                {
+                    OutputAsciiBlock(_bytesConnectionKeepAlive, memoryBlock, SocketOutput);
+                }
+                else
+                {
+                    OutputAsciiBlock(_bytesEndLine, memoryBlock, SocketOutput);
+                }
+
+                return SocketOutput.WriteAsync(
+                    (memoryBlock.Start == memoryBlock.End) ?
+                    default(ArraySegment<byte>) :
+                    new ArraySegment<byte>(memoryBlock.Array, memoryBlock.Start, memoryBlock.End - memoryBlock.Start),
+                    immediate);
             }
-            else if (_keepAlive && hasConnection == false && HttpVersion == "HTTP/1.0")
+            finally
             {
-                writer.Write("Connection: keep-alive\r\n\r\n");
+                Memory2.Return(memoryBlock);
             }
-            else
-            {
-                writer.Write('\r');
-                writer.Write('\n');
-            }
-            writer.Flush();
-            return new Tuple<ArraySegment<byte>, IDisposable>(writer.Buffer, writer);
         }
 
         private bool TakeStartLine(SocketInput input)
@@ -629,7 +715,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetString(scan);
+                var method = begin.GetAsciiString(ref scan);
 
                 scan.Take();
                 begin = scan;
@@ -653,7 +739,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetString(scan);
+                    queryString = begin.GetAsciiString(ref scan);
                 }
 
                 scan.Take();
@@ -662,7 +748,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetString(scan);
+                var httpVersion = begin.GetAsciiString(ref scan);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -670,12 +756,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return false;
                 }
 
+                string requestUrlPath;
                 if (needDecode)
                 {
                     pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
+                    requestUrlPath = pathBegin.GetUtf8String(ref pathEnd);
                 }
-
-                var requestUrlPath = pathBegin.GetString(pathEnd);
+                else
+                {
+                    requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
+                }
 
                 consumed = scan;
                 Method = method;
@@ -691,12 +781,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        static string GetString(ArraySegment<byte> range, int startIndex, int endIndex)
-        {
-            return Encoding.UTF8.GetString(range.Array, range.Offset + startIndex, endIndex - startIndex);
-        }
-
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, MemoryPool2 memorypool)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -756,46 +841,55 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     scan = beginValue;
 
                     var wrapping = false;
-                    while (!scan.IsEnd)
+
+                    var memoryBlock = memorypool.Lease();
+                    try
                     {
-                        if (scan.Seek('\r') == -1)
+                        while (!scan.IsEnd)
                         {
-                            // no "\r" in sight, burn used bytes and go back to await more data
-                            return false;
+                            if (scan.Seek('\r') == -1)
+                            {
+                                // no "\r" in sight, burn used bytes and go back to await more data
+                                return false;
+                            }
+
+                            var endValue = scan;
+                            chFirst = scan.Take(); // expecting: /r
+                            chSecond = scan.Take(); // expecting: /n
+
+                            if (chSecond != '\n')
+                            {
+                                // "\r" was all by itself, move just after it and try again
+                                scan = endValue;
+                                scan.Take();
+                                continue;
+                            }
+
+                            var chThird = scan.Peek();
+                            if (chThird == ' ' || chThird == '\t')
+                            {
+                                // special case, "\r\n " or "\r\n\t".
+                                // this is considered wrapping"linear whitespace" and is actually part of the header value
+                                // continue past this for the next
+                                wrapping = true;
+                                continue;
+                            }
+
+                            var name = beginName.GetArraySegment(ref endName, memoryBlock.Data);
+                            var value = beginValue.GetAsciiString(ref endValue);
+                            if (wrapping)
+                            {
+                                value = value.Replace("\r\n", " ");
+                            }
+
+                            consumed = scan;
+                            requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                            break;
                         }
-
-                        var endValue = scan;
-                        chFirst = scan.Take(); // expecting: /r
-                        chSecond = scan.Take(); // expecting: /n
-
-                        if (chSecond != '\n')
-                        {
-                            // "\r" was all by itself, move just after it and try again
-                            scan = endValue;
-                            scan.Take();
-                            continue;
-                        }
-
-                        var chThird = scan.Peek();
-                        if (chThird == ' ' || chThird == '\t')
-                        {
-                            // special case, "\r\n " or "\r\n\t".
-                            // this is considered wrapping"linear whitespace" and is actually part of the header value
-                            // continue past this for the next
-                            wrapping = true;
-                            continue;
-                        }
-
-                        var name = beginName.GetArraySegment(endName);
-                        var value = beginValue.GetString(endValue);
-                        if (wrapping)
-                        {
-                            value = value.Replace("\r\n", " ");
-                        }
-
-                        consumed = scan;
-                        requestHeaders.Append(name.Array, name.Offset, name.Count, value);
-                        break;
+                    }
+                    finally
+                    {
+                        memorypool.Return(memoryBlock);
                     }
                 }
                 return false;
@@ -819,6 +913,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             _applicationException = ex;
             Log.ApplicationError(ex);
+        }
+
+        private enum HttpVersionType
+        {
+            Unknown = -1,
+            Http1_0 = 0,
+            Http1_1 = 1
         }
     }
 }

@@ -24,10 +24,10 @@ namespace Microsoft.AspNet.Server.Kestrel
         private Thread _thread;
         private UvLoopHandle _loop;
         private UvAsyncHandle _post;
-        private Queue<Work> _workAdding = new Queue<Work>();
-        private Queue<Work> _workRunning = new Queue<Work>();
-        private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>();
-        private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>();
+        private Queue<Work> _workAdding = new Queue<Work>(1024);
+        private Queue<Work> _workRunning = new Queue<Work>(1024);
+        private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
+        private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>(256);
         private object _workSync = new Object();
         private bool _stopImmediate = false;
         private bool _initCompleted = false;
@@ -37,6 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         public KestrelThread(KestrelEngine engine)
         {
             _engine = engine;
+            Memory2 = new MemoryPool2();
             _appLifetime = engine.AppLifetime;
             _log = engine.Log;
             _loop = new UvLoopHandle(_log);
@@ -46,6 +47,9 @@ namespace Microsoft.AspNet.Server.Kestrel
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
+
+        public MemoryPool2 Memory2 { get; }
+
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; internal set; }
@@ -61,6 +65,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         {
             if (!_initCompleted)
             {
+                Memory2.Dispose();
                 return;
             }
 
@@ -93,6 +98,8 @@ namespace Microsoft.AspNet.Server.Kestrel
                     }
                 }
             }
+
+            Memory2.Dispose();
 
             if (_closeError != null)
             {

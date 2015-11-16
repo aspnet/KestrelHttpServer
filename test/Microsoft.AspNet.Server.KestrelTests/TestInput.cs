@@ -9,19 +9,24 @@ using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
-    class TestInput : IConnectionControl, IFrameControl
+    class TestInput : IConnectionControl, IFrameControl, IDisposable
     {
+        private readonly MemoryPool2 _memory2;
+
         public TestInput()
         {
-            var memory = new MemoryPool();
-            var memory2 = new MemoryPool2();
+            _memory2 = new MemoryPool2();
             FrameContext = new FrameContext
             {
-                SocketInput = new SocketInput(memory2),
-                Memory = memory,
+                SocketInput = new SocketInput(_memory2),
                 ConnectionControl = this,
                 FrameControl = this
             };
+        }
+
+        public void Dispose()
+        {
+            _memory2.Dispose();
         }
 
         public FrameContext FrameContext { get; set; }
