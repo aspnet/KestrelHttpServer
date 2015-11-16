@@ -494,6 +494,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     // We can no longer respond with a 500, so we simply close the connection.
                     _requestProcessingStopping = true;
+                    if (_autoChunk)
+                    {
+                        WriteChunkedResponseSuffix();
+                    }
+
                     return;
                 }
                 else
