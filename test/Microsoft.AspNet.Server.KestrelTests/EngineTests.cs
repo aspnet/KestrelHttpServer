@@ -948,5 +948,42 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 }
             }
         }
+
+        [ConditionalTheory]
+        [MemberData(nameof(ConnectionFilterData))]
+        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        public async Task ThrowingAfterWritingCorrectlyClosesChunk(ServiceContext testContext)
+        {
+            bool onStartingCalled = false;
+
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+            using (var server = new TestServer(async httpContext =>
+            {
+                await httpContext.Response.WriteAsync("Hello World");
+                throw new Exception();
+            }, testContext))
+            {
+                using (var connection = new TestConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Connection: Keep-Alive",
+                        "",
+                        "");
+                    await connection.Receive("HTTP/1.1 200 OK",
+                        "");
+                    await connection.ReceiveStartsWith("Date:");
+                    await connection.Receive("Server: Kestrel",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "b",
+                        "Hello World",
+                        "0");
+                    Assert.True(onStartingCalled);
+                    Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+                }
+            }
+        }
     }
 }
