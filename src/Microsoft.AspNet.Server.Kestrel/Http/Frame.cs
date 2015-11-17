@@ -314,8 +314,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private async Task<bool> ReadStartLineAsync()
+        private Task<bool> ReadStartLineAsync()
         {
+            if (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadStartLineAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadStartLineAwaitAsync()
+        {
+            await SocketInput;
+
             while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
             {
                 if (SocketInput.RemoteIntakeFin)
@@ -325,22 +340,34 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 await SocketInput;
             }
-
             return true;
         }
 
-        private async Task<bool> ReadHeadersAsync()
+        private Task<bool> ReadHeadersAsync()
         {
+            if (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, Memory2))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadHeadersAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadHeadersAwaitAsync()
+        {
+            await SocketInput;
+
             while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, Memory2))
             {
                 if (SocketInput.RemoteIntakeFin)
                 {
                     return false;
                 };
-
                 await SocketInput;
             }
-
             return true;
         }
 
