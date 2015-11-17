@@ -7,7 +7,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 {
     public interface IKestrelServerInformation
     {
-        int ThreadCount { get; set; }
+        int? ThreadCount { get; set; }
 
         bool NoDelay { get; set; }
 

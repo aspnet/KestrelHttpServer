@@ -93,16 +93,17 @@ namespace Microsoft.AspNet.Server.Kestrel
                     threadCount = 16;
                 }
 
-                if (information.ThreadCount < 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(information.ThreadCount),
-                        information.ThreadCount,
-                        "ThreadCount cannot be negative");
-                }
-                else if (information.ThreadCount > 0)
+                if (information.ThreadCount.HasValue)
                 {
                     // ThreadCount has been user set, use that value
-                    threadCount = information.ThreadCount;
+                    threadCount = information.ThreadCount.Value;
+
+                    if (threadCount < 0)
+                    {
+                        throw new ArgumentOutOfRangeException(nameof(information.ThreadCount),
+                            information.ThreadCount,
+                            "ThreadCount cannot be negative");
+                    }
                 }
 
                 engine.Start(threadCount);
