@@ -12,22 +12,33 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         private static Encoding _utf8 = Encoding.UTF8;
 
-        private static unsafe string GetAsciiStringStack(byte[] input, int inputOffset, int length)
+        private static unsafe string GetAsciiStringStack(byte* input, int length)
         {
             // avoid declaring other local vars, or doing work with stackalloc
             // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
             char* output = stackalloc char[length];
 
-            return GetAsciiStringImplementation(output, input, inputOffset, length);
+            return GetAsciiStringImplementation(output, input, length);
         }
-        private static unsafe string GetAsciiStringImplementation(char* output, byte[] input, int inputOffset, int length)
+        private static unsafe string GetAsciiStringImplementation(char* output, byte* input, int length)
         {
-            for (var i = 0; i < length; i++)
+            var outputStart = output;
+            var i = 0;
+            var lengthMinusSpan = length - 3;
+            for (; i < lengthMinusSpan; i += 4)
             {
-                output[i] = (char)input[inputOffset + i];
+                *(output) = (char)*(input);
+                *(output + 1) = (char)*(input + 1);
+                *(output + 2) = (char)*(input + 2);
+                *(output + 3) = (char)*(input + 3);
+                output += 4;
+                input += 4;
             }
-
-            return new string(output, 0, length);
+            for (; i < length; i++)
+            {
+                *(output++) = (char)*(input++);
+            }
+            return new string(outputStart, 0, length);
         }
 
         private static unsafe string GetAsciiStringStack(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
@@ -51,7 +62,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         private static unsafe string GetAsciiStringImplementation(char* output, MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
         {
-            var outputOffset = 0;
+            var outputStart = output;
             var block = start;
             var remaining = length;
 
@@ -64,19 +75,31 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
                 if (following > 0)
                 {
-                    var input = block.Array;
-                    for (var i = 0; i < following; i++)
+                    fixed (byte* blockStart = block.Array)
                     {
-                        output[i + outputOffset] = (char)input[i + inputOffset];
+                        var input = blockStart + inputOffset;
+                        var i = 0;
+                        var followingMinusSpan = following - 3;
+                        for (; i < followingMinusSpan; i += 4)
+                        {
+                            *(output) = (char)*(input);
+                            *(output + 1) = (char)*(input + 1);
+                            *(output + 2) = (char)*(input + 2);
+                            *(output + 3) = (char)*(input + 3);
+                            output += 4;
+                            input += 4;
+                        }
+                        for (; i < following; i++)
+                        {
+                            *(output++) = (char)*(input++);
+                        }
                     }
-
                     remaining -= following;
-                    outputOffset += following;
                 }
 
                 if (remaining == 0)
                 {
-                    return new string(output, 0, length);
+                    return new string(outputStart, 0, length);
                 }
 
                 block = block.Next;
@@ -84,7 +107,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
+        public unsafe static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
         {
             if (start.IsDefault || end.IsDefault)
             {
@@ -93,12 +116,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
             var length = start.GetLength(end);
 
+            if (length <= 0)
+            {
+                return string.Empty;
+            }
+
             // Bytes out of the range of ascii are treated as "opaque data" 
             // and kept in string as a char value that casts to same input byte value
             // https://tools.ietf.org/html/rfc7230#section-3.2.4
             if (end.Block == start.Block)
             {
-                return GetAsciiStringStack(start.Block.Array, start.Index, length);
+                fixed (byte* input = start.Block.Array)
+                {
+                    return GetAsciiStringStack(input + start.Index, length);
+                }
             }
 
             if (length > _maxStackAllocBytes)
@@ -120,9 +151,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return _utf8.GetString(start.Block.Array, start.Index, end.Index - start.Index);
             }
 
-            var decoder = _utf8.GetDecoder();
-
             var length = start.GetLength(end);
+
+            if (length <= 0)
+            {
+                return string.Empty;
+            }
+
+            var decoder = _utf8.GetDecoder();
             var charLength = length * 2;
             var chars = new char[charLength];
             var charIndex = 0;
