@@ -11,7 +11,7 @@ namespace Microsoft.AspNet.Server.Kestrel
 {
     public class KestrelServerInformation : IKestrelServerInformation, IServerAddressesFeature
     {
-        public ICollection<string> Addresses { get; } = new List<string>();
+        public ICollection<string> Addresses { get; private set; }
 
         public int ThreadCount { get; set; }
 
@@ -22,10 +22,7 @@ namespace Microsoft.AspNet.Server.Kestrel
         public void Initialize(IConfiguration configuration)
         {
             var urls = configuration["server.urls"] ?? string.Empty;
-            foreach (var url in urls.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                Addresses.Add(url);
-            }
+            Addresses = new List<string>(urls.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
         }
     }
 }
