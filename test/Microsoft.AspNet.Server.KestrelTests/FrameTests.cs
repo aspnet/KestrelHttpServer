@@ -36,7 +36,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
             Assert.Equal(Encoding.ASCII.GetBytes(expected), beginChunkBytes.ToArray());
         }
-        
+
         [Theory]
         [InlineData("Cookie: \r\n\r\n", 1)]
         [InlineData("Cookie:\r\n\r\n", 1)]
@@ -48,22 +48,25 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [InlineData("Connection:\r\n \r\nCookie \r\n", 1)]
         public void EmptyHeaderValuesCanBeParsed(string rawHeaders, int numHeaders)
         {
-            var socketInput = new SocketInput(new MemoryPool2());
-            var headerCollection = new FrameRequestHeaders();
+            using (var memory = new MemoryPool2())
+            {
+                var socketInput = new SocketInput(memory);
+                var headerCollection = new FrameRequestHeaders();
 
-            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            var inputBuffer = socketInput.IncomingStart(headerArray.Length);
-            Buffer.BlockCopy(headerArray, 0, inputBuffer.Data.Array, inputBuffer.Data.Offset, headerArray.Length);
-            socketInput.IncomingComplete(headerArray.Length, null);
+                var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
+                socketInput.IncomingStart(headerArray, 0, headerArray.Length);
 
-            var success = Frame.TakeMessageHeaders(socketInput, headerCollection);
+                socketInput.IncomingComplete(headerArray.Length, null);
 
-            Assert.True(success);
-            Assert.Equal(numHeaders, headerCollection.Count());
+                var success = Frame.TakeMessageHeaders(socketInput, headerCollection);
 
-            // Assert TakeMessageHeaders consumed all the input
-            var scan = socketInput.ConsumingStart();
-            Assert.True(scan.IsEnd);
+                Assert.True(success);
+                Assert.Equal(numHeaders, headerCollection.Count());
+
+                // Assert TakeMessageHeaders consumed all the input
+                var scan = socketInput.ConsumingStart();
+                Assert.True(scan.IsEnd);
+            }
         }
     }
 }

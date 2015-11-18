@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
@@ -48,10 +49,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private readonly ConcurrentStack<MemoryPoolSlab2> _slabs = new ConcurrentStack<MemoryPoolSlab2>();
 
-        /// <summary>
-        /// This is part of implementing the IDisposable pattern.
-        /// </summary>
-        private bool _disposedValue = false; // To detect redundant calls
+        public MemoryPool2()
+        {
+
+        }
 
         /// <summary>
         /// Called to take a block from the pool.
@@ -59,21 +60,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
         /// the caller may write to the block's entire size rather than being limited to the minumumSize requested.</param>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock2 Lease(int minimumSize)
+        public MemoryPoolBlock2 Lease()
         {
-            if (minimumSize > _blockLength)
-            {
-                // The requested minimumSize is actually larger then the usable memory of a single block.
-                // Because this is the degenerate case, a one-time-use byte[] array and tracking object are allocated.
-                // When this block tracking object is returned it is not added to the pool - instead it will be 
-                // allowed to be garbage collected normally.
-                return MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(new byte[minimumSize]),
-                    dataPtr: IntPtr.Zero,
-                    pool: null,
-                    slab: null);
-            }
-
             MemoryPoolBlock2 block;
             if (_blocks.TryDequeue(out block))
             {
@@ -131,45 +119,48 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="block">The block to return. It must have been acquired by calling Lease on the same memory pool instance.</param>
         public void Return(MemoryPoolBlock2 block)
         {
+            if (block.Pool == null)
+            {
+                return;
+            }
+
+            Debug.Assert(block.Pool == this, "Block returned to wrong pool!");
+
             block.Reset();
             _blocks.Enqueue(block);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposedValue)
+            MemoryPoolSlab2 slab;
+            while (_slabs.TryPop(out slab))
             {
-                if (disposing)
+                // dispose managed state (managed objects).
+                slab.Dispose();
+            }
+
+            MemoryPoolBlock2 block;
+            while (_blocks.TryDequeue(out block))
                 {
-                    MemoryPoolSlab2 slab;
-                    while (_slabs.TryPop(out slab))
-                    {
-                        // dispose managed state (managed objects).
-                        slab.Dispose();
-                    }
-                }
-
-                // N/A: free unmanaged resources (unmanaged objects) and override a finalizer below.
-
-                // N/A: set large fields to null.
-
-                _disposedValue = true;
+                    // Deactivate finalizers
+                block.Dispose();
             }
         }
 
         // N/A: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~MemoryPool2() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
+        ~MemoryPool2()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(false);
+        }
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
-            // N/A: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+
+            GC.SuppressFinalize(this);
         }
     }
 }
