@@ -74,6 +74,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         public MemoryPoolBlock2 Next { get; set; }
 
+#if DEBUG
+        // See http://www.philosophicalgeek.com/2014/09/29/digging-into-net-object-allocation-fundamentals/ 
+        // for the cost of including a finalizer
         ~MemoryPoolBlock2()
         {
             Debug.Assert(!_pinHandle.IsAllocated, "Ad-hoc memory block wasn't unpinned");
@@ -96,6 +99,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 });
             }
         }
+#endif
 
         /// <summary>
         /// Called to ensure that a block is pinned, and return the pointer to native memory just after
