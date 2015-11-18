@@ -1,20 +1,15 @@
-﻿{
+{
   "version": "1.0.0-*",
-
   "compilationOptions": {
     "keyFile": "../../tools/Key.snk"
   },
-
   "description": "Microsoft.StandardsPolice Class Library",
-
   "dependencies": {
-    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*"
+    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-rc1-final"
   },
-
   "commands": {
     "Microsoft.StandardsPolice": "Microsoft.StandardsPolice"
   },
-
   "frameworks": {
     "net451": {
       "frameworkAssemblies": {
@@ -32,12 +27,12 @@
     },
     "dotnet5.4": {
       "dependencies": {
-        "System.Console": "4.0.0-beta-*"
+        "System.Console": "4.0.0-beta-23516"
       }
     },
     "dnxcore50": {
       "dependencies": {
-        "System.Console": "4.0.0-beta-*"
+        "System.Console": "4.0.0-beta-23516"
       }
     }
   }

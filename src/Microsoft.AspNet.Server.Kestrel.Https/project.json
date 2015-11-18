@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-*",
+  "version": "1.0.0-rc1-final",
   "compilationOptions": {
     "keyFile": "../../tools/Key.snk"
   },
@@ -9,9 +9,9 @@
     "url": "git://github.com/aspnet/kestrelhttpserver"
   },
   "dependencies": {
-    "Microsoft.AspNet.Server.Kestrel": "1.0.0-*"
+    "Microsoft.AspNet.Server.Kestrel": "1.0.0-rc1-final"
   },
   "frameworks": {
-    "net451": { }
+    "net451": {}
   }
 }

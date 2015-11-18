@@ -1,28 +1,25 @@
 {
-    "version": "1.0.0-*",
-
-    "dependencies": {
-        "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*",
-        "Microsoft.AspNet.Http.Features": "1.0.0-*",
-        "Microsoft.AspNet.Hosting": "1.0.0-*"
+  "version": "1.0.0-*",
+  "dependencies": {
+    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-rc1-final",
+    "Microsoft.AspNet.Http.Features": "1.0.0-rc1-final",
+    "Microsoft.AspNet.Hosting": "1.0.0-rc1-final"
+  },
+  "commands": {
+    "run": "Microsoft.AspNet.Server.Kestrel.GeneratedCode"
+  },
+  "frameworks": {
+    "dnx451": {
+      "frameworkAssemblies": {
+        "System.Runtime": "",
+        "System.Text.Encoding": "",
+        "System.Threading.Tasks": ""
+      }
     },
-
-    "commands": {
-        "run": "Microsoft.AspNet.Server.Kestrel.GeneratedCode"
-    },
-
-    "frameworks": {
-        "dnx451": {
-            "frameworkAssemblies": {
-                "System.Runtime": "",
-                "System.Text.Encoding": "",
-                "System.Threading.Tasks": ""
-            }
-        },
-        "dnxcore50": {
-            "dependencies": {
-                "System.Console": "4.0.0-beta-*"
-            }
-        }
+    "dnxcore50": {
+      "dependencies": {
+        "System.Console": "4.0.0-beta-23516"
+      }
     }
+  }
 }
