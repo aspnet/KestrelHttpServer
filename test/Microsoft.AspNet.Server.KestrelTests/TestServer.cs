@@ -35,7 +35,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             context.FrameFactory = (connectionContext, remoteEP, localEP, prepareRequest) => 
             {
-                return new Frame<HttpContext>(new DummyApplication(app), connectionContext, remoteEP, localEP, prepareRequest);
+                return new Frame<HttpContext>(new DummyApplication(app), connectionContext, remoteEP, localEP, prepareRequest, stringCache: null);
             };
             _engine = new KestrelEngine(context);
             _engine.Start(1);
