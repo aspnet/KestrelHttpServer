@@ -42,6 +42,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 while (!_requestProcessingStopping)
                 {
+                    _stringPool.MarkStart();
+
                     while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
                     {
                         if (SocketInput.RemoteIntakeFin)
@@ -51,7 +53,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         await SocketInput;
                     }
 
-                    while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, _stringPool))
                     {
                         if (SocketInput.RemoteIntakeFin)
                         {
