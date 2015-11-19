@@ -21,7 +21,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = mem.GetIterator();
             var end = GetIterator(begin, byteRange.Length);
 
-            var s = begin.GetAsciiString(end);
+            var s = begin.GetAsciiString(end, null);
 
             Assert.Equal(s.Length, byteRange.Length);
 
@@ -60,7 +60,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = mem0.GetIterator();
             var end = GetIterator(begin, expectedByteRange.Length);
 
-            var s = begin.GetAsciiString(end);
+            var s = begin.GetAsciiString(end, null);
 
             Assert.Equal(s.Length, expectedByteRange.Length);
 
@@ -89,7 +89,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = mem0.GetIterator();
             var end = GetIterator(begin, expectedByteRange.Length);
 
-            var s = begin.GetAsciiString(end);
+            var s = begin.GetAsciiString(end, null);
 
             Assert.Equal(s.Length, expectedByteRange.Length);
 

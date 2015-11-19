@@ -56,7 +56,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Buffer.BlockCopy(headerArray, 0, inputBuffer.Data.Array, inputBuffer.Data.Offset, headerArray.Length);
             socketInput.IncomingComplete(headerArray.Length, null);
 
-            var success = Frame.TakeMessageHeaders(socketInput, headerCollection);
+            var success = Frame.TakeMessageHeaders(socketInput, headerCollection, null);
 
             Assert.True(success);
             Assert.Equal(numHeaders, headerCollection.Count());
