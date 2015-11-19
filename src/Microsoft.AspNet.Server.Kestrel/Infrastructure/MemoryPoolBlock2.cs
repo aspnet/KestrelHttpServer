@@ -130,12 +130,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 _pinHandle.Free();
             }
         }
-        
+
+        /// <summary>
+        /// Creates an non-pooled MemoryPoolBlock2, used for testing
+        /// </summary>
         public static MemoryPoolBlock2 Create(ArraySegment<byte> data)
         {
             return Create(data, IntPtr.Zero, null, null);
         }
-        
+
+        /// <summary>
+        /// Creates an pooled MemoryPoolBlock2, used by MemoryPool2
+        /// </summary>
         public static MemoryPoolBlock2 Create(
             ArraySegment<byte> data,
             IntPtr dataPtr,

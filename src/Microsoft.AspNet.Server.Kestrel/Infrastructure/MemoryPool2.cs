@@ -67,10 +67,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private bool _disposedValue = false; // To detect redundant calls
 
-        public MemoryPool2()
-        {
-        }
-
         /// <summary>
         /// Called to take a block from the pool.
         /// </summary>
