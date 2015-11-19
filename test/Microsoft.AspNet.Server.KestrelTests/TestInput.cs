@@ -9,15 +9,16 @@ using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
-    class TestInput : IConnectionControl, IFrameControl
+    class TestInput : IConnectionControl, IFrameControl, IDisposable
     {
+        MemoryPool2 _memory2;
         public TestInput()
         {
             var memory = new MemoryPool();
-            var memory2 = new MemoryPool2();
+            _memory2 = new MemoryPool2();
             FrameContext = new FrameContext
             {
-                SocketInput = new SocketInput(memory2),
+                SocketInput = new SocketInput(_memory2),
                 Memory = memory,
                 ConnectionControl = this,
                 FrameControl = this
@@ -30,8 +31,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             var encoding = System.Text.Encoding.ASCII;
             var count = encoding.GetByteCount(text);
-            var buffer = FrameContext.SocketInput.IncomingStart(text.Length);
-            count = encoding.GetBytes(text, 0, text.Length, buffer.Data.Array, buffer.Data.Offset);
+            var buffer = new byte[count];
+            count = encoding.GetBytes(text, 0, text.Length, buffer, 0);
+
+            FrameContext.SocketInput.IncomingStart(buffer, 0, text.Length);
+
             FrameContext.SocketInput.IncomingComplete(count, null);
             if (fin)
             {
@@ -82,6 +86,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
         Task IFrameControl.FlushAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult(0);
+        }
+
+        public void Dispose()
+        {
+            _memory2.Dispose();
         }
     }
 }

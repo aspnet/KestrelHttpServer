@@ -74,10 +74,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         public MemoryPoolBlock2 Next { get; set; }
 
+#if DEBUG
+        // See http://www.philosophicalgeek.com/2014/09/29/digging-into-net-object-allocation-fundamentals/ 
+        // for the cost of including a finalizer
         ~MemoryPoolBlock2()
         {
             Debug.Assert(!_pinHandle.IsAllocated, "Ad-hoc memory block wasn't unpinned");
-            // Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool");
+            Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool");
 
             if (_pinHandle.IsAllocated)
             {
@@ -96,37 +99,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 });
             }
         }
+        internal void Dispose()
+        { 
+            GC.SuppressFinalize(this);
+        }
+#endif
 
-        /// <summary>
-        /// Called to ensure that a block is pinned, and return the pointer to native memory just after
-        /// the range of "active" bytes. This is where arriving data is read into.
-        /// </summary>
-        /// <returns></returns>
-        public IntPtr Pin()
+    /// <summary>
+    /// Called to ensure that a block is pinned, and return the pointer to native memory just after
+    /// the range of "active" bytes. This is where arriving data is read into.
+    /// </summary>
+    /// <returns></returns>
+    public IntPtr Pin()
         {
             Debug.Assert(!_pinHandle.IsAllocated);
 
-            if (_dataArrayPtr != IntPtr.Zero)
-            {
-                // this is a slab managed block - use the native address of the slab which is always locked
-                return _dataArrayPtr + End;
-            }
-            else
-            {
-                // this is one-time-use memory - lock the managed memory until Unpin is called
-                _pinHandle = GCHandle.Alloc(Data.Array, GCHandleType.Pinned);
-                return _pinHandle.AddrOfPinnedObject() + End;
-            }
-        }
-
-        public void Unpin()
-        {
-            if (_dataArrayPtr == IntPtr.Zero)
-            {
-                // this is one-time-use memory - unlock the managed memory
-                Debug.Assert(_pinHandle.IsAllocated);
-                _pinHandle.Free();
-            }
+            // this is a slab managed block - use the native address of the slab which is always locked
+            return _dataArrayPtr + End;
         }
 
         public static MemoryPoolBlock2 Create(

@@ -56,11 +56,52 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return taken;
         }
 
-        public IncomingBuffer IncomingStart(int minimumSize)
+        public void IncomingStart(byte[] buffer, int offset, int count)
+        {
+            var remaining = count;
+            lock (_sync)
+            {
+                if (_tail == null)
+                {
+                    _tail = _memory.Lease();
+                }
+                if (_head == null)
+                {
+                    _head = _tail;
+                }
+
+                var blockRemaining = _tail.Data.Offset + _tail.Data.Count - _tail.End;
+                while (remaining > 0)
+                {
+                    var copyAmount = blockRemaining >= remaining ? remaining : blockRemaining;
+                    if (buffer != null)
+                    {
+                        System.Buffer.BlockCopy(buffer, offset, _tail.Data.Array, _tail.End, copyAmount);
+                    }
+                    remaining -= copyAmount;
+                    blockRemaining -= copyAmount;
+                    _tail.End += copyAmount;
+
+                    if (blockRemaining == 0)
+                    {
+                        var block = _memory.Lease();
+                        _tail.Next = block;
+                        _tail = block;
+                        blockRemaining = block.Data.Count;
+                    }
+                    else
+                    {
+                        offset += copyAmount;
+                    }
+                }
+            }
+        }
+
+        public IncomingBuffer IncomingRawStart()
         {
             lock (_sync)
             {
-                if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
+                if (_tail != null && 2048 <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
                 {
                     _pinned = _tail;
                     var data = new ArraySegment<byte>(_pinned.Data.Array, _pinned.End, _pinned.Data.Offset + _pinned.Data.Count - _pinned.End);
@@ -73,13 +114,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            _pinned = _memory.Lease(minimumSize);
+            _pinned = _memory.Lease();
             return new IncomingBuffer
             {
                 Data = _pinned.Data,
                 DataPtr = _pinned.Pin()
             };
         }
+
 
         public void IncomingComplete(int count, Exception error)
         {
@@ -90,8 +132,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 // Unpin may called without an earlier Pin 
                 if (_pinned != null)
                 {
-                    _pinned.Unpin();
-
                     _pinned.End += count;
                     if (_head == null)
                     {

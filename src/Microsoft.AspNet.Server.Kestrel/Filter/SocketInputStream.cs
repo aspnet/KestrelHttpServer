@@ -74,9 +74,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            var inputBuffer = _socketInput.IncomingStart(count);
-
-            Buffer.BlockCopy(buffer, offset, inputBuffer.Data.Array, inputBuffer.Data.Offset, count);
+            _socketInput.IncomingStart(buffer, offset, count);
 
             _socketInput.IncomingComplete(count, error: null);
         }
