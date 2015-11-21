@@ -17,6 +17,10 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         public bool NoDelay { get; set; } = true;
 
+        public int MaxHeaderBytes { get; set; } = 16384; // 16kB
+
+        public long MaxUploadBytes { get; set; } = 8388608; // 8MB
+
         public IConnectionFilter ConnectionFilter { get; set; }
 
         public void Initialize(IConfiguration configuration)
@@ -25,6 +29,36 @@ namespace Microsoft.AspNet.Server.Kestrel
             foreach (var url in urls.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 Addresses.Add(url);
+            }
+
+            var maxHeaderBytes = configuration["request.maxHeaderBytes"];
+            if (!string.IsNullOrEmpty(maxHeaderBytes))
+            {
+                int value;
+                if (!int.TryParse(maxHeaderBytes, out value))
+                {
+                    throw new ArgumentException("maxHeaderBytes must be an integer 1024 or greater", "request.maxHeaderBytes");
+                }
+                if (value < 1024)
+                {
+                    throw new ArgumentOutOfRangeException("request.maxHeaderBytes", maxHeaderBytes, "maxHeaderBytes must be 1024 or greater");
+                }
+                MaxHeaderBytes = value;
+            }
+
+            var maxUploadBytes = configuration["request.maxUploadBytes"];
+            if (!string.IsNullOrEmpty(maxHeaderBytes))
+            {
+                long value;
+                if (!long.TryParse(maxHeaderBytes, out value))
+                {
+                    throw new ArgumentException("maxUploadBytes must be an integer 0 or greater", "request.maxUploadBytes");
+                }
+                if (value < 0)
+                {
+                    throw new ArgumentOutOfRangeException("request.maxUploadBytes", maxUploadBytes, "maxUploadBytes must be a positive integer");
+                }
+                MaxUploadBytes = value;
             }
         }
     }

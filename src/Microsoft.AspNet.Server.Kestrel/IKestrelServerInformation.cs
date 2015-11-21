@@ -11,6 +11,10 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         bool NoDelay { get; set; }
 
+        int MaxHeaderBytes { get; set; }
+
+        long MaxUploadBytes { get; set; }
+
         IConnectionFilter ConnectionFilter { get; set; }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 
@@ -23,16 +24,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         private MemoryPoolBlock2 _block;
         private int _index;
+        private int _processed;
 
         public MemoryPoolIterator2(MemoryPoolBlock2 block)
         {
             _block = block;
             _index = _block?.Start ?? 0;
+            _processed = 0;
         }
         public MemoryPoolIterator2(MemoryPoolBlock2 block, int index)
         {
             _block = block;
             _index = index;
+            _processed = 0;
         }
 
         public bool IsDefault => _block == null;
@@ -167,6 +171,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 }
                 while (block.End != index)
                 {
+                    if (_processed > _maxHeaderLength)
+                    {
+                        throw new InvalidDataException("Malformed request");
+                    }
+
                     var following = block.End - index;
                     if (following >= vectorStride)
                     {
@@ -177,6 +186,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         if (ch0Count == 0)
                         {
                             index += vectorStride;
+                            _processed += vectorStride;
                             continue;
                         }
                         else if (ch0Count == 1)
@@ -237,6 +247,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 }
                 while (block.End != index)
                 {
+                    if (_processed > _maxHeaderLength)
+                    {
+                        throw new InvalidDataException("Malformed request");
+                    }
+
                     var following = block.End - index;
                     if (following >= vectorStride)
                     {
@@ -249,6 +264,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         if (ch0Count == 0 && ch1Count == 0)
                         {
                             index += vectorStride;
+                            _processed += vectorStride;
                             continue;
                         }
                         else if (ch0Count < 2 && ch1Count < 2)
@@ -329,6 +345,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 }
                 while (block.End != index)
                 {
+                    if (_processed > _maxHeaderLength)
+                    {
+                        throw new InvalidDataException("Malformed request");
+                    }
+
                     var following = block.End - index;
                     if (following >= vectorStride)
                     {
@@ -343,6 +364,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         if (ch0Count == 0 && ch1Count == 0 && ch2Count == 0)
                         {
                             index += vectorStride;
+                            _processed += vectorStride;
                             continue;
                         }
                         else if (ch0Count < 2 && ch1Count < 2 && ch2Count < 2)
