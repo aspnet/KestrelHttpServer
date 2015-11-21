@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.Kestrel
     {
         public ICollection<string> Addresses { get; } = new List<string>();
 
-        public int ThreadCount { get; set; }
+        public int? ThreadCount { get; set; }
 
         public bool NoDelay { get; set; } = true;
 

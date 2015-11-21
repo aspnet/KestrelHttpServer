@@ -75,35 +75,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 _disposables.Push(engine);
                 _disposables.Push(dateHeaderValueManager);
 
-                // Actual core count would be a better number 
-                // rather than logical cores which includes hyper-threaded cores.
-                // Divide by 2 for hyper-threading, and good defaults (still need threads to do webserving).
-                // Can be user overriden using IKestrelServerInformation.ThreadCount
-                var threadCount = Environment.ProcessorCount >> 1;
-
-                if (threadCount < 1)
-                {
-                    // Ensure shifted value is at least one
-                    threadCount = 1;
-                }
-                else if (threadCount > 16)
-                {
-                    // Receive Side Scaling RSS Processor count currently maxes out at 16
-                    // would be better to check the NIC's current hardware queues; but xplat...
-                    threadCount = 16;
-                }
-
-                if (information.ThreadCount < 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(information.ThreadCount),
-                        information.ThreadCount,
-                        "ThreadCount cannot be negative");
-                }
-                else if (information.ThreadCount > 0)
-                {
-                    // ThreadCount has been user set, use that value
-                    threadCount = information.ThreadCount;
-                }
+                var threadCount = GetThreadCount(information);
 
                 engine.Start(threadCount);
                 var atLeastOneListener = false;
@@ -146,6 +118,46 @@ namespace Microsoft.AspNet.Server.Kestrel
                 }
                 _disposables = null;
             }
+        }
+
+        private static int GetThreadCount(IKestrelServerInformation information)
+        {
+            int threadCount;
+            if (information.ThreadCount.HasValue)
+            {
+                // ThreadCount has been user set, use that value
+                threadCount = information.ThreadCount.Value;
+
+                if (threadCount < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(information.ThreadCount),
+                        information.ThreadCount,
+                        "ThreadCount cannot be negative");
+                }
+
+                return threadCount;
+            }
+
+            // Actual core count would be a better number
+            // rather than logical cores which includes hyper-threaded cores.
+            // Divide by 2 for hyper-threading, and good defaults (still need threads to do webserving).
+            // Can be user overriden using IKestrelServerInformation.ThreadCount
+            threadCount = Environment.ProcessorCount >> 1;
+
+            if (threadCount < 1)
+            {
+                // Ensure shifted value is at least one
+                return 1;
+            }
+
+            if (threadCount > 16)
+            {
+                // Receive Side Scaling RSS Processor count currently maxes out at 16
+                // would be better to check the NIC's current hardware queues; but xplat...
+                return 16;
+            }
+
+            return threadCount;
         }
     }
 }
