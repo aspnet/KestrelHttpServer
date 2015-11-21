@@ -93,6 +93,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     Data = Data,
                     Pool = Pool,
                     Slab = Slab,
+                    Start = Start,
+                    End = End
                 });
             }
         }
@@ -129,6 +131,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
+        /// <summary>
+        /// Creates an non-pooled MemoryPoolBlock2, used for testing
+        /// </summary>
+        public static MemoryPoolBlock2 Create(ArraySegment<byte> data)
+        {
+            return Create(data, IntPtr.Zero, null, null);
+        }
+
+        /// <summary>
+        /// Creates an pooled MemoryPoolBlock2, used by MemoryPool2
+        /// </summary>
         public static MemoryPoolBlock2 Create(
             ArraySegment<byte> data,
             IntPtr dataPtr,
@@ -142,7 +155,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 Pool = pool,
                 Slab = slab,
                 Start = data.Offset,
-                End = data.Offset,
+                End = data.Offset
             };
         }
 

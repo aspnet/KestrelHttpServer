@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
@@ -37,10 +39,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _slabLength = _blockStride * _blockCount;
 
         /// <summary>
-        /// Thread-safe collection of blocks which are currently in the pool. A slab will pre-allocate all of the block tracking objects
-        /// and add them to this collection. When memory is requested it is taken from here first, and when it is returned it is re-added.
+        /// Max allocation block size for pooled blocks, 
+        /// larger values can be leased but they will be disposed after use rather than returned to the pool.
         /// </summary>
-        private readonly ConcurrentQueue<MemoryPoolBlock2> _blocks = new ConcurrentQueue<MemoryPoolBlock2>();
+        public const int MaxPooledBlockLength = _blockLength;
+
+        // Processor count is a sys call https://github.com/dotnet/coreclr/blob/0e0ff9d17ab586f3cc7224dd33d8781cd77f3ca8/src/mscorlib/src/System/Environment.cs#L548
+        // Nor does it look like its constant https://github.com/dotnet/corefx/blob/master/src/System.Threading.Tasks.Parallel/src/System/Threading/PlatformHelper.cs#L23
+        public static int _partitionCount = Environment.ProcessorCount;
+
+        [ThreadStatic]
+        private Queue<MemoryPoolBlock2> _blocks;
+
+        [ThreadStatic]
+        private int _queueId;
+
+        private List<Queue<MemoryPoolBlock2>> _blockQueues = new List<Queue<MemoryPoolBlock2>>(128);
 
         /// <summary>
         /// Thread-safe collection of slabs which have been allocated by this pool. As long as a slab is in this collection and slab.IsActive, 
@@ -59,7 +73,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
         /// the caller may write to the block's entire size rather than being limited to the minumumSize requested.</param>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock2 Lease(int minimumSize)
+        public MemoryPoolBlock2 Lease(int minimumSize = MaxPooledBlockLength)
         {
             if (minimumSize > _blockLength)
             {
@@ -67,19 +81,65 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 // Because this is the degenerate case, a one-time-use byte[] array and tracking object are allocated.
                 // When this block tracking object is returned it is not added to the pool - instead it will be 
                 // allowed to be garbage collected normally.
-                return MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(new byte[minimumSize]),
-                    dataPtr: IntPtr.Zero,
-                    pool: null,
-                    slab: null);
+                return MemoryPoolBlock2.Create(new ArraySegment<byte>(new byte[minimumSize]));
+            }
+
+            if (_blocks == null)
+            {
+                _blocks = new Queue<MemoryPoolBlock2>(_blockCount * 4);
+                lock (_blockQueues)
+                {
+                    _blockQueues.Add(_blocks);
+                    _queueId = _blockQueues.Count;
+                }
             }
 
             MemoryPoolBlock2 block;
-            if (_blocks.TryDequeue(out block))
+
+            // Lock should almost always be uncontended
+            lock (_blocks)
             {
-                // block successfully taken from the stack - return it
-                return block;
+                if (_blocks.Count > 0)
+                {
+                    // block successfully taken return it
+                    return _blocks.Dequeue();
+                }
             }
+
+            // no block, try to steal block from another parition
+
+            int queueCount;
+            lock (_blockQueues)
+            {
+                queueCount = _blockQueues.Count;
+            }
+
+            for (var i = 1; i < queueCount; i++)
+            {
+                bool lockTaken = false;
+
+                // cycle though the queues checking for blocks
+                // start with the queue after this one for fairness
+                var queue = _blockQueues[(i + _queueId) % queueCount];
+
+                // try to enter other queue's lock, but don't wait for it
+                Monitor.TryEnter(queue, ref lockTaken);
+                if (lockTaken)
+                {
+                    if (queue.Count > 0)
+                    {
+                        block = queue.Dequeue();
+                        Monitor.Exit(queue);
+                        // block successfully stolen - return it
+                        return block;
+                    }
+                    else
+                    {
+                        Monitor.Exit(queue);
+                    }
+                }
+            }
+
             // no blocks available - grow the pool
             return AllocateSlab();
         }
@@ -90,35 +150,46 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private MemoryPoolBlock2 AllocateSlab()
         {
-            var slab = MemoryPoolSlab2.Create(_slabLength);
-            _slabs.Push(slab);
-
-            var basePtr = slab.ArrayPtr;
-            var firstOffset = (int)((_blockStride - 1) - ((ulong)(basePtr + _blockStride - 1) % _blockStride));
-
-            var poolAllocationLength = _slabLength - _blockStride;
-
-            var offset = firstOffset;
-            for (;
-                offset + _blockLength < poolAllocationLength;
-                offset += _blockStride)
+            // Lock should almost always be uncontended
+            lock (_blocks)
             {
-                var block = MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(slab.Array, offset, _blockLength),
-                    basePtr,
-                    this,
-                    slab);
-                Return(block);
+                if (_blocks.Count > 0)
+                {
+                    return _blocks.Dequeue();
+                }
+
+                var slab = MemoryPoolSlab2.Create(_slabLength);
+                _slabs.Push(slab);
+
+                var basePtr = slab.ArrayPtr;
+                var firstOffset = (int)((_blockStride - 1) - ((ulong)(basePtr + _blockStride - 1) % _blockStride));
+
+                var poolAllocationLength = _slabLength - _blockStride;
+
+
+                var offset = firstOffset;
+
+                for (;
+                    offset + _blockLength < poolAllocationLength;
+                    offset += _blockStride)
+                {
+                    var block = MemoryPoolBlock2.Create(
+                        new ArraySegment<byte>(slab.Array, offset, _blockLength),
+                        basePtr,
+                        this,
+                        slab);
+                    Return(block);
+                }
+
+                // return last block rather than adding to pool
+                var newBlock = MemoryPoolBlock2.Create(
+                        new ArraySegment<byte>(slab.Array, offset, _blockLength),
+                        basePtr,
+                        this,
+                        slab);
+
+                return newBlock;
             }
-
-            // return last block rather than adding to pool
-            var newBlock = MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(slab.Array, offset, _blockLength),
-                    basePtr,
-                    this,
-                    slab);
-
-            return newBlock;
         }
 
         /// <summary>
@@ -131,8 +202,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="block">The block to return. It must have been acquired by calling Lease on the same memory pool instance.</param>
         public void Return(MemoryPoolBlock2 block)
         {
+            var owningPool = block.Pool;
+            if (owningPool == null)
+            {
+                // not pooled block, throw away
+                return;
+            }
             block.Reset();
-            _blocks.Enqueue(block);
+
+            // Lock should almost always be uncontended
+            lock (_blocks)
+            {
+                _blocks.Enqueue(block);
+            }
         }
 
         protected virtual void Dispose(bool disposing)
