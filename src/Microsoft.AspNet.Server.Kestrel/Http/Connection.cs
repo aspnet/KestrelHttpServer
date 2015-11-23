@@ -114,11 +114,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 // Frame.Abort calls user code while this method is always
                 // called from a libuv thread.
-                ThreadPool.QueueUserWorkItem(state =>
-                {
-                    var connection = (Connection)this;
-                    connection._frame.Abort();
-                }, this);
+                TaskUtilities.AbortOnThreadPool(_frame);
             }
         }
 

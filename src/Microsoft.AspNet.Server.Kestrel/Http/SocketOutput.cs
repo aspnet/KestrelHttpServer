@@ -224,16 +224,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                     if (_lastWriteError == null)
                     {
-                        ThreadPool.QueueUserWorkItem(
-                            (o) => ((TaskCompletionSource<object>)o).SetResult(null), 
-                            tcs);
+                        TaskUtilities.CompleteOnThreadPool(tcs);
                     }
                     else
                     {
-                        // error is closure captured 
-                        ThreadPool.QueueUserWorkItem(
-                            (o) => ((TaskCompletionSource<object>)o).SetException(_lastWriteError), 
-                            tcs);
+                        TaskUtilities.ErrorOnThreadPool(tcs, _lastWriteError);
                     }
                 }
 
