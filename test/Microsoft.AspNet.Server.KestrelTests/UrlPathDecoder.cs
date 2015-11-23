@@ -124,7 +124,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         private MemoryPoolIterator2 BuildSample(string data)
         {
             var store = data.Select(c => (byte)c).ToArray();
-            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(store), IntPtr.Zero, null, null);
+            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(store));
             mem.End = store.Length;
 
             return mem.GetIterator();

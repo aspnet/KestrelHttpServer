@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
@@ -43,10 +44,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _slabLength = _blockStride * _blockCount;
 
         /// <summary>
+        /// Max allocation block size for pooled blocks, 
+        /// larger values can be leased but they will be disposed after use rather than returned to the pool.
+        /// </summary>
+        public const int MaxPooledBlockLength = _blockLength;
+
+        // Processor count is a sys call https://github.com/dotnet/coreclr/blob/0e0ff9d17ab586f3cc7224dd33d8781cd77f3ca8/src/mscorlib/src/System/Environment.cs#L548
+        // Nor does it look like its constant https://github.com/dotnet/corefx/blob/master/src/System.Threading.Tasks.Parallel/src/System/Threading/PlatformHelper.cs#L23
+        public static int _partitionCount = Environment.ProcessorCount;
+
+        /// <summary>
         /// Thread-safe collection of blocks which are currently in the pool. A slab will pre-allocate all of the block tracking objects
         /// and add them to this collection. When memory is requested it is taken from here first, and when it is returned it is re-added.
         /// </summary>
-        private readonly ConcurrentQueue<MemoryPoolBlock2> _blocks = new ConcurrentQueue<MemoryPoolBlock2>();
+        private readonly ConcurrentQueue<MemoryPoolBlock2>[] _blocks;
 
         /// <summary>
         /// Thread-safe collection of slabs which have been allocated by this pool. As long as a slab is in this collection and slab.IsActive, 
@@ -58,6 +69,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// This is part of implementing the IDisposable pattern.
         /// </summary>
         private bool _disposedValue = false; // To detect redundant calls
+
+        public MemoryPool2()
+        {
+            _blocks = new ConcurrentQueue<MemoryPoolBlock2>[_partitionCount];
+            for (var i = 0; i < _blocks.Length; i++)
+            {
+                _blocks[i] = new ConcurrentQueue<MemoryPoolBlock2>();
+            }
+        }
+
+        public void PopulatePools()
+        {
+            for (var i = 0; i < _blocks.Length; i++)
+            {
+                // Allocate the inital set
+                Return(AllocateSlab(i));
+            }
+        }
 
         /// <summary>
         /// Called to take a block from the pool.
@@ -73,28 +102,38 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 // Because this is the degenerate case, a one-time-use byte[] array and tracking object are allocated.
                 // When this block tracking object is returned it is not added to the pool - instead it will be 
                 // allowed to be garbage collected normally.
-                return MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(new byte[minimumSize]),
-                    dataPtr: IntPtr.Zero,
-                    pool: null,
-                    slab: null);
+                return MemoryPoolBlock2.Create(new ArraySegment<byte>(new byte[minimumSize]));
             }
 
             MemoryPoolBlock2 block;
-            if (_blocks.TryDequeue(out block))
+
+            var preferedPartition = Thread.CurrentThread.ManagedThreadId % _partitionCount;
+
+            if (_blocks[preferedPartition].TryDequeue(out block))
             {
                 // block successfully taken from the stack - return it
                 return block;
             }
+
+            // no block, steal block from another parition
+            for (var i = 1; i < _partitionCount; i++)
+            {
+                if (_blocks[(preferedPartition + i) % _partitionCount].TryDequeue(out block))
+                {
+                    // block successfully taken from the stack - return it
+                    return block;
+                }
+            }
+
             // no blocks available - grow the pool
-            return AllocateSlab();
+            return AllocateSlab(preferedPartition);
         }
 
         /// <summary>
         /// Internal method called when a block is requested and the pool is empty. It allocates one additional slab, creates all of the 
         /// block tracking objects, and adds them all to the pool.
         /// </summary>
-        private MemoryPoolBlock2 AllocateSlab()
+        private MemoryPoolBlock2 AllocateSlab(int partition)
         {
             var slab = MemoryPoolSlab2.Create(_slabLength);
             _slabs.Push(slab);
@@ -113,7 +152,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     new ArraySegment<byte>(slab.Array, offset, _blockLength),
                     basePtr,
                     this,
-                    slab);
+                    slab,
+                    partition);
                 Return(block);
             }
 
@@ -122,7 +162,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     new ArraySegment<byte>(slab.Array, offset, _blockLength),
                     basePtr,
                     this,
-                    slab);
+                    slab,
+                    partition);
 
             return newBlock;
         }
@@ -137,8 +178,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="block">The block to return. It must have been acquired by calling Lease on the same memory pool instance.</param>
         public void Return(MemoryPoolBlock2 block)
         {
-            block.Reset();
-            _blocks.Enqueue(block);
+            var owningPool = block.Pool;
+            if (owningPool == null)
+            {
+                // not pooled block, throw away
+                return;
+            }
+            if (owningPool != this)
+            {
+                throw new InvalidOperationException("Returning " + nameof(MemoryPoolBlock2) + " to incorrect pool.");
+            }
+            if (owningPool == this)
+            {
+                block.Reset();
+                // return to owning parition
+                _blocks[block.Partition].Enqueue(block);
+            }
         }
 
         protected virtual void Dispose(bool disposing)

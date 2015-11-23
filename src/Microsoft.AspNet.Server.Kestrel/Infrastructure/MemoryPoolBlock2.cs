@@ -67,6 +67,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         public int End { get; set; }
 
         /// <summary>
+        /// The Partition represents the memory pool partition the block belongs to.
+        /// </summary>
+        public int Partition { get; private set; }
+
+        /// <summary>
         /// Reference to the next block of data when the overall "active" bytes spans multiple blocks. At the point when the block is
         /// leased Next is guaranteed to be null. Start, End, and Next are used together in order to create a linked-list of discontiguous 
         /// working memory. The "active" memory is grown when bytes are copied in, End is increased, and Next is assigned. The "active" 
@@ -74,6 +79,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         public MemoryPoolBlock2 Next { get; set; }
 
+#if DEBUG
         ~MemoryPoolBlock2()
         {
             Debug.Assert(!_pinHandle.IsAllocated, "Ad-hoc memory block wasn't unpinned");
@@ -89,13 +95,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             {
                 Pool.Return(new MemoryPoolBlock2
                 {
-                    _dataArrayPtr = _dataArrayPtr,
                     Data = Data,
+                    _dataArrayPtr = _dataArrayPtr,
                     Pool = Pool,
                     Slab = Slab,
+                    Start = Start,
+                    End = End,
+                    Partition = Partition
                 });
             }
         }
+#endif
 
         /// <summary>
         /// Called to ensure that a block is pinned, and return the pointer to the native address
@@ -130,11 +140,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
+        public static MemoryPoolBlock2 Create(ArraySegment<byte> data)
+        {
+            return Create(data, IntPtr.Zero, null, null, -1);
+        }
+
         public static MemoryPoolBlock2 Create(
             ArraySegment<byte> data,
             IntPtr dataPtr,
             MemoryPool2 pool,
-            MemoryPoolSlab2 slab)
+            MemoryPoolSlab2 slab,
+            int partition)
         {
             return new MemoryPoolBlock2
             {
@@ -144,6 +160,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 Slab = slab,
                 Start = data.Offset,
                 End = data.Offset,
+                Partition = partition
             };
         }
 
