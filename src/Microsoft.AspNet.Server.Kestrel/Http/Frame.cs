@@ -263,28 +263,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             try
             {
-                var terminated = false;
-                while (!terminated && !_requestProcessingStopping)
+                while (!_requestProcessingStopping)
                 {
-                    while (!terminated && !_requestProcessingStopping && !TakeStartLine(SocketInput))
+                    if (!await ReadStartLineAsync() ||
+                        !await ReadHeadersAsync())
                     {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
-                        {
-                            await SocketInput;
-                        }
+                        break;
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
-                    {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
-                        {
-                            await SocketInput;
-                        }
-                    }
-
-                    if (!terminated && !_requestProcessingStopping)
+                    if (!_requestProcessingStopping)
                     {
                         var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
@@ -337,7 +324,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _responseBody.StopAcceptingWrites();
                         }
 
-                        terminated = !_keepAlive;
+                        if (!_keepAlive)
+                        {
+                            break;
+                        }
                     }
 
                     Reset();
@@ -371,6 +361,63 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     Log.LogWarning("Connection shutdown abnormally", ex);
                 }
             }
+        }
+
+        private Task<bool> ReadStartLineAsync()
+        {
+            if (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadStartLineAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadStartLineAwaitAsync()
+        {
+            await SocketInput;
+
+            while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return false;
+                };
+
+                await SocketInput;
+            }
+            return true;
+        }
+
+        private Task<bool> ReadHeadersAsync()
+        {
+            if (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, Memory2))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadHeadersAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadHeadersAwaitAsync()
+        {
+            await SocketInput;
+
+            while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, Memory2))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return false;
+                };
+                await SocketInput;
+            }
+            return true;
         }
 
         public void OnStarting(Func<object, Task> callback, object state)
@@ -775,10 +822,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, MemoryPool2 memoryPool)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
+            var memoryBlock = memoryPool.Lease();
             try
             {
                 int chFirst;
@@ -835,6 +883,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     scan = beginValue;
 
                     var wrapping = false;
+
                     while (!scan.IsEnd)
                     {
                         if (scan.Seek('\r') == -1)
@@ -865,7 +914,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             continue;
                         }
 
-                        var name = beginName.GetArraySegment(endName);
+                        var name = beginName.GetArraySegment(endName, memoryBlock.Data);
                         var value = beginValue.GetAsciiString(endValue);
                         if (wrapping)
                         {
@@ -881,6 +930,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             finally
             {
+                memoryPool.Return(memoryBlock);
                 input.ConsumingComplete(consumed, scan);
             }
         }
