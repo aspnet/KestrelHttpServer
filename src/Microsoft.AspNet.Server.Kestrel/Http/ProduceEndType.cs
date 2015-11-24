@@ -3,7 +3,7 @@
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    public enum ProduceEndType
+    public enum ProduceEndType : byte
     {
         SocketShutdownSend,
         SocketDisconnect,

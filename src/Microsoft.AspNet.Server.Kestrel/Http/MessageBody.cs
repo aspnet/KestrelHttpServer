@@ -356,7 +356,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            private enum Mode
+            private enum Mode : byte
             {
                 ChunkPrefix,
                 ChunkData,

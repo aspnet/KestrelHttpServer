@@ -238,7 +238,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private enum ConnectionState
+        private enum ConnectionState : byte
         {
             Open,
             Shutdown,
