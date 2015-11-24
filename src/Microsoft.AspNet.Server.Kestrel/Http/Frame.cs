@@ -685,7 +685,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (immediate)
             {
-                return SocketOutput.WriteAsync(default(ArraySegment<byte>), immediate: true);
+                return SocketOutput.WriteAsync(_emptyData, immediate: true);
             }
             else
             {
