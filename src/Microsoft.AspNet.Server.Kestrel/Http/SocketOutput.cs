@@ -19,6 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private const int _initialTaskQueues = 64;
 
         private static WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock2)state);
+        private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
@@ -144,13 +145,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             switch (endType)
             {
                 case ProduceEndType.SocketShutdownSend:
-                    WriteAsync(default(ArraySegment<byte>),
+                    WriteAsync(_emptyData,
                         immediate: true,
                         socketShutdownSend: true,
                         socketDisconnect: false);
                     break;
                 case ProduceEndType.SocketDisconnect:
-                    WriteAsync(default(ArraySegment<byte>),
+                    WriteAsync(_emptyData,
                         immediate: true,
                         socketShutdownSend: false,
                         socketDisconnect: true);
