@@ -70,6 +70,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly IPEndPoint _remoteEndPoint;
         private readonly Action<IFeatureCollection> _prepareRequest;
 
+        private readonly StringPool _stringPool = new StringPool();
+
         public Frame(ConnectionContext context)
             : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null)
         {
@@ -266,6 +268,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 var terminated = false;
                 while (!terminated && !_requestProcessingStopping)
                 {
+                    _stringPool.MarkStart();
+
                     while (!terminated && !_requestProcessingStopping && !TakeStartLine(SocketInput))
                     {
                         terminated = SocketInput.RemoteIntakeFin;
@@ -275,7 +279,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, _stringPool))
                     {
                         terminated = SocketInput.RemoteIntakeFin;
                         if (!terminated)
@@ -704,7 +708,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetAsciiString(scan);
+                var method = begin.GetAsciiString(scan, _stringPool);
 
                 scan.Take();
                 begin = scan;
@@ -728,7 +732,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetAsciiString(scan);
+                    queryString = begin.GetAsciiString(scan, _stringPool);
                 }
 
                 scan.Take();
@@ -737,7 +741,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetAsciiString(scan);
+                var httpVersion = begin.GetAsciiString(scan, _stringPool);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -758,7 +762,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 else
                 {
                     // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(pathEnd);
+                    requestUrlPath = pathBegin.GetAsciiString(pathEnd, _stringPool);
                 }
 
                 consumed = scan;
@@ -775,7 +779,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, StringPool stringPool)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -866,7 +870,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
 
                         var name = beginName.GetArraySegment(endName);
-                        var value = beginValue.GetAsciiString(endValue);
+                        var value = beginValue.GetAsciiString(endValue, stringPool);
                         if (wrapping)
                         {
                             value = value.Replace("\r\n", " ");
