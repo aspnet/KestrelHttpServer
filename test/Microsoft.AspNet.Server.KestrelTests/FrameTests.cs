@@ -48,6 +48,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [InlineData("Connection:\r\n \r\nCookie \r\n", 1)]
         public void EmptyHeaderValuesCanBeParsed(string rawHeaders, int numHeaders)
         {
+            var stringPool = new StringPool();
             var socketInput = new SocketInput(new MemoryPool2());
             var headerCollection = new FrameRequestHeaders();
 
@@ -56,7 +57,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Buffer.BlockCopy(headerArray, 0, inputBuffer.Data.Array, inputBuffer.Data.Offset, headerArray.Length);
             socketInput.IncomingComplete(headerArray.Length, null);
 
-            var success = Frame.TakeMessageHeaders(socketInput, headerCollection, null);
+            var success = Frame.TakeMessageHeaders(socketInput, headerCollection, stringPool);
 
             Assert.True(success);
             Assert.Equal(numHeaders, headerCollection.Count());

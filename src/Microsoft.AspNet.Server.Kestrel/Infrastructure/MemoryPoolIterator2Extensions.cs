@@ -11,13 +11,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _maxStackAllocBytes = 16384;
 
         private static Encoding _utf8 = Encoding.UTF8;
-        private static ulong _startHash;
-
-        // hash bits = random _startHash xor
-        // 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32 
-        // | length & 0xff << 56 | |------   xor ((byte << (index & 0xf) << 2) & 0xffffff) << 32)  ------|
-        // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
-        // |-----------------------      xor (byte << ((index << 3) & 0x1f))      -----------------------|
+        private static uint _startHash;
 
         static MemoryPoolIterator2Extensions()
         {
@@ -26,14 +20,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 var randomBytes = new byte[8];
                 rnd.GetBytes(randomBytes);
                 _startHash =
-                    ((ulong)randomBytes[0]) |
-                    (((ulong)randomBytes[1]) << 8) |
-                    (((ulong)randomBytes[2]) << 16) |
-                    (((ulong)randomBytes[3]) << 24) |
-                    (((ulong)randomBytes[4]) << 32) |
-                    (((ulong)randomBytes[5]) << 40) |
-                    (((ulong)randomBytes[6]) << 48) |
-                    (((ulong)randomBytes[7]) << 56);
+                    (randomBytes[0]) |
+                    (((uint)randomBytes[1]) << 8) |
+                    (((uint)randomBytes[2]) << 16) |
+                    (((uint)randomBytes[3]) << 24);
             }
         }
 
@@ -47,22 +37,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         }
         private static unsafe string GetAsciiStringImplementation(char* output, byte[] input, int inputOffset, int length, StringPool stringPool)
         {
-            var hash = _startHash ^ (((ulong)length & 0xff) << 56);
+            var hash = _startHash;
 
             for (var i = 0; i < length; i++)
             {
                 var b = input[inputOffset + i];
                 output[i] = (char)b;
 
-                hash ^= (((ulong)(b << ((i & 0xf) << 2)) & 0xffffff) << 32) | ((ulong)b << ((i << 3) & 0x1f));
+                // give greater hash fidelity to 7 bit ascii
+                // rotate https://github.com/dotnet/coreclr/pull/2027
+                hash = ((hash << 7) | (hash >> (32 - 7))) ^ b;
             }
 
-            if (stringPool != null)
-            {
-                return stringPool.GetString(hash, output, length);
-            }
-
-            return new string(output, 0, length);
+            return stringPool.GetString(hash, output, length);
         }
 
         private static unsafe string GetAsciiStringStack(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length, StringPool stringPool)
@@ -86,7 +73,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         private static unsafe string GetAsciiStringImplementation(char* output, MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length, StringPool stringPool)
         {
-            var hash = _startHash ^ (((ulong)length & 0xff) << 56);
+            var hash = _startHash;
 
             var outputOffset = 0;
             var block = start;
@@ -108,7 +95,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
                         output[i + outputOffset] = (char)b;
 
-                        hash ^=  (((ulong)(b << ((i & 0xf) << 2)) & 0xffffff) << 32) | ((ulong)b << ((i << 3) & 0x1f));
+                        // give greater hash fidelity to 7 bit ascii
+                        // rotate https://github.com/dotnet/coreclr/pull/2027
+                        hash = ((hash << 7) | (hash >> (32 - 7))) ^ b;
                     }
 
                     remaining -= following;
@@ -117,17 +106,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
                 if (remaining == 0)
                 {
-                    if (stringPool != null)
-                    {
-                        return stringPool.GetString(hash, output, length);
-                    }
-
-                    return new string(output, 0, length);
+                    break;
                 }
 
                 block = block.Next;
                 inputOffset = block.Start;
             }
+
+            return stringPool.GetString(hash, output, length);
         }
 
         public static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end, StringPool stringPool)
@@ -138,6 +124,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var length = start.GetLength(end);
+
+            if (length == 0)
+            {
+                return null;
+            }
 
             // Bytes out of the range of ascii are treated as "opaque data" 
             // and kept in string as a char value that casts to same input byte value

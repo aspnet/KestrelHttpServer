@@ -1,14 +1,19 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
+
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
     public class StringPool
     {
-        private const int _maxCached = 18;
+        // x64 int array byte size (28 + length * 4) rounded up to 8 bytes
+        // x86 int array byte size (12 + length * 4) rounded up to 4 bytes
+        // Array of 31 ints is 2 consecutive cache lines on x64; second prefetched
+        private const int _maxCached = 31; 
         private const int _maxCacheLength = 256;
 
-        private readonly ulong[] _hashes = new ulong[_maxCached];
+        private readonly uint[] _hashes = new uint[_maxCached];
         private readonly int[] _lastUse = new int[_maxCached];
         private readonly string[] _strings = new string[_maxCached];
 
@@ -19,7 +24,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             _currentUse++;
         }
 
-        public unsafe string GetString(ulong hash, char* data, int length)
+        public unsafe string GetString(uint hash, char* data, int length)
         {
             if (length > _maxCacheLength)
             {
@@ -43,6 +48,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     var cachedString = _strings[i];
                     if (cachedString.Length != length)
                     {
+#if DEBUG
+                        Console.WriteLine($"{nameof(StringPool)} Collision differing lengths {cachedString.Length} and {length}");
+#endif
                         continue;
                     }
 
@@ -62,6 +70,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                                 *(cached + 3) != *(potential + 3)
                             )
                             {
+#if DEBUG
+                                Console.WriteLine($"{nameof(StringPool)} Collision same length, differing strings");
+#endif
                                 continue;
                             }
                             cached += 4;
@@ -71,6 +82,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         {
                             if (*(cached++) != *(potential++))
                             {
+#if DEBUG
+                                Console.WriteLine($"{nameof(StringPool)} Collision same length, differing strings");
+#endif
                                 continue;
                             }
                         }
@@ -83,6 +97,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var value = new string(data, 0, length);
+#if DEBUG
+            if (_lastUse[oldestIndex] != 0)
+            {
+                Console.WriteLine($"{nameof(StringPool)} Evict: {_strings[oldestIndex]} {_lastUse[oldestIndex]} {_hashes[oldestIndex]}");
+                Console.WriteLine($"{nameof(StringPool)} New: {value} {_currentUse} {hash}");
+            }
+#endif
             _lastUse[oldestIndex] = _currentUse;
             _hashes[oldestIndex] = hash;
             _strings[oldestIndex] = value;
