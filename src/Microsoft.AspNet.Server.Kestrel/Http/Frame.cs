@@ -306,28 +306,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             try
             {
-                var terminated = false;
-                while (!terminated && !_requestProcessingStopping)
+                while (!_requestProcessingStopping)
                 {
-                    while (!terminated && !_requestProcessingStopping && !TakeStartLine(SocketInput))
+                    if (!await ReadStartLineAsync() ||
+                        !await ReadHeadersAsync()) 
                     {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
-                        {
-                            await SocketInput;
-                        }
+                        break;
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
-                    {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
-                        {
-                            await SocketInput;
-                        }
-                    }
-
-                    if (!terminated && !_requestProcessingStopping)
+                    if (!_requestProcessingStopping)
                     {
                         var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
@@ -380,7 +367,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _responseBody.StopAcceptingWrites();
                         }
 
-                        terminated = !_keepAlive;
+                        if (!_keepAlive)
+                        {
+                            break;
+                        }
                     }
 
                     Reset();
@@ -414,6 +404,62 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     Log.LogWarning("Connection shutdown abnormally", ex);
                 }
             }
+        }
+        private Task<bool> ReadStartLineAsync()
+        {
+            if (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadStartLineAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadStartLineAwaitAsync()
+        {
+            await SocketInput;
+
+            while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return false;
+                };
+
+                await SocketInput;
+            }
+            return true;
+        }
+
+        private Task<bool> ReadHeadersAsync()
+        {
+            if (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadHeadersAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadHeadersAwaitAsync()
+        {
+            await SocketInput;
+
+            while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return false;
+                };
+                await SocketInput;
+            }
+            return true;
         }
 
         public void OnStarting(Func<object, Task> callback, object state)
