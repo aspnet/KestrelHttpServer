@@ -56,6 +56,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private CancellationTokenSource _abortedCts;
         private CancellationToken? _manuallySetRequestAbortToken;
 
+        private HttpContext _activeContext;
+        private MessageBody _activeMessageBody;
         private FrameRequestStream _requestBody;
         private FrameResponseStream _responseBody;
 
@@ -195,6 +197,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             ResetResponseHeaders();
             ResetFeatureCollection();
 
+            _activeContext = null;
+            _activeMessageBody = null;
+
             Scheme = null;
             Method = null;
             RequestUri = null;
@@ -306,32 +311,31 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             try
             {
-                var terminated = false;
-                while (!terminated && !_requestProcessingStopping)
+                while (!_requestProcessingStopping)
                 {
-                    while (!terminated && !_requestProcessingStopping && !TakeStartLine(SocketInput))
+                    while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
                     {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
+                        if (SocketInput.RemoteIntakeFin)
                         {
-                            await SocketInput;
+                            break;
                         }
+                        await SocketInput;
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
                     {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
+                        if (SocketInput.RemoteIntakeFin)
                         {
-                            await SocketInput;
+                            break;
                         }
+                        await SocketInput;
                     }
 
-                    if (!terminated && !_requestProcessingStopping)
+                    if (!_requestProcessingStopping)
                     {
-                        var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
-                        _keepAlive = messageBody.RequestKeepAlive;
-                        _requestBody = new FrameRequestStream(messageBody);
+                        _activeMessageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
+                        _keepAlive = _activeMessageBody.RequestKeepAlive;
+                        _requestBody = new FrameRequestStream(_activeMessageBody);
                         RequestBody = _requestBody;
                         _responseBody = new FrameResponseStream(this);
                         ResponseBody = _responseBody;
@@ -340,10 +344,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         _abortedCts = null;
                         _manuallySetRequestAbortToken = null;
 
-                        var httpContext = HttpContextFactory.Create(this);
+                        _activeContext = HttpContextFactory.Create(this);
                         try
                         {
-                            await Application.Invoke(httpContext).ConfigureAwait(false);
+                            await Application.Invoke(_activeContext).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -362,7 +366,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                             await FireOnCompleted();
 
-                            HttpContextFactory.Dispose(httpContext);
+                            HttpContextFactory.Dispose(_activeContext);
 
                             // If _requestAbort is set, the connection has already been closed.
                             if (!_requestAborted)
@@ -372,7 +376,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 if (_keepAlive)
                                 {
                                     // Finish reading the request body in case the app did not.
-                                    await messageBody.Consume();
+                                    await _activeMessageBody.Consume();
                                 }
                             }
 
@@ -380,7 +384,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _responseBody.StopAcceptingWrites();
                         }
 
-                        terminated = !_keepAlive;
+                        if (!_keepAlive)
+                        {
+                            break;
+                        }
                     }
 
                     Reset();
