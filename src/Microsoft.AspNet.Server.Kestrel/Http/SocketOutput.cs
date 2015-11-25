@@ -349,7 +349,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (scheduleWrite)
             {
-                WriteAllPending();
+                ScheduleWrite();
             }
 
             _tasksCompleted.Clear();
@@ -397,7 +397,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public void Dispose()
+        private void Dispose()
         {
             lock (_contextLock)
             {
@@ -469,6 +469,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     return;
                 }
 
+                // Sample values locally in case write completes inline
+                // to allow block to be Reset and still complete this function
+                var lockedEndBlock = _lockedEnd.Block;
+                var lockedEndIndex = _lockedEnd.Index;
+
                 _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (_writeReq, status, error, state) =>
                 {
                     var _this = (WriteContext)state;
@@ -478,12 +483,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _this.DoShutdownIfNeeded();
                 }, this);
 
-                Self._head = _lockedEnd.Block;
-                if (Self._head != null)
-                {
-                    // Avoid shutdown race
-                    Self._head.Start = _lockedEnd.Index;
-                }
+                Self._head = lockedEndBlock;
+                Self._head.Start = lockedEndIndex;
             }
 
             /// <summary>
