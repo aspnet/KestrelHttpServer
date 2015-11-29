@@ -63,7 +63,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            return ReadAsync(new ArraySegment<byte>(buffer, offset, count));
+            return ReadAsync(new ArraySegment<byte>(buffer, offset, count))
+                .AsTask();
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -99,7 +100,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
             // No-op since writes are immediate.
         }
 
-        private Task<int> ReadAsync(ArraySegment<byte> buffer)
+        private ValueTask<int> ReadAsync(ArraySegment<byte> buffer)
         {
             return _input.ReadAsync(buffer.Array, buffer.Offset, buffer.Count);
         }
