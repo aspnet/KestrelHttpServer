@@ -141,7 +141,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 // If a request abort token was previously explicitly set, return it.
                 if (_manuallySetRequestAbortToken.HasValue)
+                {
                     return _manuallySetRequestAbortToken.Value;
+                }
 
                 // Otherwise, get the abort CTS.  If we have one, which would mean that someone previously
                 // asked for the RequestAborted token, simply return its token.  If we don't,
@@ -260,7 +262,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         /// Stop will be called on all active connections, and Task.WaitAll() will be called on every
         /// return value.
         /// </summary>
-        public Task Stop()
+        public Task StopAsync()
         {
             if (!_requestProcessingStopping)
             {
@@ -355,24 +357,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             // already failed. If an OnStarting callback throws we can go through
                             // our normal error handling in ProduceEnd.
                             // https://github.com/aspnet/KestrelHttpServer/issues/43
-                            if (!_responseStarted && _applicationException == null)
+                            if (!_responseStarted && _applicationException == null && _onStarting != null)
                             {
-                                await FireOnStarting();
+                                await FireOnStartingAsync();
                             }
 
-                            await FireOnCompleted();
+                            if (_onCompleted != null)
+                            {
+                                await FireOnCompletedAsync();
+                            }
 
                             HttpContextFactory.Dispose(httpContext);
 
                             // If _requestAbort is set, the connection has already been closed.
                             if (!_requestAborted)
                             {
-                                await ProduceEnd();
+                                await ProduceEndAsync();
 
                                 if (_keepAlive)
                                 {
                                     // Finish reading the request body in case the app did not.
-                                    await messageBody.Consume();
+                                    await messageBody.ConsumeAsync();
                                 }
                             }
 
@@ -440,7 +445,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private async Task FireOnStarting()
+        private async Task FireOnStartingAsync()
         {
             List<KeyValuePair<Func<object, Task>, object>> onStarting = null;
             lock (_onStartingSync)
@@ -464,7 +469,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private async Task FireOnCompleted()
+        private async Task FireOnCompletedAsync()
         {
             List<KeyValuePair<Func<object, Task>, object>> onCompleted = null;
             lock (_onCompletedSync)
@@ -490,19 +495,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void Flush()
         {
-            ProduceStartAndFireOnStarting(immediate: false).GetAwaiter().GetResult();
+            ProduceStartAndFireOnStartingAsync(immediate: false).GetAwaiter().GetResult();
             SocketOutput.Write(_emptyData, immediate: true);
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
-            await ProduceStartAndFireOnStarting(immediate: false);
+            await ProduceStartAndFireOnStartingAsync(immediate: false);
             await SocketOutput.WriteAsync(_emptyData, immediate: true, cancellationToken: cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
         {
-            ProduceStartAndFireOnStarting(immediate: false).GetAwaiter().GetResult();
+            ProduceStartAndFireOnStartingAsync(immediate: false).GetAwaiter().GetResult();
 
             if (_autoChunk)
             {
@@ -518,9 +523,30 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public async Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
+        public Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            await ProduceStartAndFireOnStarting(immediate: false);
+            if (!_responseStarted)
+            {
+                return WriteAsyncAwaited(data, cancellationToken);
+            }
+
+            if (_autoChunk)
+            {
+                if (data.Count == 0)
+                {
+                    return TaskUtilities.CompletedTask;
+                }
+                return WriteChunkedAsync(data, cancellationToken);
+            }
+            else
+            {
+                return SocketOutput.WriteAsync(data, immediate: true, cancellationToken: cancellationToken);
+            }
+        }
+
+        public async Task WriteAsyncAwaited(ArraySegment<byte> data, CancellationToken cancellationToken)
+        {
+            await ProduceStartAndFireOnStartingAsync(immediate: false);
 
             if (_autoChunk)
             {
@@ -603,11 +629,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public async Task ProduceStartAndFireOnStarting(bool immediate = true)
+        public Task ProduceStartAndFireOnStartingAsync(bool immediate = true)
         {
-            if (_responseStarted) return;
+            if (_responseStarted) return TaskUtilities.CompletedTask;
 
-            await FireOnStarting();
+            if (_onStarting != null)
+            {
+                return FireOnStartingProduceStartAsync(immediate: immediate);
+            }
 
             if (_applicationException != null)
             {
@@ -616,20 +645,35 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _applicationException);
             }
 
-            await ProduceStart(immediate, appCompleted: false);
+            return ProduceStartAsync(immediate, appCompleted: false);
         }
 
-        private Task ProduceStart(bool immediate, bool appCompleted)
+        private async Task FireOnStartingProduceStartAsync(bool immediate)
+        {
+            await FireOnStartingAsync();
+
+            if (_applicationException != null)
+            {
+                throw new ObjectDisposedException(
+                    "The response has been aborted due to an unhandled application exception.",
+                    _applicationException);
+            }
+
+            await ProduceStartAsync(immediate, appCompleted: false);
+        }
+
+        private Task ProduceStartAsync(bool immediate, bool appCompleted)
         {
             if (_responseStarted) return TaskUtilities.CompletedTask;
+
             _responseStarted = true;
 
             var statusBytes = ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase);
 
-            return CreateResponseHeader(statusBytes, appCompleted, immediate);
+            return CreateResponseHeaderAsync(statusBytes, appCompleted, immediate);
         }
 
-        private async Task ProduceEnd()
+        private Task ProduceEndAsync()
         {
             if (_applicationException != null)
             {
@@ -637,7 +681,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     // We can no longer respond with a 500, so we simply close the connection.
                     _requestProcessingStopping = true;
-                    return;
+                    return TaskUtilities.CompletedTask;
                 }
                 else
                 {
@@ -649,8 +693,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            await ProduceStart(immediate: true, appCompleted: true);
 
+            if (!_responseStarted)
+            {
+                return ProduceEndAsyncAwaited();
+            }
+
+            WriteSuffix();
+
+            return TaskUtilities.CompletedTask;
+        }
+
+        private async Task ProduceEndAsyncAwaited()
+        {
+            await ProduceStartAsync(immediate: true, appCompleted: true);
+
+            WriteSuffix();
+        }
+
+        private void WriteSuffix()
+        {
             // _autoChunk should be checked after we are sure ProduceStart() has been called
             // since ProduceStart() may set _autoChunk to true.
             if (_autoChunk)
@@ -664,7 +726,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private Task CreateResponseHeader(
+
+        private Task CreateResponseHeaderAsync(
             byte[] statusBytes,
             bool appCompleted,
             bool immediate)

@@ -305,7 +305,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            await ProduceStartAndFireOnStarting(immediate: true); 
+            await ProduceStartAndFireOnStartingAsync(immediate: true); 
 
             return DuplexStream;
         }

@@ -4,6 +4,8 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+// See: https://github.com/dotnet/corefx/issues/4708
+
 namespace System.Threading.Tasks
 {
     /// <summary>Value type discriminated union for a TResult and a <see cref="Task{TResult}"/>.</summary>

@@ -37,7 +37,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return result;
         }
 
-        public async Task Consume(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task ConsumeAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             ValueTask<int> result;
             var send100checked = false;
