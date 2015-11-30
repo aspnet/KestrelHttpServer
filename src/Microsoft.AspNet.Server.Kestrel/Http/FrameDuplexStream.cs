@@ -1,196 +1,108 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-#if NET451
 using System;
-#endif
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
-    class FrameDuplexStream : Stream
+    class FrameDuplexStream : IBlockingAsyncDuplexStream<byte>
     {
-        private readonly Stream _requestStream;
-        private readonly Stream _responseStream;
+        private readonly MessageBody _body;
+        private readonly FrameContext _context;
+        private StreamState _state;
 
-        public FrameDuplexStream(Stream requestStream, Stream responseStream)
+        public FrameDuplexStream(MessageBody body, FrameContext context)
         {
-            _requestStream = requestStream;
-            _responseStream = responseStream;
+            _body = body;
+            _context = context;
+            _state = StreamState.Open;
         }
 
-        public override bool CanRead
+        // ValueTask handles .GetAwaiter().GetResult() if required
+        public int Read(byte[] buffer, int offset, int count)
+            => ReadAsync(buffer, offset, count).Result;
+
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count)
+            => ReadAsync(buffer, offset, count, CancellationToken.None);
+
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            get
+            ValidateState();
+            return _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
+        }
+
+        public void Flush()
+        {
+            ValidateState();
+            _context.FrameControl.Flush();
+        }
+
+        public Task FlushAsync()
+            => FlushAsync(CancellationToken.None);
+
+        public Task FlushAsync(CancellationToken cancellationToken)
+        {
+            ValidateState();
+            return _context.FrameControl.FlushAsync(cancellationToken);
+        }
+
+        public void Write(byte value)
+        {
+            ValidateState();
+            _context.FrameControl.Write(new ArraySegment<byte>(new byte[] { value }));
+        }
+
+        public void Write(byte[] buffer, int offset, int count)
+        {
+            ValidateState();
+            _context.FrameControl.Write(new ArraySegment<byte>(buffer, offset, count));
+        }
+
+        public Task WriteAsync(byte[] buffer, int offset, int count)
+            => WriteAsync(buffer, offset, count, CancellationToken.None);
+
+        public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            ValidateState();
+            return _context.FrameControl.WriteAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
+        }
+
+        private void ValidateState()
+        {
+            switch (_state)
             {
-                return _requestStream.CanRead;
+                case StreamState.Open:
+                    return;
+                case StreamState.Disposed:
+                    throw new ObjectDisposedException(nameof(FrameDuplexStream));
+                case StreamState.Aborted:
+                    throw new IOException("The request has been aborted.");
+                default:
+                    throw new IOException("Invalid Stream State.");
             }
         }
 
-        public override bool CanSeek
+        public void Abort()
         {
-            get
+            if (_state != StreamState.Disposed)
             {
-                return _requestStream.CanSeek;
+                _state = StreamState.Aborted;
             }
         }
 
-        public override bool CanTimeout
+        public void Dispose()
         {
-            get
-            {
-                return _responseStream.CanTimeout || _requestStream.CanTimeout;
-            }
+            _state = StreamState.Disposed;
         }
 
-        public override bool CanWrite
+        enum StreamState
         {
-            get
-            {
-                return _responseStream.CanWrite;
-            }
-        }
-
-        public override long Length
-        {
-            get
-            {
-                return _requestStream.Length;
-            }
-        }
-
-        public override long Position
-        {
-            get
-            {
-                return _requestStream.Position;
-            }
-            set
-            {
-                _requestStream.Position = value;
-            }
-        }
-
-        public override int ReadTimeout
-        {
-            get
-            {
-                return _requestStream.ReadTimeout;
-            }
-            set
-            {
-                _requestStream.ReadTimeout = value;
-            }
-        }
-
-        public override int WriteTimeout
-        {
-            get
-            {
-                return _responseStream.WriteTimeout;
-            }
-            set
-            {
-                _responseStream.WriteTimeout = value;
-            }
-        }
-
-#if NET451
-        public override void Close()
-        {
-            _requestStream.Close();
-            _responseStream.Close();
-        }
-#endif
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _requestStream.Dispose();
-                _responseStream.Dispose();
-            }
-        }
-
-        public override void Flush()
-        {
-            _responseStream.Flush();
-        }
-
-        public override Task FlushAsync(CancellationToken cancellationToken)
-        {
-            return _responseStream.FlushAsync(cancellationToken);
-        }
-
-#if NET451
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            return _requestStream.BeginRead(buffer, offset, count, callback, state);
-        }
-
-        public override int EndRead(IAsyncResult asyncResult)
-        {
-            return _requestStream.EndRead(asyncResult);
-        }
-#endif
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _requestStream.ReadAsync(buffer, offset, count, cancellationToken);
-        }
-
-        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
-        {
-            return _requestStream.CopyToAsync(destination, bufferSize, cancellationToken);
-        }
-
-#if NET451
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            return _responseStream.BeginWrite(buffer, offset, count, callback, state);
-        }
-
-        public override void EndWrite(IAsyncResult asyncResult)
-        {
-            _responseStream.EndWrite(asyncResult);
-        }
-#endif
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _responseStream.WriteAsync(buffer, offset, count, cancellationToken);
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _requestStream.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            _requestStream.SetLength(value);
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return _requestStream.Read(buffer, offset, count);
-        }
-
-        public override int ReadByte()
-        {
-            return _requestStream.ReadByte();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            _responseStream.Write(buffer, offset, count);
-        }
-
-        public override void WriteByte(byte value)
-        {
-            _responseStream.WriteByte(value);
+            Open,
+            Disposed,
+            Aborted
         }
     }
 }

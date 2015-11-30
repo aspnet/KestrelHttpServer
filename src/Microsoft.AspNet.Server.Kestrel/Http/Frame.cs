@@ -56,8 +56,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private CancellationTokenSource _abortedCts;
         private CancellationToken? _manuallySetRequestAbortToken;
 
-        private FrameRequestStream _requestBody;
-        private FrameResponseStream _responseBody;
+        private FrameDuplexStream _duplexBodyStream;
 
         private bool _responseStarted;
         private bool _keepAlive;
@@ -126,14 +125,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         }
 
         public IHeaderDictionary RequestHeaders { get; set; }
-        public Stream RequestBody { get; set; }
+        public IBlockingAsyncReader<byte> RequestBody { get; set; }
 
         public int StatusCode { get; set; }
         public string ReasonPhrase { get; set; }
         public IHeaderDictionary ResponseHeaders { get; set; }
-        public Stream ResponseBody { get; set; }
+        public IBlockingAsyncWriter<byte> ResponseBody { get; set; }
 
-        public Stream DuplexStream { get; set; }
+        public IBlockingAsyncDuplexStream<byte> DuplexStream { get; set; }
 
         public CancellationToken RequestAborted
         {
@@ -279,8 +278,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _requestProcessingStopping = true;
             _requestAborted = true;
 
-            _requestBody?.Abort();
-            _responseBody?.Abort();
+            _duplexBodyStream?.Abort();
 
             try
             {
@@ -333,11 +331,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
-                        _requestBody = new FrameRequestStream(messageBody);
-                        RequestBody = _requestBody;
-                        _responseBody = new FrameResponseStream(this);
-                        ResponseBody = _responseBody;
-                        DuplexStream = new FrameDuplexStream(RequestBody, ResponseBody);
+
+                        _duplexBodyStream = new FrameDuplexStream(messageBody, this);
+                        RequestBody = _duplexBodyStream;
+                        ResponseBody = _duplexBodyStream;
+                        DuplexStream = _duplexBodyStream;
 
                         _abortedCts = null;
                         _manuallySetRequestAbortToken = null;
@@ -381,8 +379,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 }
                             }
 
-                            _requestBody.StopAcceptingReads();
-                            _responseBody.StopAcceptingWrites();
+                            _duplexBodyStream.Dispose();
                         }
 
                         terminated = !_keepAlive;

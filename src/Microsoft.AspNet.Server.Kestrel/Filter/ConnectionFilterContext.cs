@@ -10,7 +10,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
     public class ConnectionFilterContext
     {
         public ServerAddress Address { get; set; }
-        public Stream Connection { get; set; }
+        public IDuplexStreamAsync<byte> Connection { get; set; }
         public Action<IFeatureCollection> PrepareRequest { get; set; }
     }
 }

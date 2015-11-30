@@ -6,10 +6,11 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Filter
 {
-    public class LibuvStream : Stream
+    public class LibuvStream : IDuplexStreamAsync<byte>
     {
         private readonly SocketInput _input;
         private readonly ISocketOutput _output;
@@ -20,68 +21,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
             _output = output;
         }
 
-        public override bool CanRead => true;
+        public Task FlushAsync()
+            => TaskUtilities.CompletedTask;
 
-        public override bool CanSeek => false;
+        public Task FlushAsync(CancellationToken cancellationToken)
+            => TaskUtilities.CompletedTask;
 
-        public override bool CanWrite => true;
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count)
+            => _input.ReadAsync(buffer, offset, count);
 
-        public override long Length
-        {
-            get
-            {
-                throw new NotSupportedException();
-            }
-        }
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => _input.ReadAsync(buffer, offset, count);
 
-        public override long Position
-        {
-            get
-            {
-                throw new NotSupportedException();
-            }
-            set
-            {
-                throw new NotSupportedException();
-            }
-        }
+        public Task WriteAsync(byte[] buffer, int offset, int count)
+            => WriteAsync(buffer, offset, count, CancellationToken.None);
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return ReadAsync(new ArraySegment<byte>(buffer, offset, count)).GetAwaiter().GetResult();
-        }
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return ReadAsync(new ArraySegment<byte>(buffer, offset, count))
-                .AsTask();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            ArraySegment<byte> segment;
-            if (buffer != null)
-            {
-                segment = new ArraySegment<byte>(buffer, offset, count);
-            }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            _output.Write(segment);
-        }
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
         {
             ArraySegment<byte> segment;
             if (buffer != null)
@@ -95,14 +50,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
             return _output.WriteAsync(segment, cancellationToken: token);
         }
 
-        public override void Flush()
+        public void Dispose()
         {
-            // No-op since writes are immediate.
-        }
-
-        private ValueTask<int> ReadAsync(ArraySegment<byte> buffer)
-        {
-            return _input.ReadAsync(buffer.Array, buffer.Offset, buffer.Count);
         }
     }
 }
