@@ -70,6 +70,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly IPEndPoint _remoteEndPoint;
         private readonly Action<IFeatureCollection> _prepareRequest;
 
+        private readonly StringPool _stringPool = new StringPool();
+
         public Frame(ConnectionContext context)
             : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null)
         {
@@ -306,28 +308,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             try
             {
-                var terminated = false;
-                while (!terminated && !_requestProcessingStopping)
+                while (!_requestProcessingStopping)
                 {
-                    while (!terminated && !_requestProcessingStopping && !TakeStartLine(SocketInput))
+                    _stringPool.MarkStart();
+
+                    if (!await ReadStartLineAsync() ||
+                        !await ReadHeadersAsync()) 
                     {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
-                        {
-                            await SocketInput;
-                        }
+                        break;
                     }
 
-                    while (!terminated && !_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
-                    {
-                        terminated = SocketInput.RemoteIntakeFin;
-                        if (!terminated)
-                        {
-                            await SocketInput;
-                        }
-                    }
-
-                    if (!terminated && !_requestProcessingStopping)
+                    if (!_requestProcessingStopping)
                     {
                         var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
@@ -380,7 +371,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _responseBody.StopAcceptingWrites();
                         }
 
-                        terminated = !_keepAlive;
+                        if (!_keepAlive)
+                        {
+                            break;
+                        }
                     }
 
                     Reset();
@@ -414,6 +408,62 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     Log.LogWarning("Connection shutdown abnormally", ex);
                 }
             }
+        }
+        private Task<bool> ReadStartLineAsync()
+        {
+            if (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadStartLineAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadStartLineAwaitAsync()
+        {
+            await SocketInput;
+
+            while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return false;
+                };
+
+                await SocketInput;
+            }
+            return true;
+        }
+
+        private Task<bool> ReadHeadersAsync()
+        {
+            if (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, _stringPool))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return TaskUtilities.CompletedFalseTask;
+                };
+                return ReadHeadersAwaitAsync();
+            }
+            return TaskUtilities.CompletedTrueTask;
+        }
+
+        private async Task<bool> ReadHeadersAwaitAsync()
+        {
+            await SocketInput;
+
+            while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders, _stringPool))
+            {
+                if (SocketInput.RemoteIntakeFin)
+                {
+                    return false;
+                };
+                await SocketInput;
+            }
+            return true;
         }
 
         public void OnStarting(Func<object, Task> callback, object state)
@@ -747,7 +797,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetAsciiString(scan);
+                var method = begin.GetAsciiString(scan, _stringPool);
 
                 scan.Take();
                 begin = scan;
@@ -771,7 +821,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetAsciiString(scan);
+                    queryString = begin.GetAsciiString(scan, _stringPool);
                 }
 
                 scan.Take();
@@ -780,7 +830,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetAsciiString(scan);
+                var httpVersion = begin.GetAsciiString(scan, _stringPool);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -801,7 +851,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 else
                 {
                     // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(pathEnd);
+                    requestUrlPath = pathBegin.GetAsciiString(pathEnd, _stringPool);
                 }
 
                 consumed = scan;
@@ -818,7 +868,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, StringPool stringPool)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -909,7 +959,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
 
                         var name = beginName.GetArraySegment(endName);
-                        var value = beginValue.GetAsciiString(endValue);
+                        var value = beginValue.GetAsciiString(endValue, stringPool);
                         if (wrapping)
                         {
                             value = value.Replace("\r\n", " ");

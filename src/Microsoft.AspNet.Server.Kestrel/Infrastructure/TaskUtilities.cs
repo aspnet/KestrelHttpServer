@@ -12,5 +12,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 #else
         public static Task CompletedTask = Task.FromResult<object>(null);
 #endif
+        public static Task<bool> CompletedTrueTask = Task.FromResult(true);
+        public static Task<bool> CompletedFalseTask = Task.FromResult(false);
     }
 }
