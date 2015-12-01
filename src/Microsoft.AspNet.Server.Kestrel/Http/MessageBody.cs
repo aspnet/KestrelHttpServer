@@ -22,12 +22,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public bool RequestKeepAlive { get; protected set; }
 
-        public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
+        public ValueTask<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
-            Task<int> result = null;
             var send100Continue = 0;
-            result = ReadAsyncImplementation(buffer, cancellationToken);
-            if (!result.IsCompleted)
+            var result = ReadAsyncImplementation(buffer, cancellationToken);
+            if (!result.IsRanToCompletion)
             {
                 send100Continue = Interlocked.Exchange(ref _send100Continue, 0);
             }
@@ -38,14 +37,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return result;
         }
 
-        public async Task Consume(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task ConsumeAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            Task<int> result;
+            ValueTask<int> result;
             var send100checked = false;
             do
             {
                 result = ReadAsyncImplementation(default(ArraySegment<byte>), cancellationToken);
-                if (!result.IsCompleted)
+                if (!result.IsRanToCompletion)
                 {
                     if (!send100checked)
                     {
@@ -56,7 +55,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         send100checked = true;
                     }
                 }
-                else if (result.GetAwaiter().GetResult() == 0) 
+                // .GetAwaiter().GetResult() done in ValueTask if needed
+                else if (result.Result == 0) 
                 {
                     // Completed Task, end of stream
                     return;
@@ -69,7 +69,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             } while (await result != 0);
         }
 
-        public abstract Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken);
+        public abstract ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken);
 
         public static MessageBody For(
             string httpVersion,
@@ -137,7 +137,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
             }
 
-            public override Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 return _context.SocketInput.ReadAsync(buffer.Array, buffer.Offset, buffer.Array == null ? 8192 : buffer.Count);
             }
@@ -156,19 +156,39 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _inputLength = _contentLength;
             }
 
-            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 var input = _context.SocketInput;
 
-                var limit = buffer.Array == null ? _inputLength : Math.Min(buffer.Count, _inputLength);
+                var limit = buffer.Array == null ? _inputLength : (_inputLength > buffer.Count ? buffer.Count : _inputLength);
                 if (limit == 0)
                 {
                     return 0;
                 }
 
-                var actual = await _context.SocketInput.ReadAsync(buffer.Array, buffer.Offset, limit);
-                _inputLength -= actual;
+                var task = _context.SocketInput.ReadAsync(buffer.Array, buffer.Offset, limit);
 
+                if (task.IsRanToCompletion)
+                {
+                    // .GetAwaiter().GetResult() done in ValueTask if needed
+                    var actual = task.Result;
+                    _inputLength -= actual;
+                    if (actual == 0)
+                    {
+                        throw new InvalidDataException("Unexpected end of request content");
+                    }
+                    return actual;
+                }
+                else
+                {
+                    return ReadAsyncAwaited(task.AsTask());
+                }
+            }
+
+            private async Task<int> ReadAsyncAwaited(Task<int> task)
+            {
+                var actual = await task;
+                _inputLength -= actual;
                 if (actual == 0)
                 {
                     throw new InvalidDataException("Unexpected end of request content");
@@ -177,7 +197,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 return actual;
             }
         }
-
 
         /// <summary>
         ///   http://tools.ietf.org/html/rfc2616#section-3.6.1
@@ -194,7 +213,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 RequestKeepAlive = keepAlive;
             }
 
-            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            {
+                return ReadAsyncAwaited(buffer, cancellationToken);
+            }
+
+            private async Task<int> ReadAsyncAwaited(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 var input = _context.SocketInput;
 
@@ -219,7 +243,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     while (_mode == Mode.ChunkData)
                     {
-                        var limit = buffer.Array == null ? _inputLength : Math.Min(buffer.Count, _inputLength);
+                        var limit = buffer.Array == null ? _inputLength : (_inputLength > buffer.Count ? buffer.Count : _inputLength);
                         if (limit != 0)
                         {
                             await input;
