@@ -12,12 +12,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
 {
     public class FilteredStreamAdapter
     {
-        private readonly Stream _filteredStream;
+        private readonly IDuplexStreamAsync<byte> _filteredStream;
         private readonly Stream _socketInputStream;
         private readonly IKestrelTrace _log;
 
         public FilteredStreamAdapter(
-            Stream filteredStream,
+            IDuplexStreamAsync<byte> filteredStream,
             MemoryPool2 memory,
             IKestrelTrace logger)
         {

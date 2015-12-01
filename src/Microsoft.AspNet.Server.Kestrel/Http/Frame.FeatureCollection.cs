@@ -165,7 +165,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        Stream IHttpRequestFeature.Body
+        IBlockingAsyncReader<byte> IHttpRequestFeature.Body
         {
             get
             {
@@ -217,7 +217,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        Stream IHttpResponseFeature.Body
+        IBlockingAsyncWriter<byte> IHttpResponseFeature.Body
         {
             get
             {
@@ -290,7 +290,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             OnCompleted(callback, state);
         }
 
-        async Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
+        async Task<IBlockingAsyncDuplexStream<byte>> IHttpUpgradeFeature.UpgradeAsync()
         {
             StatusCode = 101;
             ReasonPhrase = "Switching Protocols";
@@ -304,7 +304,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
             }
 
-            await ProduceStartAndFireOnStarting(immediate: true); 
+            await ProduceStartAndFireOnStartingAsync(immediate: true); 
 
             return DuplexStream;
         }

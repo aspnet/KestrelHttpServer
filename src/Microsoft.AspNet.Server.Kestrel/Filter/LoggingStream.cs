@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -9,102 +10,43 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Filter
 {
-    internal class LoggingStream : Stream
+    internal class LoggingStream : IDuplexStreamAsync<byte>
     {
-        private readonly Stream _inner;
+        private readonly IDuplexStreamAsync<byte> _inner;
         private readonly ILogger _logger;
 
-        public LoggingStream(Stream inner, ILogger logger)
+        public LoggingStream(IDuplexStreamAsync<byte> inner, ILogger logger)
         {
             _inner = inner;
             _logger = logger;
         }
 
-        public override bool CanRead
+        public Task FlushAsync()
+            => FlushAsync(CancellationToken.None);
+
+        public Task FlushAsync(CancellationToken cancellationToken)
+            => _inner.FlushAsync(cancellationToken);
+
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count)
+            => ReadAsync(buffer, offset, count, CancellationToken.None);
+
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            get
-            {
-                return _inner.CanRead;
-            }
+            Log("ReadAsync", count, buffer, offset);
+            return _inner.ReadAsync(buffer, offset, count, cancellationToken);
         }
 
-        public override bool CanSeek
-        {
-            get
-            {
-                return _inner.CanSeek;
-            }
-        }
+        public Task WriteAsync(byte[] buffer, int offset, int count)
+            => WriteAsync(buffer, offset, count);
 
-        public override bool CanWrite
-        {
-            get
-            {
-                return _inner.CanWrite;
-            }
-        }
-
-        public override long Length
-        {
-            get
-            {
-                return _inner.Length;
-            }
-        }
-
-        public override long Position
-        {
-            get
-            {
-                return _inner.Position;
-            }
-
-            set
-            {
-                _inner.Position = value;
-            }
-        }
-
-        public override void Flush()
-        {
-            _inner.Flush();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            int read = _inner.Read(buffer, offset, count);
-            Log("Read", read, buffer, offset);
-            return read;
-        }
-
-        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            int read = await _inner.ReadAsync(buffer, offset, count, cancellationToken);
-            Log("ReadAsync", read, buffer, offset);
-            return read;
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _inner.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            _inner.SetLength(value);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            Log("Write", count, buffer, offset);
-            _inner.Write(buffer, offset, count);
-        }
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             Log("WriteAsync", count, buffer, offset);
             return _inner.WriteAsync(buffer, offset, count, cancellationToken);
         }
+
+        public void Dispose()
+            => _inner.Dispose();
 
         private void Log(string method, int count, byte[] buffer, int offset)
         {

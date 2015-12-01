@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Features;
@@ -150,62 +151,40 @@ namespace Microsoft.AspNet.Server.KestrelTests
             }
         }
 
-        private class RewritingStream : Stream
+        private class RewritingStream : IDuplexStreamAsync<byte>
         {
-            private readonly Stream _innerStream;
+            private readonly IDuplexStreamAsync<byte> _inner;
 
-            public RewritingStream(Stream innerStream)
+            public RewritingStream(IDuplexStreamAsync<byte> inner)
             {
-                _innerStream = innerStream;
+                _inner = inner;
             }
 
             public int BytesRead { get; private set; }
 
-            public override bool CanRead => _innerStream.CanRead;
 
-            public override bool CanSeek => _innerStream.CanSeek;
+            public Task FlushAsync()
+                => FlushAsync(CancellationToken.None);
 
-            public override bool CanWrite => _innerStream.CanWrite;
+            public Task FlushAsync(CancellationToken cancellationToken)
+                => _inner.FlushAsync(cancellationToken);
 
-            public override long Length => _innerStream.Length;
+            public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count)
+                => ReadAsync(buffer, offset, count, CancellationToken.None);
 
-            public override long Position
+            public ValueTask<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
-                get
-                {
-                    return _innerStream.Position;
-                }
-                set
-                {
-                    _innerStream.Position = value;
-                }
-            }
-
-            public override void Flush()
-            {
-                // No-op
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                var actual = _innerStream.Read(buffer, offset, count);
+                var actual = _innerRead(buffer, offset, count);
 
                 BytesRead += actual;
-
-                return actual;
+                
+                return _inner.ReadAsync(buffer, offset, count, cancellationToken);
             }
 
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                return _innerStream.Seek(offset, origin);
-            }
+            public Task WriteAsync(byte[] buffer, int offset, int count)
+                => WriteAsync(buffer, offset, count);
 
-            public override void SetLength(long value)
-            {
-                _innerStream.SetLength(value);
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
+            public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
@@ -214,9 +193,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
                         buffer[i] = (byte)'!';
                     }
                 }
-
-                _innerStream.Write(buffer, offset, count);
+                return _inner.WriteAsync(buffer, offset, count, cancellationToken);
             }
+
+            public void Dispose()
+                => _inner.Dispose();
         }
     }
 }
