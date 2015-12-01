@@ -441,9 +441,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public enum HandleType
+        public enum HandleType : byte
         {
-            Unknown = 0,
+            Unknown,
             ASYNC,
             CHECK,
             FS_EVENT,
@@ -462,9 +462,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             SIGNAL,
         }
 
-        public enum RequestType
+        public enum RequestType : byte
         {
-            Unknown = 0,
+            Unknown,
             REQ,
             CONNECT,
             WRITE,

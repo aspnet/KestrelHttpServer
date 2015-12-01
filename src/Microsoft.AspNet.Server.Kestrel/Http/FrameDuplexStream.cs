@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
 {
@@ -160,7 +161,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            return _responseStream.WriteAsync(buffer, offset, count, cancellationToken);
+            if (buffer?.Length > 0)
+            {
+                return _responseStream.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+
+            return TaskUtilities.CompletedTask;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -185,7 +191,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            _responseStream.Write(buffer, offset, count);
+            if (buffer?.Length > 0)
+            {
+                _responseStream.Write(buffer, offset, count);
+            }
         }
 
         public override void WriteByte(byte value)

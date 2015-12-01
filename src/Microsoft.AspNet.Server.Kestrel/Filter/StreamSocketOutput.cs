@@ -24,13 +24,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool immediate)
         {
-            _outputStream.Write(buffer.Array, buffer.Offset, buffer.Count);
+            if (buffer.Count > 0)
+            {
+                _outputStream.Write(buffer.Array, buffer.Offset, buffer.Count);
+            }
         }
 
         Task ISocketOutput.WriteAsync(ArraySegment<byte> buffer, bool immediate, CancellationToken cancellationToken)
         {
-            // TODO: Use _outputStream.WriteAsync
-            _outputStream.Write(buffer.Array, buffer.Offset, buffer.Count);
+            if (buffer.Count > 0)
+            {
+                // TODO: Use _outputStream.WriteAsync
+                _outputStream.Write(buffer.Array, buffer.Offset, buffer.Count);
+            }
+
             return TaskUtilities.CompletedTask;
         }
 
@@ -45,7 +52,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
             var block = _producingBlock;
             while (block != end.Block)
             {
-                _outputStream.Write(block.Data.Array, block.Data.Offset, block.Data.Count);
+                if (block.Data.Count > 0)
+                {
+                    _outputStream.Write(block.Data.Array, block.Data.Offset, block.Data.Count);
+                }
 
                 var returnBlock = block;
                 block = block.Next;

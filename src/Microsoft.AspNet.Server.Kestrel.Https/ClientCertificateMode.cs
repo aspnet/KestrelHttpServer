@@ -3,7 +3,7 @@
 
 namespace Microsoft.AspNet.Server.Kestrel.Https
 {
-    public enum ClientCertificateMode
+    public enum ClientCertificateMode : byte
     {
         NoCertificate,
         AllowCertificate,

@@ -74,11 +74,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            var inputBuffer = _socketInput.IncomingStart(count);
+            if (buffer?.Length > 0)
+            {
+                var inputBuffer = _socketInput.IncomingStart(count);
 
-            Buffer.BlockCopy(buffer, offset, inputBuffer.Data.Array, inputBuffer.Data.Offset, count);
+                Buffer.BlockCopy(buffer, offset, inputBuffer.Data.Array, inputBuffer.Data.Offset, count);
 
-            _socketInput.IncomingComplete(count, error: null);
+                _socketInput.IncomingComplete(count, error: null);
+            }
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)

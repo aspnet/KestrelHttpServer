@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Http;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Filter
 {
@@ -68,30 +69,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            ArraySegment<byte> segment;
-            if (buffer != null)
+            if (buffer?.Length > 0)
             {
-                segment = new ArraySegment<byte>(buffer, offset, count);
+                _output.Write(new ArraySegment<byte>(buffer, offset, count));
             }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            _output.Write(segment);
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
         {
-            ArraySegment<byte> segment;
-            if (buffer != null)
+            if (buffer?.Length > 0)
             {
-                segment = new ArraySegment<byte>(buffer, offset, count);
+                var segment = new ArraySegment<byte>(buffer, offset, count);
+                return _output.WriteAsync(segment, cancellationToken: token);
             }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            return _output.WriteAsync(segment, cancellationToken: token);
+
+            return TaskUtilities.CompletedTask;
         }
 
         public override void Flush()

@@ -732,7 +732,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (immediate)
             {
-                return SocketOutput.WriteAsync(default(ArraySegment<byte>), immediate: true);
+                return SocketOutput.WriteAsync(_emptyData, immediate: true);
             }
             else
             {
@@ -983,11 +983,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             Log.ApplicationError(ex);
         }
 
-        private enum HttpVersionType
+        private enum HttpVersionType : byte
         {
-            Unknown = -1,
-            Http1_0 = 0,
-            Http1_1 = 1
+            Unknown,
+            Http1_0,
+            Http1_1
         }
     }
 }
