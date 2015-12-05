@@ -70,7 +70,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Action<IFeatureCollection> _prepareRequest;
 
         private readonly string _pathBase;
-        protected readonly StringPool _stringPool = new StringPool();
+        protected readonly IStringCache _stringCache = new StringCache();
 
         public Frame(ConnectionContext context)
             : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null)
@@ -703,7 +703,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetAsciiString(scan, _stringPool);
+                var method = begin.GetAsciiString(scan, _stringCache);
 
                 scan.Take();
                 begin = scan;
@@ -727,7 +727,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetAsciiString(scan, _stringPool);
+                    queryString = begin.GetAsciiString(scan, _stringCache);
                 }
 
                 scan.Take();
@@ -736,7 +736,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetAsciiString(scan, _stringPool);
+                var httpVersion = begin.GetAsciiString(scan, _stringCache);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -757,7 +757,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 else
                 {
                     // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(pathEnd, _stringPool);
+                    requestUrlPath = pathBegin.GetAsciiString(pathEnd, _stringCache);
                 }
 
                 consumed = scan;
@@ -810,7 +810,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return true;
         }
 
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, StringPool stringPool)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, IStringCache stringCache)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -901,7 +901,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
 
                         var name = beginName.GetArraySegment(endName);
-                        var value = beginValue.GetAsciiString(endValue, stringPool);
+                        var value = beginValue.GetAsciiString(endValue, stringCache);
                         if (wrapping)
                         {
                             value = value.Replace("\r\n", " ");

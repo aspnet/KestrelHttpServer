@@ -5,20 +5,33 @@ using System;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
-    public class StringPool
+    public class StringCache : IStringCache
     {
+        private int _maxCached; 
+        private int _maxCachedStringLength;
+
+        private readonly uint[] _hashes;
+        private readonly int[] _lastUse;
+        private readonly string[] _strings;
+
+        private int _currentUse = 0;
+
         // x64 int array byte size (28 + length * 4) rounded up to 8 bytes
         // x86 int array byte size (12 + length * 4) rounded up to 4 bytes
         // Array of 25 ints is 2 consecutive cache lines on x64; second prefetched
         // Array of 9 ints is 1 cache line on x64
-        private const int _maxCached = 25; 
-        private const int _maxCacheLength = 256;
+        public StringCache() : this(25, 256)
+        {
+        }
 
-        private readonly uint[] _hashes = new uint[_maxCached];
-        private readonly int[] _lastUse = new int[_maxCached];
-        private readonly string[] _strings = new string[_maxCached];
-
-        private int _currentUse = 0;
+        public StringCache(int maxCached, int maxCachedStringLength)
+        {
+            _maxCached = maxCached;
+            _maxCachedStringLength = maxCachedStringLength;
+            _hashes = new uint[maxCached];
+            _lastUse = new int[maxCached];
+            _strings = new string[maxCached];
+        }
 
         public void MarkStart()
         {
@@ -27,7 +40,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         public unsafe string GetString(char* data, uint hash, int length)
         {
-            if (length > _maxCacheLength)
+            if (length > _maxCachedStringLength)
             {
                 return new string(data, 0, length);
             }
@@ -50,7 +63,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     if (cachedString.Length != length)
                     {
 #if DEBUG
-                        Console.WriteLine($"{nameof(StringPool)} Collision differing lengths {cachedString.Length} and {length}");
+                        Console.WriteLine($"{nameof(StringCache)} Collision differing lengths {cachedString.Length} and {length}");
 #endif
                         continue;
                     }
@@ -72,7 +85,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                             )
                             {
 #if DEBUG
-                                Console.WriteLine($"{nameof(StringPool)} Collision same length, differing strings");
+                                Console.WriteLine($"{nameof(StringCache)} Collision same length, differing strings");
 #endif
                                 continue;
                             }
@@ -84,7 +97,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                             if (*(cached++) != *(potential++))
                             {
 #if DEBUG
-                                Console.WriteLine($"{nameof(StringPool)} Collision same length, differing strings");
+                                Console.WriteLine($"{nameof(StringCache)} Collision same length, differing strings");
 #endif
                                 continue;
                             }
@@ -101,8 +114,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 #if DEBUG
             if (_lastUse[oldestIndex] != 0)
             {
-                Console.WriteLine($"{nameof(StringPool)} Evict: {_strings[oldestIndex]} {_lastUse[oldestIndex]} {_hashes[oldestIndex]}");
-                Console.WriteLine($"{nameof(StringPool)} New: {value} {_currentUse} {hash}");
+                Console.WriteLine($"{nameof(StringCache)} Evict: {_strings[oldestIndex]} {_lastUse[oldestIndex]} {_hashes[oldestIndex]}");
+                Console.WriteLine($"{nameof(StringCache)} New: {value} {_currentUse} {hash}");
             }
 #endif
             _lastUse[oldestIndex] = _currentUse;

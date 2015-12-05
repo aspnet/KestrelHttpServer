@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         private void FullByteRangeSupported()
         {
-            var stringPool = new StringPool();
+            var stringCache = new StringCache();
             var byteRange = Enumerable.Range(0, 255).Select(x => (byte)x).ToArray();
 
             var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
@@ -22,7 +22,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = mem.GetIterator();
             var end = GetIterator(begin, byteRange.Length);
 
-            var s = begin.GetAsciiString(end, stringPool);
+            var s = begin.GetAsciiString(end, stringCache);
 
             Assert.Equal(s.Length, byteRange.Length);
 
@@ -38,7 +38,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         private void MultiBlockProducesCorrectResults()
         {
-            var stringPool = new StringPool();
+            var stringCache = new StringCache();
             var byteRange = Enumerable.Range(0, 512 + 64).Select(x => (byte)x).ToArray();
             var expectedByteRange = byteRange
                                     .Concat(byteRange)
@@ -62,7 +62,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = mem0.GetIterator();
             var end = GetIterator(begin, expectedByteRange.Length);
 
-            var s = begin.GetAsciiString(end, stringPool);
+            var s = begin.GetAsciiString(end, stringCache);
 
             Assert.Equal(s.Length, expectedByteRange.Length);
 
@@ -78,7 +78,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [Fact]
         private void HeapAllocationProducesCorrectResults()
         {
-            var stringPool = new StringPool();
+            var stringCache = new StringCache();
             var byteRange = Enumerable.Range(0, 16384 + 64).Select(x => (byte)x).ToArray();
             var expectedByteRange = byteRange.Concat(byteRange).ToArray();
 
@@ -92,7 +92,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = mem0.GetIterator();
             var end = GetIterator(begin, expectedByteRange.Length);
 
-            var s = begin.GetAsciiString(end, stringPool);
+            var s = begin.GetAsciiString(end, stringCache);
 
             Assert.Equal(s.Length, expectedByteRange.Length);
 
