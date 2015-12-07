@@ -60,7 +60,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 StringCacheOnConnection = true;
             }
             int stringCacheMaxStrings;
-            if (stringCacheOnConnection && int.TryParse(configuration["server.stringCacheMaxStrings"], out stringCacheMaxStrings))
+            if (StringCacheOnConnection && int.TryParse(configuration["server.stringCacheMaxStrings"], out stringCacheMaxStrings))
             {
                 if (stringCacheMaxStrings <= 0)
                 {
@@ -75,7 +75,7 @@ namespace Microsoft.AspNet.Server.Kestrel
                 StringCacheMaxStrings = 25;
             }
             int stringCacheMaxStringLength;
-            if (stringCacheOnConnection && int.TryParse(configuration["server.stringCacheMaxStringLength"], out stringCacheMaxStringLength))
+            if (StringCacheOnConnection && int.TryParse(configuration["server.stringCacheMaxStringLength"], out stringCacheMaxStringLength))
             {
                 if (stringCacheMaxStringLength <= 0)
                 {
