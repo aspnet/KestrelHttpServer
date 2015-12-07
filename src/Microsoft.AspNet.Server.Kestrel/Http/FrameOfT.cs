@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Hosting.Server;
 using Microsoft.AspNet.Http.Features;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -16,7 +17,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Frame(IHttpApplication<TContext> application,
                      ConnectionContext context)
-            : this(application, context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null)
+            : this(application, context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null, stringCache: null)
         {
         }
 
@@ -24,8 +25,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                      ConnectionContext context,
                      IPEndPoint remoteEndPoint,
                      IPEndPoint localEndPoint,
-                     Action<IFeatureCollection> prepareRequest)
-            : base(context, remoteEndPoint, localEndPoint, prepareRequest)
+                     Action<IFeatureCollection> prepareRequest,
+                     IStringCache stringCache)
+            : base(context, remoteEndPoint, localEndPoint, prepareRequest, stringCache)
         {
             _application = application;
         }

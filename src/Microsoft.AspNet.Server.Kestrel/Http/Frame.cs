@@ -70,23 +70,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Action<IFeatureCollection> _prepareRequest;
 
         private readonly string _pathBase;
-        protected readonly IStringCache _stringCache = new StringCache();
+        protected readonly IStringCache _stringCache;
 
         public Frame(ConnectionContext context)
-            : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null)
+            : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null, stringCache: null)
         {
         }
 
         public Frame(ConnectionContext context,
                      IPEndPoint remoteEndPoint,
                      IPEndPoint localEndPoint,
-                     Action<IFeatureCollection> prepareRequest)
+                     Action<IFeatureCollection> prepareRequest,
+                     IStringCache stringCache)
             : base(context)
         {
             _remoteEndPoint = remoteEndPoint;
             _localEndPoint = localEndPoint;
             _prepareRequest = prepareRequest;
             _pathBase = context.ServerAddress.PathBase;
+            _stringCache = stringCache;
 
             FrameControl = this;
             Reset();

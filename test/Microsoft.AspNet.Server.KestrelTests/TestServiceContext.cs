@@ -31,7 +31,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 _app = value;
                 FrameFactory = (connectionContext, remoteEP, localEP, prepareRequest) =>
                 {
-                    return new Frame<HttpContext>(new DummyApplication(_app), connectionContext, remoteEP, localEP, prepareRequest);
+                    return new Frame<HttpContext>(new DummyApplication(_app), connectionContext, remoteEP, localEP, prepareRequest, new StringCache(25, 256));
                 };
             }
         }
