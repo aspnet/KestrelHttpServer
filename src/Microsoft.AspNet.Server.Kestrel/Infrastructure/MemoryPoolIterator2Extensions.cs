@@ -11,80 +11,128 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         private const int _maxStackAllocBytes = 16384;
 
         private static Encoding _utf8 = Encoding.UTF8;
+        private static uint _startHash;
 
-        private static unsafe string GetAsciiStringStack(byte[] input, int inputOffset, int length)
+        static MemoryPoolIterator2Extensions()
+        {
+            using (var rnd = System.Security.Cryptography.RandomNumberGenerator.Create())
+            {
+                var randomBytes = new byte[8];
+                rnd.GetBytes(randomBytes);
+                _startHash =
+                    (randomBytes[0]) |
+                    (((uint)randomBytes[1]) << 8) |
+                    (((uint)randomBytes[2]) << 16) |
+                    (((uint)randomBytes[3]) << 24);
+            }
+        }
+
+        private static unsafe string GetAsciiStringStack(byte* input, int length, IStringCache stringCache)
         {
             // avoid declaring other local vars, or doing work with stackalloc
             // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
             char* output = stackalloc char[length];
 
-            return GetAsciiStringImplementation(output, input, inputOffset, length);
+            return GetAsciiStringImplementation(output, input, length, stringCache);
         }
-        private static unsafe string GetAsciiStringImplementation(char* output, byte[] input, int inputOffset, int length)
+        private static unsafe string GetAsciiStringImplementation(char* outputStart, byte* input, int length, IStringCache stringCache)
         {
-            for (var i = 0; i < length; i++)
+            var hash = _startHash;
+
+            var output = outputStart;
+            var i = 0;
+            var lengthMinusSpan = length - 3;
+            for (; i < lengthMinusSpan; i += 4)
             {
-                output[i] = (char)input[inputOffset + i];
+                // span hashing with fix https://github.com/dotnet/corefxlab/pull/455
+                hash = hash * 31 + *((uint*)input);
+
+                *(output) = (char)*(input);
+                *(output + 1) = (char)*(input + 1);
+                *(output + 2) = (char)*(input + 2);
+                *(output + 3) = (char)*(input + 3);
+                output += 4;
+                input += 4;
+            }
+            for (; i < length; i++)
+            {
+                hash = hash * 31 + *((uint*)input);
+                *(output++) = (char)*(input++);
             }
 
-            return new string(output, 0, length);
+            return stringCache?.GetString(outputStart, hash, length) ?? new string(outputStart, 0, length);
         }
 
-        private static unsafe string GetAsciiStringStack(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
+        private static unsafe string GetAsciiStringStack(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length, IStringCache stringCache)
         {
             // avoid declaring other local vars, or doing work with stackalloc
             // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
             char* output = stackalloc char[length];
 
-            return GetAsciiStringImplementation(output, start, end, inputOffset, length);
+            return GetAsciiStringImplementation(output, start, end, inputOffset, length, stringCache);
         }
 
-        private unsafe static string GetAsciiStringHeap(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
+        private unsafe static string GetAsciiStringHeap(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length, IStringCache stringCache)
         {
             var buffer = new char[length];
 
             fixed (char* output = buffer)
             {
-                return GetAsciiStringImplementation(output, start, end, inputOffset, length);
+                return GetAsciiStringImplementation(output, start, end, inputOffset, length, stringCache);
             }
         }
 
-        private static unsafe string GetAsciiStringImplementation(char* output, MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
+        private static unsafe string GetAsciiStringImplementation(char* outputStart, MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length, IStringCache stringCache)
         {
-            var outputOffset = 0;
+            var hash = _startHash;
+
+            var output = outputStart;
+
             var block = start;
             var remaining = length;
 
             var endBlock = end.Block;
             var endIndex = end.Index;
 
-            while (true)
+            while (remaining > 0)
             {
                 int following = (block != endBlock ? block.End : endIndex) - inputOffset;
 
                 if (following > 0)
                 {
-                    var input = block.Array;
-                    for (var i = 0; i < following; i++)
+                    fixed (byte* blockStart = block.Array)
                     {
-                        output[i + outputOffset] = (char)input[i + inputOffset];
+                        var input = blockStart + inputOffset;
+                        var i = 0;
+                        var followingMinusSpan = following - 3;
+                        for (; i < followingMinusSpan; i += 4)
+                        {
+                            // span hashing with fix https://github.com/dotnet/corefxlab/pull/455
+                            hash = hash * 31 + *((uint*)input);
+
+                            *(output) = (char)*(input);
+                            *(output + 1) = (char)*(input + 1);
+                            *(output + 2) = (char)*(input + 2);
+                            *(output + 3) = (char)*(input + 3);
+                            output += 4;
+                            input += 4;
+                        }
+                        for (; i < following; i++)
+                        {
+                            hash = hash * 31 + *((uint*)input);
+                            *(output++) = (char)*(input++);
+                        }
                     }
-
                     remaining -= following;
-                    outputOffset += following;
-                }
-
-                if (remaining == 0)
-                {
-                    return new string(output, 0, length);
                 }
 
                 block = block.Next;
-                inputOffset = block.Start;
+                inputOffset = block?.Start??0;
             }
+            return stringCache?.GetString(outputStart, hash, length) ?? new string(outputStart, 0, length);
         }
 
-        public static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
+        public unsafe static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end, IStringCache stringCache)
         {
             if (start.IsDefault || end.IsDefault)
             {
@@ -93,20 +141,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
             var length = start.GetLength(end);
 
+            if (length <= 0)
+            {
+                return default(string);
+            }
+
             // Bytes out of the range of ascii are treated as "opaque data" 
             // and kept in string as a char value that casts to same input byte value
             // https://tools.ietf.org/html/rfc7230#section-3.2.4
             if (end.Block == start.Block)
             {
-                return GetAsciiStringStack(start.Block.Array, start.Index, length);
+                fixed (byte* input = start.Block.Array)
+                {
+                    return GetAsciiStringStack(input + start.Index, length, stringCache);
+                }
             }
 
             if (length > _maxStackAllocBytes)
             {
-                return GetAsciiStringHeap(start.Block, end, start.Index, length);
+                return GetAsciiStringHeap(start.Block, end, start.Index, length, stringCache);
             }
 
-            return GetAsciiStringStack(start.Block, end, start.Index, length);
+            return GetAsciiStringStack(start.Block, end, start.Index, length, stringCache);
         }
 
         public static string GetUtf8String(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
@@ -120,9 +176,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return _utf8.GetString(start.Block.Array, start.Index, end.Index - start.Index);
             }
 
-            var decoder = _utf8.GetDecoder();
-
             var length = start.GetLength(end);
+
+            if (length <= 0)
+            {
+                return default(string);
+            }
+
+            var decoder = _utf8.GetDecoder();
             var charLength = length * 2;
             var chars = new char[charLength];
             var charIndex = 0;
