@@ -56,7 +56,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
             for (; i < length; i++)
             {
-                hash = hash * 31 + *((uint*)input);
+                hash = hash * 31 + *((char*)input);
                 *(output++) = (char)*(input++);
             }
 
@@ -119,7 +119,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         }
                         for (; i < following; i++)
                         {
-                            hash = hash * 31 + *((uint*)input);
+                            hash = hash * 31 + *((char*)input);
                             *(output++) = (char)*(input++);
                         }
                     }
