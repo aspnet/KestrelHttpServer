@@ -50,6 +50,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public void EmptyHeaderValuesCanBeParsed(string rawHeaders, int numHeaders)
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
+            var stringCache = new StringCache();
             var ltp = new LoggingThreadPool(trace);
             var socketInput = new SocketInput(new MemoryPool2(), ltp);
             var headerCollection = new FrameRequestHeaders();
@@ -59,7 +60,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             Buffer.BlockCopy(headerArray, 0, inputBuffer.Data.Array, inputBuffer.Data.Offset, headerArray.Length);
             socketInput.IncomingComplete(headerArray.Length, null);
 
-            var success = Frame.TakeMessageHeaders(socketInput, headerCollection);
+            var success = Frame.TakeMessageHeaders(socketInput, headerCollection, stringCache);
 
             Assert.True(success);
             Assert.Equal(numHeaders, headerCollection.Count());
