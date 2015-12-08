@@ -70,22 +70,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Action<IFeatureCollection> _prepareRequest;
 
         private readonly string _pathBase;
+        protected readonly IStringCache _stringCache;
 
         public Frame(ConnectionContext context)
-            : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null)
+            : this(context, remoteEndPoint: null, localEndPoint: null, prepareRequest: null, stringCache: null)
         {
         }
 
         public Frame(ConnectionContext context,
                      IPEndPoint remoteEndPoint,
                      IPEndPoint localEndPoint,
-                     Action<IFeatureCollection> prepareRequest)
+                     Action<IFeatureCollection> prepareRequest,
+                     IStringCache stringCache)
             : base(context)
         {
             _remoteEndPoint = remoteEndPoint;
             _localEndPoint = localEndPoint;
             _prepareRequest = prepareRequest;
             _pathBase = context.ServerAddress.PathBase;
+            _stringCache = stringCache;
 
             FrameControl = this;
             Reset();
@@ -702,7 +705,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var method = begin.GetAsciiString(scan);
+                var method = begin.GetAsciiString(scan, _stringCache);
 
                 scan.Take();
                 begin = scan;
@@ -726,7 +729,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     {
                         return false;
                     }
-                    queryString = begin.GetAsciiString(scan);
+                    queryString = begin.GetAsciiString(scan, _stringCache);
                 }
 
                 scan.Take();
@@ -735,7 +738,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     return false;
                 }
-                var httpVersion = begin.GetAsciiString(scan);
+                var httpVersion = begin.GetAsciiString(scan, _stringCache);
 
                 scan.Take();
                 if (scan.Take() != '\n')
@@ -756,7 +759,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 else
                 {
                     // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(pathEnd);
+                    requestUrlPath = pathBegin.GetAsciiString(pathEnd, _stringCache);
                 }
 
                 consumed = scan;
@@ -809,7 +812,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return true;
         }
 
-        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders, IStringCache stringCache)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -900,7 +903,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         }
 
                         var name = beginName.GetArraySegment(endName);
-                        var value = beginValue.GetAsciiString(endValue);
+                        var value = beginValue.GetAsciiString(endValue, stringCache);
                         if (wrapping)
                         {
                             value = value.Replace("\r\n", " ");

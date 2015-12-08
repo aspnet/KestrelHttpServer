@@ -11,6 +11,12 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         bool NoDelay { get; set; }
 
+        bool StringCacheOnConnection { get; set; }
+
+        int StringCacheMaxStrings { get; set; }
+
+        int StringCacheMaxStringLength { get; set; }
+
         IConnectionFilter ConnectionFilter { get; set; }
     }
 }
