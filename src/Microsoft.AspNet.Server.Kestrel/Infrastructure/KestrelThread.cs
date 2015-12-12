@@ -245,6 +245,11 @@ namespace Microsoft.AspNet.Server.Kestrel
             }
             catch (Exception ex)
             {
+#if DEBUG
+                // Output error in debug for Tests etc
+                Console.WriteLine(nameof(KestrelThread) + " Exception");
+                Console.WriteLine(ex);
+#endif
                 _closeError = ExceptionDispatchInfo.Capture(ex);
                 // Request shutdown so we can rethrow this exception
                 // in Stop which should be observable.

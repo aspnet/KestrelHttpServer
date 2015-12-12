@@ -19,9 +19,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private const int _maxPendingWrites = 3;
         private const int _maxBytesPreCompleted = 65536;
         private const int _initialTaskQueues = 64;
-        private const int _maxPooledWriteContexts = 32;
+        private const int _maxWriteContextsPooledPerThread = 128;
 
         private static WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock2)state);
+
+        [ThreadStatic]
+        private static Queue<WriteContext> _threadWriteContextPool;
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
@@ -50,7 +53,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private WriteContext _nextWriteContext;
         private readonly Queue<TaskCompletionSource<object>> _tasksPending;
         private readonly Queue<TaskCompletionSource<object>> _tasksCompleted;
-        private readonly Queue<WriteContext> _writeContextPool;
         private readonly Queue<UvWriteReq> _writeReqPool;
 
         public SocketOutput(
@@ -71,11 +73,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _threadPool = threadPool;
             _tasksPending = new Queue<TaskCompletionSource<object>>(_initialTaskQueues);
             _tasksCompleted = new Queue<TaskCompletionSource<object>>(_initialTaskQueues);
-            _writeContextPool = new Queue<WriteContext>(_maxPooledWriteContexts);
             _writeReqPool = writeReqPool;
 
             _head = memory.Lease();
             _tail = _head;
+        }
+
+        private static Queue<WriteContext> WriteContextPool
+        {
+            get
+            {
+                if (_threadWriteContextPool == null)
+                {
+                    _threadWriteContextPool = new Queue<WriteContext>(_maxWriteContextsPooledPerThread);
+                }
+
+                return _threadWriteContextPool;
+            }
         }
 
         public Task WriteAsync(
@@ -99,13 +113,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 if (_nextWriteContext == null)
                 {
-                    if (_writeContextPool.Count > 0)
+                    if (WriteContextPool.Count > 0)
                     {
-                        _nextWriteContext = _writeContextPool.Dequeue();
+                        _nextWriteContext = WriteContextPool.Dequeue();
+                        _nextWriteContext.Self = this;
                     }
                     else
                     {
-                        _nextWriteContext = new WriteContext(this);
+                        _nextWriteContext = new WriteContext() { Self = this };
                     }
                 }
 
@@ -294,6 +309,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var status = writeContext.WriteStatus;
             var error = writeContext.WriteError;
 
+            // Pool WriteContext on thread pool thread not libuv thread
+            ThreadPool.QueueUserWorkItem((c) => PoolWriteContext((WriteContext)c), writeContext);
 
             if (error != null)
             {
@@ -307,7 +324,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             lock (_contextLock)
             {
-                PoolWriteContext(writeContext);
                 if (_nextWriteContext != null)
                 {
                     scheduleWrite = true;
@@ -385,13 +401,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        private void PoolWriteContext(WriteContext writeContext)
+        private static void PoolWriteContext(WriteContext writeContext)
         {
-            // called inside _contextLock
-            if (_writeContextPool.Count < _maxPooledWriteContexts)
+            if (WriteContextPool.Count < _maxWriteContextsPooledPerThread)
             {
                 writeContext.Reset();
-                _writeContextPool.Enqueue(writeContext);
+                WriteContextPool.Enqueue(writeContext);
             }
         }
 
@@ -440,7 +455,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             private static WaitCallback _returnWrittenBlocks = (state) => ReturnWrittenBlocks((MemoryPoolBlock2)state);
 
-            private SocketOutput Self;
+            public SocketOutput Self;
             private UvWriteReq _writeReq;
             private MemoryPoolIterator2 _lockedStart;
             private MemoryPoolIterator2 _lockedEnd;
@@ -453,11 +468,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             public int WriteStatus;
             public Exception WriteError;
             public int ShutdownSendStatus;
-
-            public WriteContext(SocketOutput self)
-            {
-                Self = self;
-            }
 
             /// <summary>
             /// First step: initiate async write if needed, otherwise go to next step
@@ -476,18 +486,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 // to allow block to be Reset and still complete this function
                 var lockedEndBlock = _lockedEnd.Block;
                 var lockedEndIndex = _lockedEnd.Index;
+                var socketOutput = Self;
 
-                if (Self._writeReqPool.Count > 0)
+                if (socketOutput._writeReqPool.Count > 0)
                 {
-                    _writeReq = Self._writeReqPool.Dequeue();
+                    _writeReq = socketOutput._writeReqPool.Dequeue();
                 }
                 else
                 {
-                    _writeReq = new UvWriteReq(Self._log);
-                    _writeReq.Init(Self._thread.Loop);
+                    _writeReq = new UvWriteReq(socketOutput._log);
+                    _writeReq.Init(socketOutput._thread.Loop);
                 }
 
-                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (_writeReq, status, error, state) =>
+                _writeReq.Write(socketOutput._socket, _lockedStart, _lockedEnd, _bufferCount, (_writeReq, status, error, state) =>
                 {
                     var writeContext = (WriteContext)state;
                     writeContext.PoolWriteReq(writeContext._writeReq);
@@ -498,8 +509,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     writeContext.DoShutdownIfNeeded();
                 }, this);
 
-                Self._head = lockedEndBlock;
-                Self._head.Start = lockedEndIndex;
+                socketOutput._head = lockedEndBlock;
+                socketOutput._head.Start = lockedEndIndex;
             }
 
             /// <summary>
@@ -613,6 +624,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             public void Reset()
             {
+                Self = null;
                 _lockedStart = default(MemoryPoolIterator2);
                 _lockedEnd = default(MemoryPoolIterator2);
                 _bufferCount = 0;
