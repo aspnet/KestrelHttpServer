@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
@@ -7,8 +8,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
     /// Slab tracking object used by the byte buffer memory pool. A slab is a large allocation which is divided into smaller blocks. The
     /// individual blocks are then treated as independant array segments.
     /// </summary>
-    public class MemoryPoolSlab2 : IDisposable
+    internal class MemoryPoolSlab2 : IDisposable
     {
+        private bool _isDisposed = false; // To detect redundant calls
+        private long _leasedBlocks = 1; // One checked out on creation
+        private long _returnedBlocks = 0; 
+
+        private Timer _livenessCheck;
+        private static TimerCallback _livenessCallback = (o) => { CheckAlive((MemoryPoolSlab2)o); };
+
         /// <summary>
         /// This handle pins the managed array in memory until the slab is disposed. This prevents it from being
         /// relocated and enables any subsections of the array to be used as native memory pointers to P/Invoked API calls.
@@ -26,21 +34,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         public IntPtr ArrayPtr;
 
-        /// <summary>
-        /// True as long as the blocks from this slab are to be considered returnable to the pool. In order to shrink the 
-        /// memory pool size an entire slab must be removed. That is done by (1) setting IsActive to false and removing the
-        /// slab from the pool's _slabs collection, (2) as each block currently in use is Return()ed to the pool it will
-        /// be allowed to be garbage collected rather than re-pooled, and (3) when all block tracking objects are garbage
-        /// collected and the slab is no longer references the slab will be garbage collected and the memory unpinned will
-        /// be unpinned by the slab's Dispose.
-        /// </summary>
-        public bool IsActive;
-
-        /// <summary>
-        /// Part of the IDisposable implementation
-        /// </summary>
-        private bool _disposedValue = false; // To detect redundant calls
-
         public static MemoryPoolSlab2 Create(int length)
         {
             // allocate and pin requested memory length
@@ -52,44 +45,88 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             {
                 Array = array,
                 _gcHandle = gcHandle,
-                ArrayPtr = gcHandle.AddrOfPinnedObject(),
-                IsActive = true,
+                ArrayPtr = gcHandle.AddrOfPinnedObject()
             };
+        }
+
+        public void Leased()
+        {
+            // Only called on single thread
+            _leasedBlocks++;
+        }
+
+        public void Returned()
+        {
+            // Can be called by multiple threads
+            Interlocked.Increment(ref _returnedBlocks);
+            if (_isDisposed)
+            {
+                FreeHandle();
+            }
+        }
+
+        private bool FreeHandle()
+        {
+            var outstanding = Volatile.Read(ref _leasedBlocks) - Volatile.Read(ref _returnedBlocks);
+            if (outstanding < 0)
+            {
+                throw new InvalidOperationException("Too many " + nameof(MemoryPoolBlock2) + " returned to " + nameof(MemoryPoolSlab2));
+            }
+            else if (outstanding > MemoryPool2._blockCount)
+            {
+                throw new InvalidOperationException("Too many " + nameof(MemoryPoolBlock2) + " taken from " + nameof(MemoryPoolSlab2));
+            }
+            else if (outstanding != 0)
+            {
+                return false;
+            }
+            try
+            {
+                _gcHandle.Free();
+            }
+            catch (InvalidOperationException)
+            {
+                // Free race
+            }
+            return true;
+        }
+        static void CheckAlive(MemoryPoolSlab2 slab)
+        {
+            slab.CheckAlive();
+        }
+
+        void CheckAlive()
+        {
+            if (FreeHandle())
+            {
+                _livenessCheck.Change(Timeout.Infinite, Timeout.Infinite);
+                _livenessCheck.Dispose();
+            }
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposedValue)
+            if (!_isDisposed)
             {
-                if (disposing)
-                {
-                    // N/A: dispose managed state (managed objects).
-                }
-
-                // free unmanaged resources (unmanaged objects) and override a finalizer below.
-                IsActive = false;
-                _gcHandle.Free();
-
-                // set large fields to null.
+                _isDisposed = true;
                 Array = null;
-
-                _disposedValue = true;
+                if (!FreeHandle())
+                {
+                    _livenessCheck = new Timer(_livenessCallback, this, 2000, 1000);
+                }
             }
         }
-
-        // override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        
         ~MemoryPoolSlab2()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(false);
         }
-
-        // This code added to correctly implement the disposable pattern.
+        
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
-            // uncomment the following line if the finalizer is overridden above.
             GC.SuppressFinalize(this);
         }
     }

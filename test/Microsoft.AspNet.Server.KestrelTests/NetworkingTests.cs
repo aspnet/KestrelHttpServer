@@ -205,7 +205,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                                     new ArraySegment<byte>(new byte[] { 65, 66, 67, 68, 69 }),
                                     dataPtr: IntPtr.Zero,
                                     pool: null,
-                                    slab: null);
+                                    slabId: -1);
                                 var start = new MemoryPoolIterator2(block, 0);
                                 var end = new MemoryPoolIterator2(block, block.Data.Count);
                                 req.Write(

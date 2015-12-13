@@ -34,8 +34,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             };
 
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-            using (var memory = new MemoryPool2())
-            {
+            { 
+                var memory = new MemoryPool2();
                 kestrelEngine.Start(count: 1);
 
                 var kestrelThread = kestrelEngine.Threads[0];
@@ -81,8 +81,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             };
 
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-            using (var memory = new MemoryPool2())
             {
+                var memory = new MemoryPool2();
                 kestrelEngine.Start(count: 1);
 
                 var kestrelThread = kestrelEngine.Threads[0];
@@ -138,8 +138,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             };
 
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-            using (var memory = new MemoryPool2())
             {
+                var memory = new MemoryPool2();
                 kestrelEngine.Start(count: 1);
 
                 var kestrelThread = kestrelEngine.Threads[0];
@@ -219,8 +219,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             };
 
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-            using (var memory = new MemoryPool2())
             {
+                var memory = new MemoryPool2();
                 kestrelEngine.Start(count: 1);
 
                 var kestrelThread = kestrelEngine.Threads[0];
@@ -296,8 +296,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             };
 
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-            using (var memory = new MemoryPool2())
             {
+                var memory = new MemoryPool2();
                 kestrelEngine.Start(count: 1);
 
                 var kestrelThread = kestrelEngine.Threads[0];
