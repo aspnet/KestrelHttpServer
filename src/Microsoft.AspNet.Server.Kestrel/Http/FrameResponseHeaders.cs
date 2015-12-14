@@ -3,6 +3,7 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
@@ -12,6 +13,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         private static byte[] _CrLf = new[] { (byte)'\r', (byte)'\n' };
         private static byte[] _colonSpace = new[] { (byte)':', (byte)' ' };
+        private static Encoding _asciiEncoding = Encoding.ASCII;
+        private static string _asciiWebName = Encoding.ASCII.WebName;
 
         public bool HasConnection => HeaderConnection.Count != 0;
 
@@ -37,14 +40,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 foreach (var kv in MaybeUnknown)
                 {
-                    foreach (var value in kv.Value)
+                    byte[] bytes;
+                    Encoding encoding;
+                    if (kv.Value.TryGetPreEncoded(out bytes, out encoding) && 
+                        (encoding == _asciiEncoding || encoding.WebName == _asciiWebName))
                     {
-                        if (value != null)
+                        output.CopyFrom(_CrLf, 0, 2);
+                        output.CopyFromAscii(kv.Key);
+                        output.CopyFrom(_colonSpace, 0, 2);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
+                        foreach (var value in kv.Value)
                         {
-                            output.CopyFrom(_CrLf, 0, 2);
-                            output.CopyFromAscii(kv.Key);
-                            output.CopyFrom(_colonSpace, 0, 2);
-                            output.CopyFromAscii(value);
+                            if (value != null)
+                            {
+                                output.CopyFrom(_CrLf, 0, 2);
+                                output.CopyFromAscii(kv.Key);
+                                output.CopyFrom(_colonSpace, 0, 2);
+                                output.CopyFromAscii(value);
+                            }
                         }
                     }
                 }
