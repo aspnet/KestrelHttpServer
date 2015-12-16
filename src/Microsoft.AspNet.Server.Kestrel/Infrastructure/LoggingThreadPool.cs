@@ -74,7 +74,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         public void ReturnBlockChain(MemoryPoolBlock2 startBlock)
         {
-            ThreadPool.QueueUserWorkItem(_returnBlocks, startBlock);
+            if (startBlock != null)
+            {
+                ThreadPool.QueueUserWorkItem(_returnBlocks, startBlock);
+            }
         }
 
         private static void ReturnBlocks(MemoryPoolBlock2 block)

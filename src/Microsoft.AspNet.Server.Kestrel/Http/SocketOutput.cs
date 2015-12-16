@@ -352,23 +352,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             lock (_returnLock)
             {
-                var block = _head;
-                while (block != _tail)
-                {
-                    var returnBlock = block;
-                    block = block.Next;
-
-                    returnBlock.Pool?.Return(returnBlock);
-                }
-
-                // Only return the _tail if we aren't between ProducingStart/Complete calls
                 if (_lastStart.IsDefault)
                 {
-                    _tail.Pool?.Return(_tail);
+                    // Only return the _tail if we aren't between ProducingStart/Complete calls
+                    _threadPool.ReturnBlockChain(_head);
+                }
+                else if (_head != _tail)
+                {
+                    // detach returned block chain from _tail
+                    var block = _head;
+                    while (block.Next != _tail)
+                    {
+                        block = block.Next;
+                    }
+                    block.Next = null;
+                    _threadPool.ReturnBlockChain(_head);
                 }
 
-                _head = null;
-                _tail = null;
+                _tail = _head = null;
             }
         }
 
