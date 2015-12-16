@@ -5,18 +5,13 @@ using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
 {
-    public class MemoryPoolIterator2Tests : IDisposable
+    public class MemoryPoolIterator2Tests
     {
         private readonly MemoryPool2 _pool;
 
         public MemoryPoolIterator2Tests()
         {
             _pool = new MemoryPool2();
-        }
-
-        public void Dispose()
-        {
-            _pool.Dispose();
         }
 
         [Theory]

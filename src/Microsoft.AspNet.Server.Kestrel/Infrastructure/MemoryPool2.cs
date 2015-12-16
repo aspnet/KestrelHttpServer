@@ -1,12 +1,13 @@
 ﻿using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
     /// <summary>
     /// Used to allocate and distribute re-usable blocks of memory.
     /// </summary>
-    public class MemoryPool2 : IDisposable
+    public class MemoryPool2
     {
         /// <summary>
         /// The gap between blocks' starting address. 4096 is chosen because most operating systems are 4k pages in size and alignment.
@@ -24,7 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// in the large object heap. This means the GC will not try to relocate this array, so the fact it remains pinned does not negatively
         /// affect memory management's compactification.
         /// </summary>
-        private const int _blockCount = 32;
+        internal const int _blockCount = 32;
 
         /// <summary>
         /// 4096 - 64 gives you a blockLength of 4032 usable bytes per block.
@@ -42,89 +43,39 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private const int _slabLength = _blockStride * _blockCount;
 
-        /// <summary>
-        /// Thread-safe collection of blocks which are currently in the pool. A slab will pre-allocate all of the block tracking objects
-        /// and add them to this collection. When memory is requested it is taken from here first, and when it is returned it is re-added.
-        /// </summary>
-        private readonly ConcurrentQueue<MemoryPoolBlock2> _blocks = new ConcurrentQueue<MemoryPoolBlock2>();
+        [ThreadStatic]
+        private static InnerPool _pool;
 
-        /// <summary>
-        /// Thread-safe collection of slabs which have been allocated by this pool. As long as a slab is in this collection and slab.IsActive, 
-        /// the blocks will be added to _blocks when returned.
-        /// </summary>
-        private readonly ConcurrentStack<MemoryPoolSlab2> _slabs = new ConcurrentStack<MemoryPoolSlab2>();
-
-        /// <summary>
-        /// This is part of implementing the IDisposable pattern.
-        /// </summary>
-        private bool _disposedValue = false; // To detect redundant calls
+        private InnerPool Pool
+        {
+            get
+            {
+                if (_pool == null)
+                {
+                    _pool = new InnerPool(this);
+                }
+                return _pool;
+            }
+        }
 
         /// <summary>
         /// Called to take a block from the pool.
         /// </summary>
-        /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
+        /// <param name="minimumLength">The block returned must be at least this size. It may be larger than this minimum size, and if so,
         /// the caller may write to the block's entire size rather than being limited to the minumumSize requested.</param>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock2 Lease(int minimumSize = MaxPooledBlockLength)
+        public virtual MemoryPoolBlock2 Lease(int minimumLength = MaxPooledBlockLength)
         {
-            if (minimumSize > _blockLength)
+            if (minimumLength > _blockLength)
             {
-                // The requested minimumSize is actually larger then the usable memory of a single block.
-                // Because this is the degenerate case, a one-time-use byte[] array and tracking object are allocated.
-                // When this block tracking object is returned it is not added to the pool - instead it will be 
-                // allowed to be garbage collected normally.
                 return MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(new byte[minimumSize]),
+                    new ArraySegment<byte>(new byte[minimumLength]),
                     dataPtr: IntPtr.Zero,
                     pool: null,
-                    slab: null);
+                    slabId: -1);
             }
 
-            MemoryPoolBlock2 block;
-            if (_blocks.TryDequeue(out block))
-            {
-                // block successfully taken from the stack - return it
-                return block;
-            }
-            // no blocks available - grow the pool
-            return AllocateSlab();
-        }
-
-        /// <summary>
-        /// Internal method called when a block is requested and the pool is empty. It allocates one additional slab, creates all of the 
-        /// block tracking objects, and adds them all to the pool.
-        /// </summary>
-        private MemoryPoolBlock2 AllocateSlab()
-        {
-            var slab = MemoryPoolSlab2.Create(_slabLength);
-            _slabs.Push(slab);
-
-            var basePtr = slab.ArrayPtr;
-            var firstOffset = (int)((_blockStride - 1) - ((ulong)(basePtr + _blockStride - 1) % _blockStride));
-
-            var poolAllocationLength = _slabLength - _blockStride;
-
-            var offset = firstOffset;
-            for (;
-                offset + _blockLength < poolAllocationLength;
-                offset += _blockStride)
-            {
-                var block = MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(slab.Array, offset, _blockLength),
-                    basePtr,
-                    this,
-                    slab);
-                Return(block);
-            }
-
-            // return last block rather than adding to pool
-            var newBlock = MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(slab.Array, offset, _blockLength),
-                    basePtr,
-                    this,
-                    slab);
-
-            return newBlock;
+            return Pool.Lease();
         }
 
         /// <summary>
@@ -135,47 +86,162 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// leaving "dead zones" in the slab due to lost block tracking objects.
         /// </summary>
         /// <param name="block">The block to return. It must have been acquired by calling Lease on the same memory pool instance.</param>
-        public void Return(MemoryPoolBlock2 block)
+        public virtual void Return(MemoryPoolBlock2 block)
         {
-            block.Reset();
-            _blocks.Enqueue(block);
+            block.Pool?.Return(block);
         }
 
-        protected virtual void Dispose(bool disposing)
+        private class InnerPool : MemoryPool2
         {
-            if (!_disposedValue)
+            private readonly static TimerCallback _livenessCallback = (o) => { CheckAlive((InnerPool)o); };
+            private readonly int _owningThreadId;
+            private readonly Timer _livenessCheck;
+            private readonly MemoryPool2 _parentPool;
+            private readonly object _returnLock;
+
+            private WeakReference<Thread> _owningThread;
+
+            private List<MemoryPoolSlab2> _slabs;
+            private Queue<MemoryPoolBlock2> _availableBlocks;
+            private Queue<MemoryPoolBlock2> _returnedBlocks;
+
+            public InnerPool(MemoryPool2 parentPool)
             {
-                if (disposing)
+                _owningThread = new WeakReference<Thread>(Thread.CurrentThread);
+                _owningThreadId = Thread.CurrentThread.ManagedThreadId;
+                _parentPool = parentPool;
+                _returnLock = new object();
+                _availableBlocks = new Queue<MemoryPoolBlock2>(_blockCount * 2);
+                _returnedBlocks = new Queue<MemoryPoolBlock2>(_blockCount * 2);
+                _slabs = new List<MemoryPoolSlab2>(16);
+                _livenessCheck = new Timer(_livenessCallback, this, 2000, 1000);
+            }
+
+            private void Dispose()
+            {
+                if (_availableBlocks == null) throw new ObjectDisposedException(nameof(InnerPool));
+                _availableBlocks = null;
+                _returnedBlocks = null;
+                for (var i = 0; i < _slabs.Count; i++)
                 {
-                    MemoryPoolSlab2 slab;
-                    while (_slabs.TryPop(out slab))
+                    _slabs[i].Dispose();
+                    _slabs[i] = null;
+                }
+                _slabs = null;
+            }
+
+            static void CheckAlive(InnerPool pool)
+            {
+                pool.CheckAlive();
+            }
+
+            void CheckAlive()
+            {
+                Thread owningThread;
+                if (!_owningThread.TryGetTarget(out owningThread))
+                {
+                    _owningThread = null;
+                    _livenessCheck.Change(Timeout.Infinite, Timeout.Infinite);
+                    _livenessCheck.Dispose();
+                    Dispose();
+                }
+            }
+
+            public override MemoryPoolBlock2 Lease(int minimumLength)
+            {
+                // Called directly, return to parent pool for correct thread's pool
+                return _parentPool.Lease(minimumLength);
+            }
+
+            public MemoryPoolBlock2 Lease()
+            {
+                if (_owningThread == null) throw new ObjectDisposedException(nameof(InnerPool));
+
+                // Lease is always same thread
+                if (_availableBlocks.Count > 0)
+                {
+                    var block = _availableBlocks.Dequeue();
+                    _slabs[block.SlabId].Leased();
+                    return block;
+                }
+
+                // retun queue can conflict with Return on multiple threads
+                lock (_returnLock)
+                {
+                    // Empty return queue
+                    while (_returnedBlocks.Count > 0)
                     {
-                        // dispose managed state (managed objects).
-                        slab.Dispose();
+                        var block = _returnedBlocks.Dequeue();
+                        _availableBlocks.Enqueue(block);
                     }
                 }
 
-                // N/A: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                if (_availableBlocks.Count > 0)
+                {
+                    var block = _availableBlocks.Dequeue();
+                    _slabs[block.SlabId].Leased();
+                    return block;
+                }
 
-                // N/A: set large fields to null.
-
-                _disposedValue = true;
+                return Allocate();
             }
-        }
 
-        // N/A: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~MemoryPool2() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
+            public override void Return(MemoryPoolBlock2 block)
+            {
+                block.Reset();
+                if (_owningThread == null) return;
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // N/A: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+                if (Thread.CurrentThread.ManagedThreadId == _owningThreadId)
+                {
+                    // Owning thread, add to available queue
+                    _availableBlocks.Enqueue(block);
+                    _slabs[block.SlabId].Returned();
+                }
+                else
+                {
+                    // Return from non-owning thread, add to return queue
+                    lock (_returnLock)
+                    {
+                        _returnedBlocks.Enqueue(block);
+                        _slabs[block.SlabId].Returned();
+                    }
+                }
+            }
+
+            private MemoryPoolBlock2 Allocate()
+            {
+                var slab = MemoryPoolSlab2.Create(_slabLength);
+                var slabId = _slabs.Count;
+                _slabs.Add(slab);
+
+                var basePtr = slab.ArrayPtr;
+                var firstOffset = (int)((_blockStride - 1) - ((ulong)(basePtr + _blockStride - 1) % _blockStride));
+
+                var poolAllocationLength = _slabLength - _blockStride;
+
+                var offset = firstOffset;
+                for (;
+                    offset + _blockLength < poolAllocationLength;
+                    offset += _blockStride)
+                {
+                    var block = MemoryPoolBlock2.Create(
+                        new ArraySegment<byte>(slab.Array, offset, _blockLength),
+                        basePtr,
+                        this,
+                        slabId);
+
+                    _availableBlocks.Enqueue(block);
+                }
+
+                // return last block rather than adding to pool
+                var newBlock = MemoryPoolBlock2.Create(
+                        new ArraySegment<byte>(slab.Array, offset, _blockLength),
+                        basePtr,
+                        this,
+                        slabId);
+
+                return newBlock;
+            }
         }
     }
 }

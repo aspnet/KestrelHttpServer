@@ -42,10 +42,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         public MemoryPool2 Pool { get; private set; }
 
-        /// <summary>
-        /// Back-reference to the slab from which this block was taken, or null if it is one-time-use memory.
-        /// </summary>
-        public MemoryPoolSlab2 Slab { get; private set; }
+        public int SlabId { get; private set; }
 
         /// <summary>
         /// Convenience accessor
@@ -73,29 +70,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// memory is shrunk when bytes are consumed, Start is increased, and blocks are returned to the pool.
         /// </summary>
         public MemoryPoolBlock2 Next { get; set; }
-
-        ~MemoryPoolBlock2()
-        {
-            Debug.Assert(!_pinHandle.IsAllocated, "Ad-hoc memory block wasn't unpinned");
-            // Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool");
-
-            if (_pinHandle.IsAllocated)
-            {
-                // if this is a one-time-use block, ensure that the GCHandle does not leak
-                _pinHandle.Free();
-            }
-
-            if (Slab != null && Slab.IsActive)
-            {
-                Pool.Return(new MemoryPoolBlock2
-                {
-                    _dataArrayPtr = _dataArrayPtr,
-                    Data = Data,
-                    Pool = Pool,
-                    Slab = Slab,
-                });
-            }
-        }
 
         /// <summary>
         /// Called to ensure that a block is pinned, and return the pointer to the native address
@@ -134,16 +108,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             ArraySegment<byte> data,
             IntPtr dataPtr,
             MemoryPool2 pool,
-            MemoryPoolSlab2 slab)
+            int slabId)
         {
             return new MemoryPoolBlock2
             {
                 Data = data,
                 _dataArrayPtr = dataPtr,
                 Pool = pool,
-                Slab = slab,
                 Start = data.Offset,
                 End = data.Offset,
+                SlabId = slabId
             };
         }
 
