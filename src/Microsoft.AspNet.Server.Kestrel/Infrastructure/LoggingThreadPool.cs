@@ -9,10 +9,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
     public class LoggingThreadPool : IThreadPool
     {
-        private readonly IKestrelTrace _log;
+        private readonly static WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock2)state);
 
+        private readonly IKestrelTrace _log;
         private readonly WaitCallback _runAction;
         private readonly WaitCallback _completeTcs;
+
 
         public LoggingThreadPool(IKestrelTrace log)
         {
@@ -68,6 +70,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     _log.ApplicationError(e);
                 }
             }, tcs);
+        }
+
+        public void ReturnBlockChain(MemoryPoolBlock2 startBlock)
+        {
+            ThreadPool.QueueUserWorkItem(_returnBlocks, startBlock);
+        }
+
+        private static void ReturnBlocks(MemoryPoolBlock2 block)
+        {
+            while (block != null)
+            {
+                var returningBlock = block;
+                block = returningBlock.Next;
+
+                returningBlock.Pool?.Return(returningBlock);
+            }
         }
     }
 }

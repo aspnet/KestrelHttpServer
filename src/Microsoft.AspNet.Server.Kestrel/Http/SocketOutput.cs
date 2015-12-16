@@ -21,8 +21,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private const int _initialTaskQueues = 64;
         private const int _maxPooledWriteContexts = 32;
 
-        private static WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock2)state);
-
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly Connection _connection;
@@ -231,18 +229,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (blockToReturn != null)
             {
-                ThreadPool.QueueUserWorkItem(_returnBlocks, blockToReturn);
-            }
-        }
-
-        private static void ReturnBlocks(MemoryPoolBlock2 block)
-        {
-            while (block != null)
-            {
-                var returningBlock = block;
-                block = returningBlock.Next;
-
-                returningBlock.Pool?.Return(returningBlock);
+                _threadPool.ReturnBlockChain(blockToReturn);
             }
         }
 

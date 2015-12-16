@@ -170,12 +170,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         _awaitableIsCompleted);
                 }
             }
-            while (returnStart != returnEnd)
+
+            if  (returnStart == returnEnd)
             {
-                var returnBlock = returnStart;
-                returnStart = returnStart.Next;
-                returnBlock.Pool?.Return(returnBlock);
+                return;
             }
+
+            // detach returned block chain from active block
+            var block = returnStart;
+            while (block.Next != returnEnd)
+            {
+                block = block.Next;
+            }
+            block.Next = null;
+
+            _threadPool.ReturnBlockChain(returnStart);
         }
 
         public void AbortAwaiting()
