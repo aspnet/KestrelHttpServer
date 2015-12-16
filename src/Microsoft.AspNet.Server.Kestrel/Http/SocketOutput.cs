@@ -426,8 +426,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private class WriteContext
         {
-            private static WaitCallback _returnWrittenBlocks = (state) => ReturnWrittenBlocks((MemoryPoolBlock2)state);
-
             private SocketOutput Self;
             private UvWriteReq _writeReq;
             private MemoryPoolIterator2 _lockedStart;
@@ -565,20 +563,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     block.Unpin();
                 }
                 block.Next = null;
-
-                ThreadPool.QueueUserWorkItem(_returnWrittenBlocks, _lockedStart.Block);
-            }
-
-            private static void ReturnWrittenBlocks(MemoryPoolBlock2 block)
-            {
-                while (block != null)
-                {
-                    var returnBlock = block;
-                    block = block.Next;
-
-                    returnBlock.Unpin();
-                    returnBlock.Pool?.Return(returnBlock);
-                }
+                Self._threadPool.ReturnBlockChain(_lockedStart.Block);
             }
 
             private void LockWrite()
