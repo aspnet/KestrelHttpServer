@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -60,19 +59,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public IncomingBuffer IncomingStart(int minimumSize)
         {
-            lock (_sync)
+
+            if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
             {
-                if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
+                _pinned = _tail;
+                var data = new ArraySegment<byte>(_pinned.Data.Array, _pinned.End, _pinned.Data.Offset + _pinned.Data.Count - _pinned.End);
+                var dataPtr = _pinned.Pin() + _pinned.End;
+                return new IncomingBuffer
                 {
-                    _pinned = _tail;
-                    var data = new ArraySegment<byte>(_pinned.Data.Array, _pinned.End, _pinned.Data.Offset + _pinned.Data.Count - _pinned.End);
-                    var dataPtr = _pinned.Pin() + _pinned.End;
-                    return new IncomingBuffer
-                    {
-                        Data = data,
-                        DataPtr = dataPtr,
-                    };
-                }
+                    Data = data,
+                    DataPtr = dataPtr,
+                };
             }
 
             _pinned = _memory.Lease(minimumSize);
@@ -87,14 +84,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             Action awaitableState;
 
-            lock (_sync)
+            // Unpin may called without an earlier Pin 
+            if (_pinned != null)
             {
-                // Unpin may called without an earlier Pin 
-                if (_pinned != null)
-                {
-                    _pinned.Unpin();
+                _pinned.Unpin();
 
-                    _pinned.End += count;
+                _pinned.End += count;
+                lock (_sync)
+                {
                     if (_head == null)
                     {
                         _head = _tail = _pinned;
@@ -109,23 +106,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         _tail = _pinned;
                     }
                 }
-                _pinned = null;
-
-                if (count == 0)
-                {
-                    RemoteIntakeFin = true;
-                }
-                if (error != null)
-                {
-                    _awaitableError = error;
-                }
-
-                awaitableState = Interlocked.Exchange(
-                    ref _awaitableState,
-                    _awaitableIsCompleted);
-
-                _manualResetEvent.Set();
             }
+            _pinned = null;
+
+            if (count == 0)
+            {
+                RemoteIntakeFin = true;
+            }
+            if (error != null)
+            {
+                _awaitableError = error;
+            }
+
+            awaitableState = Interlocked.Exchange(
+                ref _awaitableState,
+                _awaitableIsCompleted);
+
+            _manualResetEvent.Set();
 
             if (awaitableState != _awaitableIsCompleted &&
                 awaitableState != _awaitableIsNotCompleted)
@@ -148,27 +145,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             MemoryPoolBlock2 returnStart = null;
             MemoryPoolBlock2 returnEnd = null;
-            lock (_sync)
+            if (!consumed.IsDefault)
             {
-                if (!consumed.IsDefault)
+                lock (_sync)
                 {
                     returnStart = _head;
                     returnEnd = consumed.Block;
                     _head = consumed.Block;
                     _head.Start = consumed.Index;
                 }
-                if (!examined.IsDefault &&
-                    examined.IsEnd &&
-                    RemoteIntakeFin == false &&
-                    _awaitableError == null)
-                {
-                    _manualResetEvent.Reset();
+            }
+            if (!examined.IsDefault &&
+                examined.IsEnd &&
+                RemoteIntakeFin == false &&
+                _awaitableError == null)
+            {
+                _manualResetEvent.Reset();
 
-                    var awaitableState = Interlocked.CompareExchange(
-                        ref _awaitableState,
-                        _awaitableIsNotCompleted,
-                        _awaitableIsCompleted);
-                }
+                var awaitableState = Interlocked.CompareExchange(
+                    ref _awaitableState,
+                    _awaitableIsNotCompleted,
+                    _awaitableIsCompleted);
             }
 
             if  (returnStart == returnEnd)
