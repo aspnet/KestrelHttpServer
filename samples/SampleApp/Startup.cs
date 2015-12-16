@@ -65,10 +65,8 @@ namespace SampleApp
 
         public static void Main(string[] args)
         {
-            var config = WebApplicationConfiguration.GetDefault(args);
-
             var application = new WebApplicationBuilder()
-                .UseConfiguration(config)
+                .UseConfiguration(WebApplicationConfiguration.GetDefault(args))
                 .UseStartup<Startup>()
                 .Build();
 
