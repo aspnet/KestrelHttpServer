@@ -9,8 +9,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
     public static class MemoryPoolIterator2Extensions
     {
-        private const int _maxStackAllocBytes = 16384;
-
         private static Encoding _utf8 = Encoding.UTF8;
 
         public const string HttpConnectMethod = "CONNECT";
@@ -70,102 +68,79 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        private static unsafe string GetAsciiStringStack(byte[] input, int inputOffset, int length)
+        private unsafe static string GetAsciiString(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
         {
-            // avoid declaring other local vars, or doing work with stackalloc
-            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
-            char* output = stackalloc char[length];
+            var asciiString = new string('\0', length);
 
-            return GetAsciiStringImplementation(output, input, inputOffset, length);
-        }
-
-        private static unsafe string GetAsciiStringImplementation(char* output, byte[] input, int inputOffset, int length)
-        {
-            for (var i = 0; i < length; i++)
+            fixed (char* outputStart = asciiString)
             {
-                output[i] = (char)input[inputOffset + i];
-            }
+                var output = outputStart;
+                var block = start;
+                var remaining = length;
 
-            return new string(output, 0, length);
-        }
+                var endBlock = end.Block;
+                var endIndex = end.Index;
 
-        private static unsafe string GetAsciiStringStack(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
-        {
-            // avoid declaring other local vars, or doing work with stackalloc
-            // to prevent the .locals init cil flag , see: https://github.com/dotnet/coreclr/issues/1279
-            char* output = stackalloc char[length];
-
-            return GetAsciiStringImplementation(output, start, end, inputOffset, length);
-        }
-
-        private unsafe static string GetAsciiStringHeap(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
-        {
-            var buffer = new char[length];
-
-            fixed (char* output = buffer)
-            {
-                return GetAsciiStringImplementation(output, start, end, inputOffset, length);
-            }
-        }
-
-        private static unsafe string GetAsciiStringImplementation(char* output, MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
-        {
-            var outputOffset = 0;
-            var block = start;
-            var remaining = length;
-
-            var endBlock = end.Block;
-            var endIndex = end.Index;
-
-            while (true)
-            {
-                int following = (block != endBlock ? block.End : endIndex) - inputOffset;
-
-                if (following > 0)
+                while (true)
                 {
-                    var input = block.Array;
-                    for (var i = 0; i < following; i++)
+                    int following = (block != endBlock ? block.End : endIndex) - inputOffset;
+
+                    if (following > 0)
                     {
-                        output[i + outputOffset] = (char)input[i + inputOffset];
+                        fixed (byte* blockStart = block.Array)
+                        {
+                            var input = blockStart + inputOffset;
+                            var i = 0;
+                            var followingMinusSpan = following - 3;
+                            for (; i < followingMinusSpan; i += 4)
+                            {
+                                *(output) = (char)*(input);
+                                *(output + 1) = (char)*(input + 1);
+                                *(output + 2) = (char)*(input + 2);
+                                *(output + 3) = (char)*(input + 3);
+                                output += 4;
+                                input += 4;
+                            }
+                            for (; i < following; i++)
+                            {
+                                *(output++) = (char)*(input++);
+                            }
+                        }
+                        remaining -= following;
                     }
 
-                    remaining -= following;
-                    outputOffset += following;
-                }
+                    if (remaining == 0)
+                    {
+                        break;
+                    }
 
-                if (remaining == 0)
-                {
-                    return new string(output, 0, length);
+                    block = block.Next;
+                    inputOffset = block.Start;
                 }
-
-                block = block.Next;
-                inputOffset = block.Start;
             }
+
+            return asciiString;
         }
 
         public static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
         {
             if (start.IsDefault || end.IsDefault)
             {
-                return default(string);
+                return null;
             }
 
             var length = start.GetLength(end);
 
+            if (length == 0)
+            {
+                return null;
+            }
+
             // Bytes out of the range of ascii are treated as "opaque data" 
             // and kept in string as a char value that casts to same input byte value
             // https://tools.ietf.org/html/rfc7230#section-3.2.4
-            if (end.Block == start.Block)
-            {
-                return GetAsciiStringStack(start.Block.Array, start.Index, length);
-            }
 
-            if (length > _maxStackAllocBytes)
-            {
-                return GetAsciiStringHeap(start.Block, end, start.Index, length);
-            }
-
-            return GetAsciiStringStack(start.Block, end, start.Index, length);
+            return GetAsciiString(start.Block, end, start.Index, length);
         }
 
         public static string GetUtf8String(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
