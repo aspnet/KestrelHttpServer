@@ -21,8 +21,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private const int _initialTaskQueues = 64;
         private const int _maxPooledWriteContexts = 32;
 
-        private static WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock2)state);
-
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly Connection _connection;
@@ -231,18 +229,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (blockToReturn != null)
             {
-                ThreadPool.QueueUserWorkItem(_returnBlocks, blockToReturn);
-            }
-        }
-
-        private static void ReturnBlocks(MemoryPoolBlock2 block)
-        {
-            while (block != null)
-            {
-                var returningBlock = block;
-                block = returningBlock.Next;
-
-                returningBlock.Pool?.Return(returningBlock);
+                _threadPool.ReturnBlockChain(blockToReturn);
             }
         }
 
@@ -365,23 +352,24 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             lock (_returnLock)
             {
-                var block = _head;
-                while (block != _tail)
-                {
-                    var returnBlock = block;
-                    block = block.Next;
-
-                    returnBlock.Pool?.Return(returnBlock);
-                }
-
-                // Only return the _tail if we aren't between ProducingStart/Complete calls
                 if (_lastStart.IsDefault)
                 {
-                    _tail.Pool?.Return(_tail);
+                    // Only return the _tail if we aren't between ProducingStart/Complete calls
+                    _threadPool.ReturnBlockChain(_head);
+                }
+                else if (_head != _tail)
+                {
+                    // detach returned block chain from _tail
+                    var block = _head;
+                    while (block.Next != _tail)
+                    {
+                        block = block.Next;
+                    }
+                    block.Next = null;
+                    _threadPool.ReturnBlockChain(_head);
                 }
 
-                _head = null;
-                _tail = null;
+                _tail = _head = null;
             }
         }
 
@@ -438,8 +426,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private class WriteContext
         {
-            private static WaitCallback _returnWrittenBlocks = (state) => ReturnWrittenBlocks((MemoryPoolBlock2)state);
-
             private SocketOutput Self;
             private UvWriteReq _writeReq;
             private MemoryPoolIterator2 _lockedStart;
@@ -577,20 +563,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     block.Unpin();
                 }
                 block.Next = null;
-
-                ThreadPool.QueueUserWorkItem(_returnWrittenBlocks, _lockedStart.Block);
-            }
-
-            private static void ReturnWrittenBlocks(MemoryPoolBlock2 block)
-            {
-                while (block != null)
-                {
-                    var returnBlock = block;
-                    block = block.Next;
-
-                    returnBlock.Unpin();
-                    returnBlock.Pool?.Return(returnBlock);
-                }
+                Self._threadPool.ReturnBlockChain(_lockedStart.Block);
             }
 
             private void LockWrite()

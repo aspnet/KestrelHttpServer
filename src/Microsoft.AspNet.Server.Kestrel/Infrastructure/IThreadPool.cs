@@ -11,5 +11,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         void Complete(TaskCompletionSource<object> tcs);
         void Error(TaskCompletionSource<object> tcs, Exception ex);
         void Run(Action action);
+        void ReturnBlockChain(MemoryPoolBlock2 startBlock);
     }
 }
