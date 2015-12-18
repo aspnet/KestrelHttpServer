@@ -20,7 +20,8 @@
     "Microsoft.AspNet.Internal.libuv-Windows": {
       "version": "1.0.0-*",
       "type": "build"
-    }
+    },
+    "IllyriadGames.ByteArrayExtensions": "1.0.0-beta-10"
   },
   "frameworks": {
     "dnx451": { },
