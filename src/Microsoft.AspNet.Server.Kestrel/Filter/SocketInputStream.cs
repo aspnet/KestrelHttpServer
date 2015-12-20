@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using IllyriadGames.ByteArrayExtensions;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
@@ -76,7 +77,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Filter
         {
             var inputBuffer = _socketInput.IncomingStart(count);
 
-            Buffer.BlockCopy(buffer, offset, inputBuffer.Data.Array, inputBuffer.Data.Offset, count);
+            buffer.VectorizedCopy(offset, inputBuffer.Data.Array, inputBuffer.Data.Offset, count);
 
             _socketInput.IncomingComplete(count, error: null);
         }

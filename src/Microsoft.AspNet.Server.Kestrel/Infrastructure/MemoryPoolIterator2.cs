@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using IllyriadGames.ByteArrayExtensions;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
@@ -552,7 +553,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     actual = count;
                     if (array != null)
                     {
-                        Buffer.BlockCopy(block.Array, index, array, offset, remaining);
+                        block.Array.VectorizedCopy(index, array, offset, remaining);
                     }
                     return new MemoryPoolIterator2(block, index + remaining);
                 }
@@ -561,7 +562,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     actual = count - remaining + following;
                     if (array != null)
                     {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
+                        block.Array.VectorizedCopy(index, array, offset, following);
                     }
                     return new MemoryPoolIterator2(block, index + following);
                 }
@@ -569,7 +570,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 {
                     if (array != null)
                     {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
+                        block.Array.VectorizedCopy(index, array, offset, following);
                     }
                     offset += following;
                     remaining -= following;
@@ -619,7 +620,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
                 var bytesToCopy = remaining < bytesLeftInBlock ? remaining : bytesLeftInBlock;
 
-                Buffer.BlockCopy(data, bufferIndex, block.Array, blockIndex, bytesToCopy);
+                data.VectorizedCopy(bufferIndex, block.Array, blockIndex, bytesToCopy);
 
                 blockIndex += bytesToCopy;
                 bufferIndex += bytesToCopy;
