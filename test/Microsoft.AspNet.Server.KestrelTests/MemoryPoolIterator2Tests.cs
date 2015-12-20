@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using System.Numerics;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNet.Server.KestrelTests
@@ -43,25 +43,25 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public void MemorySeek(string raw, string search, char expectResult, int expectIndex)
         {
             var block = _pool.Lease(256);
-            var chars = raw.ToCharArray().Select(c => (byte)c).ToArray();
+            var chars = raw.ToCharArray().Select(c => (byte) c).ToArray();
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
             block.End += chars.Length;
 
             var begin = block.GetIterator();
             var searchFor = search.ToCharArray();
 
-            int found = -1;
+            var found = -1;
             if (searchFor.Length == 1)
             {
-                found = begin.Seek(new Vector<byte>((byte)searchFor[0]));
+                found = begin.Seek((byte) searchFor[0]);
             }
             else if (searchFor.Length == 2)
             {
-                found = begin.Seek(new Vector<byte>((byte)searchFor[0]), new Vector<byte>((byte)searchFor[1]));
+                found = begin.Seek((byte) searchFor[0], (byte) searchFor[1]);
             }
             else if (searchFor.Length == 3)
             {
-                found = begin.Seek(new Vector<byte>((byte)searchFor[0]), new Vector<byte>((byte)searchFor[1]), new Vector<byte>((byte)searchFor[2]));
+                found = begin.Seek((byte) searchFor[0], (byte) searchFor[1], (byte) searchFor[2]);
             }
             else
             {
@@ -123,7 +123,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             head = blocks[0].GetIterator();
             for (var i = 0; i < 64; ++i)
             {
-                Assert.True(head.Put((byte)i), $"Fail to put data at {i}.");
+                Assert.True(head.Put((byte) i), $"Fail to put data at {i}.");
             }
 
             // Can't put anything by the end
@@ -164,7 +164,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
             var block = _pool.Lease();
             block.End += blockBytes;
-            
+
             var nextBlock = _pool.Lease();
             nextBlock.End += nextBlockBytes;
 
@@ -213,12 +213,12 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             // Arrange
             var block = _pool.Lease();
-            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
+            var chars = input.ToCharArray().Select(c => (byte) c).ToArray();
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
             block.End += chars.Length;
             var begin = block.GetIterator();
             var end = begin;
-            end.Seek(new Vector<byte>((byte)endChar));
+            end.Seek((byte)endChar);
             string knownString;
 
             // Act

@@ -168,16 +168,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public int Seek(Vector<byte> byte0Vector)
+        public unsafe int Seek(byte byte0)
         {
             if (IsDefault)
             {
                 return -1;
             }
-
             var block = _block;
             var index = _index;
-            var array = block.Array;
             while (true)
             {
                 while (block.End == index)
@@ -190,54 +188,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     }
                     block = block.Next;
                     index = block.Start;
-                    array = block.Array;
                 }
-                while (block.End != index)
+                fixed (byte* ptr = block.Array)
                 {
-                    var following = block.End - index;
-                    if (following >= Vector<byte>.Count)
+                    for (; index < block.End; index++)
                     {
-                        var data = new Vector<byte>(array, index);
-                        var byte0Equals = Vector.Equals(data, byte0Vector);
-
-                        if (byte0Equals.Equals(Vector<byte>.Zero))
-                        {
-                            index += Vector<byte>.Count;
-                            continue;
-                        }
-
+                        if (*(ptr + index) != byte0) continue;
                         _block = block;
-                        _index = index + FindFirstEqualByte(byte0Equals);
-                        return byte0Vector[0];
-                    }
-
-                    var byte0 = byte0Vector[0];
-
-                    while (following > 0)
-                    {
-                        if (block.Array[index] == byte0)
-                        {
-                            _block = block;
-                            _index = index;
-                            return byte0;
-                        }
-                        following--;
-                        index++;
+                        _index = index;
+                        return byte0;
                     }
                 }
             }
         }
-
-        public int Seek(Vector<byte> byte0Vector, Vector<byte> byte1Vector)
+        public unsafe int Seek(byte byte0, byte byte1)
         {
             if (IsDefault)
             {
                 return -1;
             }
-
             var block = _block;
             var index = _index;
-            var array = block.Array;
             while (true)
             {
                 while (block.End == index)
@@ -250,81 +221,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     }
                     block = block.Next;
                     index = block.Start;
-                    array = block.Array;
                 }
-                while (block.End != index)
+                fixed (byte* ptr = block.Array)
                 {
-                    var following = block.End - index;
-                    if (following >= Vector<byte>.Count)
+                    for (; index < block.End; index++)
                     {
-                        var data = new Vector<byte>(array, index);
-                        var byte0Equals = Vector.Equals(data, byte0Vector);
-                        var byte1Equals = Vector.Equals(data, byte1Vector);
-                        int byte0Index = int.MaxValue;
-                        int byte1Index = int.MaxValue;
-
-                        if (!byte0Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte0Index = FindFirstEqualByte(byte0Equals);
-                        }
-                        if (!byte1Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte1Index = FindFirstEqualByte(byte1Equals);
-                        }
-
-                        if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
-                        {
-                            index += Vector<byte>.Count;
-                            continue;
-                        }
-
+                        if (*(ptr + index) != byte0 && *(ptr + index) != byte1) continue;
                         _block = block;
-
-                        if (byte0Index < byte1Index)
-                        {
-                            _index = index + byte0Index;
-                            return byte0Vector[0];
-                        }
-
-                        _index = index + byte1Index;
-                        return byte1Vector[0];
-                    }
-
-                    byte byte0 = byte0Vector[0];
-                    byte byte1 = byte1Vector[0];
-
-                    while (following > 0)
-                    {
-                        var byteIndex = block.Array[index];
-                        if (byteIndex == byte0)
-                        {
-                            _block = block;
-                            _index = index;
-                            return byte0;
-                        }
-                        else if (byteIndex == byte1)
-                        {
-                            _block = block;
-                            _index = index;
-                            return byte1;
-                        }
-                        following--;
-                        index++;
+                        _index = index;
+                        return *(ptr + index);
                     }
                 }
             }
         }
-
-        public int Seek(Vector<byte> byte0Vector, Vector<byte> byte1Vector, Vector<byte> byte2Vector)
+        public unsafe int Seek(byte byte0, byte byte1, byte byte2)
         {
             if (IsDefault)
             {
                 return -1;
             }
-
             var block = _block;
             var index = _index;
-            var array = block.Array;
             while (true)
             {
                 while (block.End == index)
@@ -337,131 +254,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     }
                     block = block.Next;
                     index = block.Start;
-                    array = block.Array;
                 }
-                while (block.End != index)
+                fixed (byte* ptr = block.Array)
                 {
-                    var following = block.End - index;
-                    if (following >= Vector<byte>.Count)
+                    for (; index < block.End; index++)
                     {
-                        var data = new Vector<byte>(array, index);
-                        var byte0Equals = Vector.Equals(data, byte0Vector);
-                        var byte1Equals = Vector.Equals(data, byte1Vector);
-                        var byte2Equals = Vector.Equals(data, byte2Vector);
-                        int byte0Index = int.MaxValue;
-                        int byte1Index = int.MaxValue;
-                        int byte2Index = int.MaxValue;
-
-                        if (!byte0Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte0Index = FindFirstEqualByte(byte0Equals);
-                        }
-                        if (!byte1Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte1Index = FindFirstEqualByte(byte1Equals);
-                        }
-                        if (!byte2Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte2Index = FindFirstEqualByte(byte2Equals);
-                        }
-
-                        if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
-                        {
-                            index += Vector<byte>.Count;
-                            continue;
-                        }
-
-                        int toReturn, toMove;
-                        if (byte0Index < byte1Index)
-                        {
-                            if (byte0Index < byte2Index)
-                            {
-                                toReturn = byte0Vector[0];
-                                toMove = byte0Index;
-                            }
-                            else
-                            {
-                                toReturn = byte2Vector[0];
-                                toMove = byte2Index;
-                            }
-                        }
-                        else
-                        {
-                            if (byte1Index < byte2Index)
-                            {
-                                toReturn = byte1Vector[0];
-                                toMove = byte1Index;
-                            }
-                            else
-                            {
-                                toReturn = byte2Vector[0];
-                                toMove = byte2Index;
-                            }
-                        }
-
+                        if (*(ptr + index) != byte0 && *(ptr + index) != byte1 && *(ptr + index) != byte2) continue;
                         _block = block;
-                        _index = index + toMove;
-                        return toReturn;
-                    }
-
-                    var byte0 = byte0Vector[0];
-                    var byte1 = byte1Vector[0];
-                    var byte2 = byte2Vector[0];
-
-                    while (following > 0)
-                    {
-                        var byteIndex = block.Array[index];
-                        if (byteIndex == byte0)
-                        {
-                            _block = block;
-                            _index = index;
-                            return byte0;
-                        }
-                        else if (byteIndex == byte1)
-                        {
-                            _block = block;
-                            _index = index;
-                            return byte1;
-                        }
-                        else if (byteIndex == byte2)
-                        {
-                            _block = block;
-                            _index = index;
-                            return byte2;
-                        }
-                        following--;
-                        index++;
+                        _index = index;
+                        return *(ptr + index);
                     }
                 }
             }
-        }
-
-        private static int FindFirstEqualByte(Vector<byte> byteEquals)
-        {
-            // Quasi-tree search
-            var vector64 = Vector.AsVectorInt64(byteEquals);
-            for (var i = 0; i < Vector<long>.Count; i++)
-            {
-                var longValue = vector64[i];
-                if (longValue == 0) continue;
-
-                var shift = i << 1;
-                var offset = shift << 2;
-                var vector32 = Vector.AsVectorInt32(byteEquals);
-                if (vector32[shift] != 0)
-                {
-                    if (byteEquals[offset] != 0) return offset;
-                    if (byteEquals[++offset] != 0) return offset;
-                    if (byteEquals[++offset] != 0) return offset;
-                    return ++offset;
-                }
-                offset += 4;
-                if (byteEquals[offset] != 0) return offset;
-                if (byteEquals[++offset] != 0) return offset;
-                if (byteEquals[++offset] != 0) return offset;
-                return ++offset;
-            }
-            throw new InvalidOperationException();
         }
 
         /// <summary>
