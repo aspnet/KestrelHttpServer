@@ -27,27 +27,27 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     var vectorCh = new Vector<byte>(ch);
 
                     var hit = iterator;
-                    hit.Seek(vectorCh);
+                    hit.Seek(ch);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorCh, vectorMaxValues);
+                    hit.Seek(ch, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorMaxValues, vectorCh);
+                    hit.Seek(byte.MaxValue, ch);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorCh, vectorMaxValues, vectorMaxValues);
+                    hit.Seek(ch, byte.MaxValue, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorMaxValues, vectorCh, vectorMaxValues);
+                    hit.Seek(byte.MaxValue, ch, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorCh, vectorMaxValues, vectorMaxValues);
+                    hit.Seek(ch, byte.MaxValue, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
                 }
             }
@@ -83,27 +83,27 @@ namespace Microsoft.AspNet.Server.KestrelTests
                     var vectorCh = new Vector<byte>(ch);
 
                     var hit = iterator;
-                    hit.Seek(vectorCh);
+                    hit.Seek(ch);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorCh, vectorMaxValues);
+                    hit.Seek(ch, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorMaxValues, vectorCh);
+                    hit.Seek(byte.MaxValue, ch);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorCh, vectorMaxValues, vectorMaxValues);
+                    hit.Seek(ch, byte.MaxValue, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorMaxValues, vectorCh, vectorMaxValues);
+                    hit.Seek(byte.MaxValue, ch, byte.MaxValue);
                     Assert.Equal(ch, iterator.GetLength(hit));
 
                     hit = iterator;
-                    hit.Seek(vectorMaxValues, vectorMaxValues, vectorCh);
+                    hit.Seek(byte.MaxValue, byte.MaxValue, ch);
                     Assert.Equal(ch, iterator.GetLength(hit));
                 }
             }

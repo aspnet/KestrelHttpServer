@@ -22,7 +22,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public abstract partial class Frame : FrameContext, IFrameControl
     {
-        private static readonly Encoding _ascii = Encoding.ASCII;
         private static readonly ArraySegment<byte> _endChunkBytes = CreateAsciiByteArraySegment("\r\n");
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
         private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
@@ -35,16 +34,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly byte[] _bytesHttpVersion1_0 = Encoding.ASCII.GetBytes("HTTP/1.0 ");
         private static readonly byte[] _bytesHttpVersion1_1 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
         private static readonly byte[] _bytesContentLengthZero = Encoding.ASCII.GetBytes("\r\nContent-Length: 0");
-        private static readonly byte[] _bytesSpace = Encoding.ASCII.GetBytes(" ");
         private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("\r\nServer: Kestrel");
-        private static readonly byte[] _bytesDate = Encoding.ASCII.GetBytes("Date: ");
         private static readonly byte[] _bytesEndHeaders = Encoding.ASCII.GetBytes("\r\n\r\n");
-
-        private static readonly Vector<byte> _vectorCRs = new Vector<byte>((byte)'\r');
-        private static readonly Vector<byte> _vectorColons = new Vector<byte>((byte)':');
-        private static readonly Vector<byte> _vectorSpaces = new Vector<byte>((byte)' ');
-        private static readonly Vector<byte> _vectorQuestionMarks = new Vector<byte>((byte)'?');
-        private static readonly Vector<byte> _vectorPercentages = new Vector<byte>((byte)'%');
 
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
@@ -271,10 +262,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _requestProcessingStarted = true;
                 _requestProcessingTask =
                     Task.Factory.StartNew(
-                        (o) => ((Frame)o).RequestProcessingAsync(), 
-                        this, 
-                        CancellationToken.None, 
-                        TaskCreationOptions.DenyChildAttach, 
+                        (o) => ((Frame)o).RequestProcessingAsync(),
+                        this,
+                        CancellationToken.None,
+                        TaskCreationOptions.DenyChildAttach,
                         TaskScheduler.Default);
             }
         }
@@ -711,7 +702,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             try
             {
                 var begin = scan;
-                if (scan.Seek(_vectorSpaces) == -1)
+                if (scan.Seek(0x20) == -1)
                 {
                     return false;
                 }
@@ -726,11 +717,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 begin = scan;
 
                 var needDecode = false;
-                var chFound = scan.Seek(_vectorSpaces, _vectorQuestionMarks, _vectorPercentages);
+                var chFound = scan.Seek((byte)' ', (byte)'?', (byte)'%');
                 if (chFound == '%')
                 {
                     needDecode = true;
-                    chFound = scan.Seek(_vectorSpaces, _vectorQuestionMarks);
+                    chFound = scan.Seek((byte)' ', (byte)'?');
                 }
 
                 var pathBegin = begin;
@@ -740,7 +731,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 if (chFound == '?')
                 {
                     begin = scan;
-                    if (scan.Seek(_vectorSpaces) != ' ')
+                    if (scan.Seek(0x20) != ' ')
                     {
                         return false;
                     }
@@ -749,7 +740,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 scan.Take();
                 begin = scan;
-                if (scan.Seek(_vectorCRs) == -1)
+                if (scan.Seek((byte)'\r') == -1)
                 {
                     return false;
                 }
@@ -843,7 +834,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 while (!scan.IsEnd)
                 {
                     var beginName = scan;
-                    scan.Seek(_vectorColons, _vectorCRs);
+                    scan.Seek((byte)':', (byte)'\r');
                     var endName = scan;
 
                     chFirst = scan.Take();
@@ -894,7 +885,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     var wrapping = false;
                     while (!scan.IsEnd)
                     {
-                        if (scan.Seek(_vectorCRs) == -1)
+                        if (scan.Seek((byte)'\r') == -1)
                         {
                             // no "\r" in sight, burn used bytes and go back to await more data
                             return false;
