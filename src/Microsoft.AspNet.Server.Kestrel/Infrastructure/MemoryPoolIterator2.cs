@@ -213,22 +213,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 #if !DEBUG // Need unit tests to test Vector path
                     }
 #endif
-                    fixed (byte* pArray = array)
+                    var pCurrent = block.Pointer + index;
+                    var pEnd = pCurrent + following;
+                    do
                     {
-                        var pCurrent = pArray + index;
-                        var pEnd = pArray + index + following;
-                        do
+                        if (*pCurrent == byte0)
                         {
-                            if (*pCurrent == byte0)
-                            {
-                                _block = block;
-                                _index = index;
-                                return byte0;
-                            }
-                            pCurrent++;
-                            index++;
-                        } while (pCurrent < pEnd);
-                    }
+                            _block = block;
+                            _index = index;
+                            return byte0;
+                        }
+                        pCurrent++;
+                        index++;
+                    } while (pCurrent < pEnd);
+
                     following = 0;
                     break;
                 }
@@ -311,29 +309,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 #if !DEBUG // Need unit tests to test Vector path
                     }
 #endif
-
-                    fixed (byte* pArray = array)
+                var pCurrent = block.Pointer + index;
+                var pEnd = pCurrent + following;
+                do
                     {
-                        var pCurrent = pArray + index;
-                        var pEnd = pArray + index + following;
-                        do
+                        if (*pCurrent == byte0)
                         {
-                            if (*pCurrent == byte0)
-                            {
-                                _block = block;
-                                _index = index;
-                                return byte0;
-                            }
-                            if (*pCurrent == byte1)
-                            {
-                                _block = block;
-                                _index = index;
-                                return byte1;
-                            }
-                            pCurrent++;
-                            index++;
-                        } while (pCurrent != pEnd);
-                    }
+                            _block = block;
+                            _index = index;
+                            return byte0;
+                        }
+                        if (*pCurrent == byte1)
+                        {
+                            _block = block;
+                            _index = index;
+                            return byte1;
+                        }
+                        pCurrent++;
+                        index++;
+                    } while (pCurrent != pEnd);
+
                     following = 0;
                     break;
                 }
@@ -444,34 +439,32 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 #if !DEBUG // Need unit tests to test Vector path
                     }
 #endif
-                    fixed (byte* pArray = array)
+                var pCurrent = block.Pointer + index;
+                var pEnd = pCurrent + following;
+                do
                     {
-                        var pCurrent = pArray + index;
-                        var pEnd = pArray + index + following;
-                        do
+                        if (*pCurrent == byte0)
                         {
-                            if (*pCurrent == byte0)
-                            {
-                                _block = block;
-                                _index = index;
-                                return byte0;
-                            }
-                            if (*pCurrent == byte1)
-                            {
-                                _block = block;
-                                _index = index;
-                                return byte1;
-                            }
-                            if (*pCurrent == byte2)
-                            {
-                                _block = block;
-                                _index = index;
-                                return byte2;
-                            }
-                            pCurrent++;
-                            index++;
-                        } while (pCurrent != pEnd);
-                    }
+                            _block = block;
+                            _index = index;
+                            return byte0;
+                        }
+                        if (*pCurrent == byte1)
+                        {
+                            _block = block;
+                            _index = index;
+                            return byte1;
+                        }
+                        if (*pCurrent == byte2)
+                        {
+                            _block = block;
+                            _index = index;
+                            return byte2;
+                        }
+                        pCurrent++;
+                        index++;
+                    } while (pCurrent != pEnd);
+
                     following = 0;
                     break;
                 }
