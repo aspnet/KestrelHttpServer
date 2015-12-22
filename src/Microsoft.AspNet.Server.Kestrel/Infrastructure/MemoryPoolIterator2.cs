@@ -750,29 +750,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
                     }
 
-                    fixed (byte* pOutput = block.Data.Array)
+                    var output = block.Pointer + block.End;
+
+                    var copied = 0;
+                    for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
                     {
-                        var output = pOutput + block.End;
-
-                        var copied = 0;
-                        for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
-                        {
-                            *(output) = (byte)*(input);
-                            *(output + 1) = (byte)*(input + 1);
-                            *(output + 2) = (byte)*(input + 2);
-                            *(output + 3) = (byte)*(input + 3);
-                            output += 4;
-                            input += 4;
-                        }
-                        for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
-                        {
-                            *(output++) = (byte)*(input++);
-                        }
-
-                        blockIndex += copied;
-                        bytesLeftInBlockMinusSpan -= copied;
-                        bytesLeftInBlock -= copied;
+                        *(output) = (byte)*(input);
+                        *(output + 1) = (byte)*(input + 1);
+                        *(output + 2) = (byte)*(input + 2);
+                        *(output + 3) = (byte)*(input + 3);
+                        output += 4;
+                        input += 4;
                     }
+                    for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
+                    {
+                        *(output++) = (byte)*(input++);
+                    }
+
+                    blockIndex += copied;
+                    bytesLeftInBlockMinusSpan -= copied;
+                    bytesLeftInBlock -= copied;
                 }
             }
 
