@@ -87,7 +87,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (buffer.Count > 0)
             {
                 var tail = ProducingStart();
-                tail.CopyFrom(buffer);
+                tail.CopyFrom(buffer.Array, buffer.Offset, buffer.Count);
                 // We do our own accounting below
                 ProducingCompleteNoPreComplete(tail);
             }
@@ -242,7 +242,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 var returningBlock = block;
                 block = returningBlock.Next;
 
-                returningBlock.Pool?.Return(returningBlock);
+                returningBlock.Pool.Return(returningBlock);
             }
         }
 
@@ -371,13 +371,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     var returnBlock = block;
                     block = block.Next;
 
-                    returnBlock.Pool?.Return(returnBlock);
+                    returnBlock.Pool.Return(returnBlock);
                 }
 
                 // Only return the _tail if we aren't between ProducingStart/Complete calls
                 if (_lastStart.IsDefault)
                 {
-                    _tail.Pool?.Return(_tail);
+                    _tail.Pool.Return(_tail);
                 }
 
                 _head = null;
@@ -567,14 +567,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 var end = _lockedEnd.Block;
                 if (block == end)
                 {
-                    end.Unpin();
                     return;
                 }
 
                 while (block.Next != end)
                 {
                     block = block.Next;
-                    block.Unpin();
                 }
                 block.Next = null;
 
@@ -588,8 +586,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     var returnBlock = block;
                     block = block.Next;
 
-                    returnBlock.Unpin();
-                    returnBlock.Pool?.Return(returnBlock);
+                    returnBlock.Pool.Return(returnBlock);
                 }
             }
 

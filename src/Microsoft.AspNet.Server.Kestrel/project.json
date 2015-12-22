@@ -20,7 +20,8 @@
     "Microsoft.AspNet.Internal.libuv-Windows": {
       "version": "1.0.0-*",
       "type": "build"
-    }
+    },
+    "System.Buffers": "4.0.0-*"
   },
   "frameworks": {
     "dnx451": { },

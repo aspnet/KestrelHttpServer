@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 
@@ -221,8 +222,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public static ArraySegment<byte> GetArraySegment(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
+        public static ArraySegment<byte> GetArraySegment(this MemoryPoolIterator2 start, MemoryPoolIterator2 end, out byte[] rentedBuffer)
         {
+            rentedBuffer = null;
             if (start.IsDefault || end.IsDefault)
             {
                 return default(ArraySegment<byte>);
@@ -233,9 +235,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
 
             var length = start.GetLength(end);
-            var array = new byte[length];
-            start.CopyTo(array, 0, length, out length);
-            return new ArraySegment<byte>(array, 0, length);
+            rentedBuffer = ArrayPool<byte>.Shared.Rent(length);
+            start.CopyTo(rentedBuffer, 0, length, out length);
+            return new ArraySegment<byte>(rentedBuffer, 0, length);
         }
 
         /// <summary>

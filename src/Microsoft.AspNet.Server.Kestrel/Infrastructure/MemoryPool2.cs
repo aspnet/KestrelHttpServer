@@ -65,21 +65,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <param name="minimumSize">The block returned must be at least this size. It may be larger than this minimum size, and if so,
         /// the caller may write to the block's entire size rather than being limited to the minumumSize requested.</param>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock2 Lease(int minimumSize = MaxPooledBlockLength)
+        public MemoryPoolBlock2 Lease()
         {
-            if (minimumSize > _blockLength)
-            {
-                // The requested minimumSize is actually larger then the usable memory of a single block.
-                // Because this is the degenerate case, a one-time-use byte[] array and tracking object are allocated.
-                // When this block tracking object is returned it is not added to the pool - instead it will be 
-                // allowed to be garbage collected normally.
-                return MemoryPoolBlock2.Create(
-                    new ArraySegment<byte>(new byte[minimumSize]),
-                    dataPtr: IntPtr.Zero,
-                    pool: null,
-                    slab: null);
-            }
-
             MemoryPoolBlock2 block;
             if (_blocks.TryDequeue(out block))
             {

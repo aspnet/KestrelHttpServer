@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel;
@@ -29,11 +30,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         public void Add(string text, bool fin = false)
         {
-            var encoding = System.Text.Encoding.ASCII;
-            var count = encoding.GetByteCount(text);
-            var buffer = FrameContext.SocketInput.IncomingStart(text.Length);
-            count = encoding.GetBytes(text, 0, text.Length, buffer.Data.Array, buffer.Data.Offset);
-            FrameContext.SocketInput.IncomingComplete(count, null);
+            var data = Encoding.ASCII.GetBytes(text);
+            FrameContext.SocketInput.IncomingData(data, 0, data.Length);
+
             if (fin)
             {
                 FrameContext.SocketInput.RemoteIntakeFin = true;

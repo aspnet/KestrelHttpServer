@@ -13,7 +13,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var pool = new MemoryPool2())
             {
-                var block = pool.Lease(256);
+                var block = pool.Lease();
                 foreach (var ch in Enumerable.Range(0, 256).Select(x => (byte)x))
                 {
                     block.Array[block.End++] = ch;
@@ -61,9 +61,9 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
             using (var pool = new MemoryPool2())
             {
-                var block1 = pool.Lease(256);
-                var block2 = block1.Next = pool.Lease(256);
-                var block3 = block2.Next = pool.Lease(256);
+                var block1 = pool.Lease();
+                var block2 = block1.Next = pool.Lease();
+                var block3 = block2.Next = pool.Lease();
 
                 foreach (var ch in Enumerable.Range(0, 34).Select(x => (byte)x))
                 {
@@ -117,7 +117,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var pool = new MemoryPool2())
             {
-                var block = pool.Lease(256);
+                var block = pool.Lease();
                 block.End += 256;
                 TestAllLengths(block, 256);
                 pool.Return(block);
@@ -126,7 +126,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 for (var fragment = 0; fragment < 256; fragment += 4)
                 {
                     var next = block;
-                    block = pool.Lease(4);
+                    block = pool.Lease();
                     block.Next = next;
                     block.End += 4;
                 }
@@ -162,8 +162,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var pool = new MemoryPool2())
             {
-                var block1 = pool.Lease(256);
-                var block2 = block1.Next = pool.Lease(256);
+                var block1 = pool.Lease();
+                var block2 = block1.Next = pool.Lease();
 
                 block1.End += 100;
                 block2.End += 200;
@@ -200,8 +200,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var pool = new MemoryPool2())
             {
-                var block1 = pool.Lease(128);
-                var block2 = block1.Next = pool.Lease(128);
+                var block1 = pool.Lease();
+                var block2 = block1.Next = pool.Lease();
 
                 for (int i = 0; i < 128; i++)
                 {
@@ -235,7 +235,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var pool = new MemoryPool2())
             {
-                var block1 = pool.Lease(128);
+                var block1 = pool.Lease();
                 var start = block1.GetIterator();
                 var end = start;
                 var bufferSize = block1.Data.Count * 3;
@@ -248,7 +248,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
                 Assert.Null(block1.Next);
 
-                end.CopyFrom(new ArraySegment<byte>(buffer));
+                end.CopyFrom(buffer);
 
                 Assert.NotNull(block1.Next);
 
@@ -268,10 +268,10 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             using (var pool = new MemoryPool2())
             {
-                var block1 = pool.Lease(128);
-                var block2 = block1.Next = pool.Lease(128);
-                var block3 = block2.Next = pool.Lease(128);
-                var block4 = block3.Next = pool.Lease(128);
+                var block1 = pool.Lease();
+                var block2 = block1.Next = pool.Lease();
+                var block3 = block2.Next = pool.Lease();
+                var block4 = block3.Next = pool.Lease();
 
                 // There is no data in block2 or block4, so IsEnd should be true after 256 bytes are read.
                 block1.End += 128;

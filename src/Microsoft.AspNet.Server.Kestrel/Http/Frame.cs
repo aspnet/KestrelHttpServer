@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -472,33 +473,34 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void WriteChunked(ArraySegment<byte> data)
         {
-            SocketOutput.Write(BeginChunkBytes(data.Count), immediate: false);
+            var tenByteBuffer = ArrayPool<byte>.Shared.Rent(10);
+            SocketOutput.Write(BeginChunkBytes(data.Count, tenByteBuffer), immediate: false);
+            ArrayPool<byte>.Shared.Return(tenByteBuffer);
             SocketOutput.Write(data, immediate: false);
             SocketOutput.Write(_endChunkBytes, immediate: true);
         }
 
         private async Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            await SocketOutput.WriteAsync(BeginChunkBytes(data.Count), immediate: false, cancellationToken: cancellationToken);
+            var tenByteBuffer = ArrayPool<byte>.Shared.Rent(10);
+            await SocketOutput.WriteAsync(BeginChunkBytes(data.Count, tenByteBuffer), immediate: false, cancellationToken: cancellationToken);
+            ArrayPool<byte>.Shared.Return(tenByteBuffer);
             await SocketOutput.WriteAsync(data, immediate: false, cancellationToken: cancellationToken);
             await SocketOutput.WriteAsync(_endChunkBytes, immediate: true, cancellationToken: cancellationToken);
         }
 
-        public static ArraySegment<byte> BeginChunkBytes(int dataCount)
+        public static ArraySegment<byte> BeginChunkBytes(int dataCount, byte[] tenByteBuffer)
         {
-            var bytes = new byte[10]
-            {
-                _hex[((dataCount >> 0x1c) & 0x0f)],
-                _hex[((dataCount >> 0x18) & 0x0f)],
-                _hex[((dataCount >> 0x14) & 0x0f)],
-                _hex[((dataCount >> 0x10) & 0x0f)],
-                _hex[((dataCount >> 0x0c) & 0x0f)],
-                _hex[((dataCount >> 0x08) & 0x0f)],
-                _hex[((dataCount >> 0x04) & 0x0f)],
-                _hex[((dataCount >> 0x00) & 0x0f)],
-                (byte)'\r',
-                (byte)'\n',
-            };
+            tenByteBuffer[0] = _hex[((dataCount >> 0x1c) & 0x0f)];
+            tenByteBuffer[1] = _hex[((dataCount >> 0x18) & 0x0f)];
+            tenByteBuffer[2] = _hex[((dataCount >> 0x14) & 0x0f)];
+            tenByteBuffer[3] = _hex[((dataCount >> 0x10) & 0x0f)];
+            tenByteBuffer[4] = _hex[((dataCount >> 0x0c) & 0x0f)];
+            tenByteBuffer[5] = _hex[((dataCount >> 0x08) & 0x0f)];
+            tenByteBuffer[6] = _hex[((dataCount >> 0x04) & 0x0f)];
+            tenByteBuffer[7] = _hex[((dataCount >> 0x00) & 0x0f)];
+            tenByteBuffer[8] = (byte)'\r';
+            tenByteBuffer[9] = (byte)'\n';
 
             // Determine the most-significant non-zero nibble
             int total, shift;
@@ -510,7 +512,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             total |= (dataCount > 0x000f) ? 0x04 : 0x00;
 
             var offset = 7 - (total >> 2);
-            return new ArraySegment<byte>(bytes, offset, 10 - offset);
+            return new ArraySegment<byte>(tenByteBuffer, offset, 10 - offset);
         }
 
         private void WriteChunkedResponseSuffix()
@@ -922,7 +924,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             continue;
                         }
 
-                        var name = beginName.GetArraySegment(endName);
+                        byte[] rentedBuffer;
+                        var name = beginName.GetArraySegment(endName, out rentedBuffer);
                         var value = beginValue.GetAsciiString(endValue);
                         if (wrapping)
                         {
@@ -931,6 +934,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                         consumed = scan;
                         requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                        if (rentedBuffer != null)
+                        {
+                            ArrayPool<byte>.Shared.Return(rentedBuffer);
+                        }
                         break;
                     }
                 }
