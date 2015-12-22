@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.AspNet.Server.Kestrel.Http;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Xunit;
@@ -111,20 +112,28 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [InlineData("%C2%B5%40%C3%9F%C3%B6%C3%A4%C3%BC%C3%A0%C3%A1", 44, "µ@ßöäüà%C3%A", 12)]
         public void DecodeWithBoundary(string raw, int rawLength, string expect, int expectLength)
         {
-            var begin = BuildSample(raw);
-            var end = GetIterator(begin, rawLength);
+            var store = raw.Select(c => (byte)c).ToArray();
+            var handle = GCHandle.Alloc(store, GCHandleType.Pinned);
+            try
+            {
+                var begin = BuildSample(store, handle.AddrOfPinnedObject());
+                var end = GetIterator(begin, rawLength);
 
-            var end2 = UrlPathDecoder.Unescape(begin, end);
-            var result = begin.GetUtf8String(end2);
+                var end2 = UrlPathDecoder.Unescape(begin, end);
+                var result = begin.GetUtf8String(end2);
 
-            Assert.Equal(expectLength, result.Length);
-            Assert.Equal(expect, result);
+                Assert.Equal(expectLength, result.Length);
+                Assert.Equal(expect, result);
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
 
-        private MemoryPoolIterator2 BuildSample(string data)
+        private MemoryPoolIterator2 BuildSample(byte[] store, IntPtr dataPtr)
         {
-            var store = data.Select(c => (byte)c).ToArray();
-            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(store), IntPtr.Zero, null, null);
+            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(store), dataPtr, null, null);
             mem.End = store.Length;
 
             return mem.GetIterator();
@@ -143,30 +152,57 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
         private void PositiveAssert(string raw, string expect)
         {
-            var begin = BuildSample(raw);
-            var end = GetIterator(begin, raw.Length);
+            var store = raw.Select(c => (byte)c).ToArray();
+            var handle = GCHandle.Alloc(store, GCHandleType.Pinned);
+            try
+            {
+                var begin = BuildSample(store, handle.AddrOfPinnedObject());
+                var end = GetIterator(begin, raw.Length);
 
-            var result = UrlPathDecoder.Unescape(begin, end);
-            Assert.Equal(expect, begin.GetUtf8String(result));
+                var result = UrlPathDecoder.Unescape(begin, end);
+                Assert.Equal(expect, begin.GetUtf8String(result));
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
 
         private void PositiveAssert(string raw)
         {
-            var begin = BuildSample(raw);
-            var end = GetIterator(begin, raw.Length);
+            var store = raw.Select(c => (byte)c).ToArray();
+            var handle = GCHandle.Alloc(store, GCHandleType.Pinned);
+            try
+            {
+                var begin = BuildSample(store, handle.AddrOfPinnedObject());
+                var end = GetIterator(begin, raw.Length);
 
-            var result = UrlPathDecoder.Unescape(begin, end);
-            Assert.NotEqual(raw.Length, begin.GetUtf8String(result).Length);
+                var result = UrlPathDecoder.Unescape(begin, end);
+                Assert.NotEqual(raw.Length, begin.GetUtf8String(result).Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
 
         private void NegativeAssert(string raw)
         {
-            var begin = BuildSample(raw);
-            var end = GetIterator(begin, raw.Length);
+            var store = raw.Select(c => (byte)c).ToArray();
+            var handle = GCHandle.Alloc(store, GCHandleType.Pinned);
+            try
+            {
+                var begin = BuildSample(store, handle.AddrOfPinnedObject());
+                var end = GetIterator(begin, raw.Length);
 
-            var resultEnd = UrlPathDecoder.Unescape(begin, end);
-            var result = begin.GetUtf8String(resultEnd);
-            Assert.Equal(raw, result);
+                var resultEnd = UrlPathDecoder.Unescape(begin, end);
+                var result = begin.GetUtf8String(resultEnd);
+                Assert.Equal(raw, result);
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
     }
 }

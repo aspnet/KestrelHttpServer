@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Xunit;
 
@@ -15,22 +16,30 @@ namespace Microsoft.AspNet.Server.KestrelTests
         {
             var byteRange = Enumerable.Range(0, 256).Select(x => (byte)x).ToArray();
 
-            var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            mem.End = byteRange.Length;
-
-            var begin = mem.GetIterator();
-            var end = GetIterator(begin, byteRange.Length);
-
-            var s = begin.GetAsciiString(end);
-
-            Assert.Equal(s.Length, byteRange.Length);
-
-            for (var i = 0; i < byteRange.Length; i++)
+            var handle = GCHandle.Alloc(byteRange, GCHandleType.Pinned);
+            try
             {
-                var sb = (byte)s[i];
-                var b = byteRange[i];
+                var mem = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                mem.End = byteRange.Length;
 
-                Assert.Equal(sb, b);
+                var begin = mem.GetIterator();
+                var end = GetIterator(begin, byteRange.Length);
+
+                var s = begin.GetAsciiString(end);
+
+                Assert.Equal(s.Length, byteRange.Length);
+
+                for (var i = 0; i < byteRange.Length; i++)
+                {
+                    var sb = (byte)s[i];
+                    var b = byteRange[i];
+
+                    Assert.Equal(sb, b);
+                }
+            }
+            finally
+            {
+                handle.Free();
             }
         }
 
@@ -38,38 +47,46 @@ namespace Microsoft.AspNet.Server.KestrelTests
         private void MultiBlockProducesCorrectResults()
         {
             var byteRange = Enumerable.Range(0, 512 + 64).Select(x => (byte)x).ToArray();
-            var expectedByteRange = byteRange
-                                    .Concat(byteRange)
-                                    .Concat(byteRange)
-                                    .Concat(byteRange)
-                                    .ToArray();
-
-            var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem2 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem3 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            mem0.End = byteRange.Length;
-            mem1.End = byteRange.Length;
-            mem2.End = byteRange.Length;
-            mem3.End = byteRange.Length;
-
-            mem0.Next = mem1;
-            mem1.Next = mem2;
-            mem2.Next = mem3;
-
-            var begin = mem0.GetIterator();
-            var end = GetIterator(begin, expectedByteRange.Length);
-
-            var s = begin.GetAsciiString(end);
-
-            Assert.Equal(s.Length, expectedByteRange.Length);
-
-            for (var i = 0; i < expectedByteRange.Length; i++)
+            var handle = GCHandle.Alloc(byteRange, GCHandleType.Pinned);
+            try
             {
-                var sb = (byte)s[i];
-                var b = expectedByteRange[i];
+                var expectedByteRange = byteRange
+                                        .Concat(byteRange)
+                                        .Concat(byteRange)
+                                        .Concat(byteRange)
+                                        .ToArray();
 
-                Assert.Equal(sb, b);
+                var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                var mem2 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                var mem3 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                mem0.End = byteRange.Length;
+                mem1.End = byteRange.Length;
+                mem2.End = byteRange.Length;
+                mem3.End = byteRange.Length;
+
+                mem0.Next = mem1;
+                mem1.Next = mem2;
+                mem2.Next = mem3;
+
+                var begin = mem0.GetIterator();
+                var end = GetIterator(begin, expectedByteRange.Length);
+
+                var s = begin.GetAsciiString(end);
+
+                Assert.Equal(s.Length, expectedByteRange.Length);
+
+                for (var i = 0; i < expectedByteRange.Length; i++)
+                {
+                    var sb = (byte)s[i];
+                    var b = expectedByteRange[i];
+
+                    Assert.Equal(sb, b);
+                }
+            }
+            finally
+            {
+                handle.Free();
             }
         }
 
@@ -77,28 +94,35 @@ namespace Microsoft.AspNet.Server.KestrelTests
         private void LargeAllocationProducesCorrectResults()
         {
             var byteRange = Enumerable.Range(0, 16384 + 64).Select(x => (byte)x).ToArray();
-            var expectedByteRange = byteRange.Concat(byteRange).ToArray();
+            var handle = GCHandle.Alloc(byteRange, GCHandleType.Pinned);
+            try { 
+                var expectedByteRange = byteRange.Concat(byteRange).ToArray();
 
-            var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), IntPtr.Zero, null, null);
-            mem0.End = byteRange.Length;
-            mem1.End = byteRange.Length;
+                var mem0 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                var mem1 = MemoryPoolBlock2.Create(new ArraySegment<byte>(byteRange), handle.AddrOfPinnedObject(), null, null);
+                mem0.End = byteRange.Length;
+                mem1.End = byteRange.Length;
 
-            mem0.Next = mem1;
+                mem0.Next = mem1;
 
-            var begin = mem0.GetIterator();
-            var end = GetIterator(begin, expectedByteRange.Length);
+                var begin = mem0.GetIterator();
+                var end = GetIterator(begin, expectedByteRange.Length);
 
-            var s = begin.GetAsciiString(end);
+                var s = begin.GetAsciiString(end);
 
-            Assert.Equal(s.Length, expectedByteRange.Length);
+                Assert.Equal(s.Length, expectedByteRange.Length);
 
-            for (var i = 0; i < expectedByteRange.Length; i++)
+                for (var i = 0; i < expectedByteRange.Length; i++)
+                {
+                    var sb = (byte)s[i];
+                    var b = expectedByteRange[i];
+
+                    Assert.Equal(sb, b);
+                }
+            }
+            finally
             {
-                var sb = (byte)s[i];
-                var b = expectedByteRange[i];
-
-                Assert.Equal(sb, b);
+                handle.Free();
             }
         }
 
