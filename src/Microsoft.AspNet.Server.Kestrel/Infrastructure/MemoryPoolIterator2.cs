@@ -133,10 +133,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
             else if (_block.End - _index >= sizeof(long))
             {
-                fixed (byte* ptr = _block.Array)
-                {
-                    return *(long*)(ptr + _index);
-                }
+                return *(long*)(_block.Pointer + _index);
             }
             else if (_block.Next == null)
             {
@@ -152,17 +149,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     return -1;
                 }
 
-                long blockLong;
-                fixed (byte* ptr = _block.Array)
-                {
-                    blockLong = *(long*)(ptr + _block.End - sizeof(long));
-                }
+                var blockLong = *(long*)(_block.Pointer + _block.End - sizeof(long));
 
-                long nextLong;
-                fixed (byte* ptr = _block.Next.Array)
-                {
-                    nextLong = *(long*)(ptr + _block.Next.Start);
-                }
+                var nextLong = *(long*)(_block.Next.Pointer + _block.Next.Start);
 
                 return (blockLong >> (sizeof(long) - blockBytes) * 8) | (nextLong << (sizeof(long) - nextBytes) * 8);
             }
@@ -533,7 +522,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             }
         }
 
-        public MemoryPoolIterator2 CopyTo(byte[] array, int offset, int count, out int actual)
+        public unsafe MemoryPoolIterator2 CopyTo(byte[] array, int offset, int count, out int actual)
         {
             if (IsDefault)
             {
@@ -552,7 +541,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     actual = count;
                     if (array != null)
                     {
+#if DOTNET5_4 || DNXCORE50
+                        fixed (byte* pDst = array)
+                        {
+                            Buffer.MemoryCopy(block.Pointer + index, pDst + offset, remaining, remaining);
+                        }
+#else
                         Buffer.BlockCopy(block.Array, index, array, offset, remaining);
+#endif
                     }
                     return new MemoryPoolIterator2(block, index + remaining);
                 }
@@ -561,7 +557,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     actual = count - remaining + following;
                     if (array != null)
                     {
+#if DOTNET5_4 || DNXCORE50
+                        fixed (byte* pDst = array)
+                        {
+                            Buffer.MemoryCopy(block.Pointer + index, pDst + offset, following, following);
+                        }
+#else
                         Buffer.BlockCopy(block.Array, index, array, offset, following);
+#endif
                     }
                     return new MemoryPoolIterator2(block, index + following);
                 }
@@ -569,7 +572,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 {
                     if (array != null)
                     {
+#if DOTNET5_4 || DNXCORE50
+                        fixed (byte* pDst = array)
+                        {
+                            Buffer.MemoryCopy(block.Pointer + index, pDst + offset, following, following);
+                        }
+#else
                         Buffer.BlockCopy(block.Array, index, array, offset, following);
+#endif
                     }
                     offset += following;
                     remaining -= following;
@@ -584,52 +594,73 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             CopyFrom(data, 0, data.Length);
         }
 
-        public void CopyFrom(ArraySegment<byte> buffer)
+        public unsafe void CopyFrom(byte[] data, int offset, int count)
         {
-            CopyFrom(buffer.Array, buffer.Offset, buffer.Count);
-        }
-
-        public void CopyFrom(byte[] data, int offset, int count)
-        {
-            Debug.Assert(_block != null);
-            Debug.Assert(_block.Pool != null);
-            Debug.Assert(_block.Next == null);
-            Debug.Assert(_block.End == _index);
-
-            var pool = _block.Pool;
             var block = _block;
             var blockIndex = _index;
+            var blockRemaining = block.Data.Offset + block.Data.Count - blockIndex;
 
-            var bufferIndex = offset;
-            var remaining = count;
-            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
-
-            while (remaining > 0)
+            if (blockRemaining >= count)
             {
-                if (bytesLeftInBlock == 0)
+                _index = blockIndex + count;
+#if DOTNET5_4 || DNXCORE50
+                fixed(byte* pSrc = data)
                 {
-                    var nextBlock = pool.Lease();
-                    block.End = blockIndex;
-                    block.Next = nextBlock;
-                    block = nextBlock;
-
-                    blockIndex = block.Data.Offset;
-                    bytesLeftInBlock = block.Data.Count;
+                    Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, count, count);
                 }
-
-                var bytesToCopy = remaining < bytesLeftInBlock ? remaining : bytesLeftInBlock;
-
-                Buffer.BlockCopy(data, bufferIndex, block.Array, blockIndex, bytesToCopy);
-
-                blockIndex += bytesToCopy;
-                bufferIndex += bytesToCopy;
-                remaining -= bytesToCopy;
-                bytesLeftInBlock -= bytesToCopy;
+#else
+                Buffer.BlockCopy(data, offset, block.Array, blockIndex, count);
+#endif
+                block.End = _index;
+                return;
             }
 
-            block.End = blockIndex;
-            _block = block;
-            _index = blockIndex;
+            var pool = block.Pool;
+
+            while (count > 0)
+            {
+                if (blockRemaining == 0)
+                {
+                    block.End = blockIndex;
+
+                    var nextBlock = pool.Lease();
+                    blockIndex = nextBlock.Data.Offset;
+                    blockRemaining = nextBlock.Data.Count;
+                    block.Next = nextBlock;
+                    block = nextBlock;
+                }
+
+                if (count > blockRemaining)
+                {
+                    count -= blockRemaining;
+#if DOTNET5_4 || DNXCORE50
+                    fixed (byte* pSrc = data)
+                    {
+                        Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, blockRemaining, blockRemaining);
+                    }
+#else
+                    Buffer.BlockCopy(data, offset, block.Array, blockIndex, blockRemaining);
+#endif
+                    blockIndex += blockRemaining;
+                    offset += blockRemaining;
+                    blockRemaining = 0;
+                }
+                else
+                {
+                    _index = blockIndex + count;
+#if DOTNET5_4 || DNXCORE50
+                    fixed (byte* pSrc = data)
+                    {
+                        Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, count, count);
+                    }
+#else
+                    Buffer.BlockCopy(data, offset, block.Array, blockIndex, count);
+#endif
+                    block.End = _index;
+                    _block = block;
+                    return;
+                }
+            }
         }
 
         public unsafe void CopyFromAscii(string data)
@@ -667,29 +698,26 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                         bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
                     }
 
-                    fixed (byte* pOutput = block.Data.Array)
+                    var output = block.Pointer + block.End;
+
+                    var copied = 0;
+                    for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
                     {
-                        var output = pOutput + block.End;
-
-                        var copied = 0;
-                        for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
-                        {
-                            *(output) = (byte)*(input);
-                            *(output + 1) = (byte)*(input + 1);
-                            *(output + 2) = (byte)*(input + 2);
-                            *(output + 3) = (byte)*(input + 3);
-                            output += 4;
-                            input += 4;
-                        }
-                        for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
-                        {
-                            *(output++) = (byte)*(input++);
-                        }
-
-                        blockIndex += copied;
-                        bytesLeftInBlockMinusSpan -= copied;
-                        bytesLeftInBlock -= copied;
+                        *(output) = (byte)*(input);
+                        *(output + 1) = (byte)*(input + 1);
+                        *(output + 2) = (byte)*(input + 2);
+                        *(output + 3) = (byte)*(input + 3);
+                        output += 4;
+                        input += 4;
                     }
+                    for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
+                    {
+                        *(output++) = (byte)*(input++);
+                    }
+
+                    blockIndex += copied;
+                    bytesLeftInBlockMinusSpan -= copied;
+                    bytesLeftInBlock -= copied;
                 }
             }
 
