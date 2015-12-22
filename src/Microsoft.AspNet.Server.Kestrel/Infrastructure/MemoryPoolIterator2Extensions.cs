@@ -68,62 +68,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return *(long*)ptr;
             }
         }
-
-        private unsafe static string GetAsciiString(MemoryPoolBlock2 start, MemoryPoolIterator2 end, int inputOffset, int length)
-        {
-            var asciiString = new string('\0', length);
-
-            fixed (char* outputStart = asciiString)
-            {
-                var output = outputStart;
-                var block = start;
-                var remaining = length;
-
-                var endBlock = end.Block;
-                var endIndex = end.Index;
-
-                while (true)
-                {
-                    int following = (block != endBlock ? block.End : endIndex) - inputOffset;
-
-                    if (following > 0)
-                    {
-                        fixed (byte* blockStart = block.Array)
-                        {
-                            var input = blockStart + inputOffset;
-                            var i = 0;
-                            var followingMinusSpan = following - 3;
-                            for (; i < followingMinusSpan; i += 4)
-                            {
-                                *(output) = (char)*(input);
-                                *(output + 1) = (char)*(input + 1);
-                                *(output + 2) = (char)*(input + 2);
-                                *(output + 3) = (char)*(input + 3);
-                                output += 4;
-                                input += 4;
-                            }
-                            for (; i < following; i++)
-                            {
-                                *(output++) = (char)*(input++);
-                            }
-                        }
-                        remaining -= following;
-                    }
-
-                    if (remaining == 0)
-                    {
-                        break;
-                    }
-
-                    block = block.Next;
-                    inputOffset = block.Start;
-                }
-            }
-
-            return asciiString;
-        }
-
-        public static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
+        
+        public unsafe static string GetAsciiString(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
         {
             if (start.IsDefault || end.IsDefault)
             {
@@ -141,7 +87,56 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             // and kept in string as a char value that casts to same input byte value
             // https://tools.ietf.org/html/rfc7230#section-3.2.4
 
-            return GetAsciiString(start.Block, end, start.Index, length);
+            var inputOffset = start.Index;
+            var block = start.Block;
+
+            var asciiString = new string('\0', length);
+
+            fixed (char* outputStart = asciiString)
+            {
+                var output = outputStart;
+                var remaining = length;
+
+                var endBlock = end.Block;
+                var endIndex = end.Index;
+
+                while (true)
+                {
+                    int following = (block != endBlock ? block.End : endIndex) - inputOffset;
+
+                    if (following > 0)
+                    {
+                        var input = block.Pointer + inputOffset;
+                        var i = 0;
+                        var followingMinusSpan = following - 3;
+                        for (; i < followingMinusSpan; i += 4)
+                        {
+                            *(output) = (char)*(input);
+                            *(output + 1) = (char)*(input + 1);
+                            *(output + 2) = (char)*(input + 2);
+                            *(output + 3) = (char)*(input + 3);
+                            output += 4;
+                            input += 4;
+                        }
+                        for (; i < following; i++)
+                        {
+                            *(output++) = (char)*(input++);
+                        }
+                        
+                        remaining -= following;
+                    }
+
+                    if (remaining == 0)
+                    {
+                        break;
+                    }
+
+                    block = block.Next;
+                    inputOffset = block.Start;
+                }
+            }
+
+            return asciiString;
         }
 
         public static string GetUtf8String(this MemoryPoolIterator2 start, MemoryPoolIterator2 end)
