@@ -108,9 +108,39 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     {
                         var input = block.Pointer + inputOffset;
                         var i = 0;
-                        var followingMinusSpan = following - 3;
-                        for (; i < followingMinusSpan; i += 4)
+                        while (i + 11 < following)
                         {
+                            i += 12;
+                            *(output) = (char)*(input);
+                            *(output + 1) = (char)*(input + 1);
+                            *(output + 2) = (char)*(input + 2);
+                            *(output + 3) = (char)*(input + 3);
+                            *(output + 4) = (char)*(input + 4);
+                            *(output + 5) = (char)*(input + 5);
+                            *(output + 6) = (char)*(input + 6);
+                            *(output + 7) = (char)*(input + 7);
+                            *(output + 8) = (char)*(input + 8);
+                            *(output + 9) = (char)*(input + 9);
+                            *(output + 10) = (char)*(input + 10);
+                            *(output + 11) = (char)*(input + 11);
+                            output += 12;
+                            input += 12;
+                        }
+                        if (i + 6 < following)
+                        {
+                            i += 6;
+                            *(output) = (char)*(input);
+                            *(output + 1) = (char)*(input + 1);
+                            *(output + 2) = (char)*(input + 2);
+                            *(output + 3) = (char)*(input + 3);
+                            *(output + 4) = (char)*(input + 4);
+                            *(output + 5) = (char)*(input + 5);
+                            output += 6;
+                            input += 6;
+                        }
+                        if (i + 3 < following)
+                        {
+                            i += 4;
                             *(output) = (char)*(input);
                             *(output + 1) = (char)*(input + 1);
                             *(output + 2) = (char)*(input + 2);
@@ -118,8 +148,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                             output += 4;
                             input += 4;
                         }
-                        for (; i < following; i++)
+                        while (i < following)
                         {
+                            i++;
                             *(output++) = (char)*(input++);
                         }
                         
