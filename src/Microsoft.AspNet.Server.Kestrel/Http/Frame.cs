@@ -644,11 +644,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var end = begin;
             if (_keepAlive)
             {
-                foreach (var connectionValue in _responseHeaders.HeaderConnection)
+                var count = _responseHeaders.HeaderConnection.Count;
+                if (count == 1)
                 {
-                    if (connectionValue.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
+                    if (_responseHeaders.HeaderConnection[0].IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
                     {
                         _keepAlive = false;
+                    }
+                }
+                else if (count > 1)
+                {
+                    foreach (var connectionValue in _responseHeaders.HeaderConnection)
+                    {
+                        if (connectionValue.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
+                        {
+                            _keepAlive = false;
+                        }
                     }
                 }
             }

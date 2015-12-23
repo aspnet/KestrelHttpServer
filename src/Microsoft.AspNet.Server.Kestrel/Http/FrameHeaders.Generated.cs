@@ -8027,387 +8027,762 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         
         protected void CopyToFast(ref MemoryPoolIterator2 output)
         {
-            
-                if (((_bits & 1L) != 0)) 
-                { 
-                    foreach(var value in _CacheControl)
+        
+            if (((_bits & 1L) != 0)) 
+            { 
+                    if (_CacheControl.Count == 1) 
                     {
+                        var value = _CacheControl[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 0, 17);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 2L) != 0)) 
-                { 
-                    if (_rawConnection != null) 
+                    else
                     {
-                        output.CopyFrom(_rawConnection, 0, _rawConnection.Length);
-                    } else 
-                    foreach(var value in _Connection)
+                        foreach(var value in _CacheControl)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 0, 17);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 2L) != 0)) 
+            { 
+                if (_rawConnection != null) 
+                {
+                    output.CopyFrom(_rawConnection, 0, _rawConnection.Length);
+                } 
+                else 
+                {
+                    if (_Connection.Count == 1) 
                     {
+                        var value = _Connection[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 17, 14);
                             output.CopyFromAscii(value);
                         }
                     }
+                    else
+                    {
+                        foreach(var value in _Connection)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 17, 14);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
                 }
-            
-                if (((_bits & 4L) != 0)) 
-                { 
-                    if (_rawDate != null) 
+            }
+        
+            if (((_bits & 4L) != 0)) 
+            { 
+                if (_rawDate != null) 
+                {
+                    output.CopyFrom(_rawDate, 0, _rawDate.Length);
+                } 
+                else 
+                {
+                    if (_Date.Count == 1) 
                     {
-                        output.CopyFrom(_rawDate, 0, _rawDate.Length);
-                    } else 
-                    foreach(var value in _Date)
-                    {
+                        var value = _Date[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 31, 8);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 8L) != 0)) 
-                { 
-                    foreach(var value in _KeepAlive)
+                    else
                     {
+                        foreach(var value in _Date)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 31, 8);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+                }
+            }
+        
+            if (((_bits & 8L) != 0)) 
+            { 
+                    if (_KeepAlive.Count == 1) 
+                    {
+                        var value = _KeepAlive[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 39, 14);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 16L) != 0)) 
-                { 
-                    foreach(var value in _Pragma)
+                    else
                     {
+                        foreach(var value in _KeepAlive)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 39, 14);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 16L) != 0)) 
+            { 
+                    if (_Pragma.Count == 1) 
+                    {
+                        var value = _Pragma[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 53, 10);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 32L) != 0)) 
-                { 
-                    foreach(var value in _Trailer)
+                    else
                     {
+                        foreach(var value in _Pragma)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 53, 10);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 32L) != 0)) 
+            { 
+                    if (_Trailer.Count == 1) 
+                    {
+                        var value = _Trailer[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 63, 11);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 64L) != 0)) 
-                { 
-                    if (_rawTransferEncoding != null) 
+                    else
                     {
-                        output.CopyFrom(_rawTransferEncoding, 0, _rawTransferEncoding.Length);
-                    } else 
-                    foreach(var value in _TransferEncoding)
+                        foreach(var value in _Trailer)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 63, 11);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 64L) != 0)) 
+            { 
+                if (_rawTransferEncoding != null) 
+                {
+                    output.CopyFrom(_rawTransferEncoding, 0, _rawTransferEncoding.Length);
+                } 
+                else 
+                {
+                    if (_TransferEncoding.Count == 1) 
                     {
+                        var value = _TransferEncoding[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 74, 21);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 128L) != 0)) 
-                { 
-                    foreach(var value in _Upgrade)
+                    else
                     {
+                        foreach(var value in _TransferEncoding)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 74, 21);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+                }
+            }
+        
+            if (((_bits & 128L) != 0)) 
+            { 
+                    if (_Upgrade.Count == 1) 
+                    {
+                        var value = _Upgrade[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 95, 11);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 256L) != 0)) 
-                { 
-                    foreach(var value in _Via)
+                    else
                     {
+                        foreach(var value in _Upgrade)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 95, 11);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 256L) != 0)) 
+            { 
+                    if (_Via.Count == 1) 
+                    {
+                        var value = _Via[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 106, 7);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 512L) != 0)) 
-                { 
-                    foreach(var value in _Warning)
+                    else
                     {
+                        foreach(var value in _Via)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 106, 7);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 512L) != 0)) 
+            { 
+                    if (_Warning.Count == 1) 
+                    {
+                        var value = _Warning[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 113, 11);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 1024L) != 0)) 
-                { 
-                    foreach(var value in _Allow)
+                    else
                     {
+                        foreach(var value in _Warning)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 113, 11);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 1024L) != 0)) 
+            { 
+                    if (_Allow.Count == 1) 
+                    {
+                        var value = _Allow[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 124, 9);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 2048L) != 0)) 
-                { 
-                    if (_rawContentLength != null) 
+                    else
                     {
-                        output.CopyFrom(_rawContentLength, 0, _rawContentLength.Length);
-                    } else 
-                    foreach(var value in _ContentLength)
+                        foreach(var value in _Allow)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 124, 9);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 2048L) != 0)) 
+            { 
+                if (_rawContentLength != null) 
+                {
+                    output.CopyFrom(_rawContentLength, 0, _rawContentLength.Length);
+                } 
+                else 
+                {
+                    if (_ContentLength.Count == 1) 
                     {
+                        var value = _ContentLength[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 133, 18);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 4096L) != 0)) 
-                { 
-                    foreach(var value in _ContentType)
+                    else
                     {
+                        foreach(var value in _ContentLength)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 133, 18);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+                }
+            }
+        
+            if (((_bits & 4096L) != 0)) 
+            { 
+                    if (_ContentType.Count == 1) 
+                    {
+                        var value = _ContentType[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 151, 16);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 8192L) != 0)) 
-                { 
-                    foreach(var value in _ContentEncoding)
+                    else
                     {
+                        foreach(var value in _ContentType)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 151, 16);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 8192L) != 0)) 
+            { 
+                    if (_ContentEncoding.Count == 1) 
+                    {
+                        var value = _ContentEncoding[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 167, 20);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 16384L) != 0)) 
-                { 
-                    foreach(var value in _ContentLanguage)
+                    else
                     {
+                        foreach(var value in _ContentEncoding)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 167, 20);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 16384L) != 0)) 
+            { 
+                    if (_ContentLanguage.Count == 1) 
+                    {
+                        var value = _ContentLanguage[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 187, 20);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 32768L) != 0)) 
-                { 
-                    foreach(var value in _ContentLocation)
+                    else
                     {
+                        foreach(var value in _ContentLanguage)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 187, 20);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 32768L) != 0)) 
+            { 
+                    if (_ContentLocation.Count == 1) 
+                    {
+                        var value = _ContentLocation[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 207, 20);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 65536L) != 0)) 
-                { 
-                    foreach(var value in _ContentMD5)
+                    else
                     {
+                        foreach(var value in _ContentLocation)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 207, 20);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 65536L) != 0)) 
+            { 
+                    if (_ContentMD5.Count == 1) 
+                    {
+                        var value = _ContentMD5[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 227, 15);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 131072L) != 0)) 
-                { 
-                    foreach(var value in _ContentRange)
+                    else
                     {
+                        foreach(var value in _ContentMD5)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 227, 15);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 131072L) != 0)) 
+            { 
+                    if (_ContentRange.Count == 1) 
+                    {
+                        var value = _ContentRange[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 242, 17);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 262144L) != 0)) 
-                { 
-                    foreach(var value in _Expires)
+                    else
                     {
+                        foreach(var value in _ContentRange)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 242, 17);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 262144L) != 0)) 
+            { 
+                    if (_Expires.Count == 1) 
+                    {
+                        var value = _Expires[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 259, 11);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 524288L) != 0)) 
-                { 
-                    foreach(var value in _LastModified)
+                    else
                     {
+                        foreach(var value in _Expires)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 259, 11);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 524288L) != 0)) 
+            { 
+                    if (_LastModified.Count == 1) 
+                    {
+                        var value = _LastModified[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 270, 17);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 1048576L) != 0)) 
-                { 
-                    foreach(var value in _AcceptRanges)
+                    else
                     {
+                        foreach(var value in _LastModified)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 270, 17);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 1048576L) != 0)) 
+            { 
+                    if (_AcceptRanges.Count == 1) 
+                    {
+                        var value = _AcceptRanges[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 287, 17);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 2097152L) != 0)) 
-                { 
-                    foreach(var value in _Age)
+                    else
                     {
+                        foreach(var value in _AcceptRanges)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 287, 17);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 2097152L) != 0)) 
+            { 
+                    if (_Age.Count == 1) 
+                    {
+                        var value = _Age[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 304, 7);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 4194304L) != 0)) 
-                { 
-                    foreach(var value in _ETag)
+                    else
                     {
+                        foreach(var value in _Age)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 304, 7);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 4194304L) != 0)) 
+            { 
+                    if (_ETag.Count == 1) 
+                    {
+                        var value = _ETag[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 311, 8);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 8388608L) != 0)) 
-                { 
-                    foreach(var value in _Location)
+                    else
                     {
+                        foreach(var value in _ETag)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 311, 8);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 8388608L) != 0)) 
+            { 
+                    if (_Location.Count == 1) 
+                    {
+                        var value = _Location[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 319, 12);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 16777216L) != 0)) 
-                { 
-                    foreach(var value in _ProxyAutheticate)
+                    else
                     {
+                        foreach(var value in _Location)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 319, 12);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 16777216L) != 0)) 
+            { 
+                    if (_ProxyAutheticate.Count == 1) 
+                    {
+                        var value = _ProxyAutheticate[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 331, 21);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 33554432L) != 0)) 
-                { 
-                    foreach(var value in _RetryAfter)
+                    else
                     {
+                        foreach(var value in _ProxyAutheticate)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 331, 21);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 33554432L) != 0)) 
+            { 
+                    if (_RetryAfter.Count == 1) 
+                    {
+                        var value = _RetryAfter[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 352, 15);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 67108864L) != 0)) 
-                { 
-                    if (_rawServer != null) 
+                    else
                     {
-                        output.CopyFrom(_rawServer, 0, _rawServer.Length);
-                    } else 
-                    foreach(var value in _Server)
+                        foreach(var value in _RetryAfter)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 352, 15);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 67108864L) != 0)) 
+            { 
+                if (_rawServer != null) 
+                {
+                    output.CopyFrom(_rawServer, 0, _rawServer.Length);
+                } 
+                else 
+                {
+                    if (_Server.Count == 1) 
                     {
+                        var value = _Server[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 367, 10);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 134217728L) != 0)) 
-                { 
-                    foreach(var value in _SetCookie)
+                    else
                     {
+                        foreach(var value in _Server)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 367, 10);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+                }
+            }
+        
+            if (((_bits & 134217728L) != 0)) 
+            { 
+                    if (_SetCookie.Count == 1) 
+                    {
+                        var value = _SetCookie[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 377, 14);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 268435456L) != 0)) 
-                { 
-                    foreach(var value in _Vary)
+                    else
                     {
+                        foreach(var value in _SetCookie)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 377, 14);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 268435456L) != 0)) 
+            { 
+                    if (_Vary.Count == 1) 
+                    {
+                        var value = _Vary[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 391, 8);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
-                if (((_bits & 536870912L) != 0)) 
-                { 
-                    foreach(var value in _WWWAuthenticate)
+                    else
                     {
+                        foreach(var value in _Vary)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 391, 8);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
+            if (((_bits & 536870912L) != 0)) 
+            { 
+                    if (_WWWAuthenticate.Count == 1) 
+                    {
+                        var value = _WWWAuthenticate[0];
                         if (value != null)
                         {
                             output.CopyFrom(_headerBytes, 399, 20);
                             output.CopyFromAscii(value);
                         }
                     }
-                }
-            
+                    else
+                    {
+                        foreach(var value in _WWWAuthenticate)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_headerBytes, 399, 20);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+            }
+        
         }
         public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
         {

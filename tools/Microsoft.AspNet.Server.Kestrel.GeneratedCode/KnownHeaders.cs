@@ -382,23 +382,38 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {(loop.ClassName == "FrameResponseHeaders" ? $@"
         protected void CopyToFast(ref MemoryPoolIterator2 output)
         {{
-            {Each(loop.Headers, header => $@"
-                if ({header.TestBit()}) 
-                {{ {(header.EnhancedSetter == false ? "" : $@"
-                    if (_raw{header.Identifier} != null) 
+        {Each(loop.Headers, header => $@"
+            if ({header.TestBit()}) 
+            {{ {(header.EnhancedSetter == false ? "" : $@"
+                if (_raw{header.Identifier} != null) 
+                {{
+                    output.CopyFrom(_raw{header.Identifier}, 0, _raw{header.Identifier}.Length);
+                }} 
+                else 
+                {{")}
+                    if (_{header.Identifier}.Count == 1) 
                     {{
-                        output.CopyFrom(_raw{header.Identifier}, 0, _raw{header.Identifier}.Length);
-                    }} else ")}
-                    foreach(var value in _{header.Identifier})
-                    {{
+                        var value = _{header.Identifier}[0];
                         if (value != null)
                         {{
                             output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
                             output.CopyFromAscii(value);
                         }}
                     }}
-                }}
-            ")}
+                    else
+                    {{
+                        foreach(var value in _{header.Identifier})
+                        {{
+                            if (value != null)
+                            {{
+                                output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
+                                output.CopyFromAscii(value);
+                            }}
+                        }}
+                    }}{(header.EnhancedSetter == false ? "" : @"
+                }")}
+            }}
+        ")}
         }}" : "")}
         public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
         {{

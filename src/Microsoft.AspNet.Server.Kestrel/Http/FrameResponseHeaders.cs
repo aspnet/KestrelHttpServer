@@ -33,18 +33,32 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public void CopyTo(ref MemoryPoolIterator2 output)
         {
             CopyToFast(ref output);
-            if (MaybeUnknown != null)
+            if (MaybeUnknown != null && MaybeUnknown.Count > 0)
             {
                 foreach (var kv in MaybeUnknown)
                 {
-                    foreach (var value in kv.Value)
+                    if (kv.Value.Count == 1)
                     {
+                        var value = kv.Value[0];
                         if (value != null)
                         {
                             output.CopyFrom(_CrLf, 0, 2);
                             output.CopyFromAscii(kv.Key);
                             output.CopyFrom(_colonSpace, 0, 2);
                             output.CopyFromAscii(value);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var value in kv.Value)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_CrLf, 0, 2);
+                                output.CopyFromAscii(kv.Key);
+                                output.CopyFrom(_colonSpace, 0, 2);
+                                output.CopyFromAscii(value);
+                            }
                         }
                     }
                 }
