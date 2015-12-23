@@ -50,7 +50,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 var completedWh = new ManualResetEventSlim();
 
                 // Act
-                socketOutput.WriteAsync(buffer).ContinueWith(
+                socketOutput.WriteAsync(buffer, immediate: true).ContinueWith(
                     (t) =>
                     {
                         Assert.Null(t.Exception);
@@ -101,14 +101,14 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 };
 
                 // Act 
-                socketOutput.WriteAsync(buffer).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(buffer, immediate: true).ContinueWith(onCompleted);
                 // Assert
                 // The first write should pre-complete since it is <= _maxBytesPreCompleted.
                 Assert.True(completedWh.Wait(1000));
                 // Arrange
                 completedWh.Reset();
                 // Act
-                socketOutput.WriteAsync(buffer).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(buffer, immediate: true).ContinueWith(onCompleted);
                 // Assert 
                 // Too many bytes are already pre-completed for the second write to pre-complete.
                 Assert.False(completedWh.Wait(1000));
@@ -162,28 +162,28 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 };
 
                 // Act 
-                socketOutput.WriteAsync(halfBuffer, false).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(halfBuffer, immediate: false).ContinueWith(onCompleted);
                 // Assert
                 // The first write should pre-complete since it is not immediate.
                 Assert.True(completedWh.Wait(1000));
                 // Arrange
                 completedWh.Reset();
                 // Act 
-                socketOutput.WriteAsync(halfBuffer).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(halfBuffer, immediate: true).ContinueWith(onCompleted);
                 // Assert
                 // The second write should pre-complete since it is <= _maxBytesPreCompleted.
                 Assert.True(completedWh.Wait(1000));
                 // Arrange
                 completedWh.Reset();
                 // Act 
-                socketOutput.WriteAsync(halfBuffer, false).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(halfBuffer, immediate: false).ContinueWith(onCompleted);
                 // Assert
                 // The third write should pre-complete since it is not immediate, even though too many.
                 Assert.True(completedWh.Wait(1000));
                 // Arrange
                 completedWh.Reset();
                 // Act
-                socketOutput.WriteAsync(halfBuffer).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(halfBuffer, immediate: true).ContinueWith(onCompleted);
                 // Assert 
                 // Too many bytes are already pre-completed for the fourth write to pre-complete.
                 Assert.False(completedWh.Wait(1000));
@@ -247,7 +247,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 };
 
                 // Act (Pre-complete the maximum number of bytes in preparation for the rest of the test)
-                socketOutput.WriteAsync(buffer).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(buffer, immediate: true).ContinueWith(onCompleted);
                 // Assert
                 // The first write should pre-complete since it is <= _maxBytesPreCompleted.
                 Assert.True(completedWh.Wait(1000));
@@ -257,8 +257,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 onWriteWh.Reset();
 
                 // Act
-                socketOutput.WriteAsync(buffer).ContinueWith(onCompleted);
-                socketOutput.WriteAsync(buffer).ContinueWith(onCompleted2);
+                socketOutput.WriteAsync(buffer, immediate: true).ContinueWith(onCompleted);
+                socketOutput.WriteAsync(buffer, immediate: true).ContinueWith(onCompleted2);
 
                 Assert.True(onWriteWh.Wait(1000));
                 completeQueue.Dequeue()(0);
@@ -320,7 +320,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                 socketOutput.ProducingComplete(end);
 
                 // A call to Write is required to ensure a write is scheduled
-                socketOutput.WriteAsync(default(ArraySegment<byte>));
+                socketOutput.WriteAsync(default(ArraySegment<byte>), immediate: true);
 
                 Assert.True(nBufferWh.Wait(1000));
                 Assert.Equal(2, nBuffers);

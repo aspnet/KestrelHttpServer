@@ -80,7 +80,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Task WriteAsync(
             ArraySegment<byte> buffer,
-            bool immediate = true,
+            bool immediate,
             bool socketShutdownSend = false,
             bool socketDisconnect = false)
         {

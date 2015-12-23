@@ -428,7 +428,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                SocketOutput.Write(data, immediate: true);
+                SocketOutput.Write(data, immediate: !SocketInput.IsCompleted);
             }
         }
 
@@ -449,7 +449,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                return SocketOutput.WriteAsync(data, immediate: true, cancellationToken: cancellationToken);
+                return SocketOutput.WriteAsync(data, immediate: !SocketInput.IsCompleted, cancellationToken: cancellationToken);
             }
         }
 
@@ -467,7 +467,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             else
             {
-                await SocketOutput.WriteAsync(data, immediate: true, cancellationToken: cancellationToken);
+                await SocketOutput.WriteAsync(data, immediate: !SocketInput.IsCompleted, cancellationToken: cancellationToken);
             }
         }
 
@@ -535,7 +535,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 RequestHeaders.TryGetValue("Expect", out expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
-                SocketOutput.Write(_continueBytes);
+                SocketOutput.Write(_continueBytes, immediate: true);
             }
         }
 
@@ -615,7 +615,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private async Task ProduceEndAwaited()
         {
-            await ProduceStart(immediate: true, appCompleted: true);
+            await ProduceStart(immediate: !SocketInput.IsCompleted, appCompleted: true);
 
             WriteSuffix();
         }
