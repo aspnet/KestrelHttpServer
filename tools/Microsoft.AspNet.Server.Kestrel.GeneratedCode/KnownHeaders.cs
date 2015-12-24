@@ -25,6 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             public int BytesOffset { get; set; }
             public int BytesCount { get; set; }
             public bool EnhancedSetter { get; set; }
+            public bool FastCheck { get; set; }
             public string TestBit() => $"((_bits & {1L << Index}L) != 0)";
             public string SetBit() => $"_bits |= {1L << Index}L";
             public string ClearBit() => $"_bits &= ~{1L << Index}L";
@@ -139,6 +140,12 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
                 "Transfer-Encoding",
                 "Content-Length",
             };
+            var fastCheckHeaders = new[]
+            {
+                "Connection",
+                "Transfer-Encoding",
+                "Content-Length",
+            };
             var responseHeaders = commonHeaders.Concat(new[]
             {
                 "Accept-Ranges",
@@ -155,7 +162,8 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             {
                 Name = header,
                 Index = index,
-                EnhancedSetter = enhancedHeaders.Contains(header)
+                EnhancedSetter = enhancedHeaders.Contains(header),
+                FastCheck = fastCheckHeaders.Contains(header)
             }).ToArray();
             var loops = new[]
             {
@@ -208,6 +216,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private StringValues _" + header.Identifier + ";")}
         {Each(loop.Headers.Where(header => header.EnhancedSetter), header => @"
         private byte[] _raw" + header.Identifier + ";")}
+        {Each(loop.Headers.Where(header => header.FastCheck), header => @"
+        public bool Has" + header.Identifier + $" => {header.TestBit()};")}
         {Each(loop.Headers, header => $@"
         public StringValues Header{header.Identifier}
         {{

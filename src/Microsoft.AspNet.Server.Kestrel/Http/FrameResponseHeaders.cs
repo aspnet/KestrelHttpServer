@@ -13,13 +13,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static byte[] _CrLf = new[] { (byte)'\r', (byte)'\n' };
         private static byte[] _colonSpace = new[] { (byte)':', (byte)' ' };
 
-        public bool HasConnection => HeaderConnection.Count != 0;
-
-        public bool HasTransferEncoding => HeaderTransferEncoding.Count != 0;
-
-        public bool HasContentLength => HeaderContentLength.Count != 0;
-
-
         public Enumerator GetEnumerator()
         {
             return new Enumerator(this);

@@ -56,6 +56,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private StringValues _UserAgent;
         
         
+        
         public StringValues HeaderCacheControl
         {
             get
@@ -5108,6 +5109,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private byte[] _rawTransferEncoding;
         private byte[] _rawContentLength;
         private byte[] _rawServer;
+        
+        public bool HasConnection => ((_bits & 2L) != 0);
+        public bool HasTransferEncoding => ((_bits & 64L) != 0);
+        public bool HasContentLength => ((_bits & 2048L) != 0);
         
         public StringValues HeaderCacheControl
         {

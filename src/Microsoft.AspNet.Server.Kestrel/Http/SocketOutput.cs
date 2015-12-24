@@ -78,6 +78,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _tail = _head;
         }
 
+        int number = 0;
+
         public Task WriteAsync(
             ArraySegment<byte> buffer,
             bool immediate,
@@ -139,7 +141,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _tasksPending.Enqueue(tcs);
                 }
 
-                if (_writesPending < _maxPendingWrites && immediate)
+                number++;
+                if (number > 10)
+                {
+                    number = 0;
+                    scheduleWrite = true;
+                    _writesPending++;
+                }
+                else if (_writesPending < _maxPendingWrites && immediate)
                 {
                     scheduleWrite = true;
                     _writesPending++;

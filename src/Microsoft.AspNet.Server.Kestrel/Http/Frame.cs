@@ -642,7 +642,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             var begin = SocketOutput.ProducingStart();
             var end = begin;
-            if (_keepAlive)
+            if (_keepAlive && _responseHeaders.HasConnection)
             {
                 var count = _responseHeaders.HeaderConnection.Count;
                 if (count == 1)
