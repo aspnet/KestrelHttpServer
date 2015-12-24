@@ -46,6 +46,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         public unsafe byte* Pointer { get; private set; }
 
+        public int BlockEndOffset { get; private set; }
+
         /// <summary>
         /// Convenience accessor
         /// </summary>
@@ -87,7 +89,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 Slab = slab,
                 Start = data.Offset,
                 End = data.Offset,
-                Pointer = (byte*)(dataPtr.ToPointer())
+                Pointer = (byte*)(dataPtr.ToPointer()),
+                BlockEndOffset = data.Offset + data.Count
             };
         }
 

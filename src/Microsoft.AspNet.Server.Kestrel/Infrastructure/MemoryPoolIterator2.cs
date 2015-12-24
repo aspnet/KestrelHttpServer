@@ -643,7 +643,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         {
             var block = _block;
             var blockIndex = _index;
-            var blockRemaining = block.Data.Offset + block.Data.Count - blockIndex;
+            var blockRemaining = block.BlockEndOffset - blockIndex;
 
             if (blockRemaining >= count)
             {
@@ -660,15 +660,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return;
             }
 
-            var pool = block.Pool;
-
             while (count > 0)
             {
                 if (blockRemaining == 0)
                 {
                     block.End = blockIndex;
 
-                    var nextBlock = pool.Lease();
+                    var nextBlock = block.Pool.Lease();
                     blockIndex = nextBlock.Data.Offset;
                     blockRemaining = nextBlock.Data.Count;
                     block.Next = nextBlock;
@@ -720,7 +718,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             var blockIndex = _index;
             var length = data.Length;
 
-            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+            var bytesLeftInBlock = block.BlockEndOffset - blockIndex;
             var bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
 
             fixed (char* pData = data)
