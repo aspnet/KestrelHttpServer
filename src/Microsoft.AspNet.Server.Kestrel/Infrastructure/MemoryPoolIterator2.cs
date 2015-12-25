@@ -195,21 +195,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     if (Vector.IsHardwareAccelerated)
                     {
 #endif
-                    if (following >= _vectorSpan)
-                    {
-                        var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
-
-                        if (byte0Equals.Equals(Vector<byte>.Zero))
+                        if (following >= _vectorSpan)
                         {
-                            following -= _vectorSpan;
-                            index += _vectorSpan;
-                            continue;
-                        }
+                            var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
 
-                        _block = block;
-                        _index = index + FindFirstEqualByte(ref byte0Equals);
-                        return byte0;
-                    }
+                            if (byte0Equals.Equals(Vector<byte>.Zero))
+                            {
+                                following -= _vectorSpan;
+                                index += _vectorSpan;
+                                continue;
+                            }
+
+                            _block = block;
+                            _index = index + FindFirstEqualByte(ref byte0Equals);
+                            return byte0;
+                        }
 #if !DEBUG // Need unit tests to test Vector path
                     }
 #endif
@@ -273,45 +273,45 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     if (Vector.IsHardwareAccelerated)
                     {
 #endif
-                    if (following >= _vectorSpan)
-                    {
-                        var data = new Vector<byte>(array, index);
-                        var byte0Equals = Vector.Equals(data, byte0Vector);
-                        var byte1Equals = Vector.Equals(data, byte1Vector);
-
-                        if (!byte0Equals.Equals(Vector<byte>.Zero))
+                        if (following >= _vectorSpan)
                         {
-                            byte0Index = FindFirstEqualByte(ref byte0Equals);
-                        }
-                        if (!byte1Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte1Index = FindFirstEqualByte(ref byte1Equals);
-                        }
+                            var data = new Vector<byte>(array, index);
+                            var byte0Equals = Vector.Equals(data, byte0Vector);
+                            var byte1Equals = Vector.Equals(data, byte1Vector);
 
-                        if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
-                        {
-                            following -= _vectorSpan;
-                            index += _vectorSpan;
-                            continue;
+                            if (!byte0Equals.Equals(Vector<byte>.Zero))
+                            {
+                                byte0Index = FindFirstEqualByte(ref byte0Equals);
+                            }
+                            if (!byte1Equals.Equals(Vector<byte>.Zero))
+                            {
+                                byte1Index = FindFirstEqualByte(ref byte1Equals);
+                            }
+
+                            if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
+                            {
+                                following -= _vectorSpan;
+                                index += _vectorSpan;
+                                continue;
+                            }
+
+                            _block = block;
+
+                            if (byte0Index < byte1Index)
+                            {
+                                _index = index + byte0Index;
+                                return byte0;
+                            }
+
+                            _index = index + byte1Index;
+                            return byte1;
                         }
-
-                        _block = block;
-
-                        if (byte0Index < byte1Index)
-                        {
-                            _index = index + byte0Index;
-                            return byte0;
-                        }
-
-                        _index = index + byte1Index;
-                        return byte1;
-                    }
 #if !DEBUG // Need unit tests to test Vector path
                     }
 #endif
-                var pCurrent = block.Pointer + index;
-                var pEnd = pCurrent + following;
-                do
+                    var pCurrent = block.Pointer + index;
+                    var pEnd = pCurrent + following;
+                    do
                     {
                         if (*pCurrent == byte0)
                         {
@@ -376,72 +376,72 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     if (Vector.IsHardwareAccelerated)
                     {
 #endif
-                    if (following >= _vectorSpan)
-                    {
-                        var data = new Vector<byte>(array, index);
-                        var byte0Equals = Vector.Equals(data, byte0Vector);
-                        var byte1Equals = Vector.Equals(data, byte1Vector);
-                        var byte2Equals = Vector.Equals(data, byte2Vector);
+                        if (following >= _vectorSpan)
+                        {
+                            var data = new Vector<byte>(array, index);
+                            var byte0Equals = Vector.Equals(data, byte0Vector);
+                            var byte1Equals = Vector.Equals(data, byte1Vector);
+                            var byte2Equals = Vector.Equals(data, byte2Vector);
 
-                        if (!byte0Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte0Index = FindFirstEqualByte(ref byte0Equals);
-                        }
-                        if (!byte1Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte1Index = FindFirstEqualByte(ref byte1Equals);
-                        }
-                        if (!byte2Equals.Equals(Vector<byte>.Zero))
-                        {
-                            byte2Index = FindFirstEqualByte(ref byte2Equals);
-                        }
-
-                        if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
-                        {
-                            following -= _vectorSpan;
-                            index += _vectorSpan;
-                            continue;
-                        }
-
-                        _block = block;
-
-                        int toReturn, toMove;
-                        if (byte0Index < byte1Index)
-                        {
-                            if (byte0Index < byte2Index)
+                            if (!byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                toReturn = byte0;
-                                toMove = byte0Index;
+                                byte0Index = FindFirstEqualByte(ref byte0Equals);
+                            }
+                            if (!byte1Equals.Equals(Vector<byte>.Zero))
+                            {
+                                byte1Index = FindFirstEqualByte(ref byte1Equals);
+                            }
+                            if (!byte2Equals.Equals(Vector<byte>.Zero))
+                            {
+                                byte2Index = FindFirstEqualByte(ref byte2Equals);
+                            }
+
+                            if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
+                            {
+                                following -= _vectorSpan;
+                                index += _vectorSpan;
+                                continue;
+                            }
+
+                            _block = block;
+
+                            int toReturn, toMove;
+                            if (byte0Index < byte1Index)
+                            {
+                                if (byte0Index < byte2Index)
+                                {
+                                    toReturn = byte0;
+                                    toMove = byte0Index;
+                                }
+                                else
+                                {
+                                    toReturn = byte2;
+                                    toMove = byte2Index;
+                                }
                             }
                             else
                             {
-                                toReturn = byte2;
-                                toMove = byte2Index;
+                                if (byte1Index < byte2Index)
+                                {
+                                    toReturn = byte1;
+                                    toMove = byte1Index;
+                                }
+                                else
+                                {
+                                    toReturn = byte2;
+                                    toMove = byte2Index;
+                                }
                             }
-                        }
-                        else
-                        {
-                            if (byte1Index < byte2Index)
-                            {
-                                toReturn = byte1;
-                                toMove = byte1Index;
-                            }
-                            else
-                            {
-                                toReturn = byte2;
-                                toMove = byte2Index;
-                            }
-                        }
 
-                        _index = index + toMove;
-                        return toReturn;
-                    }
+                            _index = index + toMove;
+                            return toReturn;
+                        }
 #if !DEBUG // Need unit tests to test Vector path
                     }
 #endif
-                var pCurrent = block.Pointer + index;
-                var pEnd = pCurrent + following;
-                do
+                    var pCurrent = block.Pointer + index;
+                    var pEnd = pCurrent + following;
+                    do
                     {
                         if (*pCurrent == byte0)
                         {
@@ -639,7 +639,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             CopyFrom(data, 0, data.Length);
         }
 
-        public unsafe void CopyFrom(byte[] data, int offset, int count)
+#if DOTNET5_4 || DNXCORE50
+        public unsafe void CopyFrom(byte* data, int count)
         {
             var block = _block;
             var blockIndex = _index;
@@ -648,24 +649,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             if (blockRemaining >= count)
             {
                 _index = blockIndex + count;
-#if DOTNET5_4 || DNXCORE50
-                fixed(byte* pSrc = data)
-                {
-                    Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, count, count);
-                }
-#else
-                Buffer.BlockCopy(data, offset, block.Array, blockIndex, count);
-#endif
+
+                Buffer.MemoryCopy(data, block.Pointer + blockIndex, count, count);
+
                 block.End = _index;
                 return;
             }
 
-            while (count > 0)
+            do
             {
                 if (blockRemaining == 0)
                 {
-                    block.End = blockIndex;
-
                     var nextBlock = block.Pool.Lease();
                     blockIndex = nextBlock.Data.Offset;
                     blockRemaining = nextBlock.Data.Count;
@@ -676,97 +670,239 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 if (count > blockRemaining)
                 {
                     count -= blockRemaining;
-#if DOTNET5_4 || DNXCORE50
-                    fixed (byte* pSrc = data)
-                    {
-                        Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, blockRemaining, blockRemaining);
-                    }
-#else
-                    Buffer.BlockCopy(data, offset, block.Array, blockIndex, blockRemaining);
-#endif
-                    blockIndex += blockRemaining;
-                    offset += blockRemaining;
+
+                    Buffer.MemoryCopy(data, block.Pointer + blockIndex, blockRemaining, blockRemaining);
+        
+                    data += blockRemaining;
+                    block.End = blockIndex + blockRemaining;
                     blockRemaining = 0;
+                    continue;
                 }
                 else
                 {
                     _index = blockIndex + count;
-#if DOTNET5_4 || DNXCORE50
-                    fixed (byte* pSrc = data)
-                    {
-                        Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, count, count);
-                    }
-#else
-                    Buffer.BlockCopy(data, offset, block.Array, blockIndex, count);
-#endif
+
+                    Buffer.MemoryCopy(data, block.Pointer + blockIndex, count, count);
+
                     block.End = _index;
                     _block = block;
                     return;
                 }
+            } while (true);
+        }
+
+        public unsafe void CopyFrom(byte[] data, int offset, int count)
+        {
+            var block = _block;
+            var blockIndex = _index;
+            var blockRemaining = block.BlockEndOffset - blockIndex;
+
+            fixed (byte* pSrc = data)
+            {
+                if (blockRemaining >= count)
+                {
+                    _index = blockIndex + count;
+
+                    Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, count, count);
+
+                    block.End = _index;
+                    return;
+                }
+
+                do
+                {
+                    if (blockRemaining == 0)
+                    {
+                        var nextBlock = block.Pool.Lease();
+                        blockIndex = nextBlock.Data.Offset;
+                        blockRemaining = nextBlock.Data.Count;
+                        block.Next = nextBlock;
+                        block = nextBlock;
+                    }
+
+                    if (count > blockRemaining)
+                    {
+                        count -= blockRemaining;
+
+                        Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, blockRemaining, blockRemaining);
+        
+                        offset += blockRemaining;
+                        block.End = blockIndex + blockRemaining;
+                        blockRemaining = 0;
+                        continue;
+                    }
+                    else
+                    {
+                        _index = blockIndex + count;
+
+                        Buffer.MemoryCopy(pSrc + offset, block.Pointer + blockIndex, count, count);
+
+                        block.End = _index;
+                        _block = block;
+                        return;
+                    }
+                } while (true);
             }
         }
+#else
+        public unsafe void CopyFrom(byte[] data, int offset, int count)
+        {
+            var block = _block;
+            var blockIndex = _index;
+            var blockRemaining = block.BlockEndOffset - blockIndex;
+
+            if (blockRemaining >= count)
+            {
+                _index = blockIndex + count;
+
+                Buffer.BlockCopy(data, offset, block.Array, blockIndex, count);
+
+                block.End = _index;
+                return;
+            }
+
+            do
+            {
+                if (blockRemaining == 0)
+                {
+                    var nextBlock = block.Pool.Lease();
+                    blockIndex = nextBlock.Data.Offset;
+                    blockRemaining = nextBlock.Data.Count;
+                    block.Next = nextBlock;
+                    block = nextBlock;
+                }
+
+                if (count > blockRemaining)
+                {
+                    count -= blockRemaining;
+
+                    Buffer.BlockCopy(data, offset, block.Array, blockIndex, blockRemaining);
+
+                    block.End = blockIndex + blockRemaining;
+                    offset += blockRemaining;
+                    blockRemaining = 0;
+                    continue;
+                }
+                else
+                {
+                    _index = blockIndex + count;
+
+                    Buffer.BlockCopy(data, offset, block.Array, blockIndex, count);
+
+                    block.End = _index;
+                    _block = block;
+                    return;
+                }
+            } while (true);
+        }
+#endif
 
         public unsafe void CopyFromAscii(string data)
         {
-            Debug.Assert(_block != null);
-            Debug.Assert(_block.Pool != null);
-            Debug.Assert(_block.Next == null);
-            Debug.Assert(_block.End == _index);
-
-            var pool = _block.Pool;
             var block = _block;
             var blockIndex = _index;
-            var length = data.Length;
+            var count = data.Length;
 
-            var bytesLeftInBlock = block.BlockEndOffset - blockIndex;
-            var bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
+            var blockRemaining = block.BlockEndOffset - blockIndex;
 
             fixed (char* pData = data)
             {
-                var input = pData;
-                var inputEnd = pData + length;
-                var inputEndMinusSpan = inputEnd - 3;
-
-                while (input < inputEnd)
+                if (blockRemaining >= count)
                 {
-                    if (bytesLeftInBlock == 0)
+                    _index = blockIndex + count;
+
+                    CopyFromAscii(pData, block.Pointer + blockIndex, count);
+
+                    block.End = _index;
+                    return;
+                }
+
+                var input = pData;
+                do
+                {
+                    if (blockRemaining == 0)
                     {
-                        var nextBlock = pool.Lease();
-                        block.End = blockIndex;
+                        var nextBlock = block.Pool.Lease();
+                        blockIndex = nextBlock.Data.Offset;
+                        blockRemaining = nextBlock.Data.Count;
                         block.Next = nextBlock;
                         block = nextBlock;
-
-                        blockIndex = block.Data.Offset;
-                        bytesLeftInBlock = block.Data.Count;
-                        bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
                     }
 
-                    var output = block.Pointer + block.End;
-
-                    var copied = 0;
-                    for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
+                    if (count > blockRemaining)
                     {
-                        *(output) = (byte)*(input);
-                        *(output + 1) = (byte)*(input + 1);
-                        *(output + 2) = (byte)*(input + 2);
-                        *(output + 3) = (byte)*(input + 3);
-                        output += 4;
-                        input += 4;
-                    }
-                    for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
-                    {
-                        *(output++) = (byte)*(input++);
-                    }
+                        count -= blockRemaining;
 
-                    blockIndex += copied;
-                    bytesLeftInBlockMinusSpan -= copied;
-                    bytesLeftInBlock -= copied;
-                }
+                        CopyFromAscii(input, block.Pointer + blockIndex, blockRemaining);
+
+                        block.End = blockIndex + blockRemaining;
+                        input += blockRemaining;
+                        blockRemaining = 0;
+                        continue;
+                    }
+                    else
+                    {
+                        _index = blockIndex + count;
+
+                        CopyFromAscii(input, block.Pointer + blockIndex, count);
+
+                        block.End = _index;
+                        _block = block;
+                        return;
+                    }
+                } while (true);
             }
+        }
 
-            block.End = blockIndex;
-            _block = block;
-            _index = blockIndex;
+        private unsafe static void CopyFromAscii(char* input, byte* output, int count)
+        {
+            var i = 0;
+
+            while (i + 11 < count)
+            {
+                i += 12;
+                *(output) = (byte)*(input);
+                *(output + 1) = (byte)*(input + 1);
+                *(output + 2) = (byte)*(input + 2);
+                *(output + 3) = (byte)*(input + 3);
+                *(output + 4) = (byte)*(input + 4);
+                *(output + 5) = (byte)*(input + 5);
+                *(output + 6) = (byte)*(input + 6);
+                *(output + 7) = (byte)*(input + 7);
+                *(output + 8) = (byte)*(input + 8);
+                *(output + 9) = (byte)*(input + 9);
+                *(output + 10) = (byte)*(input + 10);
+                *(output + 11) = (byte)*(input + 11);
+                output += 12;
+                input += 12;
+            }
+            if (i + 6 < count)
+            {
+                i += 6;
+                *(output) = (byte)*(input);
+                *(output + 1) = (byte)*(input + 1);
+                *(output + 2) = (byte)*(input + 2);
+                *(output + 3) = (byte)*(input + 3);
+                *(output + 4) = (byte)*(input + 4);
+                *(output + 5) = (byte)*(input + 5);
+                output += 6;
+                input += 6;
+            }
+            if (i + 3 < count)
+            {
+                i += 4;
+                *(output) = (byte)*(input);
+                *(output + 1) = (byte)*(input + 1);
+                *(output + 2) = (byte)*(input + 2);
+                *(output + 3) = (byte)*(input + 3);
+                output += 4;
+                input += 4;
+            }
+            while (i < count)
+            {
+                i++;
+                *(output++) = (byte)*(input++);
+            }
         }
     }
 }

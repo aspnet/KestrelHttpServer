@@ -389,6 +389,50 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             ")}
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
         }}
+#if DOTNET5_4 || DNXCORE50
+        {(loop.ClassName == "FrameResponseHeaders" ? $@"
+        protected unsafe void CopyToFast(ref MemoryPoolIterator2 output)
+        {{
+            fixed (byte* pHeaderBytes = _headerBytes)
+            {{
+            {Each(loop.Headers, header => $@"
+                if ({header.TestBit()}) 
+                {{ {(header.EnhancedSetter == false ? "" : $@"
+                    if (_raw{header.Identifier} != null) 
+                    {{
+                        fixed (byte* pRaw{header.Identifier} = _raw{header.Identifier})
+                        {{
+                            output.CopyFrom(pRaw{header.Identifier}, _raw{header.Identifier}.Length);
+                        }}
+                    }} 
+                    else 
+                    {{")}
+                        if (_{header.Identifier}.Count == 1) 
+                        {{
+                            var value = _{header.Identifier}[0];
+                            if (value != null)
+                            {{
+                                output.CopyFrom(pHeaderBytes + {header.BytesOffset}, {header.BytesCount});
+                                output.CopyFromAscii(value);
+                            }}
+                        }}
+                        else
+                        {{
+                            foreach(var value in _{header.Identifier})
+                            {{
+                                if (value != null)
+                                {{
+                                    output.CopyFrom(pHeaderBytes + {header.BytesOffset}, {header.BytesCount});
+                                    output.CopyFromAscii(value);
+                                }}
+                            }}
+                        }}{(header.EnhancedSetter == false ? "" : @"
+                    }")}
+                }}
+            ")}
+            }}
+        }}" : "")}
+#else
         {(loop.ClassName == "FrameResponseHeaders" ? $@"
         protected void CopyToFast(ref MemoryPoolIterator2 output)
         {{
@@ -425,6 +469,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }}
         ")}
         }}" : "")}
+#endif
         public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
         {{
             fixed(byte* ptr = keyBytes) {{ var pUB = ptr + keyOffset; var pUL = (ulong*)pUB; var pUI = (uint*)pUB; var pUS = (ushort*)pUB;

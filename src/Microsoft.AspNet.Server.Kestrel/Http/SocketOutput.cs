@@ -80,7 +80,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         int number = 0;
 
-        public Task WriteAsync(
+        public unsafe Task WriteAsync(
             ArraySegment<byte> buffer,
             bool immediate,
             bool socketShutdownSend = false,
@@ -89,7 +89,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (buffer.Count > 0)
             {
                 var tail = ProducingStart();
+#if DOTNET5_4 || DNXCORE50
+                fixed (byte* pBuffer = buffer.Array)
+                {
+                    tail.CopyFrom(pBuffer + buffer.Offset, buffer.Count);
+                }
+#else
                 tail.CopyFrom(buffer.Array, buffer.Offset, buffer.Count);
+#endif
                 // We do our own accounting below
                 ProducingCompleteNoPreComplete(tail);
             }
