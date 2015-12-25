@@ -39,9 +39,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private MemoryPoolIterator2 _lastStart;
 
-        // This locks access to to all of the below fields
-        private readonly object _contextLock = new object();
-
         // The number of write operations that have been scheduled so far
         // but have not completed.
         private int _writesPending = 0;
@@ -52,6 +49,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Queue<TaskCompletionSource<object>> _tasksCompleted;
         private readonly Queue<WriteContext> _writeContextPool;
         private readonly Queue<UvWriteReq> _writeReqPool;
+
+        private readonly object _contextLock = new object();
+        private readonly object _taskQueueLock = new object();
 
         public SocketOutput(
             KestrelThread thread,
@@ -104,67 +104,72 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             var scheduleWrite = false;
 
-            lock (_contextLock)
+            var nextWriteContext = Interlocked.Exchange(ref _nextWriteContext, null);
+
+            if (nextWriteContext == null)
             {
-                if (_nextWriteContext == null)
+                lock (_contextLock)
                 {
                     if (_writeContextPool.Count > 0)
                     {
-                        _nextWriteContext = _writeContextPool.Dequeue();
+                        nextWriteContext = _writeContextPool.Dequeue();
                     }
                     else
                     {
-                        _nextWriteContext = new WriteContext(this);
+                        nextWriteContext = new WriteContext(this);
                     }
-                }
-
-                if (socketShutdownSend)
-                {
-                    _nextWriteContext.SocketShutdownSend = true;
-                }
-                if (socketDisconnect)
-                {
-                    _nextWriteContext.SocketDisconnect = true;
-                }
-
-                if (!immediate)
-                {
-                    // immediate==false calls always return complete tasks, because there is guaranteed
-                    // to be a subsequent immediate==true call which will go down one of the previous code-paths
-                    _numBytesPreCompleted += buffer.Count;
-                }
-                else if (_lastWriteError == null &&
-                        _tasksPending.Count == 0 &&
-                        _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted)
-                {
-                    // Complete the write task immediately if all previous write tasks have been completed,
-                    // the buffers haven't grown too large, and the last write to the socket succeeded.
-                    _numBytesPreCompleted += buffer.Count;
-                }
-                else
-                {
-                    // immediate write, which is not eligable for instant completion above
-                    tcs = new TaskCompletionSource<object>(buffer.Count);
-                    _tasksPending.Enqueue(tcs);
-                }
-
-                number++;
-                if (number > 10)
-                {
-                    number = 0;
-                    scheduleWrite = true;
-                    _writesPending++;
-                }
-                else if (_writesPending < _maxPendingWrites && immediate)
-                {
-                    scheduleWrite = true;
-                    _writesPending++;
                 }
             }
 
-            if (scheduleWrite)
+            if (socketShutdownSend)
+            {
+                nextWriteContext.SocketShutdownSend = true;
+            }
+            if (socketDisconnect)
+            {
+                nextWriteContext.SocketDisconnect = true;
+            }
+
+            Interlocked.Exchange(ref _nextWriteContext, nextWriteContext);
+
+            if (!immediate)
+            {
+                // immediate==false calls always return complete tasks, because there is guaranteed
+                // to be a subsequent immediate==true call which will go down one of the previous code-paths
+                Interlocked.Add(ref _numBytesPreCompleted, buffer.Count);
+            }
+            else if (_lastWriteError == null &&
+                    _tasksPending.Count == 0 &&
+                    _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted)
+            {
+                // Complete the write task immediately if all previous write tasks have been completed,
+                // the buffers haven't grown too large, and the last write to the socket succeeded.
+                Interlocked.Add(ref _numBytesPreCompleted, buffer.Count);
+            }
+            else
+            {
+                // immediate write, which is not eligable for instant completion above
+                tcs = new TaskCompletionSource<object>(buffer.Count);
+                lock (_taskQueueLock)
+                {
+                    _tasksPending.Enqueue(tcs);
+                }
+            }
+
+            number++;
+            if (number > 10)
+            {
+                number = 0;
+                ScheduleWrite();
+                Interlocked.Increment(ref _writesPending);
+            }
+            else if (Interlocked.Increment(ref _writesPending) < _maxPendingWrites && immediate)
             {
                 ScheduleWrite();
+            }
+            else
+            {
+                Interlocked.Decrement(ref _writesPending);
             }
 
             // Return TaskCompletionSource's Task if set, otherwise completed Task 
@@ -214,12 +219,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             int bytesProduced, buffersIncluded;
             BytesBetween(_lastStart, end, out bytesProduced, out buffersIncluded);
 
-            lock (_contextLock)
-            {
-                _numBytesPreCompleted += bytesProduced;
-            }
-
             ProducingCompleteNoPreComplete(end);
+
+            Interlocked.Add(ref _numBytesPreCompleted, bytesProduced);
         }
 
         private void ProducingCompleteNoPreComplete(MemoryPoolIterator2 end)
@@ -270,20 +272,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         // This is called on the libuv event loop
         private void WriteAllPending()
         {
-            WriteContext writingContext;
+            var writingContext = Interlocked.Exchange(ref _nextWriteContext, null);
 
-            lock (_contextLock)
+            if (writingContext == null)
             {
-                if (_nextWriteContext != null)
-                {
-                    writingContext = _nextWriteContext;
-                    _nextWriteContext = null;
-                }
-                else
-                {
-                    _writesPending--;
-                    return;
-                }
+                Interlocked.Decrement(ref _writesPending);
+                return;
             }
 
             try
@@ -292,12 +286,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             catch
             {
-                lock (_contextLock)
-                {
-                    // Lock instead of using Interlocked.Decrement so _writesSending
-                    // doesn't change in the middle of executing other synchronized code.
-                    _writesPending--;
-                }
+                Interlocked.Decrement(ref _writesPending);
 
                 throw;
             }
@@ -320,37 +309,38 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
 
             bool scheduleWrite = false;
+            PoolWriteContext(writeContext);
 
-            lock (_contextLock)
+            if (_nextWriteContext != null)
             {
-                PoolWriteContext(writeContext);
-                if (_nextWriteContext != null)
+                scheduleWrite = true;
+            }
+            else
+            {
+                Interlocked.Decrement(ref _writesPending);
+            }
+
+            // _numBytesPreCompleted can temporarily go negative in the event there are
+            // completed writes that we haven't triggered callbacks for yet.
+
+            // bytesLeftToBuffer can be greater than _maxBytesPreCompleted
+            // This allows large writes to complete once they've actually finished.
+            var bytesLeftToBuffer = _maxBytesPreCompleted - Interlocked.Add(ref _numBytesPreCompleted, -bytesWritten);
+            while (_tasksPending.Count > 0 &&
+                    (int)(_tasksPending.Peek().Task.AsyncState) <= bytesLeftToBuffer)
+            {
+                TaskCompletionSource<object> tcs;
+                lock (_taskQueueLock)
                 {
-                    scheduleWrite = true;
+                    tcs = _tasksPending.Dequeue();
                 }
-                else
-                {
-                    _writesPending--;
-                }
+                var bytesToWrite = (int)tcs.Task.AsyncState;
 
-                // _numBytesPreCompleted can temporarily go negative in the event there are
-                // completed writes that we haven't triggered callbacks for yet.
-                _numBytesPreCompleted -= bytesWritten;
+                Interlocked.Add(ref _numBytesPreCompleted, bytesToWrite);
 
-                // bytesLeftToBuffer can be greater than _maxBytesPreCompleted
-                // This allows large writes to complete once they've actually finished.
-                var bytesLeftToBuffer = _maxBytesPreCompleted - _numBytesPreCompleted;
-                while (_tasksPending.Count > 0 &&
-                       (int)(_tasksPending.Peek().Task.AsyncState) <= bytesLeftToBuffer)
-                {
-                    var tcs = _tasksPending.Dequeue();
-                    var bytesToWrite = (int)tcs.Task.AsyncState;
+                bytesLeftToBuffer -= bytesToWrite;
 
-                    _numBytesPreCompleted += bytesToWrite;
-                    bytesLeftToBuffer -= bytesToWrite;
-
-                    _tasksCompleted.Enqueue(tcs);
-                }
+                _tasksCompleted.Enqueue(tcs);
             }
 
             while (_tasksCompleted.Count > 0)
@@ -403,11 +393,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void PoolWriteContext(WriteContext writeContext)
         {
-            // called inside _contextLock
             if (_writeContextPool.Count < _maxPooledWriteContexts)
             {
-                writeContext.Reset();
-                _writeContextPool.Enqueue(writeContext);
+                lock (_contextLock)
+                {
+                    writeContext.Reset();
+                    _writeContextPool.Enqueue(writeContext);
+                }
             }
         }
 
