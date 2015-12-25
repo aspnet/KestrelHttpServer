@@ -32,7 +32,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         // This locks all access to _tail, _isProducing and _returnFromOnProducingComplete.
         // _head does not require a lock, since it is only used in the ctor and uv thread.
-        private readonly object _returnLock = new object();
+        //private readonly object _returnLock = new object();
 
         private MemoryPoolBlock2 _head;
         private MemoryPoolBlock2 _tail;
@@ -197,19 +197,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public MemoryPoolIterator2 ProducingStart()
         {
-            lock (_returnLock)
+
+            if (_tail == null)
             {
-                Debug.Assert(_lastStart.IsDefault);
-
-                if (_tail == null)
-                {
-                    throw new IOException("The socket has been closed.");
-                }
-
-                _lastStart = new MemoryPoolIterator2(_tail, _tail.End);
-
-                return _lastStart;
+                throw new IOException("The socket has been closed.");
             }
+
+            _lastStart = new MemoryPoolIterator2(_tail, _tail.End);
+
+            return _lastStart;
         }
 
         public void ProducingComplete(MemoryPoolIterator2 end)
@@ -228,24 +224,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             MemoryPoolBlock2 blockToReturn = null;
 
-            lock (_returnLock)
+
+            // If the socket has been closed, return the produced blocks
+            // instead of advancing the now non-existent tail.
+            if (_tail != null)
             {
-                Debug.Assert(!_lastStart.IsDefault);
-
-                // If the socket has been closed, return the produced blocks
-                // instead of advancing the now non-existent tail.
-                if (_tail != null)
-                {
-                    _tail = end.Block;
-                    _tail.End = end.Index;
-                }
-                else
-                {
-                    blockToReturn = _lastStart.Block;
-                }
-
-                _lastStart = default(MemoryPoolIterator2);
+                _tail = end.Block;
+                _tail.End = end.Index;
             }
+            else
+            {
+                blockToReturn = _lastStart.Block;
+            }
+
+            _lastStart = default(MemoryPoolIterator2);
+            
 
             if (blockToReturn != null)
             {
@@ -369,26 +362,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         // This is called on the libuv event loop
         private void ReturnAllBlocks()
         {
-            lock (_returnLock)
+            var block = _head;
+            while (block != _tail)
             {
-                var block = _head;
-                while (block != _tail)
-                {
-                    var returnBlock = block;
-                    block = block.Next;
+                var returnBlock = block;
+                block = block.Next;
 
-                    returnBlock.Pool.Return(returnBlock);
-                }
-
-                // Only return the _tail if we aren't between ProducingStart/Complete calls
-                if (_lastStart.IsDefault)
-                {
-                    _tail.Pool.Return(_tail);
-                }
-
-                _head = null;
-                _tail = null;
+                returnBlock.Pool.Return(returnBlock);
             }
+
+            // Only return the _tail if we aren't between ProducingStart/Complete calls
+            if (_lastStart.IsDefault)
+            {
+                _tail.Pool.Return(_tail);
+            }
+
+            _head = null;
+            _tail = null;
         }
 
         private void PoolWriteContext(WriteContext writeContext)
