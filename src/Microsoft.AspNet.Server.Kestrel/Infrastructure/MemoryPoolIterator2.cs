@@ -98,28 +98,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 
         public int Peek()
         {
-            if (_block == null)
-            {
-                return -1;
-            }
-            else if (_index < _block.End)
-            {
-                return _block.Array[_index];
-            }
-            else if (_block.Next == null)
+            var block = _block;
+            if (block == null)
             {
                 return -1;
             }
 
-            var block = _block.Next;
-            var index = block.Start;
-            while (true)
+            var index = _index;
+
+            if (index < block.End)
             {
-                if (index < block.End)
-                {
-                    return block.Array[index];
-                }
-                else if (block.Next == null)
+                return block.Array[index];
+            }
+
+            do
+            {
+                if (block.Next == null)
                 {
                     return -1;
                 }
@@ -128,36 +122,47 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                     block = block.Next;
                     index = block.Start;
                 }
-            }
+
+                if (index < block.End)
+                {
+                    return block.Array[index];
+                }
+            } while (true);
         }
 
         public unsafe long PeekLong()
         {
+            var block = _block;
             if (_block == null)
             {
                 return -1;
             }
-            else if (_block.End - _index >= sizeof(long))
+
+            var index = _index;
+
+            if (block.End - index >= sizeof(long))
             {
-                return *(long*)(_block.Pointer + _index);
+                return *(long*)(block.Pointer + index);
             }
-            else if (_block.Next == null)
+
+            var next = block.Next;
+            if (next == null)
             {
                 return -1;
             }
             else
             {
-                var blockBytes = _block.End - _index;
+                var blockBytes = block.End - index;
                 var nextBytes = sizeof(long) - blockBytes;
 
-                if (_block.Next.End - _block.Next.Start < nextBytes)
+                if (next.End - next.Start < nextBytes)
                 {
                     return -1;
                 }
 
-                var blockLong = *(long*)(_block.Pointer + _block.End - sizeof(long));
+                var blockLong = *(long*)(block.Pointer + block.End - sizeof(long));
 
-                var nextLong = *(long*)(_block.Next.Pointer + _block.Next.Start);
+                var nextLong = *(long*)(next.Pointer + next.Start);
 
                 return (blockLong >> (sizeof(long) - blockBytes) * 8) | (nextLong << (sizeof(long) - nextBytes) * 8);
             }
