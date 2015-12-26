@@ -170,7 +170,7 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
                 new
                 {
                     Headers = requestHeaders,
-                    HeadersByLength = requestHeaders.GroupBy(x => x.Name.Length),
+                    HeadersByLength = requestHeaders.OrderBy(x => x.Name.Length < 4 ? x.Name.Length + 19 : x.Name.Length).ThenByDescending(s => s.Name).GroupBy(x => x.Name.Length),
                     ClassName = "FrameRequestHeaders",
                     Bytes = default(byte[])
                 },

@@ -722,117 +722,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             switch(key.Length)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1L) != 0))
-                            {
-                                return _CacheControl;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 131072L) != 0))
-                            {
-                                return _ContentRange;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 524288L) != 0))
-                            {
-                                return _LastModified;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                return _Authorization;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                return _IfNoneMatch;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                return _Connection;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                return _KeepAlive;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                return _UserAgent;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 4L) != 0))
+                            if (((_bits & 268435456L) != 0))
                             {
-                                return _Date;
+                                return _Host;
                             }
                             else
                             {
@@ -852,11 +748,39 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if (((_bits & 4L) != 0))
                             {
-                                return _Host;
+                                return _Date;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    }
+                    break;
+
+                case 5:
+                    {
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 137438953472L) != 0))
+                            {
+                                return _Range;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 1024L) != 0))
+                            {
+                                return _Allow;
                             }
                             else
                             {
@@ -880,11 +804,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if (((_bits & 67108864L) != 0))
                             {
-                                return _Accept;
+                                return _Expect;
                             }
                             else
                             {
@@ -904,11 +828,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if (((_bits & 1048576L) != 0))
                             {
-                                return _Expect;
+                                return _Accept;
                             }
                             else
                             {
@@ -920,11 +844,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 32L) != 0))
+                            if (((_bits & 512L) != 0))
                             {
-                                return _Trailer;
+                                return _Warning;
                             }
                             else
                             {
@@ -944,23 +868,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 512L) != 0))
+                            if (((_bits & 32L) != 0))
                             {
-                                return _Warning;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                return _Expires;
+                                return _Trailer;
                             }
                             else
                             {
@@ -979,16 +891,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 throw new System.Collections.Generic.KeyNotFoundException();
                             }
                         }
+                    
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 262144L) != 0))
+                            {
+                                return _Expires;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
                     }
                     break;
 
-                case 17:
+                case 8:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 64L) != 0))
+                            if (((_bits & 4294967296L) != 0))
                             {
-                                return _TransferEncoding;
+                                return _IfRange;
                             }
                             else
                             {
@@ -996,11 +920,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 1073741824L) != 0))
+                            if (((_bits & 536870912L) != 0))
                             {
-                                return _IfModifiedSince;
+                                return _IfMatch;
                             }
                             else
                             {
@@ -1010,13 +934,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 3:
+                case 9:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 256L) != 0))
+                            if (((_bits & 549755813888L) != 0))
                             {
-                                return _Via;
+                                return _Translate;
                             }
                             else
                             {
@@ -1026,13 +950,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 5:
+                case 10:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 1024L) != 0))
+                            if (((_bits & 1099511627776L) != 0))
                             {
-                                return _Allow;
+                                return _UserAgent;
                             }
                             else
                             {
@@ -1040,11 +964,131 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 137438953472L) != 0))
+                            if (((_bits & 8L) != 0))
                             {
-                                return _Range;
+                                return _KeepAlive;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 2L) != 0))
+                            {
+                                return _Connection;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    }
+                    break;
+
+                case 11:
+                    {
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 65536L) != 0))
+                            {
+                                return _ContentMD5;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    }
+                    break;
+
+                case 12:
+                    {
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 17179869184L) != 0))
+                            {
+                                return _MaxForwards;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 4096L) != 0))
+                            {
+                                return _ContentType;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    }
+                    break;
+
+                case 13:
+                    {
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 524288L) != 0))
+                            {
+                                return _LastModified;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 2147483648L) != 0))
+                            {
+                                return _IfNoneMatch;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 131072L) != 0))
+                            {
+                                return _ContentRange;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 1L) != 0))
+                            {
+                                return _CacheControl;
+                            }
+                            else
+                            {
+                                throw new System.Collections.Generic.KeyNotFoundException();
+                            }
+                        }
+                    
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 16777216L) != 0))
+                            {
+                                return _Authorization;
                             }
                             else
                             {
@@ -1082,13 +1126,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 12:
+                case 15:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 4096L) != 0))
+                            if (((_bits & 8388608L) != 0))
                             {
-                                return _ContentType;
+                                return _AcceptLanguage;
                             }
                             else
                             {
@@ -1096,11 +1140,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 17179869184L) != 0))
+                            if (((_bits & 4194304L) != 0))
                             {
-                                return _MaxForwards;
+                                return _AcceptEncoding;
                             }
                             else
                             {
@@ -1112,11 +1156,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 8192L) != 0))
+                            if (((_bits & 32768L) != 0))
                             {
-                                return _ContentEncoding;
+                                return _ContentLocation;
                             }
                             else
                             {
@@ -1136,11 +1180,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 32768L) != 0))
+                            if (((_bits & 8192L) != 0))
                             {
-                                return _ContentLocation;
+                                return _ContentEncoding;
                             }
                             else
                             {
@@ -1150,29 +1194,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 11:
+                case 17:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 65536L) != 0))
+                            if (((_bits & 64L) != 0))
                             {
-                                return _ContentMD5;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                return _AcceptEncoding;
+                                return _TransferEncoding;
                             }
                             else
                             {
@@ -1180,39 +1208,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 8388608L) != 0))
+                            if (((_bits & 1073741824L) != 0))
                             {
-                                return _AcceptLanguage;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                return _IfMatch;
-                            }
-                            else
-                            {
-                                throw new System.Collections.Generic.KeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                return _IfRange;
+                                return _IfModifiedSince;
                             }
                             else
                             {
@@ -1224,11 +1224,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 8589934592L) != 0))
+                            if (((_bits & 34359738368L) != 0))
                             {
-                                return _IfUnmodifiedSince;
+                                return _ProxyAuthorization;
                             }
                             else
                             {
@@ -1236,11 +1236,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 34359738368L) != 0))
+                            if (((_bits & 8589934592L) != 0))
                             {
-                                return _ProxyAuthorization;
+                                return _IfUnmodifiedSince;
                             }
                             else
                             {
@@ -1266,13 +1266,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 9:
+                case 3:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 549755813888L) != 0))
+                            if (((_bits & 256L) != 0))
                             {
-                                return _Translate;
+                                return _Via;
                             }
                             else
                             {
@@ -1292,133 +1292,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             switch(key.Length)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 1L) != 0))
-                            {
-                                value = _CacheControl;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 131072L) != 0))
-                            {
-                                value = _ContentRange;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 524288L) != 0))
-                            {
-                                value = _LastModified;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                value = _Authorization;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                value = _IfNoneMatch;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                value = _Connection;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                value = _KeepAlive;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                value = _UserAgent;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 4L) != 0))
+                            if (((_bits & 268435456L) != 0))
                             {
-                                value = _Date;
+                                value = _Host;
                                 return true;
                             }
                             else
@@ -1442,11 +1322,43 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if (((_bits & 4L) != 0))
                             {
-                                value = _Host;
+                                value = _Date;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+
+                case 5:
+                    {
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 137438953472L) != 0))
+                            {
+                                value = _Range;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 1024L) != 0))
+                            {
+                                value = _Allow;
                                 return true;
                             }
                             else
@@ -1474,11 +1386,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if (((_bits & 67108864L) != 0))
                             {
-                                value = _Accept;
+                                value = _Expect;
                                 return true;
                             }
                             else
@@ -1502,11 +1414,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if (((_bits & 1048576L) != 0))
                             {
-                                value = _Expect;
+                                value = _Accept;
                                 return true;
                             }
                             else
@@ -1520,11 +1432,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 32L) != 0))
+                            if (((_bits & 512L) != 0))
                             {
-                                value = _Trailer;
+                                value = _Warning;
                                 return true;
                             }
                             else
@@ -1548,25 +1460,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 512L) != 0))
+                            if (((_bits & 32L) != 0))
                             {
-                                value = _Warning;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                value = _Expires;
+                                value = _Trailer;
                                 return true;
                             }
                             else
@@ -1589,16 +1487,30 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 return false;
                             }
                         }
+                    
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 262144L) != 0))
+                            {
+                                value = _Expires;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
                     }
                     break;
 
-                case 17:
+                case 8:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 64L) != 0))
+                            if (((_bits & 4294967296L) != 0))
                             {
-                                value = _TransferEncoding;
+                                value = _IfRange;
                                 return true;
                             }
                             else
@@ -1608,11 +1520,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 1073741824L) != 0))
+                            if (((_bits & 536870912L) != 0))
                             {
-                                value = _IfModifiedSince;
+                                value = _IfMatch;
                                 return true;
                             }
                             else
@@ -1624,13 +1536,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 3:
+                case 9:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 256L) != 0))
+                            if (((_bits & 549755813888L) != 0))
                             {
-                                value = _Via;
+                                value = _Translate;
                                 return true;
                             }
                             else
@@ -1642,13 +1554,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 5:
+                case 10:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 1024L) != 0))
+                            if (((_bits & 1099511627776L) != 0))
                             {
-                                value = _Allow;
+                                value = _UserAgent;
                                 return true;
                             }
                             else
@@ -1658,11 +1570,149 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 137438953472L) != 0))
+                            if (((_bits & 8L) != 0))
                             {
-                                value = _Range;
+                                value = _KeepAlive;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 2L) != 0))
+                            {
+                                value = _Connection;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+
+                case 11:
+                    {
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 65536L) != 0))
+                            {
+                                value = _ContentMD5;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+
+                case 12:
+                    {
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 17179869184L) != 0))
+                            {
+                                value = _MaxForwards;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 4096L) != 0))
+                            {
+                                value = _ContentType;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+
+                case 13:
+                    {
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 524288L) != 0))
+                            {
+                                value = _LastModified;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 2147483648L) != 0))
+                            {
+                                value = _IfNoneMatch;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 131072L) != 0))
+                            {
+                                value = _ContentRange;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 1L) != 0))
+                            {
+                                value = _CacheControl;
+                                return true;
+                            }
+                            else
+                            {
+                                value = StringValues.Empty;
+                                return false;
+                            }
+                        }
+                    
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 16777216L) != 0))
+                            {
+                                value = _Authorization;
                                 return true;
                             }
                             else
@@ -1706,13 +1756,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 12:
+                case 15:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 4096L) != 0))
+                            if (((_bits & 8388608L) != 0))
                             {
-                                value = _ContentType;
+                                value = _AcceptLanguage;
                                 return true;
                             }
                             else
@@ -1722,11 +1772,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 17179869184L) != 0))
+                            if (((_bits & 4194304L) != 0))
                             {
-                                value = _MaxForwards;
+                                value = _AcceptEncoding;
                                 return true;
                             }
                             else
@@ -1740,11 +1790,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 8192L) != 0))
+                            if (((_bits & 32768L) != 0))
                             {
-                                value = _ContentEncoding;
+                                value = _ContentLocation;
                                 return true;
                             }
                             else
@@ -1768,11 +1818,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 32768L) != 0))
+                            if (((_bits & 8192L) != 0))
                             {
-                                value = _ContentLocation;
+                                value = _ContentEncoding;
                                 return true;
                             }
                             else
@@ -1784,31 +1834,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 11:
+                case 17:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 65536L) != 0))
+                            if (((_bits & 64L) != 0))
                             {
-                                value = _ContentMD5;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                value = _AcceptEncoding;
+                                value = _TransferEncoding;
                                 return true;
                             }
                             else
@@ -1818,43 +1850,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 8388608L) != 0))
+                            if (((_bits & 1073741824L) != 0))
                             {
-                                value = _AcceptLanguage;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                value = _IfMatch;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                value = _IfRange;
+                                value = _IfModifiedSince;
                                 return true;
                             }
                             else
@@ -1868,11 +1868,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 8589934592L) != 0))
+                            if (((_bits & 34359738368L) != 0))
                             {
-                                value = _IfUnmodifiedSince;
+                                value = _ProxyAuthorization;
                                 return true;
                             }
                             else
@@ -1882,11 +1882,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 34359738368L) != 0))
+                            if (((_bits & 8589934592L) != 0))
                             {
-                                value = _ProxyAuthorization;
+                                value = _IfUnmodifiedSince;
                                 return true;
                             }
                             else
@@ -1916,13 +1916,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 9:
+                case 3:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 549755813888L) != 0))
+                            if (((_bits & 256L) != 0))
                             {
-                                value = _Translate;
+                                value = _Via;
                                 return true;
                             }
                             else
@@ -1941,76 +1941,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             switch(key.Length)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 1L;
-                            _CacheControl = value;
-                            return;
-                        }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 131072L;
-                            _ContentRange = value;
-                            return;
-                        }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 524288L;
-                            _LastModified = value;
-                            return;
-                        }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 16777216L;
-                            _Authorization = value;
-                            return;
-                        }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 2147483648L;
-                            _IfNoneMatch = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 2L;
-                            _Connection = value;
-                            return;
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 8L;
-                            _KeepAlive = value;
-                            return;
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 1099511627776L;
-                            _UserAgent = value;
-                            return;
-                        }
-                    }
-                    break;
-
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 4L;
-                            _Date = value;
+                            _bits |= 268435456L;
+                            _Host = value;
                             return;
                         }
                     
@@ -2021,10 +1957,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 268435456L;
-                            _Host = value;
+                            _bits |= 4L;
+                            _Date = value;
+                            return;
+                        }
+                    }
+                    break;
+
+                case 5:
+                    {
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 137438953472L;
+                            _Range = value;
+                            return;
+                        }
+                    
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 1024L;
+                            _Allow = value;
                             return;
                         }
                     }
@@ -2039,10 +1993,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 1048576L;
-                            _Accept = value;
+                            _bits |= 67108864L;
+                            _Expect = value;
                             return;
                         }
                     
@@ -2053,10 +2007,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 67108864L;
-                            _Expect = value;
+                            _bits |= 1048576L;
+                            _Accept = value;
                             return;
                         }
                     }
@@ -2064,10 +2018,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 32L;
-                            _Trailer = value;
+                            _bits |= 512L;
+                            _Warning = value;
                             return;
                         }
                     
@@ -2078,17 +2032,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 512L;
-                            _Warning = value;
-                            return;
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 262144L;
-                            _Expires = value;
+                            _bits |= 32L;
+                            _Trailer = value;
                             return;
                         }
                     
@@ -2098,51 +2045,133 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _Referer = value;
                             return;
                         }
+                    
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 262144L;
+                            _Expires = value;
+                            return;
+                        }
                     }
                     break;
 
-                case 17:
+                case 8:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 64L;
-                            _TransferEncoding = value;
+                            _bits |= 4294967296L;
+                            _IfRange = value;
                             return;
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 1073741824L;
-                            _IfModifiedSince = value;
+                            _bits |= 536870912L;
+                            _IfMatch = value;
                             return;
                         }
                     }
                     break;
 
-                case 3:
+                case 9:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 256L;
-                            _Via = value;
+                            _bits |= 549755813888L;
+                            _Translate = value;
                             return;
                         }
                     }
                     break;
 
-                case 5:
+                case 10:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 1024L;
-                            _Allow = value;
+                            _bits |= 1099511627776L;
+                            _UserAgent = value;
                             return;
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 137438953472L;
-                            _Range = value;
+                            _bits |= 8L;
+                            _KeepAlive = value;
+                            return;
+                        }
+                    
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 2L;
+                            _Connection = value;
+                            return;
+                        }
+                    }
+                    break;
+
+                case 11:
+                    {
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 65536L;
+                            _ContentMD5 = value;
+                            return;
+                        }
+                    }
+                    break;
+
+                case 12:
+                    {
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 17179869184L;
+                            _MaxForwards = value;
+                            return;
+                        }
+                    
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 4096L;
+                            _ContentType = value;
+                            return;
+                        }
+                    }
+                    break;
+
+                case 13:
+                    {
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 524288L;
+                            _LastModified = value;
+                            return;
+                        }
+                    
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 2147483648L;
+                            _IfNoneMatch = value;
+                            return;
+                        }
+                    
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 131072L;
+                            _ContentRange = value;
+                            return;
+                        }
+                    
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 1L;
+                            _CacheControl = value;
+                            return;
+                        }
+                    
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 16777216L;
+                            _Authorization = value;
                             return;
                         }
                     }
@@ -2166,19 +2195,19 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 12:
+                case 15:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 4096L;
-                            _ContentType = value;
+                            _bits |= 8388608L;
+                            _AcceptLanguage = value;
                             return;
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 17179869184L;
-                            _MaxForwards = value;
+                            _bits |= 4194304L;
+                            _AcceptEncoding = value;
                             return;
                         }
                     }
@@ -2186,10 +2215,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 8192L;
-                            _ContentEncoding = value;
+                            _bits |= 32768L;
+                            _ContentLocation = value;
                             return;
                         }
                     
@@ -2200,57 +2229,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 32768L;
-                            _ContentLocation = value;
+                            _bits |= 8192L;
+                            _ContentEncoding = value;
                             return;
                         }
                     }
                     break;
 
-                case 11:
+                case 17:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 65536L;
-                            _ContentMD5 = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 4194304L;
-                            _AcceptEncoding = value;
+                            _bits |= 64L;
+                            _TransferEncoding = value;
                             return;
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 8388608L;
-                            _AcceptLanguage = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 536870912L;
-                            _IfMatch = value;
-                            return;
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 4294967296L;
-                            _IfRange = value;
+                            _bits |= 1073741824L;
+                            _IfModifiedSince = value;
                             return;
                         }
                     }
@@ -2258,17 +2258,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            _bits |= 8589934592L;
-                            _IfUnmodifiedSince = value;
-                            return;
-                        }
-                    
                         if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
                             _bits |= 34359738368L;
                             _ProxyAuthorization = value;
+                            return;
+                        }
+                    
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            _bits |= 8589934592L;
+                            _IfUnmodifiedSince = value;
                             return;
                         }
                     }
@@ -2285,12 +2285,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
 
-                case 9:
+                case 3:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            _bits |= 549755813888L;
-                            _Translate = value;
+                            _bits |= 256L;
+                            _Via = value;
                             return;
                         }
                     }
@@ -2302,112 +2302,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             switch(key.Length)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 1L;
-                            _CacheControl = value;
-                            return;
-                        }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 131072L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 131072L;
-                            _ContentRange = value;
-                            return;
-                        }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 524288L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 524288L;
-                            _LastModified = value;
-                            return;
-                        }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 16777216L;
-                            _Authorization = value;
-                            return;
-                        }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 2147483648L;
-                            _IfNoneMatch = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 2L;
-                            _Connection = value;
-                            return;
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 8L;
-                            _KeepAlive = value;
-                            return;
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 1099511627776L;
-                            _UserAgent = value;
-                            return;
-                        }
-                    }
-                    break;
-            
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 4L) != 0))
+                            if (((_bits & 268435456L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 4L;
-                            _Date = value;
+                            _bits |= 268435456L;
+                            _Host = value;
                             return;
                         }
                     
@@ -2422,14 +2326,40 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if (((_bits & 4L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 268435456L;
-                            _Host = value;
+                            _bits |= 4L;
+                            _Date = value;
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 5:
+                    {
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 137438953472L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 137438953472L;
+                            _Range = value;
+                            return;
+                        }
+                    
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 1024L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 1024L;
+                            _Allow = value;
                             return;
                         }
                     }
@@ -2448,14 +2378,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if (((_bits & 67108864L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 1048576L;
-                            _Accept = value;
+                            _bits |= 67108864L;
+                            _Expect = value;
                             return;
                         }
                     
@@ -2470,14 +2400,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if (((_bits & 1048576L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 67108864L;
-                            _Expect = value;
+                            _bits |= 1048576L;
+                            _Accept = value;
                             return;
                         }
                     }
@@ -2485,14 +2415,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 32L) != 0))
+                            if (((_bits & 512L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 32L;
-                            _Trailer = value;
+                            _bits |= 512L;
+                            _Warning = value;
                             return;
                         }
                     
@@ -2507,25 +2437,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 512L) != 0))
+                            if (((_bits & 32L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 512L;
-                            _Warning = value;
-                            return;
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 262144L;
-                            _Expires = value;
+                            _bits |= 32L;
+                            _Trailer = value;
                             return;
                         }
                     
@@ -2539,71 +2458,193 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _Referer = value;
                             return;
                         }
-                    }
-                    break;
-            
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                    
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 64L) != 0))
+                            if (((_bits & 262144L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 64L;
-                            _TransferEncoding = value;
+                            _bits |= 262144L;
+                            _Expires = value;
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 8:
+                    {
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 4294967296L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 4294967296L;
+                            _IfRange = value;
                             return;
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 1073741824L) != 0))
+                            if (((_bits & 536870912L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 1073741824L;
-                            _IfModifiedSince = value;
+                            _bits |= 536870912L;
+                            _IfMatch = value;
                             return;
                         }
                     }
                     break;
             
-                case 3:
+                case 9:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 256L) != 0))
+                            if (((_bits & 549755813888L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 256L;
-                            _Via = value;
+                            _bits |= 549755813888L;
+                            _Translate = value;
                             return;
                         }
                     }
                     break;
             
-                case 5:
+                case 10:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 1024L) != 0))
+                            if (((_bits & 1099511627776L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 1024L;
-                            _Allow = value;
+                            _bits |= 1099511627776L;
+                            _UserAgent = value;
                             return;
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 137438953472L) != 0))
+                            if (((_bits & 8L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 137438953472L;
-                            _Range = value;
+                            _bits |= 8L;
+                            _KeepAlive = value;
+                            return;
+                        }
+                    
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 2L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 2L;
+                            _Connection = value;
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 11:
+                    {
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 65536L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 65536L;
+                            _ContentMD5 = value;
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 12:
+                    {
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 17179869184L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 17179869184L;
+                            _MaxForwards = value;
+                            return;
+                        }
+                    
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 4096L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 4096L;
+                            _ContentType = value;
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 13:
+                    {
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 524288L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 524288L;
+                            _LastModified = value;
+                            return;
+                        }
+                    
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 2147483648L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 2147483648L;
+                            _IfNoneMatch = value;
+                            return;
+                        }
+                    
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 131072L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 131072L;
+                            _ContentRange = value;
+                            return;
+                        }
+                    
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 1L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 1L;
+                            _CacheControl = value;
+                            return;
+                        }
+                    
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 16777216L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 16777216L;
+                            _Authorization = value;
                             return;
                         }
                     }
@@ -2635,27 +2676,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 12:
+                case 15:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 4096L) != 0))
+                            if (((_bits & 8388608L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 4096L;
-                            _ContentType = value;
+                            _bits |= 8388608L;
+                            _AcceptLanguage = value;
                             return;
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 17179869184L) != 0))
+                            if (((_bits & 4194304L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 17179869184L;
-                            _MaxForwards = value;
+                            _bits |= 4194304L;
+                            _AcceptEncoding = value;
                             return;
                         }
                     }
@@ -2663,14 +2704,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 8192L) != 0))
+                            if (((_bits & 32768L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 8192L;
-                            _ContentEncoding = value;
+                            _bits |= 32768L;
+                            _ContentLocation = value;
                             return;
                         }
                     
@@ -2685,81 +2726,40 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 32768L) != 0))
+                            if (((_bits & 8192L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 32768L;
-                            _ContentLocation = value;
+                            _bits |= 8192L;
+                            _ContentEncoding = value;
                             return;
                         }
                     }
                     break;
             
-                case 11:
+                case 17:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 65536L) != 0))
+                            if (((_bits & 64L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 65536L;
-                            _ContentMD5 = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 4194304L;
-                            _AcceptEncoding = value;
+                            _bits |= 64L;
+                            _TransferEncoding = value;
                             return;
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 8388608L) != 0))
+                            if (((_bits & 1073741824L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 8388608L;
-                            _AcceptLanguage = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 536870912L;
-                            _IfMatch = value;
-                            return;
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 4294967296L;
-                            _IfRange = value;
+                            _bits |= 1073741824L;
+                            _IfModifiedSince = value;
                             return;
                         }
                     }
@@ -2767,17 +2767,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                throw new ArgumentException("An item with the same key has already been added.");
-                            }
-                            _bits |= 8589934592L;
-                            _IfUnmodifiedSince = value;
-                            return;
-                        }
-                    
                         if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
                             if (((_bits & 34359738368L) != 0))
@@ -2786,6 +2775,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             _bits |= 34359738368L;
                             _ProxyAuthorization = value;
+                            return;
+                        }
+                    
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((_bits & 8589934592L) != 0))
+                            {
+                                throw new ArgumentException("An item with the same key has already been added.");
+                            }
+                            _bits |= 8589934592L;
+                            _IfUnmodifiedSince = value;
                             return;
                         }
                     }
@@ -2806,16 +2806,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 9:
+                case 3:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (((_bits & 549755813888L) != 0))
+                            if (((_bits & 256L) != 0))
                             {
                                 throw new ArgumentException("An item with the same key has already been added.");
                             }
-                            _bits |= 549755813888L;
-                            _Translate = value;
+                            _bits |= 256L;
+                            _Via = value;
                             return;
                         }
                     }
@@ -2827,134 +2827,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             switch(key.Length)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 1L) != 0))
-                            {
-                                _bits &= ~1L;
-                                _CacheControl = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 131072L) != 0))
-                            {
-                                _bits &= ~131072L;
-                                _ContentRange = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 524288L) != 0))
-                            {
-                                _bits &= ~524288L;
-                                _LastModified = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                _bits &= ~16777216L;
-                                _Authorization = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                _bits &= ~2147483648L;
-                                _IfNoneMatch = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                _bits &= ~2L;
-                                _Connection = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                _bits &= ~8L;
-                                _KeepAlive = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                _bits &= ~1099511627776L;
-                                _UserAgent = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
                 case 4:
                     {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 4L) != 0))
+                            if (((_bits & 268435456L) != 0))
                             {
-                                _bits &= ~4L;
-                                _Date = StringValues.Empty;
+                                _bits &= ~268435456L;
+                                _Host = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -2977,12 +2857,44 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if (((_bits & 4L) != 0))
                             {
-                                _bits &= ~268435456L;
-                                _Host = StringValues.Empty;
+                                _bits &= ~4L;
+                                _Date = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+            
+                case 5:
+                    {
+                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 137438953472L) != 0))
+                            {
+                                _bits &= ~137438953472L;
+                                _Range = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 1024L) != 0))
+                            {
+                                _bits &= ~1024L;
+                                _Allow = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3009,12 +2921,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if (((_bits & 67108864L) != 0))
                             {
-                                _bits &= ~1048576L;
-                                _Accept = StringValues.Empty;
+                                _bits &= ~67108864L;
+                                _Expect = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3037,12 +2949,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if (((_bits & 1048576L) != 0))
                             {
-                                _bits &= ~67108864L;
-                                _Expect = StringValues.Empty;
+                                _bits &= ~1048576L;
+                                _Accept = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3055,12 +2967,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 7:
                     {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 32L) != 0))
+                            if (((_bits & 512L) != 0))
                             {
-                                _bits &= ~32L;
-                                _Trailer = StringValues.Empty;
+                                _bits &= ~512L;
+                                _Warning = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3083,26 +2995,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 512L) != 0))
+                            if (((_bits & 32L) != 0))
                             {
-                                _bits &= ~512L;
-                                _Warning = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                _bits &= ~262144L;
-                                _Expires = StringValues.Empty;
+                                _bits &= ~32L;
+                                _Trailer = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3124,17 +3022,31 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 return false;
                             }
                         }
+                    
+                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 262144L) != 0))
+                            {
+                                _bits &= ~262144L;
+                                _Expires = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
                     }
                     break;
             
-                case 17:
+                case 8:
                     {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 64L) != 0))
+                            if (((_bits & 4294967296L) != 0))
                             {
-                                _bits &= ~64L;
-                                _TransferEncoding = StringValues.Empty;
+                                _bits &= ~4294967296L;
+                                _IfRange = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3143,12 +3055,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 1073741824L) != 0))
+                            if (((_bits & 536870912L) != 0))
                             {
-                                _bits &= ~1073741824L;
-                                _IfModifiedSince = StringValues.Empty;
+                                _bits &= ~536870912L;
+                                _IfMatch = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3159,14 +3071,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 3:
+                case 9:
                     {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 256L) != 0))
+                            if (((_bits & 549755813888L) != 0))
                             {
-                                _bits &= ~256L;
-                                _Via = StringValues.Empty;
+                                _bits &= ~549755813888L;
+                                _Translate = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3177,14 +3089,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 5:
+                case 10:
                     {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 1024L) != 0))
+                            if (((_bits & 1099511627776L) != 0))
                             {
-                                _bits &= ~1024L;
-                                _Allow = StringValues.Empty;
+                                _bits &= ~1099511627776L;
+                                _UserAgent = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3193,12 +3105,150 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 137438953472L) != 0))
+                            if (((_bits & 8L) != 0))
                             {
-                                _bits &= ~137438953472L;
-                                _Range = StringValues.Empty;
+                                _bits &= ~8L;
+                                _KeepAlive = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 2L) != 0))
+                            {
+                                _bits &= ~2L;
+                                _Connection = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+            
+                case 11:
+                    {
+                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 65536L) != 0))
+                            {
+                                _bits &= ~65536L;
+                                _ContentMD5 = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+            
+                case 12:
+                    {
+                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 17179869184L) != 0))
+                            {
+                                _bits &= ~17179869184L;
+                                _MaxForwards = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 4096L) != 0))
+                            {
+                                _bits &= ~4096L;
+                                _ContentType = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    break;
+            
+                case 13:
+                    {
+                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 524288L) != 0))
+                            {
+                                _bits &= ~524288L;
+                                _LastModified = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 2147483648L) != 0))
+                            {
+                                _bits &= ~2147483648L;
+                                _IfNoneMatch = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 131072L) != 0))
+                            {
+                                _bits &= ~131072L;
+                                _ContentRange = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 1L) != 0))
+                            {
+                                _bits &= ~1L;
+                                _CacheControl = StringValues.Empty;
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    
+                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            if (((_bits & 16777216L) != 0))
+                            {
+                                _bits &= ~16777216L;
+                                _Authorization = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3241,14 +3291,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 12:
+                case 15:
                     {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 4096L) != 0))
+                            if (((_bits & 8388608L) != 0))
                             {
-                                _bits &= ~4096L;
-                                _ContentType = StringValues.Empty;
+                                _bits &= ~8388608L;
+                                _AcceptLanguage = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3257,12 +3307,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 17179869184L) != 0))
+                            if (((_bits & 4194304L) != 0))
                             {
-                                _bits &= ~17179869184L;
-                                _MaxForwards = StringValues.Empty;
+                                _bits &= ~4194304L;
+                                _AcceptEncoding = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3275,12 +3325,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 16:
                     {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 8192L) != 0))
+                            if (((_bits & 32768L) != 0))
                             {
-                                _bits &= ~8192L;
-                                _ContentEncoding = StringValues.Empty;
+                                _bits &= ~32768L;
+                                _ContentLocation = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3303,12 +3353,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 32768L) != 0))
+                            if (((_bits & 8192L) != 0))
                             {
-                                _bits &= ~32768L;
-                                _ContentLocation = StringValues.Empty;
+                                _bits &= ~8192L;
+                                _ContentEncoding = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3319,32 +3369,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 11:
+                case 17:
                     {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 65536L) != 0))
+                            if (((_bits & 64L) != 0))
                             {
-                                _bits &= ~65536L;
-                                _ContentMD5 = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                _bits &= ~4194304L;
-                                _AcceptEncoding = StringValues.Empty;
+                                _bits &= ~64L;
+                                _TransferEncoding = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3353,44 +3385,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 8388608L) != 0))
+                            if (((_bits & 1073741824L) != 0))
                             {
-                                _bits &= ~8388608L;
-                                _AcceptLanguage = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                _bits &= ~536870912L;
-                                _IfMatch = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase)) 
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                _bits &= ~4294967296L;
-                                _IfRange = StringValues.Empty;
+                                _bits &= ~1073741824L;
+                                _IfModifiedSince = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3403,12 +3403,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 19:
                     {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 8589934592L) != 0))
+                            if (((_bits & 34359738368L) != 0))
                             {
-                                _bits &= ~8589934592L;
-                                _IfUnmodifiedSince = StringValues.Empty;
+                                _bits &= ~34359738368L;
+                                _ProxyAuthorization = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3417,12 +3417,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                         }
                     
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 34359738368L) != 0))
+                            if (((_bits & 8589934592L) != 0))
                             {
-                                _bits &= ~34359738368L;
-                                _ProxyAuthorization = StringValues.Empty;
+                                _bits &= ~8589934592L;
+                                _IfUnmodifiedSince = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3451,14 +3451,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 9:
+                case 3:
                     {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase)) 
+                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase)) 
                         {
-                            if (((_bits & 549755813888L) != 0))
+                            if (((_bits & 256L) != 0))
                             {
-                                _bits &= ~549755813888L;
-                                _Translate = StringValues.Empty;
+                                _bits &= ~256L;
+                                _Via = StringValues.Empty;
                                 return true;
                             }
                             else
@@ -3947,138 +3947,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             fixed(byte* ptr = keyBytes) { var pUB = ptr + keyOffset; var pUL = (ulong*)pUB; var pUI = (uint*)pUB; var pUS = (ushort*)pUB;
             switch(keyLength)
             {
-                case 13:
-                    {
-                        if ((((pUL[0] & 16131893727263186911uL) == 5711458528024281411uL) && ((pUI[2] & 3755991007u) == 1330795598u) && ((pUB[12] & 223u) == 76u))) 
-                        {
-                            if (((_bits & 1L) != 0))
-                            {
-                                _CacheControl = AppendValue(_CacheControl, value);
-                            }
-                            else
-                            {
-                                _bits |= 1L;
-                                _CacheControl = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUI[2] & 3755991007u) == 1196310866u) && ((pUB[12] & 223u) == 69u))) 
-                        {
-                            if (((_bits & 131072L) != 0))
-                            {
-                                _ContentRange = AppendValue(_ContentRange, value);
-                            }
-                            else
-                            {
-                                _bits |= 131072L;
-                                _ContentRange = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 16131858680330051551uL) == 4922237774822850892uL) && ((pUI[2] & 3755991007u) == 1162430025u) && ((pUB[12] & 223u) == 68u))) 
-                        {
-                            if (((_bits & 524288L) != 0))
-                            {
-                                _LastModified = AppendValue(_LastModified, value);
-                            }
-                            else
-                            {
-                                _bits |= 524288L;
-                                _LastModified = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 16131858542891098079uL) == 6505821637182772545uL) && ((pUI[2] & 3755991007u) == 1330205761u) && ((pUB[12] & 223u) == 78u))) 
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                _Authorization = AppendValue(_Authorization, value);
-                            }
-                            else
-                            {
-                                _bits |= 16777216L;
-                                _Authorization = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 18437701552106889183uL) == 3262099607620765257uL) && ((pUI[2] & 3755991007u) == 1129595213u) && ((pUB[12] & 223u) == 72u))) 
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                _IfNoneMatch = AppendValue(_IfNoneMatch, value);
-                            }
-                            else
-                            {
-                                _bits |= 2147483648L;
-                                _IfNoneMatch = new StringValues(value);
-                            }
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ((((pUL[0] & 16131858542891098079uL) == 5283922227757993795uL) && ((pUS[4] & 57311u) == 20047u))) 
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                _Connection = AppendValue(_Connection, value);
-                            }
-                            else
-                            {
-                                _bits |= 2L;
-                                _Connection = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 16131858680330051551uL) == 5281668125874799947uL) && ((pUS[4] & 57311u) == 17750u))) 
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                _KeepAlive = AppendValue(_KeepAlive, value);
-                            }
-                            else
-                            {
-                                _bits |= 8L;
-                                _KeepAlive = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 16131858680330051551uL) == 4992030374873092949uL) && ((pUS[4] & 57311u) == 21582u))) 
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                _UserAgent = AppendValue(_UserAgent, value);
-                            }
-                            else
-                            {
-                                _bits |= 1099511627776L;
-                                _UserAgent = new StringValues(value);
-                            }
-                            return;
-                        }
-                    }
-                    break;
-            
                 case 4:
                     {
-                        if ((((pUI[0] & 3755991007u) == 1163149636u))) 
+                        if ((((pUI[0] & 3755991007u) == 1414745928u))) 
                         {
-                            if (((_bits & 4L) != 0))
+                            if (((_bits & 268435456L) != 0))
                             {
-                                _Date = AppendValue(_Date, value);
+                                _Host = AppendValue(_Host, value);
                             }
                             else
                             {
-                                _bits |= 4L;
-                                _Date = new StringValues(value);
+                                _bits |= 268435456L;
+                                _Host = new StringValues(value);
                             }
                             return;
                         }
@@ -4097,16 +3977,48 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ((((pUI[0] & 3755991007u) == 1414745928u))) 
+                        if ((((pUI[0] & 3755991007u) == 1163149636u))) 
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if (((_bits & 4L) != 0))
                             {
-                                _Host = AppendValue(_Host, value);
+                                _Date = AppendValue(_Date, value);
                             }
                             else
                             {
-                                _bits |= 268435456L;
-                                _Host = new StringValues(value);
+                                _bits |= 4L;
+                                _Date = new StringValues(value);
+                            }
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 5:
+                    {
+                        if ((((pUI[0] & 3755991007u) == 1196310866u) && ((pUB[4] & 223u) == 69u))) 
+                        {
+                            if (((_bits & 137438953472L) != 0))
+                            {
+                                _Range = AppendValue(_Range, value);
+                            }
+                            else
+                            {
+                                _bits |= 137438953472L;
+                                _Range = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUI[0] & 3755991007u) == 1330400321u) && ((pUB[4] & 223u) == 87u))) 
+                        {
+                            if (((_bits & 1024L) != 0))
+                            {
+                                _Allow = AppendValue(_Allow, value);
+                            }
+                            else
+                            {
+                                _bits |= 1024L;
+                                _Allow = new StringValues(value);
                             }
                             return;
                         }
@@ -4129,16 +4041,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ((((pUI[0] & 3755991007u) == 1162036033u) && ((pUS[2] & 57311u) == 21584u))) 
+                        if ((((pUI[0] & 3755991007u) == 1162893381u) && ((pUS[2] & 57311u) == 21571u))) 
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if (((_bits & 67108864L) != 0))
                             {
-                                _Accept = AppendValue(_Accept, value);
+                                _Expect = AppendValue(_Expect, value);
                             }
                             else
                             {
-                                _bits |= 1048576L;
-                                _Accept = new StringValues(value);
+                                _bits |= 67108864L;
+                                _Expect = new StringValues(value);
                             }
                             return;
                         }
@@ -4157,16 +4069,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ((((pUI[0] & 3755991007u) == 1162893381u) && ((pUS[2] & 57311u) == 21571u))) 
+                        if ((((pUI[0] & 3755991007u) == 1162036033u) && ((pUS[2] & 57311u) == 21584u))) 
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if (((_bits & 1048576L) != 0))
                             {
-                                _Expect = AppendValue(_Expect, value);
+                                _Accept = AppendValue(_Accept, value);
                             }
                             else
                             {
-                                _bits |= 67108864L;
-                                _Expect = new StringValues(value);
+                                _bits |= 1048576L;
+                                _Accept = new StringValues(value);
                             }
                             return;
                         }
@@ -4175,16 +4087,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 7:
                     {
-                        if ((((pUI[0] & 3755991007u) == 1229017684u) && ((pUS[2] & 57311u) == 17740u) && ((pUB[6] & 223u) == 82u))) 
+                        if ((((pUI[0] & 3755991007u) == 1314013527u) && ((pUS[2] & 57311u) == 20041u) && ((pUB[6] & 223u) == 71u))) 
                         {
-                            if (((_bits & 32L) != 0))
+                            if (((_bits & 512L) != 0))
                             {
-                                _Trailer = AppendValue(_Trailer, value);
+                                _Warning = AppendValue(_Warning, value);
                             }
                             else
                             {
-                                _bits |= 32L;
-                                _Trailer = new StringValues(value);
+                                _bits |= 512L;
+                                _Warning = new StringValues(value);
                             }
                             return;
                         }
@@ -4203,30 +4115,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ((((pUI[0] & 3755991007u) == 1314013527u) && ((pUS[2] & 57311u) == 20041u) && ((pUB[6] & 223u) == 71u))) 
+                        if ((((pUI[0] & 3755991007u) == 1229017684u) && ((pUS[2] & 57311u) == 17740u) && ((pUB[6] & 223u) == 82u))) 
                         {
-                            if (((_bits & 512L) != 0))
+                            if (((_bits & 32L) != 0))
                             {
-                                _Warning = AppendValue(_Warning, value);
+                                _Trailer = AppendValue(_Trailer, value);
                             }
                             else
                             {
-                                _bits |= 512L;
-                                _Warning = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUI[0] & 3755991007u) == 1230002245u) && ((pUS[2] & 57311u) == 17746u) && ((pUB[6] & 223u) == 83u))) 
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                _Expires = AppendValue(_Expires, value);
-                            }
-                            else
-                            {
-                                _bits |= 262144L;
-                                _Expires = new StringValues(value);
+                                _bits |= 32L;
+                                _Trailer = new StringValues(value);
                             }
                             return;
                         }
@@ -4244,85 +4142,237 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             }
                             return;
                         }
-                    }
-                    break;
-            
-                case 17:
-                    {
-                        if ((((pUL[0] & 16131858542891098079uL) == 5928221808112259668uL) && ((pUL[1] & 16131858542891098111uL) == 5641115115480565037uL) && ((pUB[16] & 223u) == 71u))) 
+                    
+                        if ((((pUI[0] & 3755991007u) == 1230002245u) && ((pUS[2] & 57311u) == 17746u) && ((pUB[6] & 223u) == 83u))) 
                         {
-                            if (((_bits & 64L) != 0))
+                            if (((_bits & 262144L) != 0))
                             {
-                                _TransferEncoding = AppendValue(_TransferEncoding, value);
+                                _Expires = AppendValue(_Expires, value);
                             }
                             else
                             {
-                                _bits |= 64L;
-                                _TransferEncoding = new StringValues(value);
+                                _bits |= 262144L;
+                                _Expires = new StringValues(value);
+                            }
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 8:
+                    {
+                        if ((((pUL[0] & 16131858542893195231uL) == 4992044754422023753uL))) 
+                        {
+                            if (((_bits & 4294967296L) != 0))
+                            {
+                                _IfRange = AppendValue(_IfRange, value);
+                            }
+                            else
+                            {
+                                _bits |= 4294967296L;
+                                _IfRange = new StringValues(value);
                             }
                             return;
                         }
                     
-                        if ((((pUL[0] & 16131858542893195231uL) == 5064654363342751305uL) && ((pUL[1] & 16131858543427968991uL) == 4849894470315165001uL) && ((pUB[16] & 223u) == 69u))) 
+                        if ((((pUL[0] & 16131858542893195231uL) == 5207098233614845513uL))) 
                         {
-                            if (((_bits & 1073741824L) != 0))
+                            if (((_bits & 536870912L) != 0))
                             {
-                                _IfModifiedSince = AppendValue(_IfModifiedSince, value);
+                                _IfMatch = AppendValue(_IfMatch, value);
                             }
                             else
                             {
-                                _bits |= 1073741824L;
-                                _IfModifiedSince = new StringValues(value);
+                                _bits |= 536870912L;
+                                _IfMatch = new StringValues(value);
                             }
                             return;
                         }
                     }
                     break;
             
-                case 3:
+                case 9:
                     {
-                        if ((((pUS[0] & 57311u) == 18774u) && ((pUB[2] & 223u) == 65u))) 
+                        if ((((pUL[0] & 16131858542891098079uL) == 6071217693351039572uL) && ((pUB[8] & 223u) == 69u))) 
                         {
-                            if (((_bits & 256L) != 0))
+                            if (((_bits & 549755813888L) != 0))
                             {
-                                _Via = AppendValue(_Via, value);
+                                _Translate = AppendValue(_Translate, value);
                             }
                             else
                             {
-                                _bits |= 256L;
-                                _Via = new StringValues(value);
+                                _bits |= 549755813888L;
+                                _Translate = new StringValues(value);
                             }
                             return;
                         }
                     }
                     break;
             
-                case 5:
+                case 10:
                     {
-                        if ((((pUI[0] & 3755991007u) == 1330400321u) && ((pUB[4] & 223u) == 87u))) 
+                        if ((((pUL[0] & 16131858680330051551uL) == 4992030374873092949uL) && ((pUS[4] & 57311u) == 21582u))) 
                         {
-                            if (((_bits & 1024L) != 0))
+                            if (((_bits & 1099511627776L) != 0))
                             {
-                                _Allow = AppendValue(_Allow, value);
+                                _UserAgent = AppendValue(_UserAgent, value);
                             }
                             else
                             {
-                                _bits |= 1024L;
-                                _Allow = new StringValues(value);
+                                _bits |= 1099511627776L;
+                                _UserAgent = new StringValues(value);
                             }
                             return;
                         }
                     
-                        if ((((pUI[0] & 3755991007u) == 1196310866u) && ((pUB[4] & 223u) == 69u))) 
+                        if ((((pUL[0] & 16131858680330051551uL) == 5281668125874799947uL) && ((pUS[4] & 57311u) == 17750u))) 
                         {
-                            if (((_bits & 137438953472L) != 0))
+                            if (((_bits & 8L) != 0))
                             {
-                                _Range = AppendValue(_Range, value);
+                                _KeepAlive = AppendValue(_KeepAlive, value);
                             }
                             else
                             {
-                                _bits |= 137438953472L;
-                                _Range = new StringValues(value);
+                                _bits |= 8L;
+                                _KeepAlive = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 16131858542891098079uL) == 5283922227757993795uL) && ((pUS[4] & 57311u) == 20047u))) 
+                        {
+                            if (((_bits & 2L) != 0))
+                            {
+                                _Connection = AppendValue(_Connection, value);
+                            }
+                            else
+                            {
+                                _bits |= 2L;
+                                _Connection = new StringValues(value);
+                            }
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 11:
+                    {
+                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUS[4] & 57311u) == 17485u) && ((pUB[10] & 255u) == 53u))) 
+                        {
+                            if (((_bits & 65536L) != 0))
+                            {
+                                _ContentMD5 = AppendValue(_ContentMD5, value);
+                            }
+                            else
+                            {
+                                _bits |= 65536L;
+                                _ContentMD5 = new StringValues(value);
+                            }
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 12:
+                    {
+                        if ((((pUL[0] & 16131858543427968991uL) == 6292178792217067853uL) && ((pUI[2] & 3755991007u) == 1396986433u))) 
+                        {
+                            if (((_bits & 17179869184L) != 0))
+                            {
+                                _MaxForwards = AppendValue(_MaxForwards, value);
+                            }
+                            else
+                            {
+                                _bits |= 17179869184L;
+                                _MaxForwards = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUI[2] & 3755991007u) == 1162893652u))) 
+                        {
+                            if (((_bits & 4096L) != 0))
+                            {
+                                _ContentType = AppendValue(_ContentType, value);
+                            }
+                            else
+                            {
+                                _bits |= 4096L;
+                                _ContentType = new StringValues(value);
+                            }
+                            return;
+                        }
+                    }
+                    break;
+            
+                case 13:
+                    {
+                        if ((((pUL[0] & 16131858680330051551uL) == 4922237774822850892uL) && ((pUI[2] & 3755991007u) == 1162430025u) && ((pUB[12] & 223u) == 68u))) 
+                        {
+                            if (((_bits & 524288L) != 0))
+                            {
+                                _LastModified = AppendValue(_LastModified, value);
+                            }
+                            else
+                            {
+                                _bits |= 524288L;
+                                _LastModified = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 18437701552106889183uL) == 3262099607620765257uL) && ((pUI[2] & 3755991007u) == 1129595213u) && ((pUB[12] & 223u) == 72u))) 
+                        {
+                            if (((_bits & 2147483648L) != 0))
+                            {
+                                _IfNoneMatch = AppendValue(_IfNoneMatch, value);
+                            }
+                            else
+                            {
+                                _bits |= 2147483648L;
+                                _IfNoneMatch = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUI[2] & 3755991007u) == 1196310866u) && ((pUB[12] & 223u) == 69u))) 
+                        {
+                            if (((_bits & 131072L) != 0))
+                            {
+                                _ContentRange = AppendValue(_ContentRange, value);
+                            }
+                            else
+                            {
+                                _bits |= 131072L;
+                                _ContentRange = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 16131893727263186911uL) == 5711458528024281411uL) && ((pUI[2] & 3755991007u) == 1330795598u) && ((pUB[12] & 223u) == 76u))) 
+                        {
+                            if (((_bits & 1L) != 0))
+                            {
+                                _CacheControl = AppendValue(_CacheControl, value);
+                            }
+                            else
+                            {
+                                _bits |= 1L;
+                                _CacheControl = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 16131858542891098079uL) == 6505821637182772545uL) && ((pUI[2] & 3755991007u) == 1330205761u) && ((pUB[12] & 223u) == 78u))) 
+                        {
+                            if (((_bits & 16777216L) != 0))
+                            {
+                                _Authorization = AppendValue(_Authorization, value);
+                            }
+                            else
+                            {
+                                _bits |= 16777216L;
+                                _Authorization = new StringValues(value);
                             }
                             return;
                         }
@@ -4361,32 +4411,32 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 12:
+                case 15:
                     {
-                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUI[2] & 3755991007u) == 1162893652u))) 
+                        if ((((pUL[0] & 16140865742145839071uL) == 5489136224570655553uL) && ((pUI[2] & 3755991007u) == 1430736449u) && ((pUS[6] & 57311u) == 18241u) && ((pUB[14] & 223u) == 69u))) 
                         {
-                            if (((_bits & 4096L) != 0))
+                            if (((_bits & 8388608L) != 0))
                             {
-                                _ContentType = AppendValue(_ContentType, value);
+                                _AcceptLanguage = AppendValue(_AcceptLanguage, value);
                             }
                             else
                             {
-                                _bits |= 4096L;
-                                _ContentType = new StringValues(value);
+                                _bits |= 8388608L;
+                                _AcceptLanguage = new StringValues(value);
                             }
                             return;
                         }
                     
-                        if ((((pUL[0] & 16131858543427968991uL) == 6292178792217067853uL) && ((pUI[2] & 3755991007u) == 1396986433u))) 
+                        if ((((pUL[0] & 16140865742145839071uL) == 4984733066305160001uL) && ((pUI[2] & 3755991007u) == 1146045262u) && ((pUS[6] & 57311u) == 20041u) && ((pUB[14] & 223u) == 71u))) 
                         {
-                            if (((_bits & 17179869184L) != 0))
+                            if (((_bits & 4194304L) != 0))
                             {
-                                _MaxForwards = AppendValue(_MaxForwards, value);
+                                _AcceptEncoding = AppendValue(_AcceptEncoding, value);
                             }
                             else
                             {
-                                _bits |= 17179869184L;
-                                _MaxForwards = new StringValues(value);
+                                _bits |= 4194304L;
+                                _AcceptEncoding = new StringValues(value);
                             }
                             return;
                         }
@@ -4395,16 +4445,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 16:
                     {
-                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUL[1] & 16131858542891098079uL) == 5138124782612729413uL))) 
+                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUL[1] & 16131858542891098079uL) == 5642809484339531596uL))) 
                         {
-                            if (((_bits & 8192L) != 0))
+                            if (((_bits & 32768L) != 0))
                             {
-                                _ContentEncoding = AppendValue(_ContentEncoding, value);
+                                _ContentLocation = AppendValue(_ContentLocation, value);
                             }
                             else
                             {
-                                _bits |= 8192L;
-                                _ContentEncoding = new StringValues(value);
+                                _bits |= 32768L;
+                                _ContentLocation = new StringValues(value);
                             }
                             return;
                         }
@@ -4423,98 +4473,48 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             return;
                         }
                     
-                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUL[1] & 16131858542891098079uL) == 5642809484339531596uL))) 
+                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUL[1] & 16131858542891098079uL) == 5138124782612729413uL))) 
                         {
-                            if (((_bits & 32768L) != 0))
+                            if (((_bits & 8192L) != 0))
                             {
-                                _ContentLocation = AppendValue(_ContentLocation, value);
+                                _ContentEncoding = AppendValue(_ContentEncoding, value);
                             }
                             else
                             {
-                                _bits |= 32768L;
-                                _ContentLocation = new StringValues(value);
+                                _bits |= 8192L;
+                                _ContentEncoding = new StringValues(value);
                             }
                             return;
                         }
                     }
                     break;
             
-                case 11:
+                case 17:
                     {
-                        if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUS[4] & 57311u) == 17485u) && ((pUB[10] & 255u) == 53u))) 
+                        if ((((pUL[0] & 16131858542891098079uL) == 5928221808112259668uL) && ((pUL[1] & 16131858542891098111uL) == 5641115115480565037uL) && ((pUB[16] & 223u) == 71u))) 
                         {
-                            if (((_bits & 65536L) != 0))
+                            if (((_bits & 64L) != 0))
                             {
-                                _ContentMD5 = AppendValue(_ContentMD5, value);
+                                _TransferEncoding = AppendValue(_TransferEncoding, value);
                             }
                             else
                             {
-                                _bits |= 65536L;
-                                _ContentMD5 = new StringValues(value);
-                            }
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 15:
-                    {
-                        if ((((pUL[0] & 16140865742145839071uL) == 4984733066305160001uL) && ((pUI[2] & 3755991007u) == 1146045262u) && ((pUS[6] & 57311u) == 20041u) && ((pUB[14] & 223u) == 71u))) 
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                _AcceptEncoding = AppendValue(_AcceptEncoding, value);
-                            }
-                            else
-                            {
-                                _bits |= 4194304L;
-                                _AcceptEncoding = new StringValues(value);
+                                _bits |= 64L;
+                                _TransferEncoding = new StringValues(value);
                             }
                             return;
                         }
                     
-                        if ((((pUL[0] & 16140865742145839071uL) == 5489136224570655553uL) && ((pUI[2] & 3755991007u) == 1430736449u) && ((pUS[6] & 57311u) == 18241u) && ((pUB[14] & 223u) == 69u))) 
+                        if ((((pUL[0] & 16131858542893195231uL) == 5064654363342751305uL) && ((pUL[1] & 16131858543427968991uL) == 4849894470315165001uL) && ((pUB[16] & 223u) == 69u))) 
                         {
-                            if (((_bits & 8388608L) != 0))
+                            if (((_bits & 1073741824L) != 0))
                             {
-                                _AcceptLanguage = AppendValue(_AcceptLanguage, value);
+                                _IfModifiedSince = AppendValue(_IfModifiedSince, value);
                             }
                             else
                             {
-                                _bits |= 8388608L;
-                                _AcceptLanguage = new StringValues(value);
-                            }
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ((((pUL[0] & 16131858542893195231uL) == 5207098233614845513uL))) 
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                _IfMatch = AppendValue(_IfMatch, value);
-                            }
-                            else
-                            {
-                                _bits |= 536870912L;
-                                _IfMatch = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
-                        if ((((pUL[0] & 16131858542893195231uL) == 4992044754422023753uL))) 
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                _IfRange = AppendValue(_IfRange, value);
-                            }
-                            else
-                            {
-                                _bits |= 4294967296L;
-                                _IfRange = new StringValues(value);
+                                _bits |= 1073741824L;
+                                _IfModifiedSince = new StringValues(value);
                             }
                             return;
                         }
@@ -4523,20 +4523,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             
                 case 19:
                     {
-                        if ((((pUL[0] & 16131858542893195231uL) == 4922237916571059785uL) && ((pUL[1] & 16131893727263186911uL) == 5283616559079179849uL) && ((pUS[8] & 57311u) == 17230u) && ((pUB[18] & 223u) == 69u))) 
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                _IfUnmodifiedSince = AppendValue(_IfUnmodifiedSince, value);
-                            }
-                            else
-                            {
-                                _bits |= 8589934592L;
-                                _IfUnmodifiedSince = new StringValues(value);
-                            }
-                            return;
-                        }
-                    
                         if ((((pUL[0] & 16131893727263186911uL) == 6143241228466999888uL) && ((pUL[1] & 16131858542891098079uL) == 6071233043632179284uL) && ((pUS[8] & 57311u) == 20297u) && ((pUB[18] & 223u) == 78u))) 
                         {
                             if (((_bits & 34359738368L) != 0))
@@ -4547,6 +4533,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             {
                                 _bits |= 34359738368L;
                                 _ProxyAuthorization = new StringValues(value);
+                            }
+                            return;
+                        }
+                    
+                        if ((((pUL[0] & 16131858542893195231uL) == 4922237916571059785uL) && ((pUL[1] & 16131893727263186911uL) == 5283616559079179849uL) && ((pUS[8] & 57311u) == 17230u) && ((pUB[18] & 223u) == 69u))) 
+                        {
+                            if (((_bits & 8589934592L) != 0))
+                            {
+                                _IfUnmodifiedSince = AppendValue(_IfUnmodifiedSince, value);
+                            }
+                            else
+                            {
+                                _bits |= 8589934592L;
+                                _IfUnmodifiedSince = new StringValues(value);
                             }
                             return;
                         }
@@ -4571,18 +4571,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     }
                     break;
             
-                case 9:
+                case 3:
                     {
-                        if ((((pUL[0] & 16131858542891098079uL) == 6071217693351039572uL) && ((pUB[8] & 223u) == 69u))) 
+                        if ((((pUS[0] & 57311u) == 18774u) && ((pUB[2] & 223u) == 65u))) 
                         {
-                            if (((_bits & 549755813888L) != 0))
+                            if (((_bits & 256L) != 0))
                             {
-                                _Translate = AppendValue(_Translate, value);
+                                _Via = AppendValue(_Via, value);
                             }
                             else
                             {
-                                _bits |= 549755813888L;
-                                _Translate = new StringValues(value);
+                                _bits |= 256L;
+                                _Via = new StringValues(value);
                             }
                             return;
                         }

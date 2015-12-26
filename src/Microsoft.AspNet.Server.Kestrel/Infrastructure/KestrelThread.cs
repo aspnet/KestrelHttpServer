@@ -11,6 +11,7 @@ using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.AspNet.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using Microsoft.AspNet.Server.Kestrel.Http;
 
 namespace Microsoft.AspNet.Server.Kestrel
 {
@@ -20,6 +21,11 @@ namespace Microsoft.AspNet.Server.Kestrel
     public class KestrelThread
     {
         private static Action<object, object> _threadCallbackAdapter = (callback, state) => ((Action<KestrelThread>)callback).Invoke((KestrelThread)state);
+        private static Action<object, object> _socketCallbackAdapter = (callback, state) => ((Action<SocketOutput>)callback).Invoke((SocketOutput)state);
+        private static Action<object, object> _tcsCallbackAdapter = (callback, state) => ((Action<TaskCompletionSource<int>>)callback).Invoke((TaskCompletionSource<int>)state);
+        private static Action<object, object> _listenerPrimaryCallbackAdapter = (callback, state) => ((Action<ListenerPrimary>)callback).Invoke((ListenerPrimary)state);
+        private static Action<object, object> _listenerSecondaryCallbackAdapter = (callback, state) => ((Action<ListenerSecondary>)callback).Invoke((ListenerSecondary)state);
+
         private KestrelEngine _engine;
         private readonly IApplicationLifetime _appLifetime;
         private Thread _thread;
@@ -137,23 +143,24 @@ namespace Microsoft.AspNet.Server.Kestrel
             WakeUpLoop();
         }
 
-        public void Post<T>(Action<T> callback, T state)
+        public void Post(Action<SocketOutput> callback, SocketOutput state)
         {
-            _workQueue.Enqueue(new Work
-            {
-                CallbackAdapter = (callback2, state2) => ((Action<T>)callback2).Invoke((T)state2),
-                Callback = callback,
-                State = state
-            });
+            _workQueue.Enqueue(new Work { CallbackAdapter = _socketCallbackAdapter, Callback = callback, State = state });
             WakeUpLoop();
         }
 
-        public Task PostAsync<T>(Action<T> callback, T state)
+        public void Post(Action<TaskCompletionSource<int>> callback, TaskCompletionSource<int> state)
+        {
+            _workQueue.Enqueue(new Work { CallbackAdapter = _tcsCallbackAdapter, Callback = callback, State = state });
+            WakeUpLoop();
+        }
+
+        public Task PostAsync(Action<ListenerPrimary> callback, ListenerPrimary state)
         {
             var tcs = new TaskCompletionSource<object>();
             _workQueue.Enqueue(new Work
             {
-                CallbackAdapter = (state1, state2) => ((Action<T>)state1).Invoke((T)state2),
+                CallbackAdapter = _listenerPrimaryCallbackAdapter,
                 Callback = callback,
                 State = state,
                 Completion = tcs
@@ -162,7 +169,21 @@ namespace Microsoft.AspNet.Server.Kestrel
             return tcs.Task;
         }
 
-        public void Send<T>(Action<T> callback, T state)
+        public Task PostAsync(Action<ListenerSecondary> callback, ListenerSecondary state)
+        {
+            var tcs = new TaskCompletionSource<object>();
+            _workQueue.Enqueue(new Work
+            {
+                CallbackAdapter = _listenerSecondaryCallbackAdapter,
+                Callback = callback,
+                State = state,
+                Completion = tcs
+            });
+            WakeUpLoop();
+            return tcs.Task;
+        }
+
+        public void Send(Action<ListenerSecondary> callback, ListenerSecondary state)
         {
             if (_loop.ThreadId == Thread.CurrentThread.ManagedThreadId)
             {
