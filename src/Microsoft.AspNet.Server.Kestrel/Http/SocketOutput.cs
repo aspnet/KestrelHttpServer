@@ -16,7 +16,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         public const int MaxPooledWriteReqs = 1024;
 
-        private const int _maxPendingWrites = 3;
+        //private const int _maxPendingWrites = 3;
         private const int _maxBytesPreCompleted = 65536;
         private const int _initialTaskQueues = 64;
         private const int _maxPooledWriteContexts = 32;
@@ -41,7 +41,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         // The number of write operations that have been scheduled so far
         // but have not completed.
-        private int _writesPending = 0;
+        //private int _writesPending = 0;
         private int _numBytesPreCompleted = 0;
         private Exception _lastWriteError;
         private WriteContext _nextWriteContext;
@@ -49,6 +49,8 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Queue<TaskCompletionSource<object>> _tasksCompleted;
         private readonly Queue<WriteContext> _writeContextPool;
         private readonly Queue<UvWriteReq> _writeReqPool;
+
+        private int _writePending = 0;
 
         private readonly object _contextLock = new object();
         private readonly object _taskQueueLock = new object();
@@ -160,16 +162,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (number > 10)
             {
                 number = 0;
-                ScheduleWrite();
-                Interlocked.Increment(ref _writesPending);
+                scheduleWrite = true;
             }
-            else if (Interlocked.Increment(ref _writesPending) < _maxPendingWrites && immediate)
+            else if (immediate)
+            {
+                scheduleWrite = true;
+            }
+
+            if (scheduleWrite)
             {
                 ScheduleWrite();
-            }
-            else
-            {
-                Interlocked.Decrement(ref _writesPending);
             }
 
             // Return TaskCompletionSource's Task if set, otherwise completed Task 
@@ -259,17 +261,20 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private void ScheduleWrite()
         {
-            _thread.Post(_this => _this.WriteAllPending(), this);
+            if (Interlocked.CompareExchange(ref _writePending, 1, 0) == 0)
+            {
+                _thread.Post(_this => _this.WriteAllPending(), this);
+            }
         }
 
         // This is called on the libuv event loop
         private void WriteAllPending()
         {
+            Volatile.Write(ref _writePending, 0);
             var writingContext = Interlocked.Exchange(ref _nextWriteContext, null);
 
             if (writingContext == null)
             {
-                Interlocked.Decrement(ref _writesPending);
                 return;
             }
 
@@ -279,8 +284,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             catch
             {
-                Interlocked.Decrement(ref _writesPending);
-
                 throw;
             }
         }
@@ -307,10 +310,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (_nextWriteContext != null)
             {
                 scheduleWrite = true;
-            }
-            else
-            {
-                Interlocked.Decrement(ref _writesPending);
             }
 
             // _numBytesPreCompleted can temporarily go negative in the event there are
@@ -351,7 +350,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             _log.ConnectionWriteCallback(_connectionId, status);
 
-            if (scheduleWrite)
+            if (scheduleWrite || _nextWriteContext != null)
             {
                 ScheduleWrite();
             }
@@ -590,6 +589,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             private void LockWrite()
             {
+
                 var head = Self._head;
                 var tail = Self._tail;
 
