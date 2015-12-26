@@ -20,7 +20,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public void Http10ConnectionClose()
         {
             var input = new TestInput();
-            var body = MessageBody.For("HTTP/1.0", new Dictionary<string, StringValues>(), input.FrameContext);
+            var body = MessageBody.For("HTTP/1.0", new FrameRequestHeaders(), input.FrameContext);
             var stream = new FrameRequestStream().StartAcceptingReads(body);
 
             input.Add("Hello", true);
@@ -38,7 +38,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public async Task Http10ConnectionCloseAsync()
         {
             var input = new TestInput();
-            var body = MessageBody.For("HTTP/1.0", new Dictionary<string, StringValues>(), input.FrameContext);
+            var body = MessageBody.For("HTTP/1.0", new FrameRequestHeaders(), input.FrameContext);
             var stream = new FrameRequestStream().StartAcceptingReads(body);
 
             input.Add("Hello", true);
@@ -56,7 +56,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         public async Task CanHandleLargeBlocks()
         {
             var input = new TestInput();
-            var body = MessageBody.For("HTTP/1.0", new Dictionary<string, StringValues>(), input.FrameContext);
+            var body = MessageBody.For("HTTP/1.0", new FrameRequestHeaders(), input.FrameContext);
             var stream = new FrameRequestStream().StartAcceptingReads(body);
 
             // Input needs to be greater than 4032 bytes to allocate a block not backed by a slab.
