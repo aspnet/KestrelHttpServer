@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private Action<UvWriteReq, int, Exception, object> _callback;
         private object _state;
-        private const int BUFFER_COUNT = 16;
+        private const int BUFFER_COUNT = 32;
 
         private GCHandle _pinUvWriteReq;
         private GCHandle _pinBufferArray;

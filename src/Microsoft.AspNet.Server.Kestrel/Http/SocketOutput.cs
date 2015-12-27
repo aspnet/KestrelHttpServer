@@ -159,7 +159,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
 
             number++;
-            if (number > 10)
+            if (number > 11)
             {
                 number = 0;
                 scheduleWrite = true;

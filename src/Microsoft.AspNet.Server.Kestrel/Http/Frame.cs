@@ -835,6 +835,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
         {
+            MemoryPoolIterator2 endName;
             var scan = input.ConsumingStart();
             var consumed = scan;
             try
@@ -844,8 +845,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 while (!scan.IsEnd)
                 {
                     var beginName = scan;
-                    scan.Seek(ref _vectorColons, ref _vectorCRs);
-                    var endName = scan;
+                    if (scan.Peek() == '\r' || scan.SeekCommonHeader())
+                    {
+                        endName = scan;
+                    }
+                    else
+                    {
+                        scan.Seek(ref _vectorColons, ref _vectorCRs);
+                        endName = scan;
+                    }
 
                     chFirst = scan.Take();
                     var beginValue = scan;

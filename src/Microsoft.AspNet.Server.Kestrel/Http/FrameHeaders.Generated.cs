@@ -1,7 +1,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Primitives;
 

@@ -1,6 +1,8 @@
 {
     "version": "1.0.0-*",
 
+    "compilationOptions": { "allowUnsafe": true },
+
     "dependencies": {
         "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*",
         "Microsoft.AspNet.Http.Features": "1.0.0-*",

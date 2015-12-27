@@ -15,6 +15,95 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             return values.Any() ? values.Select(formatter).Aggregate((a, b) => a + b) : "";
         }
 
+        static string[] commonHeaders = new[]
+        {
+                "Cache-Control",
+                "Connection",
+                "Date",
+                "Keep-Alive",
+                "Pragma",
+                "Trailer",
+                "Transfer-Encoding",
+                "Upgrade",
+                "Via",
+                "Warning",
+                "Allow",
+                "Content-Length",
+                "Content-Type",
+                "Content-Encoding",
+                "Content-Language",
+                "Content-Location",
+                "Content-MD5",
+                "Content-Range",
+                "Expires",
+                "Last-Modified"
+            };
+
+        static KnownHeader[] requestHeaders = commonHeaders.Concat(new[]
+        {
+                "Accept",
+                "Accept-Charset",
+                "Accept-Encoding",
+                "Accept-Language",
+                "Authorization",
+                "Cookie",
+                "Expect",
+                "From",
+                "Host",
+                "If-Match",
+                "If-Modified-Since",
+                "If-None-Match",
+                "If-Range",
+                "If-Unmodified-Since",
+                "Max-Forwards",
+                "Proxy-Authorization",
+                "Referer",
+                "Range",
+                "TE",
+                "Translate",
+                "User-Agent",
+            }).Select((header, index) => new KnownHeader
+            {
+                Name = header,
+                Index = index
+            }).ToArray();
+
+        static string[] enhancedHeaders = new[]
+        {
+                "Connection",
+                "Server",
+                "Date",
+                "Transfer-Encoding",
+                "Content-Length",
+            };
+
+        static string[] fastCheckHeaders = new[]
+        {
+                "Connection",
+                "Transfer-Encoding",
+                "Content-Length",
+            };
+
+        static KnownHeader[] responseHeaders = commonHeaders.Concat(new[]
+        {
+                "Accept-Ranges",
+                "Age",
+                "ETag",
+                "Location",
+                "Proxy-Autheticate",
+                "Retry-After",
+                "Server",
+                "Set-Cookie",
+                "Vary",
+                "WWW-Authenticate",
+            }).Select((header, index) => new KnownHeader
+            {
+                Name = header,
+                Index = index,
+                EnhancedSetter = enhancedHeaders.Contains(header),
+                FastCheck = fastCheckHeaders.Contains(header)
+            }).ToArray();
+
         class KnownHeader
         {
             public string Name { get; set; }
@@ -79,92 +168,22 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(GeneratedFile());
             context.Compilation = context.Compilation.AddSyntaxTrees(syntaxTree);
         }
+
+        public unsafe static int IntValue(string fourLowerChars)
+        {
+            var buffer = new byte[4];
+            fixed (byte* ptr = buffer)
+            {
+                buffer[0] = (byte)fourLowerChars[0];
+                buffer[1] = (byte)fourLowerChars[1];
+                buffer[2] = (byte)fourLowerChars[2];
+                buffer[3] = (byte)fourLowerChars[3];
+                return *(int*)ptr;
+            }
+        }
+
         public static string GeneratedFile()
         {
-            var commonHeaders = new[]
-            {
-                "Cache-Control",
-                "Connection",
-                "Date",
-                "Keep-Alive",
-                "Pragma",
-                "Trailer",
-                "Transfer-Encoding",
-                "Upgrade",
-                "Via",
-                "Warning",
-                "Allow",
-                "Content-Length",
-                "Content-Type",
-                "Content-Encoding",
-                "Content-Language",
-                "Content-Location",
-                "Content-MD5",
-                "Content-Range",
-                "Expires",
-                "Last-Modified"
-            };
-            var requestHeaders = commonHeaders.Concat(new[]
-            {
-                "Accept",
-                "Accept-Charset",
-                "Accept-Encoding",
-                "Accept-Language",
-                "Authorization",
-                "Cookie",
-                "Expect",
-                "From",
-                "Host",
-                "If-Match",
-                "If-Modified-Since",
-                "If-None-Match",
-                "If-Range",
-                "If-Unmodified-Since",
-                "Max-Forwards",
-                "Proxy-Authorization",
-                "Referer",
-                "Range",
-                "TE",
-                "Translate",
-                "User-Agent",
-            }).Select((header, index) => new KnownHeader
-            {
-                Name = header,
-                Index = index
-            }).ToArray();
-            var enhancedHeaders = new[]
-            {
-                "Connection",
-                "Server",
-                "Date",
-                "Transfer-Encoding",
-                "Content-Length",
-            };
-            var fastCheckHeaders = new[]
-            {
-                "Connection",
-                "Transfer-Encoding",
-                "Content-Length",
-            };
-            var responseHeaders = commonHeaders.Concat(new[]
-            {
-                "Accept-Ranges",
-                "Age",
-                "ETag",
-                "Location",
-                "Proxy-Autheticate",
-                "Retry-After",
-                "Server",
-                "Set-Cookie",
-                "Vary",
-                "WWW-Authenticate",
-            }).Select((header, index) => new KnownHeader
-            {
-                Name = header,
-                Index = index,
-                EnhancedSetter = enhancedHeaders.Contains(header),
-                FastCheck = fastCheckHeaders.Contains(header)
-            }).ToArray();
             var loops = new[]
             {
                 new
@@ -182,6 +201,7 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
                     Bytes = responseHeaders.SelectMany(header => header.Bytes).ToArray()
                 }
             };
+
             foreach (var loop in loops.Where(l => l.Bytes != null))
             {
                 var offset = 0;
@@ -195,7 +215,6 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
             return $@"
 using System;
 using System.Collections.Generic;
-using System.Text;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
@@ -535,6 +554,66 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 ")}}}
 ";
         }
+
+        public static string GeneratedMemoryPoolIterator2()
+        {
+            return $@"
+using System;
+
+namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
+{{
+    public partial struct MemoryPoolIterator2
+    {{
+        private const byte _colon = {(byte)':'};
+{Each(requestHeaders.Where(x => x.Name.Length >= 4).OrderBy(x => x.Name.Substring(0, 4)).ThenBy(x => x.Name.Length).GroupBy(x => x.Name.Substring(0, 4)), header =>
+$@"        private const int _header{header.Key.Substring(0, 4).Replace('-', '_')} = {IntValue(header.Key.Substring(0, 4).ToLower())};
+")}
+
+        public unsafe bool SeekCommonHeader()
+        {{
+            if (BitConverter.IsLittleEndian != {BitConverter.IsLittleEndian.ToString().ToLower()})
+            {{
+                return false;
+            }}
+
+            if (IsDefault)
+            {{
+                return false;
+            }}
+
+            var block = _block;
+            var index = _index;
+            var following = block.End - index;
+
+            if (following < 4)
+            {{
+                return false;
+            }}
+
+            var currentPointer = block.Pointer + index;
+            var fourLowerChars = *(int*)(currentPointer) | 0x20202020;
+
+            switch (fourLowerChars)
+            {{
+{Each(requestHeaders.Where(x => x.Name.Length >= 4).OrderBy(x => x.Name.Length).ThenByDescending(x => x.Name).GroupBy(x => x.Name.Substring(0, 4)), headers =>
+$@"                case _header{headers.Key.Substring(0, 4).Replace('-', '_')}:{Each(headers.GroupBy(x => x.Name.Length), headersByLength => $@"
+                    if (following >= {headersByLength.Key} && *(currentPointer + {headersByLength.Key}) == _colon) // {string.Join(", ", headersByLength.Select(header => header.Name))}
+                    {{
+                        _index = index + {headersByLength.Key};
+                        return true;
+                    }}
+")}                    return false;
+")}
+                default:
+                    return false;
+            }}
+
+        }}
+    }}
+}}
+";
+        }
+
         public virtual void AfterCompile(AfterCompileContext context)
         {
         }

@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
-    public struct MemoryPoolIterator2
+    public partial struct MemoryPoolIterator2
     {
         private readonly static int _vectorSpan = Vector<byte>.Count;
 
@@ -249,9 +249,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
                 return -1;
             }
 
-            var following = _block.End - _index;
             var block = _block;
             var index = _index;
+            var following = block.End - index;
             byte[] array;
             int byte0Index = int.MaxValue;
             int byte1Index = int.MaxValue;
