@@ -11,13 +11,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <summary>
         /// The gap between blocks' starting address. 4096 is chosen because most operating systems are 4k pages in size and alignment.
         /// </summary>
-        private const int _blockStride = 4096;
-
-        /// <summary>
-        /// The last 64 bytes of a block are unused to prevent CPU from pre-fetching the next 64 byte into it's memory cache. 
-        /// See https://github.com/aspnet/KestrelHttpServer/issues/117 and https://www.youtube.com/watch?v=L7zSU9HI-6I
-        /// </summary>
-        private const int _blockUnused = 64;
+        private const int _blockLength = 4096;
 
         /// <summary>
         /// Allocating 32 contiguous blocks per slab makes the slab size 128k. This is larger than the 85k size which will place the memory
@@ -25,11 +19,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// affect memory management's compactification.
         /// </summary>
         private const int _blockCount = 32;
-
-        /// <summary>
-        /// 4096 - 64 gives you a blockLength of 4032 usable bytes per block.
-        /// </summary>
-        private const int _blockLength = _blockStride - _blockUnused;
         
         /// <summary>
         /// Max allocation block size for pooled blocks, 
@@ -40,7 +29,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// <summary>
         /// 4096 * 32 gives you a slabLength of 128k contiguous bytes allocated per slab
         /// </summary>
-        private const int _slabLength = _blockStride * _blockCount;
+        private const int _slabLength = _blockLength * _blockCount;
 
         /// <summary>
         /// Thread-safe collection of blocks which are currently in the pool. A slab will pre-allocate all of the block tracking objects
@@ -96,18 +85,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         private MemoryPoolBlock2 AllocateSlab()
         {
-            var slab = MemoryPoolSlab2.Create(_slabLength);
+            // Overallocate by 1 block so we can force them to be page aligned.
+            var slab = MemoryPoolSlab2.Create(_slabLength + _blockLength);
             _slabs.Push(slab);
 
             var basePtr = slab.ArrayPtr;
-            var firstOffset = (int)((_blockStride - 1) - ((ulong)(basePtr + _blockStride - 1) % _blockStride));
 
-            var poolAllocationLength = _slabLength - _blockStride;
+            // adjustment to offset for each block to be 4096 aligned
+            var align = _blockLength - (int)((ulong)basePtr.ToInt64() & (_blockLength - 1));
+
+            var firstOffset = (int)((_blockLength - 1) - ((ulong)(basePtr + align + _blockLength - 1) % _blockLength));
+
+            var poolAllocationLength = _slabLength - _blockLength;
 
             var offset = firstOffset;
             for (;
                 offset + _blockLength < poolAllocationLength;
-                offset += _blockStride)
+                offset += _blockLength)
             {
                 var block = MemoryPoolBlock2.Create(
                     new ArraySegment<byte>(slab.Array, offset, _blockLength),
