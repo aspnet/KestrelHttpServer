@@ -201,9 +201,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
                             {
                                 var req = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                                 req.Init(loop);
+                                var blockData = new byte[] { 65, 66, 67, 68, 69 };
+                                var pin = GCHandle.Alloc(blockData, GCHandleType.Pinned);
                                 var block = MemoryPoolBlock2.Create(
-                                    new ArraySegment<byte>(new byte[] { 65, 66, 67, 68, 69 }),
-                                    dataPtr: IntPtr.Zero,
+                                    new ArraySegment<byte>(blockData),
+                                    dataPtr: pin.AddrOfPinnedObject(),
                                     pool: null,
                                     slab: null);
                                 var start = new MemoryPoolIterator2(block, 0);
@@ -215,7 +217,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
                                     1,
                                     (_1, _2, _3, _4) =>
                                     {
-                                        block.Unpin();
+                                        pin.Free();
                                     },
                                     null);
                             }

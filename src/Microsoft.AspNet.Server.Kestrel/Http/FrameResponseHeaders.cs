@@ -10,15 +10,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public partial class FrameResponseHeaders : FrameHeaders
     {
-        private static byte[] _CrLf = new[] { (byte)'\r', (byte)'\n' };
-        private static byte[] _colonSpace = new[] { (byte)':', (byte)' ' };
-
-        public bool HasConnection => HeaderConnection.Count != 0;
-
-        public bool HasTransferEncoding => HeaderTransferEncoding.Count != 0;
-
-        public bool HasContentLength => HeaderContentLength.Count != 0;
-
+        private static byte[] _CrLfColonSpace = new[] { (byte)'\r', (byte)'\n', (byte)':', (byte)' ' };
 
         public Enumerator GetEnumerator()
         {
@@ -30,24 +22,71 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return GetEnumerator();
         }
 
-        public void CopyTo(ref MemoryPoolIterator2 output)
+        public unsafe void CopyTo(ref MemoryPoolIterator2 output)
         {
             CopyToFast(ref output);
-            if (MaybeUnknown != null)
+            if (MaybeUnknown != null && MaybeUnknown.Count > 0)
             {
-                foreach (var kv in MaybeUnknown)
+#if DOTNET5_4 || DNXCORE50
+                fixed (byte* pCrLfColonSpace = _CrLfColonSpace)
                 {
-                    foreach (var value in kv.Value)
+                    foreach (var kv in MaybeUnknown)
                     {
-                        if (value != null)
+                        if (kv.Value.Count == 1)
                         {
-                            output.CopyFrom(_CrLf, 0, 2);
-                            output.CopyFromAscii(kv.Key);
-                            output.CopyFrom(_colonSpace, 0, 2);
-                            output.CopyFromAscii(value);
+                            var value = kv.Value[0];
+                            if (value != null)
+                            {
+                                output.CopyFrom(pCrLfColonSpace, 2);
+                                output.CopyFromAscii(kv.Key);
+                                output.CopyFrom(pCrLfColonSpace + 2, 2);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                        else
+                        {
+                            foreach (var value in kv.Value)
+                            {
+                                if (value != null)
+                                {
+                                    output.CopyFrom(pCrLfColonSpace, 2);
+                                    output.CopyFromAscii(kv.Key);
+                                    output.CopyFrom(pCrLfColonSpace + 2, 2);
+                                    output.CopyFromAscii(value);
+                                }
+                            }
                         }
                     }
                 }
+#else
+                foreach (var kv in MaybeUnknown)
+                {
+                    if (kv.Value.Count == 1)
+                    {
+                        var value = kv.Value[0];
+                        if (value != null)
+                        {
+                            output.CopyFrom(_CrLfColonSpace, 0, 2);
+                            output.CopyFromAscii(kv.Key);
+                            output.CopyFrom(_CrLfColonSpace, 2, 2);
+                            output.CopyFromAscii(value);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var value in kv.Value)
+                        {
+                            if (value != null)
+                            {
+                                output.CopyFrom(_CrLfColonSpace, 0, 2);
+                                output.CopyFromAscii(kv.Key);
+                                output.CopyFrom(_CrLfColonSpace, 2, 2);
+                                output.CopyFromAscii(value);
+                            }
+                        }
+                    }
+                }
+#endif
             }
         }
 

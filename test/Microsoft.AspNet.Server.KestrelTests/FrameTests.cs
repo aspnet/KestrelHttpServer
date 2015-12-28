@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Linq;
 using System.Text;
 using Microsoft.AspNet.Server.Kestrel;
@@ -33,9 +34,11 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [InlineData(0x7fffffffL, "7fffffff\r\n")]
         public void ChunkedPrefixMustBeHexCrLfWithoutLeadingZeros(int dataCount, string expected)
         {
-            var beginChunkBytes = Frame.BeginChunkBytes(dataCount);
+            var tenByteBuffer = ArrayPool<byte>.Shared.Rent(10);
+            var beginChunkBytes = Frame.BeginChunkBytes(dataCount, tenByteBuffer);
 
             Assert.Equal(Encoding.ASCII.GetBytes(expected), beginChunkBytes.ToArray());
+            ArrayPool<byte>.Shared.Return(tenByteBuffer);
         }
         
         [Theory]
@@ -55,9 +58,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var headerCollection = new FrameRequestHeaders();
 
             var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            var inputBuffer = socketInput.IncomingStart(headerArray.Length);
-            Buffer.BlockCopy(headerArray, 0, inputBuffer.Data.Array, inputBuffer.Data.Offset, headerArray.Length);
-            socketInput.IncomingComplete(headerArray.Length, null);
+            socketInput.IncomingData(headerArray, 0, headerArray.Length);
 
             var success = Frame.TakeMessageHeaders(socketInput, headerCollection);
 

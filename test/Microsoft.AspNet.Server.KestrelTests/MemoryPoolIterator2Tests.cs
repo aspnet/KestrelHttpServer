@@ -42,7 +42,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [InlineData("/localhost:5000/PATH/PATH2/ HTTP/1.1", " %?", ' ', 27)]
         public void MemorySeek(string raw, string search, char expectResult, int expectIndex)
         {
-            var block = _pool.Lease(256);
+            var block = _pool.Lease();
             var chars = raw.ToCharArray().Select(c => (byte)c).ToArray();
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
             block.End += chars.Length;
@@ -50,18 +50,25 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var begin = block.GetIterator();
             var searchFor = search.ToCharArray();
 
+
             int found = -1;
             if (searchFor.Length == 1)
             {
-                found = begin.Seek(new Vector<byte>((byte)searchFor[0]));
+                var search0 = new Vector<byte>((byte)searchFor[0]);
+                found = begin.Seek(ref search0);
             }
             else if (searchFor.Length == 2)
             {
-                found = begin.Seek(new Vector<byte>((byte)searchFor[0]), new Vector<byte>((byte)searchFor[1]));
+                var search0 = new Vector<byte>((byte)searchFor[0]);
+                var search1 = new Vector<byte>((byte)searchFor[1]);
+                found = begin.Seek(ref search0, ref search1);
             }
             else if (searchFor.Length == 3)
             {
-                found = begin.Seek(new Vector<byte>((byte)searchFor[0]), new Vector<byte>((byte)searchFor[1]), new Vector<byte>((byte)searchFor[2]));
+                var search0 = new Vector<byte>((byte)searchFor[0]);
+                var search1 = new Vector<byte>((byte)searchFor[1]);
+                var search2 = new Vector<byte>((byte)searchFor[2]);
+                found = begin.Seek(ref search0, ref search1, ref search2);
             }
             else
             {
@@ -78,7 +85,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
             var blocks = new MemoryPoolBlock2[4];
             for (var i = 0; i < 4; ++i)
             {
-                blocks[i] = _pool.Lease(16);
+                blocks[i] = _pool.Lease();
                 blocks[i].End += 16;
 
                 for (var j = 0; j < blocks.Length; ++j)
@@ -218,7 +225,8 @@ namespace Microsoft.AspNet.Server.KestrelTests
             block.End += chars.Length;
             var begin = block.GetIterator();
             var end = begin;
-            end.Seek(new Vector<byte>((byte)endChar));
+            var endVector = new Vector<byte>((byte)endChar);
+            end.Seek(ref endVector);
             string knownString;
 
             // Act

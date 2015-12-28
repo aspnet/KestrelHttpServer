@@ -20,7 +20,8 @@
     "Microsoft.AspNet.Internal.libuv-Windows": {
       "version": "1.0.0-*",
       "type": "build"
-    }
+    },
+    "System.Buffers": "4.0.0-*"
   },
   "frameworks": {
     "dnx451": { },
@@ -73,7 +74,7 @@
   "scripts": {
     "prepare": [
       "dnu restore ../../tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode",
-      "dnx -p ../../tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode run Http/FrameHeaders.Generated.cs Http/Frame.Generated.cs"
+      "dnx -p ../../tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode run Http/FrameHeaders.Generated.cs Http/Frame.Generated.cs Infrastructure/MemoryPoolIterator2.Generated.cs"
     ],
     "postrestore": [
       "dnu restore ../../tools/Microsoft.AspNet.Server.Kestrel.LibuvCopier",

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -38,62 +39,67 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             return result;
         }
 
-        public async Task Consume(CancellationToken cancellationToken = default(CancellationToken))
+        public Task Consume(CancellationToken cancellationToken = default(CancellationToken))
         {
-            Task<int> result;
-            var send100checked = false;
-            do
+            var result = ReadAsyncImplementation(default(ArraySegment<byte>), cancellationToken);
+            if (!result.IsCompleted)
             {
-                result = ReadAsyncImplementation(default(ArraySegment<byte>), cancellationToken);
-                if (!result.IsCompleted)
+                if (Interlocked.Exchange(ref _send100Continue, 0) == 1)
                 {
-                    if (!send100checked)
-                    {
-                        if (Interlocked.Exchange(ref _send100Continue, 0) == 1)
-                        {
-                            _context.FrameControl.ProduceContinue();
-                        }
-                        send100checked = true;
-                    }
+                    _context.FrameControl.ProduceContinue();
                 }
-                else if (result.GetAwaiter().GetResult() == 0) 
-                {
-                    // Completed Task, end of stream
-                    return;
-                }
-                else
-                {
-                    // Completed Task, get next Task rather than await
-                    continue;
-                }
-            } while (await result != 0);
+
+                return ConsumeAwaited(result, cancellationToken);
+            }
+            else if (result.GetAwaiter().GetResult() == 0)
+            {
+                // Completed Task, end of stream
+                return TaskUtilities.CompletedTask;
+            }
+            else
+            {
+                // Completed Task, but non-zero get next Task and await
+                return ConsumeAwaited(ReadAsyncImplementation(default(ArraySegment<byte>), cancellationToken), cancellationToken);
+            }
+        }
+
+        private async Task ConsumeAwaited(Task<int> currentTask, CancellationToken cancellationToken)
+        {
+            var count = await currentTask;
+
+            if (count == 0) return;
+
+            while (await ReadAsyncImplementation(default(ArraySegment<byte>), cancellationToken) != 0)
+            {
+                // Consume until complete
+            }
         }
 
         public abstract Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken);
 
         public static MessageBody For(
             string httpVersion,
-            IDictionary<string, StringValues> headers,
+            FrameRequestHeaders headers,
             FrameContext context)
         {
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
 
             var keepAlive = httpVersion != "HTTP/1.0";
 
-            string connection;
-            if (TryGet(headers, "Connection", out connection))
+            var connection = headers.HeaderConnection.ToString();
+            if (connection.Length > 0)
             {
                 keepAlive = connection.Equals("keep-alive", StringComparison.OrdinalIgnoreCase);
             }
 
-            string transferEncoding;
-            if (TryGet(headers, "Transfer-Encoding", out transferEncoding))
+            var transferEncoding = headers.HeaderTransferEncoding.ToString();
+            if (transferEncoding.Length > 0)
             {
                 return new ForChunkedEncoding(keepAlive, context);
             }
 
-            string contentLength;
-            if (TryGet(headers, "Content-Length", out contentLength))
+            var contentLength = headers.HeaderContentLength.ToString();
+            if (contentLength.Length > 0)
             {
                 return new ForContentLength(keepAlive, int.Parse(contentLength), context);
             }
@@ -105,30 +111,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             return new ForRemainingData(context);
         }
-
-        public static bool TryGet(IDictionary<string, StringValues> headers, string name, out string value)
-        {
-            StringValues values;
-            if (!headers.TryGetValue(name, out values) || values.Count == 0)
-            {
-                value = null;
-                return false;
-            }
-            var count = values.Count;
-            if (count == 0)
-            {
-                value = null;
-                return false;
-            }
-            if (count == 1)
-            {
-                value = values[0];
-                return true;
-            }
-            value = string.Join(",", values.ToArray());
-            return true;
-        }
-
 
         class ForRemainingData : MessageBody
         {
@@ -156,17 +138,37 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _inputLength = _contentLength;
             }
 
-            public override async Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            public override Task<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 var input = _context.SocketInput;
 
                 var limit = buffer.Array == null ? _inputLength : Math.Min(buffer.Count, _inputLength);
                 if (limit == 0)
                 {
-                    return 0;
+                    return TaskUtilities.ZeroTask;
                 }
 
-                var actual = await _context.SocketInput.ReadAsync(buffer.Array, buffer.Offset, limit);
+                var task = _context.SocketInput.ReadAsync(buffer.Array, buffer.Offset, limit);
+
+                if (task.IsCompleted)
+                {
+                    var actual = task.GetAwaiter().GetResult();
+                    if (actual == 0)
+                    {
+                        throw new InvalidDataException("Unexpected end of request content");
+                    }
+                    _inputLength -= actual;
+                    return task;
+                }
+                else
+                {
+                    return ReadAsyncImplementationAwaited(task);
+                }
+            }
+
+            private async Task<int> ReadAsyncImplementationAwaited(Task<int> currentTask)
+            {
+                var actual = await currentTask;
                 _inputLength -= actual;
 
                 if (actual == 0)

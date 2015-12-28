@@ -55,6 +55,16 @@ namespace Microsoft.AspNet.Server.KestrelTests
             _stream.Flush();
         }
 
+        public async Task SendPipelined(params string[] lines)
+        {
+            var text = String.Join("\r\n", lines);
+            var writer = new StreamWriter(_stream, Encoding.ASCII);
+            await writer.WriteAsync(text);
+            writer.Flush();
+            _stream.Flush();
+            _socket.Shutdown(SocketShutdown.Send);
+        }
+
         public async Task SendEnd(params string[] lines)
         {
             await Send(lines);

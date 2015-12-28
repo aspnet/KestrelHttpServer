@@ -16,7 +16,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         public const int MaxPooledWriteReqs = 1024;
 
-        private const int _maxPendingWrites = 3;
+        //private const int _maxPendingWrites = 3;
         private const int _maxBytesPreCompleted = 65536;
         private const int _initialTaskQueues = 64;
         private const int _maxPooledWriteContexts = 32;
@@ -32,19 +32,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         // This locks all access to _tail, _isProducing and _returnFromOnProducingComplete.
         // _head does not require a lock, since it is only used in the ctor and uv thread.
-        private readonly object _returnLock = new object();
+        //private readonly object _returnLock = new object();
 
         private MemoryPoolBlock2 _head;
         private MemoryPoolBlock2 _tail;
 
         private MemoryPoolIterator2 _lastStart;
 
-        // This locks access to to all of the below fields
-        private readonly object _contextLock = new object();
-
         // The number of write operations that have been scheduled so far
         // but have not completed.
-        private int _writesPending = 0;
+        //private int _writesPending = 0;
         private int _numBytesPreCompleted = 0;
         private Exception _lastWriteError;
         private WriteContext _nextWriteContext;
@@ -52,6 +49,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private readonly Queue<TaskCompletionSource<object>> _tasksCompleted;
         private readonly Queue<WriteContext> _writeContextPool;
         private readonly Queue<UvWriteReq> _writeReqPool;
+
+        private int _writePending = 0;
+
+        private readonly object _contextLock = new object();
+        private readonly object _taskQueueLock = new object();
 
         public SocketOutput(
             KestrelThread thread,
@@ -78,16 +80,25 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _tail = _head;
         }
 
-        public Task WriteAsync(
+        int number = 0;
+
+        public unsafe Task WriteAsync(
             ArraySegment<byte> buffer,
-            bool immediate = true,
+            bool immediate,
             bool socketShutdownSend = false,
             bool socketDisconnect = false)
         {
             if (buffer.Count > 0)
             {
                 var tail = ProducingStart();
-                tail.CopyFrom(buffer);
+#if DOTNET5_4 || DNXCORE50
+                fixed (byte* pBuffer = buffer.Array)
+                {
+                    tail.CopyFrom(pBuffer + buffer.Offset, buffer.Count);
+                }
+#else
+                tail.CopyFrom(buffer.Array, buffer.Offset, buffer.Count);
+#endif
                 // We do our own accounting below
                 ProducingCompleteNoPreComplete(tail);
             }
@@ -95,55 +106,67 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             var scheduleWrite = false;
 
-            lock (_contextLock)
+            var nextWriteContext = Interlocked.Exchange(ref _nextWriteContext, null);
+
+            if (nextWriteContext == null)
             {
-                if (_nextWriteContext == null)
+                lock (_contextLock)
                 {
                     if (_writeContextPool.Count > 0)
                     {
-                        _nextWriteContext = _writeContextPool.Dequeue();
+                        nextWriteContext = _writeContextPool.Dequeue();
                     }
                     else
                     {
-                        _nextWriteContext = new WriteContext(this);
+                        nextWriteContext = new WriteContext(this);
                     }
                 }
+            }
 
-                if (socketShutdownSend)
-                {
-                    _nextWriteContext.SocketShutdownSend = true;
-                }
-                if (socketDisconnect)
-                {
-                    _nextWriteContext.SocketDisconnect = true;
-                }
+            if (socketShutdownSend)
+            {
+                nextWriteContext.SocketShutdownSend = true;
+            }
+            if (socketDisconnect)
+            {
+                nextWriteContext.SocketDisconnect = true;
+            }
 
-                if (!immediate)
+            Interlocked.Exchange(ref _nextWriteContext, nextWriteContext);
+
+            if (!immediate)
+            {
+                // immediate==false calls always return complete tasks, because there is guaranteed
+                // to be a subsequent immediate==true call which will go down one of the previous code-paths
+                Interlocked.Add(ref _numBytesPreCompleted, buffer.Count);
+            }
+            else if (_lastWriteError == null &&
+                    _tasksPending.Count == 0 &&
+                    _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted)
+            {
+                // Complete the write task immediately if all previous write tasks have been completed,
+                // the buffers haven't grown too large, and the last write to the socket succeeded.
+                Interlocked.Add(ref _numBytesPreCompleted, buffer.Count);
+            }
+            else
+            {
+                // immediate write, which is not eligable for instant completion above
+                tcs = new TaskCompletionSource<object>(buffer.Count);
+                lock (_taskQueueLock)
                 {
-                    // immediate==false calls always return complete tasks, because there is guaranteed
-                    // to be a subsequent immediate==true call which will go down one of the previous code-paths
-                    _numBytesPreCompleted += buffer.Count;
-                }
-                else if (_lastWriteError == null &&
-                        _tasksPending.Count == 0 &&
-                        _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted)
-                {
-                    // Complete the write task immediately if all previous write tasks have been completed,
-                    // the buffers haven't grown too large, and the last write to the socket succeeded.
-                    _numBytesPreCompleted += buffer.Count;
-                }
-                else
-                {
-                    // immediate write, which is not eligable for instant completion above
-                    tcs = new TaskCompletionSource<object>(buffer.Count);
                     _tasksPending.Enqueue(tcs);
                 }
+            }
 
-                if (_writesPending < _maxPendingWrites && immediate)
-                {
-                    scheduleWrite = true;
-                    _writesPending++;
-                }
+            number++;
+            if (number > 11)
+            {
+                number = 0;
+                scheduleWrite = true;
+            }
+            else if (immediate)
+            {
+                scheduleWrite = true;
             }
 
             if (scheduleWrite)
@@ -176,19 +199,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public MemoryPoolIterator2 ProducingStart()
         {
-            lock (_returnLock)
+
+            if (_tail == null)
             {
-                Debug.Assert(_lastStart.IsDefault);
-
-                if (_tail == null)
-                {
-                    throw new IOException("The socket has been closed.");
-                }
-
-                _lastStart = new MemoryPoolIterator2(_tail, _tail.End);
-
-                return _lastStart;
+                throw new IOException("The socket has been closed.");
             }
+
+            _lastStart = new MemoryPoolIterator2(_tail, _tail.End);
+
+            return _lastStart;
         }
 
         public void ProducingComplete(MemoryPoolIterator2 end)
@@ -198,36 +217,30 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             int bytesProduced, buffersIncluded;
             BytesBetween(_lastStart, end, out bytesProduced, out buffersIncluded);
 
-            lock (_contextLock)
-            {
-                _numBytesPreCompleted += bytesProduced;
-            }
-
             ProducingCompleteNoPreComplete(end);
+
+            Interlocked.Add(ref _numBytesPreCompleted, bytesProduced);
         }
 
         private void ProducingCompleteNoPreComplete(MemoryPoolIterator2 end)
         {
             MemoryPoolBlock2 blockToReturn = null;
 
-            lock (_returnLock)
+
+            // If the socket has been closed, return the produced blocks
+            // instead of advancing the now non-existent tail.
+            if (_tail != null)
             {
-                Debug.Assert(!_lastStart.IsDefault);
-
-                // If the socket has been closed, return the produced blocks
-                // instead of advancing the now non-existent tail.
-                if (_tail != null)
-                {
-                    _tail = end.Block;
-                    _tail.End = end.Index;
-                }
-                else
-                {
-                    blockToReturn = _lastStart.Block;
-                }
-
-                _lastStart = default(MemoryPoolIterator2);
+                _tail = end.Block;
+                _tail.End = end.Index;
             }
+            else
+            {
+                blockToReturn = _lastStart.Block;
+            }
+
+            _lastStart = default(MemoryPoolIterator2);
+            
 
             if (blockToReturn != null)
             {
@@ -242,32 +255,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 var returningBlock = block;
                 block = returningBlock.Next;
 
-                returningBlock.Pool?.Return(returningBlock);
+                returningBlock.Pool.Return(returningBlock);
             }
         }
 
         private void ScheduleWrite()
         {
-            _thread.Post(_this => _this.WriteAllPending(), this);
+            if (Interlocked.CompareExchange(ref _writePending, 1, 0) == 0)
+            {
+                _thread.Post(_this => _this.WriteAllPending(), this);
+            }
         }
 
         // This is called on the libuv event loop
         private void WriteAllPending()
         {
-            WriteContext writingContext;
+            Volatile.Write(ref _writePending, 0);
+            var writingContext = Interlocked.Exchange(ref _nextWriteContext, null);
 
-            lock (_contextLock)
+            if (writingContext == null)
             {
-                if (_nextWriteContext != null)
-                {
-                    writingContext = _nextWriteContext;
-                    _nextWriteContext = null;
-                }
-                else
-                {
-                    _writesPending--;
-                    return;
-                }
+                return;
             }
 
             try
@@ -276,13 +284,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
             catch
             {
-                lock (_contextLock)
-                {
-                    // Lock instead of using Interlocked.Decrement so _writesSending
-                    // doesn't change in the middle of executing other synchronized code.
-                    _writesPending--;
-                }
-
                 throw;
             }
         }
@@ -304,37 +305,34 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
 
             bool scheduleWrite = false;
+            PoolWriteContext(writeContext);
 
-            lock (_contextLock)
+            if (_nextWriteContext != null)
             {
-                PoolWriteContext(writeContext);
-                if (_nextWriteContext != null)
+                scheduleWrite = true;
+            }
+
+            // _numBytesPreCompleted can temporarily go negative in the event there are
+            // completed writes that we haven't triggered callbacks for yet.
+
+            // bytesLeftToBuffer can be greater than _maxBytesPreCompleted
+            // This allows large writes to complete once they've actually finished.
+            var bytesLeftToBuffer = _maxBytesPreCompleted - Interlocked.Add(ref _numBytesPreCompleted, -bytesWritten);
+            while (_tasksPending.Count > 0 &&
+                    (int)(_tasksPending.Peek().Task.AsyncState) <= bytesLeftToBuffer)
+            {
+                TaskCompletionSource<object> tcs;
+                lock (_taskQueueLock)
                 {
-                    scheduleWrite = true;
+                    tcs = _tasksPending.Dequeue();
                 }
-                else
-                {
-                    _writesPending--;
-                }
+                var bytesToWrite = (int)tcs.Task.AsyncState;
 
-                // _numBytesPreCompleted can temporarily go negative in the event there are
-                // completed writes that we haven't triggered callbacks for yet.
-                _numBytesPreCompleted -= bytesWritten;
+                Interlocked.Add(ref _numBytesPreCompleted, bytesToWrite);
 
-                // bytesLeftToBuffer can be greater than _maxBytesPreCompleted
-                // This allows large writes to complete once they've actually finished.
-                var bytesLeftToBuffer = _maxBytesPreCompleted - _numBytesPreCompleted;
-                while (_tasksPending.Count > 0 &&
-                       (int)(_tasksPending.Peek().Task.AsyncState) <= bytesLeftToBuffer)
-                {
-                    var tcs = _tasksPending.Dequeue();
-                    var bytesToWrite = (int)tcs.Task.AsyncState;
+                bytesLeftToBuffer -= bytesToWrite;
 
-                    _numBytesPreCompleted += bytesToWrite;
-                    bytesLeftToBuffer -= bytesToWrite;
-
-                    _tasksCompleted.Enqueue(tcs);
-                }
+                _tasksCompleted.Enqueue(tcs);
             }
 
             while (_tasksCompleted.Count > 0)
@@ -352,7 +350,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             _log.ConnectionWriteCallback(_connectionId, status);
 
-            if (scheduleWrite)
+            if (scheduleWrite || _nextWriteContext != null)
             {
                 ScheduleWrite();
             }
@@ -363,35 +361,34 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         // This is called on the libuv event loop
         private void ReturnAllBlocks()
         {
-            lock (_returnLock)
+            var block = _head;
+            while (block != _tail)
             {
-                var block = _head;
-                while (block != _tail)
-                {
-                    var returnBlock = block;
-                    block = block.Next;
+                var returnBlock = block;
+                block = block.Next;
 
-                    returnBlock.Pool?.Return(returnBlock);
-                }
-
-                // Only return the _tail if we aren't between ProducingStart/Complete calls
-                if (_lastStart.IsDefault)
-                {
-                    _tail.Pool?.Return(_tail);
-                }
-
-                _head = null;
-                _tail = null;
+                returnBlock.Pool.Return(returnBlock);
             }
+
+            // Only return the _tail if we aren't between ProducingStart/Complete calls
+            if (_lastStart.IsDefault)
+            {
+                _tail.Pool.Return(_tail);
+            }
+
+            _head = null;
+            _tail = null;
         }
 
         private void PoolWriteContext(WriteContext writeContext)
         {
-            // called inside _contextLock
             if (_writeContextPool.Count < _maxPooledWriteContexts)
             {
-                writeContext.Reset();
-                _writeContextPool.Enqueue(writeContext);
+                lock (_contextLock)
+                {
+                    writeContext.Reset();
+                    _writeContextPool.Enqueue(writeContext);
+                }
             }
         }
 
@@ -423,7 +420,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 return;
             }
 
-            bytes = start.Block.Data.Offset + start.Block.Data.Count - start.Index;
+            bytes = start.Block.BlockEndOffset - start.Index;
             buffers = 1;
 
             for (var block = start.Block.Next; block != end.Block; block = block.Next)
@@ -567,14 +564,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 var end = _lockedEnd.Block;
                 if (block == end)
                 {
-                    end.Unpin();
                     return;
                 }
 
                 while (block.Next != end)
                 {
                     block = block.Next;
-                    block.Unpin();
                 }
                 block.Next = null;
 
@@ -588,13 +583,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     var returnBlock = block;
                     block = block.Next;
 
-                    returnBlock.Unpin();
-                    returnBlock.Pool?.Return(returnBlock);
+                    returnBlock.Pool.Return(returnBlock);
                 }
             }
 
             private void LockWrite()
             {
+
                 var head = Self._head;
                 var tail = Self._tail;
 

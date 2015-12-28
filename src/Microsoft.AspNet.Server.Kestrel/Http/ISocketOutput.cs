@@ -18,7 +18,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         /// <summary>
         /// Returns an iterator pointing to the tail of the response buffer. Response data can be appended
-        /// manually or by using <see cref="MemoryPoolIterator2.CopyFrom(ArraySegment{byte})"/>.
+        /// manually or by using <see cref="MemoryPoolIterator2.CopyFrom(ArraySegment{byte[], int, int})"/>.
         /// Be careful to ensure all appended blocks are backed by a <see cref="MemoryPoolSlab2"/>. 
         /// </summary>
         MemoryPoolIterator2 ProducingStart();

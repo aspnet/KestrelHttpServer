@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -25,7 +24,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private MemoryPoolBlock2 _head;
         private MemoryPoolBlock2 _tail;
         private MemoryPoolBlock2 _pinned;
-        private readonly object _sync = new Object();
 
         public SocketInput(MemoryPool2 memory, IThreadPool threadPool)
         {
@@ -33,8 +31,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _threadPool = threadPool;
             _awaitableState = _awaitableIsNotCompleted;
         }
-
-        public ArraySegment<byte> Buffer { get; set; }
 
         public bool RemoteIntakeFin { get; set; }
 
@@ -46,142 +42,95 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             }
         }
 
-        public void Skip(int count)
+        public MemoryPoolBlock2 IncomingRawStart()
         {
-            Buffer = new ArraySegment<byte>(Buffer.Array, Buffer.Offset + count, Buffer.Count - count);
-        }
+            const int minimumSize = 2048;
 
-        public ArraySegment<byte> Take(int count)
-        {
-            var taken = new ArraySegment<byte>(Buffer.Array, Buffer.Offset, count);
-            Skip(count);
-            return taken;
-        }
-
-        public IncomingBuffer IncomingStart(int minimumSize)
-        {
-            lock (_sync)
+            if (_tail != null && minimumSize <= _tail.BlockEndOffset - _tail.End)
             {
-                if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
-                {
-                    _pinned = _tail;
-                    var data = new ArraySegment<byte>(_pinned.Data.Array, _pinned.End, _pinned.Data.Offset + _pinned.Data.Count - _pinned.End);
-                    var dataPtr = _pinned.Pin() + _pinned.End;
-                    return new IncomingBuffer
-                    {
-                        Data = data,
-                        DataPtr = dataPtr,
-                    };
-                }
+                _pinned = _tail;
+            }
+            else
+            {
+                _pinned = _memory.Lease();
             }
 
-            _pinned = _memory.Lease(minimumSize);
-            return new IncomingBuffer
+            return _pinned;
+        }
+
+        public void IncomingData(byte[] buffer, int offset, int count)
+        {
+            if (count > 0)
             {
-                Data = _pinned.Data,
-                DataPtr = _pinned.Pin() + _pinned.End
-            };
+                if (_tail == null)
+                {
+                    _tail = _memory.Lease();
+                }
+
+                var iterator = new MemoryPoolIterator2(_tail, _tail.End);
+                iterator.CopyFrom(buffer, offset, count);
+
+                if (_head == null)
+                {
+                    _head = _tail;
+                }
+
+                _tail = iterator.Block;
+            }
+            else
+            {
+                RemoteIntakeFin = true;
+            }
+
+            TriggerAwaiters();
         }
 
         public void IncomingComplete(int count, Exception error)
         {
-            Action awaitableState;
-
-            lock (_sync)
+            // Unpin may called without an earlier Pin 
+            if (_pinned != null)
             {
-                // Unpin may called without an earlier Pin 
-                if (_pinned != null)
-                {
-                    _pinned.Unpin();
 
-                    _pinned.End += count;
-                    if (_head == null)
-                    {
-                        _head = _tail = _pinned;
-                    }
-                    else if (_tail == _pinned)
-                    {
-                        // NO-OP: this was a read into unoccupied tail-space
-                    }
-                    else
-                    {
-                        _tail.Next = _pinned;
-                        _tail = _pinned;
-                    }
+                _pinned.End += count;
+
+                if (_head == null)
+                {
+                    _head = _tail = _pinned;
                 }
+                else if (_tail == _pinned)
+                {
+                    // NO-OP: this was a read into unoccupied tail-space
+                }
+                else
+                {
+                    _tail.Next = _pinned;
+                    _tail = _pinned;
+                }
+
                 _pinned = null;
-
-                if (count == 0)
-                {
-                    RemoteIntakeFin = true;
-                }
-                if (error != null)
-                {
-                    _awaitableError = error;
-                }
-
-                awaitableState = Interlocked.Exchange(
-                    ref _awaitableState,
-                    _awaitableIsCompleted);
-
-                _manualResetEvent.Set();
             }
 
-            if (awaitableState != _awaitableIsCompleted &&
-                awaitableState != _awaitableIsNotCompleted)
+            if (count == 0)
             {
-                _threadPool.Run(awaitableState);
+                RemoteIntakeFin = true;
             }
-        }
-
-        public MemoryPoolIterator2 ConsumingStart()
-        {
-            lock (_sync)
+            if (error != null)
             {
-                return new MemoryPoolIterator2(_head);
+                _awaitableError = error;
             }
-        }
 
-        public void ConsumingComplete(
-            MemoryPoolIterator2 consumed,
-            MemoryPoolIterator2 examined)
-        {
-            MemoryPoolBlock2 returnStart = null;
-            MemoryPoolBlock2 returnEnd = null;
-            lock (_sync)
-            {
-                if (!consumed.IsDefault)
-                {
-                    returnStart = _head;
-                    returnEnd = consumed.Block;
-                    _head = consumed.Block;
-                    _head.Start = consumed.Index;
-                }
-                if (!examined.IsDefault &&
-                    examined.IsEnd &&
-                    RemoteIntakeFin == false &&
-                    _awaitableError == null)
-                {
-                    _manualResetEvent.Reset();
-
-                    var awaitableState = Interlocked.CompareExchange(
-                        ref _awaitableState,
-                        _awaitableIsNotCompleted,
-                        _awaitableIsCompleted);
-                }
-            }
-            while (returnStart != returnEnd)
-            {
-                var returnBlock = returnStart;
-                returnStart = returnStart.Next;
-                returnBlock.Pool?.Return(returnBlock);
-            }
+            TriggerAwaiters();
         }
 
         public void AbortAwaiting()
         {
             _awaitableError = new ObjectDisposedException(nameof(SocketInput), "The request was aborted");
 
+            TriggerAwaiters();
+        }
+
+        private void TriggerAwaiters()
+        {
             var awaitableState = Interlocked.Exchange(
                 ref _awaitableState,
                 _awaitableIsCompleted);
@@ -192,6 +141,45 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 awaitableState != _awaitableIsNotCompleted)
             {
                 _threadPool.Run(awaitableState);
+            }
+        }
+
+        public MemoryPoolIterator2 ConsumingStart()
+        {
+            return new MemoryPoolIterator2(_head);
+        }
+
+        public void ConsumingComplete(
+            MemoryPoolIterator2 consumed,
+            MemoryPoolIterator2 examined)
+        {
+            MemoryPoolBlock2 returnStart = null;
+            MemoryPoolBlock2 returnEnd = null;
+            if (!consumed.IsDefault)
+            {
+                returnStart = _head;
+                returnEnd = consumed.Block;
+                _head = consumed.Block;
+                _head.Start = consumed.Index;
+            }
+            if (!examined.IsDefault &&
+                examined.IsEnd &&
+                RemoteIntakeFin == false &&
+                _awaitableError == null)
+            {
+                _manualResetEvent.Reset();
+
+                var awaitableState = Interlocked.CompareExchange(
+                    ref _awaitableState,
+                    _awaitableIsNotCompleted,
+                    _awaitableIsCompleted);
+            }
+
+            while (returnStart != returnEnd)
+            {
+                var returnBlock = returnStart;
+                returnStart = returnStart.Next;
+                returnBlock.Pool.Return(returnBlock);
             }
         }
 
@@ -246,12 +234,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 throw new IOException(error.Message, error);
             }
-        }
-
-        public struct IncomingBuffer
-        {
-            public ArraySegment<byte> Data;
-            public IntPtr DataPtr;
         }
     }
 }

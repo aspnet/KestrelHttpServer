@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
@@ -11,19 +9,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
     /// </summary>
     public class MemoryPoolBlock2
     {
-        /// <summary>
-        /// If this block represents a one-time-use memory object, this GCHandle will hold that memory object at a fixed address
-        /// so it can be used in native operations.
-        /// </summary>
-        private GCHandle _pinHandle;
-
-        /// <summary>
-        /// Native address of the first byte of this block's Data memory. It is null for one-time-use memory, or copied from 
-        /// the Slab's ArrayPtr for a slab-block segment. The byte it points to corresponds to Data.Array[0], and in practice you will always
-        /// use the _dataArrayPtr + Start or _dataArrayPtr + End, which point to the start of "active" bytes, or point to just after the "active" bytes.
-        /// </summary>
-        private IntPtr _dataArrayPtr;
-
         /// <summary>
         /// The array segment describing the range of memory this block is tracking. The caller which has leased this block may only read and
         /// modify the memory in this range.
@@ -46,6 +31,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// Back-reference to the slab from which this block was taken, or null if it is one-time-use memory.
         /// </summary>
         public MemoryPoolSlab2 Slab { get; private set; }
+
+        /// <summary>        
+        /// /// Native address of the first byte of this block's Data memory. It is null for one-time-use memory, or copied from 
+        /// the Slab's ArrayPtr for a slab-block segment. The byte it points to corresponds to Data.Array[0], and in practice you will always
+        /// use the _dataArrayPtr + Start or _dataArrayPtr + End, which point to the start of "active" bytes, or point to just after the "active" bytes.
+        /// 
+        /// Called to ensure that a block is pinned, and return the pointer to the native address
+        /// of the first byte of this block's Data memory. Arriving data is read into Pin() + End.
+        /// Outgoing data is read from Pin() + Start.
+        /// </summary>
+        /// <returns></returns>
+        public IntPtr Pin { get; private set; }
+
+        public unsafe byte* Pointer { get; private set; }
+
+        public int BlockEndOffset { get; private set; }
 
         /// <summary>
         /// Convenience accessor
@@ -74,63 +75,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
         /// </summary>
         public MemoryPoolBlock2 Next { get; set; }
 
-        ~MemoryPoolBlock2()
-        {
-            Debug.Assert(!_pinHandle.IsAllocated, "Ad-hoc memory block wasn't unpinned");
-            // Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool");
-
-            if (_pinHandle.IsAllocated)
-            {
-                // if this is a one-time-use block, ensure that the GCHandle does not leak
-                _pinHandle.Free();
-            }
-
-            if (Slab != null && Slab.IsActive)
-            {
-                Pool.Return(new MemoryPoolBlock2
-                {
-                    _dataArrayPtr = _dataArrayPtr,
-                    Data = Data,
-                    Pool = Pool,
-                    Slab = Slab,
-                });
-            }
-        }
-
-        /// <summary>
-        /// Called to ensure that a block is pinned, and return the pointer to the native address
-        /// of the first byte of this block's Data memory. Arriving data is read into Pin() + End.
-        /// Outgoing data is read from Pin() + Start.
-        /// </summary>
-        /// <returns></returns>
-        public IntPtr Pin()
-        {
-            Debug.Assert(!_pinHandle.IsAllocated);
-
-            if (_dataArrayPtr != IntPtr.Zero)
-            {
-                // this is a slab managed block - use the native address of the slab which is always locked
-                return _dataArrayPtr;
-            }
-            else
-            {
-                // this is one-time-use memory - lock the managed memory until Unpin is called
-                _pinHandle = GCHandle.Alloc(Data.Array, GCHandleType.Pinned);
-                return _pinHandle.AddrOfPinnedObject();
-            }
-        }
-
-        public void Unpin()
-        {
-            if (_dataArrayPtr == IntPtr.Zero)
-            {
-                // this is one-time-use memory - unlock the managed memory
-                Debug.Assert(_pinHandle.IsAllocated);
-                _pinHandle.Free();
-            }
-        }
-
-        public static MemoryPoolBlock2 Create(
+        public unsafe static MemoryPoolBlock2 Create(
             ArraySegment<byte> data,
             IntPtr dataPtr,
             MemoryPool2 pool,
@@ -139,11 +84,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             return new MemoryPoolBlock2
             {
                 Data = data,
-                _dataArrayPtr = dataPtr,
+                Pin = dataPtr,
                 Pool = pool,
                 Slab = slab,
                 Start = data.Offset,
                 End = data.Offset,
+                Pointer = (byte*)(dataPtr.ToPointer()),
+                BlockEndOffset = data.Offset + data.Count
             };
         }
 

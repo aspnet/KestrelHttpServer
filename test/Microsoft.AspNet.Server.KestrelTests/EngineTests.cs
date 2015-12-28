@@ -934,6 +934,137 @@ namespace Microsoft.AspNet.Server.KestrelTests
         [ConditionalTheory]
         [MemberData(nameof(ConnectionFilterData))]
         [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        public async Task RequestsPipelined(ServiceContext testContext)
+        {
+            using (var server = new TestServer(async httpContext =>
+            {
+                var response = httpContext.Response;
+                var request = httpContext.Request;
+
+                Assert.Equal("POST", request.Method);
+
+                response.Headers.Clear();
+                response.Headers["Content-Length"] = new[] { "11" };
+
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+            }, testContext))
+            {
+                using (var connection = new TestConnection())
+                {
+                    await connection.SendPipelined(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Hello",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 5",
+                        "",
+                        "HelloPOST / HTTP/1.1",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "C", "HelloChunked", "0",
+                        "POST / HTTP/1.1",
+                        "Content-Length: 7",
+                        "",
+                        "Goodbye");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello WorldHTTP/1.1 200 OK",
+                        "Content-Length: 11",
+                        "",
+                        "Hello World");
+                }
+            }
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(ConnectionFilterData))]
+        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
         public async Task RequestsCanBeAbortedMidRead(ServiceContext testContext)
         {
             var readTcs = new TaskCompletionSource<object>();
