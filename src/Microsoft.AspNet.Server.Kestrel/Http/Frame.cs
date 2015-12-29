@@ -640,14 +640,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             var begin = SocketOutput.ProducingStart();
             var end = begin;
-            if (_keepAlive)
+            if (_keepAlive && _responseHeaders.HasConnection)
             {
-                foreach (var connectionValue in _responseHeaders.HeaderConnection)
+                var connection = _responseHeaders.HeaderConnection.ToString();
+
+                if (connection.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
                 {
-                    if (connectionValue.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
-                    {
-                        _keepAlive = false;
-                    }
+                    _keepAlive = false;
                 }
             }
 
