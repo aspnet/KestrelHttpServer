@@ -13,13 +13,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private static readonly byte[] _CrLf = new[] { (byte)'\r', (byte)'\n' };
         private static readonly byte[] _colonSpace = new[] { (byte)':', (byte)' ' };
 
-        public bool HasConnection => HeaderConnection.Count != 0;
-
-        public bool HasTransferEncoding => HeaderTransferEncoding.Count != 0;
-
-        public bool HasContentLength => HeaderContentLength.Count != 0;
-
-
         public Enumerator GetEnumerator()
         {
             return new Enumerator(this);
@@ -33,12 +26,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         public void CopyTo(ref MemoryPoolIterator2 output)
         {
             CopyToFast(ref output);
-            if (MaybeUnknown != null)
+            if (MaybeUnknown != null && MaybeUnknown.Count > 0)
             {
                 foreach (var kv in MaybeUnknown)
                 {
-                    foreach (var value in kv.Value)
+                    var ul = kv.Value.Count;
+                    for (var i = 0; i < ul; i++)
                     {
+                        var value = kv.Value[i];
                         if (value != null)
                         {
                             output.CopyFrom(_CrLf, 0, 2);

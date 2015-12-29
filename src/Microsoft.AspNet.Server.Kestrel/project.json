@@ -74,7 +74,7 @@
   "scripts": {
     "prepare": [
       "dnu restore ../../tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode",
-      "dnx -p ../../tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode run Http/FrameHeaders.Generated.cs Http/Frame.Generated.cs"
+      "dnx -p ../../tools/Microsoft.AspNet.Server.Kestrel.GeneratedCode run Http/FrameHeaders.Generated.cs Http/Frame.Generated.cs Infrastructure/MemoryPoolIterator2.Generated.cs"
     ],
     "postrestore": [
       "dnu restore ../../tools/Microsoft.AspNet.Server.Kestrel.LibuvCopier",
