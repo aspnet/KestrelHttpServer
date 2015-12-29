@@ -11,13 +11,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
     /// <summary>
     /// Summary description for UvWriteRequest2
     /// </summary>
-    public class UvWrite2Req : UvRequest
+    public class UvWriteReq2 : UvRequest
     {
         private readonly static Libuv.uv_write_cb _uv_write2_cb = (IntPtr ptr, int status) => UvWrite2Cb(ptr, status);
 
         private IntPtr _bufs;
 
-        private Action<UvWrite2Req, int, Exception, object> _callback;
+        private Action<UvWriteReq2, int, Exception, object> _callback;
         private object _state;
         private const int BUFFER_COUNT = 1;
 
@@ -25,7 +25,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private GCHandle _pinBuffer;
         private bool _bufferIsPinned;
 
-        public UvWrite2Req(IKestrelTrace logger) : base(logger)
+        public UvWriteReq2(IKestrelTrace logger) : base(logger)
         {
         }
 
@@ -44,7 +44,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             UvStreamHandle handle,
             ArraySegment<byte> buf,
             UvStreamHandle sendHandle,
-            Action<UvWrite2Req, int, Exception, object> callback,
+            Action<UvWriteReq2, int, Exception, object> callback,
             object state)
         {
             try
@@ -73,7 +73,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        private static void Unpin(UvWrite2Req req)
+        private static void Unpin(UvWriteReq2 req)
         {
             req._pinUvWrite2Req.Free();
             if (req._bufferIsPinned)
@@ -85,7 +85,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
 
         private static void UvWrite2Cb(IntPtr ptr, int status)
         {
-            var req = FromIntPtr<UvWrite2Req>(ptr);
+            var req = FromIntPtr<UvWriteReq2>(ptr);
             Unpin(req);
 
             var callback = req._callback;

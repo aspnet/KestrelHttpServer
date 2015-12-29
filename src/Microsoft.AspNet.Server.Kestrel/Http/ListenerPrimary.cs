@@ -86,7 +86,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             else
             {
                 var dispatchPipe = _dispatchPipes[index];
-                var write = new UvWrite2Req(Log);
+                var write = new UvWriteReq2(Log);
                 write.Init(Thread.Loop);
                 write.Write2(
                     dispatchPipe,

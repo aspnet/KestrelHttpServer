@@ -163,7 +163,7 @@ namespace Microsoft.AspNet.Server.KestrelTests
 
                 serverConnectionPipeAcceptedEvent.WaitOne();
 
-                var writeRequest = new UvWrite2Req(new KestrelTrace(new TestKestrelTrace()));
+                var writeRequest = new UvWriteReq2(new KestrelTrace(new TestKestrelTrace()));
                 writeRequest.Init(loop);
                 writeRequest.Write2(
                     serverConnectionPipe,
