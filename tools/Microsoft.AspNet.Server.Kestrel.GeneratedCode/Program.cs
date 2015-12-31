@@ -26,11 +26,11 @@ namespace Microsoft.AspNet.Server.Kestrel.GeneratedCode
                     File.WriteAllText(args[0], text0);
                 }
 
-                var existing1 = File.Exists(args[1]) ? File.ReadAllText(args[1]) : "";
-                if (!string.Equals(text1, existing1))
-                {
-                    File.WriteAllText(args[1], text1);
-                }
+                //var existing1 = File.Exists(args[1]) ? File.ReadAllText(args[1]) : "";
+                //if (!string.Equals(text1, existing1))
+                //{
+                //    File.WriteAllText(args[1], text1);
+                //}
             }
             else
             {
