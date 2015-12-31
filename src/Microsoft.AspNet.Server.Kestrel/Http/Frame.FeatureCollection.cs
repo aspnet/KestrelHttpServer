@@ -280,6 +280,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             set { FastFeatureSet(key, value); }
         }
 
+        TFeature Get<TFeature>()
+        {
+            return FastFeatureGet<TFeature>();
+        }
+
+        void Set<TFeature>(TFeature instance)
+        {
+            FastFeatureSet(instance);
+        }
+
         void IHttpResponseFeature.OnStarting(Func<object, Task> callback, object state)
         {
             OnStarting(callback, state);
