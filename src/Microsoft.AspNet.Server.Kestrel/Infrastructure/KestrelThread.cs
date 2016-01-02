@@ -277,12 +277,17 @@ namespace Microsoft.AspNet.Server.Kestrel
 
         private void OnPost()
         {
-            do
+            DoPostWork();
+            DoPostCloseHandle();
+
+            if (_loopIdle == false)
             {
+                _loopIdle = true;
+                // Run the loops once more to pick up any remaining event that 
+                // might not have triggered uv_async_send due to loop not being idle
                 DoPostWork();
                 DoPostCloseHandle();
-                _loopIdle = _workQueue.IsEmpty && _closeHandleQueue.IsEmpty;
-            } while (!_loopIdle);
+            }
         }
 
         private void DoPostWork()
