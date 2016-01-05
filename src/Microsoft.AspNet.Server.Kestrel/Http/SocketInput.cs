@@ -12,14 +12,17 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 {
     public class SocketInput : ICriticalNotifyCompletion
     {
-        private static readonly Action _awaitableIsCompleted = () => { };
-        private static readonly Action _awaitableIsNotCompleted = () => { };
-
         private readonly MemoryPool2 _memory;
         private readonly IThreadPool _threadPool;
         private readonly ManualResetEventSlim _manualResetEvent = new ManualResetEventSlim(false);
 
-        private Action _awaitableState;
+        private readonly int _awaitableIsCompleted = 1;
+        private readonly int _awaitableIsNotCompleted = 2;
+        private readonly int _awaitableIsContinue = 3;
+
+        private int _awaitableState;
+        private Action _continuation;
+
         private Exception _awaitableError;
 
         private MemoryPoolBlock2 _head;
@@ -38,13 +41,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public bool RemoteIntakeFin { get; set; }
 
-        public bool IsCompleted
-        {
-            get
-            {
-                return Equals(_awaitableState, _awaitableIsCompleted);
-            }
-        }
+        public bool IsCompleted => _awaitableState == _awaitableIsCompleted;
 
         public void Skip(int count)
         {
@@ -85,7 +82,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void IncomingComplete(int count, Exception error)
         {
-            Action awaitableState;
+            int awaitableState;
 
             lock (_sync)
             {
@@ -127,10 +124,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _manualResetEvent.Set();
             }
 
-            if (awaitableState != _awaitableIsCompleted &&
-                awaitableState != _awaitableIsNotCompleted)
+            if (awaitableState == _awaitableIsContinue)
             {
-                _threadPool.Run(awaitableState);
+                _threadPool.Run(_continuation);
             }
         }
 
@@ -191,7 +187,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (awaitableState != _awaitableIsCompleted &&
                 awaitableState != _awaitableIsNotCompleted)
             {
-                _threadPool.Run(awaitableState);
+                _threadPool.Run(_continuation);
             }
         }
 
@@ -204,11 +200,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             var awaitableState = Interlocked.CompareExchange(
                 ref _awaitableState,
-                continuation,
+                _awaitableIsContinue,
                 _awaitableIsNotCompleted);
 
             if (awaitableState == _awaitableIsNotCompleted)
             {
+                _continuation = continuation;
                 return;
             }
             else if (awaitableState == _awaitableIsCompleted)
@@ -226,7 +223,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _manualResetEvent.Set();
 
                 _threadPool.Run(continuation);
-                _threadPool.Run(awaitableState);
+                _threadPool.Run(_continuation);
             }
         }
 
