@@ -11,6 +11,8 @@
         "run": "Microsoft.AspNet.Server.Kestrel.GeneratedCode"
     },
 
+    "compilationOptions": { "allowUnsafe": true },
+
     "frameworks": {
         "dnx451": {
             "frameworkAssemblies": {

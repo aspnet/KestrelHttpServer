@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
 {
-    public struct MemoryPoolIterator2
+    public partial struct MemoryPoolIterator2
     {
         private readonly static int _vectorSpan = Vector<byte>.Count; 
 

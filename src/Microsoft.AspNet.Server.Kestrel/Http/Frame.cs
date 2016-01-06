@@ -640,14 +640,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             var begin = SocketOutput.ProducingStart();
             var end = begin;
-            if (_keepAlive)
+            if (_keepAlive && _responseHeaders.HasConnection)
             {
-                foreach (var connectionValue in _responseHeaders.HeaderConnection)
+                var connection = _responseHeaders.HeaderConnection.ToString();
+
+                if (connection.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
                 {
-                    if (connectionValue.IndexOf("close", StringComparison.OrdinalIgnoreCase) != -1)
-                    {
-                        _keepAlive = false;
-                    }
+                    _keepAlive = false;
                 }
             }
 
@@ -834,6 +833,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public static bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
         {
+            MemoryPoolIterator2 endName;
             var scan = input.ConsumingStart();
             var consumed = scan;
             try
@@ -843,8 +843,15 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 while (!scan.IsEnd)
                 {
                     var beginName = scan;
-                    scan.Seek(ref _vectorColons, ref _vectorCRs);
-                    var endName = scan;
+                    if (scan.Peek() == '\r' || scan.SeekCommonHeader())
+                    {
+                        endName = scan;
+                    }
+                    else
+                    {
+                        scan.Seek(ref _vectorColons, ref _vectorCRs);
+                        endName = scan;
+                    }
 
                     chFirst = scan.Take();
                     var beginValue = scan;
