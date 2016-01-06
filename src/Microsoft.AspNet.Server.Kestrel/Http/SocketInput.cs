@@ -16,7 +16,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private readonly MemoryPool2 _memory;
         private readonly IThreadPool _threadPool;
-        private readonly ManualResetEventSlim _manualResetEvent = new ManualResetEventSlim(false);
 
         private Action _awaitableState;
         private Exception _awaitableError;
@@ -108,8 +107,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 awaitableState = Interlocked.Exchange(
                     ref _awaitableState,
                     _awaitableIsCompleted);
-
-                _manualResetEvent.Set();
             }
 
             if (awaitableState != _awaitableIsCompleted &&
@@ -147,8 +144,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     RemoteIntakeFin == false &&
                     _awaitableError == null)
                 {
-                    _manualResetEvent.Reset();
-
                     var awaitableState = Interlocked.CompareExchange(
                         ref _awaitableState,
                         _awaitableIsNotCompleted,
@@ -170,8 +165,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var awaitableState = Interlocked.Exchange(
                 ref _awaitableState,
                 _awaitableIsCompleted);
-
-            _manualResetEvent.Set();
 
             if (awaitableState != _awaitableIsCompleted &&
                 awaitableState != _awaitableIsNotCompleted)
@@ -208,8 +201,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     ref _awaitableState,
                     _awaitableIsCompleted);
 
-                _manualResetEvent.Set();
-
                 _threadPool.Run(continuation);
                 _threadPool.Run(awaitableState);
             }
@@ -222,10 +213,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void GetResult()
         {
-            if (!IsCompleted)
-            {
-                _manualResetEvent.Wait();
-            }
             var error = _awaitableError;
             if (error != null)
             {
