@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -34,8 +33,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _awaitableState = _awaitableIsNotCompleted;
         }
 
-        public ArraySegment<byte> Buffer { get; set; }
-
         public bool RemoteIntakeFin { get; set; }
 
         public bool IsCompleted
@@ -44,18 +41,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 return Equals(_awaitableState, _awaitableIsCompleted);
             }
-        }
-
-        public void Skip(int count)
-        {
-            Buffer = new ArraySegment<byte>(Buffer.Array, Buffer.Offset + count, Buffer.Count - count);
-        }
-
-        public ArraySegment<byte> Take(int count)
-        {
-            var taken = new ArraySegment<byte>(Buffer.Array, Buffer.Offset, count);
-            Skip(count);
-            return taken;
         }
 
         public IncomingBuffer IncomingStart(int minimumSize)
