@@ -160,7 +160,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 {
                     _manualResetEvent.Reset();
 
-                    var awaitableState = Interlocked.CompareExchange(
+                    Interlocked.CompareExchange(
                         ref _awaitableState,
                         _awaitableIsNotCompleted,
                         _awaitableIsCompleted);
@@ -184,8 +184,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             _manualResetEvent.Set();
 
-            if (awaitableState != _awaitableIsCompleted &&
-                awaitableState != _awaitableIsNotCompleted)
+            if (awaitableState == _awaitableIsContinue)
             {
                 _threadPool.Run(_continuation);
             }
@@ -198,6 +197,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void OnCompleted(Action continuation)
         {
+            var continuationPrev = _continuation;
+            _continuation = continuation;
+
             var awaitableState = Interlocked.CompareExchange(
                 ref _awaitableState,
                 _awaitableIsContinue,
@@ -205,7 +207,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             if (awaitableState == _awaitableIsNotCompleted)
             {
-                _continuation = continuation;
                 return;
             }
             else if (awaitableState == _awaitableIsCompleted)
@@ -216,14 +217,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 _awaitableError = new InvalidOperationException("Concurrent reads are not supported.");
 
-                awaitableState = Interlocked.Exchange(
+                Interlocked.Exchange(
                     ref _awaitableState,
                     _awaitableIsCompleted);
 
-                _manualResetEvent.Set();
 
                 _threadPool.Run(continuation);
-                _threadPool.Run(_continuation);
+                _threadPool.Run(continuationPrev);
             }
         }
 
