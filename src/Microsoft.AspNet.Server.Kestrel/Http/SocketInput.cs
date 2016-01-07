@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -17,7 +16,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         private readonly MemoryPool2 _memory;
         private readonly IThreadPool _threadPool;
-        private readonly ManualResetEventSlim _manualResetEvent = new ManualResetEventSlim(false);
 
         private Action _awaitableState;
         private Exception _awaitableError;
@@ -34,8 +32,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             _awaitableState = _awaitableIsNotCompleted;
         }
 
-        public ArraySegment<byte> Buffer { get; set; }
-
         public bool RemoteIntakeFin { get; set; }
 
         public bool IsCompleted
@@ -44,18 +40,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 return Equals(_awaitableState, _awaitableIsCompleted);
             }
-        }
-
-        public void Skip(int count)
-        {
-            Buffer = new ArraySegment<byte>(Buffer.Array, Buffer.Offset + count, Buffer.Count - count);
-        }
-
-        public ArraySegment<byte> Take(int count)
-        {
-            var taken = new ArraySegment<byte>(Buffer.Array, Buffer.Offset, count);
-            Skip(count);
-            return taken;
         }
 
         public IncomingBuffer IncomingStart(int minimumSize)
@@ -123,8 +107,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 awaitableState = Interlocked.Exchange(
                     ref _awaitableState,
                     _awaitableIsCompleted);
-
-                _manualResetEvent.Set();
             }
 
             if (awaitableState != _awaitableIsCompleted &&
@@ -162,8 +144,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     RemoteIntakeFin == false &&
                     _awaitableError == null)
                 {
-                    _manualResetEvent.Reset();
-
                     var awaitableState = Interlocked.CompareExchange(
                         ref _awaitableState,
                         _awaitableIsNotCompleted,
@@ -185,8 +165,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var awaitableState = Interlocked.Exchange(
                 ref _awaitableState,
                 _awaitableIsCompleted);
-
-            _manualResetEvent.Set();
 
             if (awaitableState != _awaitableIsCompleted &&
                 awaitableState != _awaitableIsNotCompleted)
@@ -223,8 +201,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     ref _awaitableState,
                     _awaitableIsCompleted);
 
-                _manualResetEvent.Set();
-
                 _threadPool.Run(continuation);
                 _threadPool.Run(awaitableState);
             }
@@ -237,10 +213,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void GetResult()
         {
-            if (!IsCompleted)
-            {
-                _manualResetEvent.Wait();
-            }
             var error = _awaitableError;
             if (error != null)
             {
