@@ -18,7 +18,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var connectionContext = new ConnectionContext
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
-                ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
+                ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
+                Settings = new KestrelServerInformation(new TestConfiguration())
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             IDictionary<string, StringValues> headers = frame.ResponseHeaders;
@@ -46,7 +47,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var connectionContext = new ConnectionContext
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
-                ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
+                ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
+                Settings = new KestrelServerInformation(new TestConfiguration())
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             

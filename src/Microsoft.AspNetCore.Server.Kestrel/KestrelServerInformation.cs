@@ -23,9 +23,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             ThreadCount = GetThreadCount(configuration);
             NoDelay = GetNoDelay(configuration);
             ReuseStreams = GetReuseStreams(configuration);
+            HeadersCompleteTimeout = GetTimeout(configuration, "kestrel.headersCompleteTimeout", defaultSeconds: 30);
+            ExecutionTimeout = GetTimeout(configuration, "server.executionTimeout", defaultSeconds: 110);
+            KeepAliveTimeout = GetTimeout(configuration, "server.keepAliveTimeout", defaultSeconds: 160);
         }
 
         public ICollection<string> Addresses { get; }
+
+        public TimeSpan ExecutionTimeout { get; set; }
+
+        public TimeSpan HeadersCompleteTimeout { get; set; }
+
+        public TimeSpan KeepAliveTimeout { get; set; }
 
         public int ThreadCount { get; set; }
 
@@ -122,6 +131,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
 
             return false;
+        }
+
+        private static TimeSpan GetTimeout(IConfiguration configuration, string configurationKey, int defaultSeconds)
+        {
+            var timeoutString = configuration[configurationKey];
+
+            if (string.IsNullOrEmpty(timeoutString))
+            {
+                return TimeSpan.FromSeconds(defaultSeconds);
+            }
+
+            TimeSpan timeout;
+            if (TimeSpan.TryParse(timeoutString, out timeout))
+            {
+                return timeout;
+            }
+
+            return TimeSpan.FromSeconds(defaultSeconds);
         }
     }
 }

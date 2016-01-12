@@ -11,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
@@ -314,7 +313,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             await FlushAsync(default(CancellationToken));
 
-            return DuplexStream;
+            if (_frameState.TransitionToState(RequestState.UpgradedRequest) == RequestState.UpgradedRequest)
+            {
+                return DuplexStream;
+            }
+            throw new IOException("Failed to upgrade request");
         }
 
         IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();

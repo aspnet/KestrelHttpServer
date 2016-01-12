@@ -41,9 +41,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             try
             {
-                while (!_requestProcessingStopping)
+                while (_frameState.CurrentState == RequestState.Waiting)
                 {
-                    while (!_requestProcessingStopping && !TakeStartLine(SocketInput))
+                    while (_frameState.CurrentState < RequestState.Stopping && !TakeStartLine(SocketInput))
                     {
                         if (SocketInput.RemoteIntakeFin)
                         {
@@ -52,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         await SocketInput;
                     }
 
-                    while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
+                    while (_frameState.CurrentState < RequestState.Stopping && !TakeMessageHeaders(SocketInput, _requestHeaders))
                     {
                         if (SocketInput.RemoteIntakeFin)
                         {
@@ -61,13 +61,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         await SocketInput;
                     }
 
-                    if (!_requestProcessingStopping)
+                    if (_frameState.TransitionToState(RequestState.ExecutingRequest) == RequestState.ExecutingRequest)
                     {
                         var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
 
                         // _duplexStream may be null if flag switched while running
-                        if (!ReuseStreams || _duplexStream == null)
+                        if (!Settings.ReuseStreams || _duplexStream == null)
                         {
                             _requestBody = new FrameRequestStream();
                             _responseBody = new FrameResponseStream(this);
@@ -111,8 +111,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                             _application.DisposeContext(context, _applicationException);
 
-                            // If _requestAbort is set, the connection has already been closed.
-                            if (Volatile.Read(ref _requestAborted) == 0)
+                            // If Aborted, the connection has already been closed.
+                            if (_frameState.CurrentState != RequestState.Aborted)
                             {
                                 _responseBody.ResumeAcceptingWrites();
                                 await ProduceEnd();
@@ -135,7 +135,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         }
                     }
 
-                    Reset();
+                    if (!Reset())
+                    {
+                        return;
+                    }
                 }
             }
             catch (Exception ex)
@@ -146,10 +149,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 try
                 {
+                    var frameState = _frameState.CurrentState;
+                    _frameState.Dispose();
                     _abortedCts = null;
 
-                    // If _requestAborted is set, the connection has already been closed.
-                    if (Volatile.Read(ref _requestAborted) == 0)
+                    // If Aborted, the connection has already been closed.
+                    if (frameState != RequestState.Aborted)
                     {
                         // Inform client no more data will ever arrive
                         ConnectionControl.End(ProduceEndType.SocketShutdownSend);

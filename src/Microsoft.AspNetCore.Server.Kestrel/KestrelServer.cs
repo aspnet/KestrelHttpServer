@@ -67,8 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     ThreadPool = new LoggingThreadPool(trace),
                     DateHeaderValueManager = dateHeaderValueManager,
                     ConnectionFilter = information.ConnectionFilter,
-                    NoDelay = information.NoDelay,
-                    ReuseStreams = information.ReuseStreams
+                    Settings = information
                 });
 
                 _disposables.Push(engine);
@@ -81,6 +80,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     throw new ArgumentOutOfRangeException(nameof(threadCount),
                         threadCount,
                         "ThreadCount must be positive.");
+                }
+
+                if (information.KeepAliveTimeout.TotalSeconds < 1)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(information.KeepAliveTimeout),
+                        information.KeepAliveTimeout,
+                        "KeepAliveTimeout must be greater than zero.");
+                }
+
+                if (information.HeadersCompleteTimeout.TotalSeconds < 1)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(information.HeadersCompleteTimeout),
+                        information.HeadersCompleteTimeout,
+                        "HeadersCompleteTimeout must be greater than zero.");
+                }
+
+                if (information.ExecutionTimeout.TotalSeconds < 1)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(information.ExecutionTimeout),
+                        information.ExecutionTimeout,
+                        "ExecutionTimeout must be greater than zero.");
                 }
 
                 engine.Start(threadCount);
