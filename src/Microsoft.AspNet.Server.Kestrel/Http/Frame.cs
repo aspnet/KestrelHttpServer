@@ -237,6 +237,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 httpConnectionFeature.IsLocal = _remoteEndPoint.Address.Equals(_localEndPoint.Address);
             }
+            else if (_remoteEndPoint == null && _localEndPoint == null) 
+            {
+                httpConnectionFeature.IsLocal = true;
+            }
             else
             {
                 httpConnectionFeature.IsLocal = false;
