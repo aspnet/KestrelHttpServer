@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNet.Server.Kestrel.Http
@@ -184,7 +185,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public void AbortAwaiting()
         {
-            _awaitableError = new ObjectDisposedException(nameof(SocketInput), "The request was aborted");
+            _awaitableError = new TaskCanceledException("The request was aborted");
 
             Complete();
         }
@@ -238,6 +239,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var error = _awaitableError;
             if (error != null)
             {
+                if (error is TaskCanceledException || error is InvalidOperationException)
+                {
+                    throw error;
+                }
                 throw new IOException(error.Message, error);
             }
         }

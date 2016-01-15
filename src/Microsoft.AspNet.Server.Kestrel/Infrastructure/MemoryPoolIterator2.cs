@@ -728,6 +728,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);
 
+            if (IsDefault)
+            {
+                return;
+            }
+
             var pool = _block.Pool;
             var block = _block;
             var blockIndex = _index;
@@ -769,6 +774,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Infrastructure
             Debug.Assert(_block != null);
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);
+
+            if (IsDefault)
+            {
+                return;
+            }
 
             var pool = _block.Pool;
             var block = _block;
