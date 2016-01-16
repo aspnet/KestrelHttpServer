@@ -9032,7 +9032,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {
             
                 if (((_bits & 1L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_CacheControl.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 0, 17);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _CacheControl)
                         {
                             if (value != null)
@@ -9041,15 +9052,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 2L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
                     if (_rawConnection != null) 
                     {
                         output.CopyFrom(_rawConnection, 0, _rawConnection.Length);
                     } 
                     else 
+                    if (_Connection.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 17, 14);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Connection)
                         {
                             if (value != null)
@@ -9058,15 +9081,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 4L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
                     if (_rawDate != null) 
                     {
                         output.CopyFrom(_rawDate, 0, _rawDate.Length);
                     } 
                     else 
+                    if (_Date.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 31, 8);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Date)
                         {
                             if (value != null)
@@ -9075,10 +9110,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 8L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_KeepAlive.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 39, 14);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _KeepAlive)
                         {
                             if (value != null)
@@ -9087,10 +9134,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 16L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Pragma.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 53, 10);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Pragma)
                         {
                             if (value != null)
@@ -9099,10 +9158,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 32L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Trailer.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 63, 11);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Trailer)
                         {
                             if (value != null)
@@ -9111,15 +9182,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 64L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
                     if (_rawTransferEncoding != null) 
                     {
                         output.CopyFrom(_rawTransferEncoding, 0, _rawTransferEncoding.Length);
                     } 
                     else 
+                    if (_TransferEncoding.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 74, 21);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _TransferEncoding)
                         {
                             if (value != null)
@@ -9128,10 +9211,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 128L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Upgrade.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 95, 11);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Upgrade)
                         {
                             if (value != null)
@@ -9140,10 +9235,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 256L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Via.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 106, 7);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Via)
                         {
                             if (value != null)
@@ -9152,10 +9259,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 512L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Warning.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 113, 11);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Warning)
                         {
                             if (value != null)
@@ -9164,10 +9283,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 1024L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Allow.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 124, 9);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Allow)
                         {
                             if (value != null)
@@ -9176,15 +9307,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 2048L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
                     if (_rawContentLength != null) 
                     {
                         output.CopyFrom(_rawContentLength, 0, _rawContentLength.Length);
                     } 
                     else 
+                    if (_ContentLength.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 133, 18);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentLength)
                         {
                             if (value != null)
@@ -9193,10 +9336,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 4096L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ContentType.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 151, 16);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentType)
                         {
                             if (value != null)
@@ -9205,10 +9360,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 8192L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ContentEncoding.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 167, 20);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentEncoding)
                         {
                             if (value != null)
@@ -9217,10 +9384,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 16384L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ContentLanguage.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 187, 20);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentLanguage)
                         {
                             if (value != null)
@@ -9229,10 +9408,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 32768L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ContentLocation.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 207, 20);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentLocation)
                         {
                             if (value != null)
@@ -9241,10 +9432,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 65536L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ContentMD5.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 227, 15);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentMD5)
                         {
                             if (value != null)
@@ -9253,10 +9456,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 131072L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ContentRange.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 242, 17);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ContentRange)
                         {
                             if (value != null)
@@ -9265,10 +9480,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 262144L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Expires.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 259, 11);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Expires)
                         {
                             if (value != null)
@@ -9277,10 +9504,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 524288L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_LastModified.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 270, 17);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _LastModified)
                         {
                             if (value != null)
@@ -9289,10 +9528,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 1048576L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AcceptRanges.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 287, 17);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AcceptRanges)
                         {
                             if (value != null)
@@ -9301,10 +9552,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 2097152L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Age.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 304, 7);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Age)
                         {
                             if (value != null)
@@ -9313,10 +9576,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 4194304L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ETag.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 311, 8);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ETag)
                         {
                             if (value != null)
@@ -9325,10 +9600,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 8388608L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Location.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 319, 12);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Location)
                         {
                             if (value != null)
@@ -9337,10 +9624,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 16777216L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_ProxyAutheticate.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 331, 21);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _ProxyAutheticate)
                         {
                             if (value != null)
@@ -9349,10 +9648,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 33554432L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_RetryAfter.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 352, 15);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _RetryAfter)
                         {
                             if (value != null)
@@ -9361,15 +9672,27 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 67108864L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
                     if (_rawServer != null) 
                     {
                         output.CopyFrom(_rawServer, 0, _rawServer.Length);
                     } 
                     else 
+                    if (_Server.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 367, 10);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Server)
                         {
                             if (value != null)
@@ -9378,10 +9701,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 134217728L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_SetCookie.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 377, 14);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _SetCookie)
                         {
                             if (value != null)
@@ -9390,10 +9725,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 268435456L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_Vary.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 391, 8);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _Vary)
                         {
                             if (value != null)
@@ -9402,10 +9749,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 536870912L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_WWWAuthenticate.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 399, 20);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _WWWAuthenticate)
                         {
                             if (value != null)
@@ -9414,10 +9773,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 1073741824L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AccessControlAllowCredentials.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 419, 36);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AccessControlAllowCredentials)
                         {
                             if (value != null)
@@ -9426,10 +9797,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 2147483648L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AccessControlAllowHeaders.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 455, 32);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AccessControlAllowHeaders)
                         {
                             if (value != null)
@@ -9438,10 +9821,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 4294967296L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AccessControlAllowMethods.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 487, 32);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AccessControlAllowMethods)
                         {
                             if (value != null)
@@ -9450,10 +9845,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 8589934592L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AccessControlAllowOrigin.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 519, 31);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AccessControlAllowOrigin)
                         {
                             if (value != null)
@@ -9462,10 +9869,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 17179869184L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AccessControlExposeHeaders.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 550, 33);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AccessControlExposeHeaders)
                         {
                             if (value != null)
@@ -9474,10 +9893,22 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
                 if (((_bits & 34359738368L) != 0)) 
-                { 
+                {
+                    byte[] bytes;
+                    Encoding encoding;
+                    
+                    if (_AccessControlMaxAge.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {
+                        output.CopyFrom(_headerBytes, 583, 26);
+                        output.CopyFrom(bytes);
+                    }
+                    else
+                    {
                         foreach (var value in _AccessControlMaxAge)
                         {
                             if (value != null)
@@ -9486,6 +9917,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }
                         }
+                    }
                 }
             
         }
