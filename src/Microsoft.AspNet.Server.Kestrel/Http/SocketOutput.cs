@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
@@ -22,6 +21,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         private const int _maxPooledWriteContexts = 32;
 
         private static readonly WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock2)state);
+        private static readonly Action<object> _connectionCancellation = (state) => ((SocketOutput)state).CancellationTriggered();
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
@@ -78,6 +78,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         public Task WriteAsync(
             ArraySegment<byte> buffer,
+            CancellationToken cancellationToken,
             bool immediate = true,
             bool chunk = false,
             bool socketShutdownSend = false,
@@ -92,6 +93,21 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 if (buffer.Count > 0)
                 {
                     var tail = ProducingStart();
+                    if (tail.IsDefault)
+                    {
+                        if (cancellationToken.CanBeCanceled)
+                        {
+                            return TaskUtilities.GetCancelledTask(
+                                cancellationToken.IsCancellationRequested ?
+                                cancellationToken :
+                                new CancellationToken(true));
+                        }
+                        else
+                        {
+                            return TaskUtilities.CompletedTask;
+                        }
+                    }
+
                     if (chunk)
                     {
                         _numBytesPreCompleted += ChunkWriter.WriteBeginChunkBytes(ref tail, buffer.Count);
@@ -146,13 +162,36 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 }
                 else
                 {
-                    // immediate write, which is not eligable for instant completion above
-                    tcs = new TaskCompletionSource<object>(buffer.Count);
-                    _tasksPending.Enqueue(new WaitingTask() {
-                                            CompletionSource = tcs,
-                                            BytesToWrite = buffer.Count,
-                                            isSync = isSync
-                                          });
+                    if (cancellationToken.CanBeCanceled)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            _connection.Abort();
+
+                            return TaskUtilities.GetCancelledTask(cancellationToken);
+                        }
+                        else
+                        {
+                            // immediate write, which is not eligable for instant completion above
+                            tcs = new TaskCompletionSource<object>();
+                            _tasksPending.Enqueue(new WaitingTask()
+                            {
+                                CancellationRegistration = cancellationToken.Register(_connectionCancellation, this),
+                                BytesToWrite = buffer.Count,
+                                CompletionSource = tcs
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // Sync tasks don't have cacellation
+                        tcs = new TaskCompletionSource<object>();
+                        _tasksPending.Enqueue(new WaitingTask() {
+                            BytesToWrite = buffer.Count,
+                            CompletionSource = tcs,
+                            isSync = isSync
+                        });
+                    }
                 }
 
                 if (!_writePending && immediate)
@@ -177,12 +216,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 case ProduceEndType.SocketShutdownSend:
                     WriteAsync(default(ArraySegment<byte>),
+                        default(CancellationToken),
                         immediate: true,
                         socketShutdownSend: true,
                         socketDisconnect: false);
                     break;
                 case ProduceEndType.SocketDisconnect:
                     WriteAsync(default(ArraySegment<byte>),
+                        default(CancellationToken),
                         immediate: true,
                         socketShutdownSend: false,
                         socketDisconnect: true);
@@ -198,7 +239,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                 if (_tail == null)
                 {
-                    throw new IOException("The socket has been closed.");
+                    return default(MemoryPoolIterator2);
                 }
 
                 _lastStart = new MemoryPoolIterator2(_tail, _tail.End);
@@ -248,6 +289,18 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             if (blockToReturn != null)
             {
                 ThreadPool.QueueUserWorkItem(_returnBlocks, blockToReturn);
+            }
+        }
+
+        private void CancellationTriggered()
+        {
+            lock (_contextLock)
+            {
+                // Abort the connection for any failed write
+                // Queued on threadpool so get it in as first op.
+                _connection?.Abort();
+
+                CancelOutstandingTasks(new TaskCanceledException("The request was aborted"));
             }
         }
 
@@ -303,20 +356,28 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             var status = writeContext.WriteStatus;
             var error = writeContext.WriteError;
 
-            if (error != null)
-            {
-                _lastWriteError = new IOException(error.Message, error);
-
-                // Abort the connection for any failed write.
-                _connection.Abort();
-            }
-
             PoolWriteContext(writeContext);
 
-            // _numBytesPreCompleted can temporarily go negative in the event there are
-            // completed writes that we haven't triggered callbacks for yet.
-            _numBytesPreCompleted -= bytesWritten;
+            if (error == null)
+            {
+                // _numBytesPreCompleted can temporarily go negative in the event there are
+                // completed writes that we haven't triggered callbacks for yet.
+                _numBytesPreCompleted -= bytesWritten;
 
+                CompleteFinishedWrites(status);
+            }
+            else if (error != null)
+            {
+                // Abort the connection for any failed write
+                // Queued on threadpool so get it in as first op.
+                _connection.Abort();
+
+                CancelOutstandingTasks(error);
+            }
+        }
+
+        private void CompleteFinishedWrites(int status)
+        {
             // bytesLeftToBuffer can be greater than _maxBytesPreCompleted
             // This allows large writes to complete once they've actually finished.
             var bytesLeftToBuffer = _maxBytesPreCompleted - _numBytesPreCompleted;
@@ -329,10 +390,42 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                 _numBytesPreCompleted += bytesToWrite;
                 bytesLeftToBuffer -= bytesToWrite;
 
-                if (_lastWriteError == null)
+                if (waitingTask.isSync)
+                {
+                    // sync tasks don't register for cancelation
+                    waitingTask.CompletionSource.TrySetResult(null);
+                }
+                else
+                {
+                    // Dispose registration if there is one
+                    waitingTask.CancellationRegistration?.Dispose();
+                    _threadPool.Complete(waitingTask.CompletionSource);
+                }
+            }
+
+            _log.ConnectionWriteCallback(_connectionId, status);
+        }
+
+        private void CancelOutstandingTasks(Exception error)
+        {
+            _lastWriteError = error;
+
+            while (_tasksPending.Count > 0)
+            {
+                var waitingTask = _tasksPending.Dequeue();
+
+                if (waitingTask.CancellationRegistration != null)
+                {
+                    // Only Cancellation tokens which accept cancellation
+                    // therefore have a registration should be cancelled
+                    waitingTask.CancellationRegistration.Dispose();
+                    _threadPool.Cancel(waitingTask.CompletionSource);
+                }
+                else
                 {
                     if (waitingTask.isSync)
                     {
+                        // sync tasks don't register for cancelation
                         waitingTask.CompletionSource.TrySetResult(null);
                     }
                     else
@@ -340,20 +433,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                         _threadPool.Complete(waitingTask.CompletionSource);
                     }
                 }
-                else
-                {
-                    if (waitingTask.isSync)
-                    {
-                        waitingTask.CompletionSource.TrySetException(_lastWriteError);
-                    }
-                    else
-                    {
-                        _threadPool.Error(waitingTask.CompletionSource, _lastWriteError);
-                    }
-                }
             }
 
-            _log.ConnectionWriteCallback(_connectionId, status);
+            _log.ConnectionError(_connectionId, error);
         }
 
         // This is called on the libuv event loop
@@ -393,12 +475,31 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool immediate, bool chunk)
         {
-            WriteAsync(buffer, immediate, chunk, isSync: true).GetAwaiter().GetResult();
+            WriteAsync(buffer, CancellationToken.None, immediate, chunk, isSync: true).GetAwaiter().GetResult();
         }
 
         Task ISocketOutput.WriteAsync(ArraySegment<byte> buffer, bool immediate, bool chunk, CancellationToken cancellationToken)
         {
-            return WriteAsync(buffer, immediate, chunk);
+            if (cancellationToken.CanBeCanceled)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _connection?.Abort();
+                    return TaskUtilities.GetCancelledTask(cancellationToken);
+                }
+                else if (_lastWriteError != null || _socket.IsClosed)
+                {
+                    return TaskUtilities.GetCancelledTask(new CancellationToken(true));
+                }
+            }
+            else if (_lastWriteError != null || _socket.IsClosed)
+            {
+                _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, _lastWriteError);
+
+                return TaskUtilities.CompletedTask;
+            }
+
+            return WriteAsync(buffer, cancellationToken, immediate, chunk);
         }
 
         private static void BytesBetween(MemoryPoolIterator2 start, MemoryPoolIterator2 end, out int bytes, out int buffers)

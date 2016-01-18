@@ -3,6 +3,7 @@
 
 using System;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Hosting.Server;
 using Microsoft.AspNet.Http.Features;
@@ -111,7 +112,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                             _application.DisposeContext(context, _applicationException);
 
                             // If _requestAbort is set, the connection has already been closed.
-                            if (!_requestAborted)
+                            if (Volatile.Read(ref _requestAborted) == 0)
                             {
                                 _responseBody.ResumeAcceptingWrites();
                                 await ProduceEnd();
@@ -148,7 +149,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                     _abortedCts = null;
 
                     // If _requestAborted is set, the connection has already been closed.
-                    if (!_requestAborted)
+                    if (Volatile.Read(ref _requestAborted) == 0)
                     {
                         // Inform client no more data will ever arrive
                         ConnectionControl.End(ProduceEndType.SocketShutdownSend);
