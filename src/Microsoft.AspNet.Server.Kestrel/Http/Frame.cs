@@ -318,6 +318,59 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         /// </summary>
         public abstract Task RequestProcessingAsync();
 
+        public string RequestToString()
+        {
+            var requestBuilder = new StringBuilder("Received request: ");
+
+            // GET /path?query HTTP/1.1
+            requestBuilder.Append(Method);
+            requestBuilder.Append(" ");
+            requestBuilder.Append(PathBase);
+            requestBuilder.Append(Path);
+            requestBuilder.Append(QueryString);
+            requestBuilder.Append(" ");
+            requestBuilder.Append(HttpVersion);
+            requestBuilder.Append("; Headers: { ");
+
+            foreach (var header in RequestHeaders)
+            {
+                foreach (var value in header.Value)
+                {
+                    requestBuilder.Append(header.Key);
+                    requestBuilder.Append(": ");
+                    requestBuilder.Append(value);
+                    requestBuilder.Append("; ");
+                }
+            }
+            requestBuilder.Append("}");
+            return requestBuilder.ToString();
+        }
+
+        public string ResponseToString()
+        {
+            // HTTP/1.1 200 OK
+            var responseBuilder = new StringBuilder("Sending response: ");
+            responseBuilder.Append(HttpVersion);
+            responseBuilder.Append(" ");
+            responseBuilder.Append(StatusCode);
+            responseBuilder.Append(" ");
+            responseBuilder.Append(ReasonPhrase);
+            responseBuilder.Append("; Headers: { ");
+
+            foreach (var header in ResponseHeaders)
+            {
+                foreach (var value in header.Value)
+                {
+                    responseBuilder.Append(header.Key);
+                    responseBuilder.Append(": ");
+                    responseBuilder.Append(value);
+                    responseBuilder.Append("; ");
+                }
+            }
+            responseBuilder.Append("}");
+            return responseBuilder.ToString();
+        }
+
         public void OnStarting(Func<object, Task> callback, object state)
         {
             lock (_onStartingSync)
@@ -655,6 +708,12 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
             end.CopyFrom(_httpVersion == HttpVersionType.Http1_1 ? _bytesHttpVersion1_1 : _bytesHttpVersion1_0);
             end.CopyFrom(statusBytes);
+
+            if (Log.IsEnabled(LogLevel.Debug))
+            {
+                Log.LogDebug(ResponseToString());
+            }
+
             _responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
 

@@ -62,6 +62,11 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
 
                     if (!_requestProcessingStopping)
                     {
+                        if (Log.IsEnabled(LogLevel.Debug))
+                        {
+                            Log.LogDebug(RequestToString());
+                        }
+
                         var messageBody = MessageBody.For(HttpVersion, _requestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
 
