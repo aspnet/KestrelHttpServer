@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.AspNet.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -22,7 +21,9 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
         private object _state;
         private const int BUFFER_COUNT = 4;
 
-        private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
+        private GCHandle _pinUvWriteReq;
+        private GCHandle _pinBufferArray;
+        private bool _bufferArrayIsPinned;
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -50,16 +51,16 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             try
             {
                 // add GCHandle to keeps this SafeHandle alive while request processing
-                _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
+                _pinUvWriteReq = GCHandle.Alloc(this, GCHandleType.Normal);
 
                 var pBuffers = (Libuv.uv_buf_t*)_bufs;
                 if (nBuffers > BUFFER_COUNT)
                 {
                     // create and pin buffer array when it's larger than the pre-allocated one
                     var bufArray = new Libuv.uv_buf_t[nBuffers];
-                    var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
+                    _pinBufferArray = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
+                    _bufferArrayIsPinned = true;
+                    pBuffers = (Libuv.uv_buf_t*)_pinBufferArray.AddrOfPinnedObject();
                 }
 
                 var block = start.Block;
@@ -68,7 +69,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                     var blockStart = block == start.Block ? start.Index : block.Data.Offset;
                     var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
 
-                    // create and pin each segment being written
                     pBuffers[index] = Libuv.buf_init(
                         block.Pin() + blockStart,
                         blockEnd - blockStart);
@@ -89,7 +89,6 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
                 var block = start.Block;
                 for (var index = 0; index < nBuffers; index++)
                 {
-                    block.Unpin();
                     block = block.Next;
                 }
 
@@ -97,61 +96,14 @@ namespace Microsoft.AspNet.Server.Kestrel.Networking
             }
         }
 
-        public unsafe void Write2(
-            UvStreamHandle handle,
-            ArraySegment<ArraySegment<byte>> bufs,
-            UvStreamHandle sendHandle,
-            Action<UvWriteReq, int, Exception, object> callback,
-            object state)
-        {
-            try
-            {
-                // add GCHandle to keeps this SafeHandle alive while request processing
-                _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
-
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
-                var nBuffers = bufs.Count;
-                if (nBuffers > BUFFER_COUNT)
-                {
-                    // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
-                    var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
-                }
-
-                for (var index = 0; index < nBuffers; index++)
-                {
-                    // create and pin each segment being written
-                    var buf = bufs.Array[bufs.Offset + index];
-
-                    var gcHandle = GCHandle.Alloc(buf.Array, GCHandleType.Pinned);
-                    _pins.Add(gcHandle);
-                    pBuffers[index] = Libuv.buf_init(
-                        gcHandle.AddrOfPinnedObject() + buf.Offset,
-                        buf.Count);
-                }
-
-                _callback = callback;
-                _state = state;
-                _uv.write2(this, handle, pBuffers, nBuffers, sendHandle, _uv_write_cb);
-            }
-            catch
-            {
-                _callback = null;
-                _state = null;
-                Unpin(this);
-                throw;
-            }
-        }
-
         private static void Unpin(UvWriteReq req)
         {
-            foreach (var pin in req._pins)
+            req._pinUvWriteReq.Free();
+            if (req._bufferArrayIsPinned)
             {
-                pin.Free();
+                req._pinBufferArray.Free();
+                req._bufferArrayIsPinned = false;
             }
-            req._pins.Clear();
         }
 
         private static void UvWriteCb(IntPtr ptr, int status)
