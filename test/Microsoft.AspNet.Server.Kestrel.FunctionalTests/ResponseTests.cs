@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
@@ -98,7 +99,7 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
                     app.Run(async context =>
                     {
                         context.Response.Headers.Add(headerName, headerValue);
-                        
+
                         await context.Response.WriteAsync("");
                     });
                 });
@@ -167,6 +168,53 @@ namespace Microsoft.AspNet.Server.Kestrel.FunctionalTests
                     Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
                     Assert.False(onStartingCalled);
                     Assert.True(onCompletedCalled);
+                }
+            }
+        }
+
+        [ConditionalFact]
+        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on mono.")]
+        public async Task PreEncodedHeaders()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                  { "server.urls", "http://localhost:8795/" }
+                })
+                .Build();
+            var knownHeaderName = "Location";
+            var encodedKnownHeader = StringValues.CreatePreEncoded("somewhere", Encoding.ASCII);
+            var unknownHeaderName = "foo";
+            var encodedUnknownHeader = StringValues.CreatePreEncoded("bar", Encoding.ASCII);
+
+            var hostBuilder = new WebApplicationBuilder()
+                .UseConfiguration(config)
+                .UseServer("Microsoft.AspNet.Server.Kestrel")
+                .Configure(app =>
+                {
+                    app.Run(async context =>
+                    {
+                        context.Response.Headers[knownHeaderName] = encodedKnownHeader;
+                        context.Response.Headers[unknownHeaderName] = encodedUnknownHeader;
+
+                        await context.Response.WriteAsync("");
+                    });
+                });
+
+            using (var app = hostBuilder.Build())
+            {
+                app.Start();
+
+                using (var client = new HttpClient())
+                {
+                    var response = await client.GetAsync("http://localhost:8794/");
+                    response.EnsureSuccessStatusCode();
+                    var headers = response.Headers;
+
+                    Assert.True(headers.Contains(knownHeaderName));
+                    Assert.Equal(headers.GetValues(knownHeaderName).Single(), encodedKnownHeader);
+                    Assert.True(headers.Contains(unknownHeaderName));
+                    Assert.Equal(headers.GetValues(unknownHeaderName).Single(), encodedUnknownHeader);
                 }
             }
         }

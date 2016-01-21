@@ -401,12 +401,23 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
         {{
             {Each(loop.Headers, header => $@"
                 if ({header.TestBit()}) 
-                {{ {(header.EnhancedSetter == false ? "" : $@"
+                {{
+                    byte[] bytes;
+                    Encoding encoding;
+                    {(header.EnhancedSetter == false ? "" : $@"
                     if (_raw{header.Identifier} != null) 
                     {{
                         output.CopyFrom(_raw{header.Identifier}, 0, _raw{header.Identifier}.Length);
                     }} 
                     else ")}
+                    if (_{header.Identifier}.TryGetPreEncoded(out bytes, out encoding) &&
+                        ((encoding == _asciiEncoding || encoding.WebName == _asciiWebName)))
+                    {{
+                        output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
+                        output.CopyFrom(bytes);
+                    }}
+                    else
+                    {{
                         foreach (var value in _{header.Identifier})
                         {{
                             if (value != null)
@@ -415,6 +426,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
                                 output.CopyFromAscii(value);
                             }}
                         }}
+                    }}
                 }}
             ")}
         }}" : "")}
