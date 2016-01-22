@@ -10,7 +10,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// </summary>
     public class TcpListenerSecondary : ListenerSecondary
     {
-        public TcpListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        public TcpListenerSecondary(ServiceContext serviceContext, ServerAddress address, KestrelThread thread, string pipeName)
+            : base(serviceContext, address, thread, pipeName)
         {
         }
 

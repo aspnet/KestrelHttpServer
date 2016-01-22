@@ -13,20 +13,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// </summary>
     public abstract class Listener : ListenerContext, IDisposable
     {
-        protected Listener(ServiceContext serviceContext) 
+        protected Listener(ServiceContext serviceContext, ServerAddress addreess, KestrelThread thread) 
             : base(serviceContext)
         {
+            ServerAddress = addreess;
+            Thread = thread;
         }
 
         protected UvStreamHandle ListenSocket { get; private set; }
 
-        public Task StartAsync(
-            ServerAddress address,
-            KestrelThread thread)
+        public Task StartAsync()
         {
-            ServerAddress = address;
-            Thread = thread;
-
             var tcs = new TaskCompletionSource<int>(this);
 
             Thread.Post(tcs2 =>
@@ -77,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             connection.Start();
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             // Ensure the event loop is still running.
             // If the event loop isn't running and we try to wait on this Post

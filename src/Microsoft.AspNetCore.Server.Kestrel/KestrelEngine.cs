@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
@@ -28,6 +27,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Start(int count)
         {
+            if (count > 1 && PlatformApis.IsWindows)
+            {
+                // Increase thread count by one for multithreaded Windows servers
+                // since the primary thread does not actually accept connections.
+                count++;
+            }
+
             for (var index = 0; index < count; index++)
             {
                 Threads.Add(new KestrelThread(this));
@@ -59,38 +65,50 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var pipeName = (Libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
 
                 var single = Threads.Count == 1;
-                var first = true;
 
-                foreach (var thread in Threads)
+                if (single)
                 {
-                    if (single)
-                    {
-                        var listener = usingPipes ?
-                            (Listener) new PipeListener(this) :
-                            new TcpListener(this);
-                        listeners.Add(listener);
-                        listener.StartAsync(address, thread).Wait();
-                    }
-                    else if (first)
-                    {
-                        var listener = usingPipes
-                            ? (ListenerPrimary) new PipeListenerPrimary(this)
-                            : new TcpListenerPrimary(this);
-
-                        listeners.Add(listener);
-                        listener.StartAsync(pipeName, address, thread).Wait();
-                    }
-                    else
-                    {
-                        var listener = usingPipes
-                            ? (ListenerSecondary) new PipeListenerSecondary(this)
-                            : new TcpListenerSecondary(this);
-                        listeners.Add(listener);
-                        listener.StartAsync(pipeName, address, thread).Wait();
-                    }
-
-                    first = false;
+                    var listener = usingPipes ?
+                        (Listener)new PipeListener(this, address, Threads[0]) :
+                        new TcpListener(this, address, Threads[0]);
+                    listeners.Add(listener);
+                    listener.StartAsync().Wait();
                 }
+                else if (PlatformApis.IsWindows)
+                {
+                    // libuv on unix does not allow sockets from a listener on one loop to be
+                    // accepted on another loop.
+                    var listener = new TcpListenerMultithreaded(this, address, Threads);
+                    listeners.Add(listener);
+                    listener.StartAsync().Wait();
+                }
+                else
+                {
+                    var first = true;
+
+                    foreach (var thread in Threads)
+                    {
+                        if (first)
+                        {
+                            var listener = usingPipes
+                                ? (ListenerPrimary)new PipeListenerPrimary(this, address, thread, pipeName)
+                                : new TcpListenerPrimary(this, address, thread, pipeName);
+                            listeners.Add(listener);
+                            listener.StartPrimaryAsync().Wait();
+                        }
+                        else
+                        {
+                            var listener = usingPipes
+                                ? (ListenerSecondary)new PipeListenerSecondary(this, address, thread, pipeName)
+                                : new TcpListenerSecondary(this, address, thread, pipeName);
+                            listeners.Add(listener);
+                            listener.StartSecondaryAsync().Wait();
+                        }
+
+                        first = false;
+                    }
+                }
+
                 return new Disposable(() =>
                 {
                     foreach (var listener in listeners)

@@ -75,11 +75,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
             return handle;
         }
 
-        public void Validate(bool closed = false)
+        public void Validate(bool closed = false, bool crossThread = false)
         {
             Debug.Assert(closed || !IsClosed, "Handle is closed");
             Debug.Assert(!IsInvalid, "Handle is invalid");
-            Debug.Assert(_threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
+            Debug.Assert(crossThread || _threadId == Thread.CurrentThread.ManagedThreadId, "ThreadId is incorrect");
         }
 
         unsafe public static THandle FromIntPtr<THandle>(IntPtr handle)
