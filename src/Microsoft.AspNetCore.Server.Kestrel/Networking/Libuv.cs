@@ -262,9 +262,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
         }
 
         protected Func<UvStreamHandle, UvStreamHandle, int> _uv_accept;
-        public void accept(UvStreamHandle server, UvStreamHandle client)
+        public void accept(UvStreamHandle server, UvStreamHandle client, bool crossThread)
         {
-            server.Validate();
+            server.Validate(closed: false, crossThread: crossThread);
             client.Validate();
             Check(_uv_accept(server, client));
         }

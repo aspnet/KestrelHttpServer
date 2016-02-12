@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
@@ -13,7 +12,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// </summary>
     public class PipeListener : Listener
     {
-        public PipeListener(ServiceContext serviceContext) : base(serviceContext)
+        public PipeListener(ServiceContext serviceContext, ServerAddress address, KestrelThread thread)
+            : base(serviceContext, address, thread)
         {
         }
 

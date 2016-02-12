@@ -5,7 +5,6 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
@@ -22,23 +21,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private IntPtr _ptr;
         private Libuv.uv_buf_t _buf;
 
-        protected ListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        protected ListenerSecondary(ServiceContext serviceContext, ServerAddress address, KestrelThread thread, string pipeName)
+            : base(serviceContext)
         {
+            _pipeName = pipeName;
             _ptr = Marshal.AllocHGlobal(4);
+
+            ServerAddress = address;
+            Thread = thread;
         }
 
         UvPipeHandle DispatchPipe { get; set; }
 
-        public Task StartAsync(
-            string pipeName,
-            ServerAddress address,
-            KestrelThread thread)
+        public Task StartSecondaryAsync()
         {
-            _pipeName = pipeName;
-            _buf = thread.Loop.Libuv.buf_init(_ptr, 4);
-
-            ServerAddress = address;
-            Thread = thread;
+            _buf = Thread.Loop.Libuv.buf_init(_ptr, 4);
 
             DispatchPipe = new UvPipeHandle(Log);
 
@@ -163,8 +160,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // the exception that stopped the event loop will never be surfaced.
             if (Thread.FatalError == null)
             {
-                Thread.Send(listener =>
+                Thread.Send(state =>
                 {
+                    var listener = (ListenerSecondary)state;
                     listener.DispatchPipe.Dispose();
                     listener.FreeBuffer();
                 }, this);

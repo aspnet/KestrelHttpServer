@@ -10,7 +10,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// </summary>
     public class PipeListenerSecondary : ListenerSecondary
     {
-        public PipeListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        public PipeListenerSecondary(ServiceContext serviceContext, ServerAddress address, KestrelThread thread, string pipeName)
+            : base(serviceContext, address, thread, pipeName)
         {
         }
 

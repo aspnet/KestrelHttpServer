@@ -27,8 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private static readonly Action<object, object> _threadCallbackAdapter = (callback, state) => ((Action<KestrelThread>)callback).Invoke((KestrelThread)state);
         private static readonly Action<object, object> _socketCallbackAdapter = (callback, state) => ((Action<SocketOutput>)callback).Invoke((SocketOutput)state);
         private static readonly Action<object, object> _tcsCallbackAdapter = (callback, state) => ((Action<TaskCompletionSource<int>>)callback).Invoke((TaskCompletionSource<int>)state);
-        private static readonly Action<object, object> _listenerPrimaryCallbackAdapter = (callback, state) => ((Action<ListenerPrimary>)callback).Invoke((ListenerPrimary)state);
-        private static readonly Action<object, object> _listenerSecondaryCallbackAdapter = (callback, state) => ((Action<ListenerSecondary>)callback).Invoke((ListenerSecondary)state);
+        private static readonly Action<object, object> _postAsyncCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
 
         private readonly KestrelEngine _engine;
         private readonly IApplicationLifetime _appLifetime;
@@ -44,14 +43,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private bool _initCompleted = false;
         private ExceptionDispatchInfo _closeError;
         private readonly IKestrelTrace _log;
-        private readonly IThreadPool _threadPool;
 
         public KestrelThread(KestrelEngine engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;
             _log = engine.Log;
-            _threadPool = engine.ThreadPool;
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
@@ -179,14 +176,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _post.Send();
         }
 
-        public Task PostAsync(Action<ListenerPrimary> callback, ListenerPrimary state)
+        public Task PostAsync(Action<object> callback, object state)
         {
             var tcs = new TaskCompletionSource<object>();
             lock (_workSync)
             {
                 _workAdding.Enqueue(new Work
                 {
-                    CallbackAdapter = _listenerPrimaryCallbackAdapter,
+                    CallbackAdapter = _postAsyncCallbackAdapter,
                     Callback = callback,
                     State = state,
                     Completion = tcs
@@ -196,24 +193,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             return tcs.Task;
         }
 
-        public Task PostAsync(Action<ListenerSecondary> callback, ListenerSecondary state)
-        {
-            var tcs = new TaskCompletionSource<object>();
-            lock (_workSync)
-            {
-                _workAdding.Enqueue(new Work
-                {
-                    CallbackAdapter = _listenerSecondaryCallbackAdapter,
-                    Callback = callback,
-                    State = state,
-                    Completion = tcs
-                });
-            }
-            _post.Send();
-            return tcs.Task;
-        }
-
-        public void Send(Action<ListenerSecondary> callback, ListenerSecondary state)
+        public void Send(Action<object> callback, ListenerSecondary state)
         {
             if (_loop.ThreadId == Thread.CurrentThread.ManagedThreadId)
             {
@@ -320,16 +300,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 try
                 {
                     work.CallbackAdapter(work.Callback, work.State);
+
+                    // All Completion Tasks are waited on synchronously so it
+                    // is safe to complete them in the libuv loop.
                     if (work.Completion != null)
                     {
-                        _threadPool.Complete(work.Completion);
+                        work.Completion.TrySetResult(null);
                     }
                 }
                 catch (Exception ex)
                 {
                     if (work.Completion != null)
                     {
-                        _threadPool.Error(work.Completion, ex);
+                        work.Completion.TrySetException(ex);
                     }
                     else
                     {
@@ -341,6 +324,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             return wasWork;
         }
+
         private bool DoPostCloseHandle()
         {
             Queue<CloseHandle> queue;

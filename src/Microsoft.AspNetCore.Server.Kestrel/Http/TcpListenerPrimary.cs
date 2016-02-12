@@ -14,7 +14,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// </summary>
     public class TcpListenerPrimary : ListenerPrimary
     {
-        public TcpListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
+        public TcpListenerPrimary(ServiceContext serviceContext, ServerAddress address, KestrelThread thread, string pipeName)
+            : base(serviceContext, address, thread, pipeName)
         {
         }
 
@@ -46,7 +47,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 acceptSocket.NoDelay(NoDelay);
                 listenSocket.Accept(acceptSocket);
                 DispatchConnection(acceptSocket);
-
             }
             catch (UvException ex)
             {

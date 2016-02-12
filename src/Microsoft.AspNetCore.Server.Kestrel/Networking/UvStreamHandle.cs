@@ -66,9 +66,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
             }
         }
 
-        public void Accept(UvStreamHandle handle)
+        public void Accept(UvStreamHandle handle, bool crossThread = false)
         {
-            _uv.accept(this, handle);
+            _uv.accept(this, handle, crossThread);
         }
 
         public void ReadStart(

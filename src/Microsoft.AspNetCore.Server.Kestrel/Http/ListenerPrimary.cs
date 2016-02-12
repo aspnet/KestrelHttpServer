@@ -24,23 +24,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         // but it has no other functional significance
         private readonly ArraySegment<ArraySegment<byte>> _dummyMessage = new ArraySegment<ArraySegment<byte>>(new[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) });
 
-        protected ListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
+        protected ListenerPrimary(ServiceContext serviceContext, ServerAddress address, KestrelThread thread, string pipeName)
+            : base(serviceContext, address, thread)
         {
+            _pipeName = pipeName;
         }
 
         private UvPipeHandle ListenPipe { get; set; }
 
-        public async Task StartAsync(
-            string pipeName,
-            ServerAddress address,
-            KestrelThread thread)
+        public async Task StartPrimaryAsync()
         {
-            _pipeName = pipeName;
+            await StartAsync().ConfigureAwait(false);
 
-            await StartAsync(address, thread).ConfigureAwait(false);
-
-            await Thread.PostAsync(_this => _this.PostCallback(), 
-                                    this).ConfigureAwait(false);
+            await Thread.PostAsync(state => ((ListenerPrimary)state).PostCallback(), 
+                                   this).ConfigureAwait(false);
         }
 
         private void PostCallback()
