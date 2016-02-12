@@ -53,10 +53,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected List<KeyValuePair<Func<object, Task>, object>> _onCompleted;
 
-        private bool _requestProcessingStarted;
+        protected FrameState _frameState;
         private Task _requestProcessingTask;
-        protected volatile bool _requestProcessingStopping; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
-        protected int _requestAborted;
         protected CancellationTokenSource _abortedCts;
         protected CancellationToken? _manuallySetRequestAbortToken;
 
@@ -92,12 +90,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _localEndPoint = localEndPoint;
             _prepareRequest = prepareRequest;
             _pathBase = context.ServerAddress.PathBase;
-            if (ReuseStreams)
+            if (Settings.ReuseStreams)
             {
                 _requestBody = new FrameRequestStream();
                 _responseBody = new FrameResponseStream(this);
                 _duplexStream = new FrameDuplexStream(_requestBody, _responseBody);
             }
+
+            _frameState = new FrameState(this, context.Settings);
 
             FrameControl = this;
             Reset();
@@ -167,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 var cts = _abortedCts;
                 return
                     cts != null ? cts.Token :
-                    (Volatile.Read(ref _requestAborted) == 1) ? new CancellationToken(true) :
+                    _frameState.CurrentState == RequestState.Aborted ? new CancellationToken(true) :
                     RequestAbortedSource.Token;
             }
             set
@@ -185,20 +185,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 // Get the abort token, lazily-initializing it if necessary.
                 // Make sure it's canceled if an abort request already came in.
                 var cts = LazyInitializer.EnsureInitialized(ref _abortedCts, () => new CancellationTokenSource());
-                if (Volatile.Read(ref _requestAborted) == 1)
+                if (_frameState.CurrentState == RequestState.Aborted)
                 {
                     cts.Cancel();
                 }
                 return cts;
             }
         }
+
         public bool HasResponseStarted
         {
             get { return _responseStarted; }
         }
 
-        public void Reset()
+        public bool Reset()
         {
+            if (_frameState.TransitionToState(RequestState.Waiting) != RequestState.Waiting)
+            {
+                return false;
+            }
+
             _onStarting = null;
             _onCompleted = null;
 
@@ -237,6 +243,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             _manuallySetRequestAbortToken = null;
             _abortedCts = null;
+
+            return true;
         }
 
         public void ResetResponseHeaders()
@@ -255,9 +263,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         public void Start()
         {
-            if (!_requestProcessingStarted)
+            if (_frameState.TransitionToState(RequestState.Waiting) == RequestState.Waiting)
             {
-                _requestProcessingStarted = true;
                 _requestProcessingTask =
                     Task.Factory.StartNew(
                         (o) => ((Frame)o).RequestProcessingAsync(),
@@ -276,10 +283,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         public Task Stop()
         {
-            if (!_requestProcessingStopping)
-            {
-                _requestProcessingStopping = true;
-            }
+            _frameState.TransitionToState(RequestState.Stopped);
+
             return _requestProcessingTask ?? TaskUtilities.CompletedTask;
         }
 
@@ -288,10 +293,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         public void Abort()
         {
-            if (Interlocked.CompareExchange(ref _requestAborted, 1, 0) == 0)
+            if (_frameState.TransitionToState(RequestState.Aborted) != RequestState.Aborted)
             {
-                _requestProcessingStopping = true;
-
                 _requestBody?.Abort();
                 _responseBody?.Abort();
 
@@ -304,16 +307,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     Log.LogError(0, ex, "Abort");
                 }
-
-                try
+                finally
                 {
-                    RequestAbortedSource.Cancel();
+                    try
+                    {
+                        RequestAbortedSource.Cancel();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.LogError(0, ex, "Abort");
+                    }
+                    _abortedCts = null;
                 }
-                catch (Exception ex)
-                {
-                    Log.LogError(0, ex, "Abort");
-                }
-                _abortedCts = null;
             }
         }
 
@@ -552,7 +557,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 if (_responseStarted)
                 {
                     // We can no longer respond with a 500, so we simply close the connection.
-                    _requestProcessingStopping = true;
+                    _frameState.TransitionToState(RequestState.Stopped);
                     return TaskUtilities.CompletedTask;
                 }
                 else
@@ -567,6 +572,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (!_responseStarted)
             {
+                var frameState = _frameState.CurrentState;
+                if (frameState > RequestState.Stopping)
+                {
+                    if (frameState < RequestState.Stopped)
+                    {
+                        // State is status code
+                        StatusCode = frameState;
+                    }
+                    else
+                    {
+                        StatusCode = 500;
+                    }
+                    ReasonPhrase = null;
+                }
                 return ProduceEndAwaited();
             }
 
@@ -678,9 +697,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 string method;
                 var begin = scan;
-                if (!begin.GetKnownMethod(ref scan,out method))
+                if (begin.GetKnownMethod(ref scan, out method))
+                {
+                    if (_frameState.TransitionToState(RequestState.ReadingHeaders) != RequestState.ReadingHeaders)
+                    {
+                        return false;
+                    }
+                }
+                else
                 {
                     if (scan.Seek(ref _vectorSpaces) == -1)
+                    {
+                        return false;
+                    }
+                    if (_frameState.TransitionToState(RequestState.ReadingHeaders) != RequestState.ReadingHeaders)
                     {
                         return false;
                     }

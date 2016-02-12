@@ -25,13 +25,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             FrameFactory = context.FrameFactory;
             DateHeaderValueManager = context.DateHeaderValueManager;
             ConnectionFilter = context.ConnectionFilter;
-            NoDelay = context.NoDelay;
-            ReuseStreams = context.ReuseStreams;
+            Settings = context.Settings;
         }
 
         public IApplicationLifetime AppLifetime { get; set; }
 
         public IKestrelTrace Log { get; set; }
+
+        public IKestrelServerInformation Settings { get; set; }
 
         public IThreadPool ThreadPool { get; set; }
 
@@ -40,9 +41,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public IConnectionFilter ConnectionFilter { get; set; }
-
-        public bool NoDelay { get; set; }
-
-        public bool ReuseStreams { get; set; }
     }
 }

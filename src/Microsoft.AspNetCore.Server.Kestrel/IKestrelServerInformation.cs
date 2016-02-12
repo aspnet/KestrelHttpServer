@@ -1,12 +1,19 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public interface IKestrelServerInformation
     {
+        TimeSpan ExecutionTimeout { get; set; }
+
+        TimeSpan HeadersCompleteTimeout { get; set; }
+
+        TimeSpan KeepAliveTimeout { get; set; }
+
         int ThreadCount { get; set; }
 
         bool NoDelay { get; set; }
