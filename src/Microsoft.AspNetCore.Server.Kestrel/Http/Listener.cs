@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             var writeReqPool = socket.WriteReqPool;
                             while (writeReqPool.Count > 0)
                             {
-                                writeReqPool.Dequeue().Dispose();
+                                writeReqPool.Dequeue().Reference.Dispose();
                             }
 
                             tcs2.SetResult(0);

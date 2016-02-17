@@ -50,8 +50,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private Exception _lastWriteError;
         private WriteContext _nextWriteContext;
         private readonly Queue<WaitingTask> _tasksPending;
-        private readonly Queue<WriteContext> _writeContextPool;
-        private readonly Queue<UvWriteReq> _writeReqPool;
+        private readonly Queue<NonCovariant<WriteContext>> _writeContextPool;
+        private readonly Queue<NonCovariant<UvWriteReq>> _writeReqPool;
 
         public SocketOutput(
             KestrelThread thread,
@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             long connectionId,
             IKestrelTrace log,
             IThreadPool threadPool,
-            Queue<UvWriteReq> writeReqPool)
+            Queue<NonCovariant<UvWriteReq>> writeReqPool)
         {
             _thread = thread;
             _socket = socket;
@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _log = log;
             _threadPool = threadPool;
             _tasksPending = new Queue<WaitingTask>(_initialTaskQueues);
-            _writeContextPool = new Queue<WriteContext>(_maxPooledWriteContexts);
+            _writeContextPool = new Queue<NonCovariant<WriteContext>>(_maxPooledWriteContexts);
             _writeReqPool = writeReqPool;
 
             _head = memory.Lease();
