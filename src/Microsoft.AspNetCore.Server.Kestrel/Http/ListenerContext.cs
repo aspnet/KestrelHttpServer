@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             : base(serviceContext)
         {
             Memory2 = new MemoryPool2();
-            WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
+            WriteReqPool = new Queue<NonCovariant<UvWriteReq>>(SocketOutput.MaxPooledWriteReqs);
         }
 
         public ListenerContext(ListenerContext listenerContext)
@@ -37,6 +37,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPool2 Memory2 { get; set; }
 
-        public Queue<UvWriteReq> WriteReqPool { get; set; }
+        public Queue<NonCovariant<UvWriteReq>> WriteReqPool { get; set; }
     }
 }

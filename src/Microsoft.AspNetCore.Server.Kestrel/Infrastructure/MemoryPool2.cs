@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         /// Thread-safe collection of blocks which are currently in the pool. A slab will pre-allocate all of the block tracking objects
         /// and add them to this collection. When memory is requested it is taken from here first, and when it is returned it is re-added.
         /// </summary>
-        private readonly ConcurrentQueue<MemoryPoolBlock2> _blocks = new ConcurrentQueue<MemoryPoolBlock2>();
+        private readonly ConcurrentQueue<NonCovariant<MemoryPoolBlock2>> _blocks = new ConcurrentQueue<NonCovariant<MemoryPoolBlock2>>();
 
         /// <summary>
         /// Thread-safe collection of slabs which have been allocated by this pool. As long as a slab is in this collection and slab.IsActive, 
@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     slab: null);
             }
 
-            MemoryPoolBlock2 block;
+            NonCovariant<MemoryPoolBlock2> block;
             if (_blocks.TryDequeue(out block))
             {
                 // block successfully taken from the stack - return it
