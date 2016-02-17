@@ -73,6 +73,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Stop(TimeSpan timeout)
         {
+            if (_thread != null)
+            {
+                // Mark the thread as being as unimportant to keeping the app alive
+                // If it doesn't respond to the shutdown requests, the app will still stop.
+                _thread.IsBackground = true;
+            }
+
             if (!_initCompleted)
             {
                 return;
@@ -89,24 +96,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     if (!_thread.Join(stepTimeout))
                     {
                         Post(t => t.OnStopImmediate());
-                        if (!_thread.Join(stepTimeout))
-                        {
-#if NET451
-                            _thread.Abort();
-#endif
-                        }
+
+                        // One last chance
+                        _thread.Join(stepTimeout);
                     }
                 }
                 catch (ObjectDisposedException)
                 {
                     // REVIEW: Should we log something here?
                     // Until we rework this logic, ODEs are bound to happen sometimes.
-                    if (!_thread.Join(stepTimeout))
-                    {
-#if NET451
-                        _thread.Abort();
-#endif
-                    }
+
+                    // One last chance
+                    _thread.Join(stepTimeout);
                 }
             }
 
