@@ -21,8 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class RequestTests
     {
-        [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        [Fact]
         public async Task LargeUpload()
         {
             var port = PortManager.GetPort();
@@ -78,25 +77,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [ConditionalTheory]
+        [Theory]
         [InlineData("127.0.0.1", "127.0.0.1")]
         [InlineData("localhost", "127.0.0.1")]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
         public Task RemoteIPv4Address(string requestAddress, string expectAddress)
         {
             return TestRemoteIPAddress("localhost", requestAddress, expectAddress);
         }
 
         [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
         [IPv6SupportedCondition]
         public Task RemoteIPv6Address()
         {
             return TestRemoteIPAddress("[::1]", "[::1]", "::1");
         }
 
-        [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        [Fact]
         public async Task DoesNotHangOnConnectionCloseRequest()
         {
             var port = PortManager.GetPort();
@@ -130,8 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        [Fact]
         public void RequestPathIsNormalized()
         {
             var port = PortManager.GetPort();
