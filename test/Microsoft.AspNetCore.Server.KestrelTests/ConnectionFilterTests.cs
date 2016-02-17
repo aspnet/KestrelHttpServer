@@ -5,9 +5,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
-using Microsoft.AspNetCore.Testing.xunit;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -31,8 +29,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        [Fact]
         public async Task CanReadAndWriteWithRewritingConnectionFilter()
         {
             var filter = new RewritingConnectionFilter();
@@ -58,8 +55,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(sendString.Length, filter.BytesRead);
         }
 
-        [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        [Fact]
         public async Task CanReadAndWriteWithAsyncConnectionFilter()
         {
             var serviceContext = new TestServiceContext()
@@ -83,8 +79,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        [ConditionalFact]
-        [FrameworkSkipCondition(RuntimeFrameworks.Mono, SkipReason = "Test hangs after execution on Mono.")]
+        [Fact]
         public async Task ThrowingSynchronousConnectionFilterDoesNotCrashServer()
         {
             var serviceContext = new TestServiceContext()
