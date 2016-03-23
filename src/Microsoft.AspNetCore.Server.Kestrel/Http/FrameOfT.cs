@@ -54,6 +54,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     InitializeHeaders();
 
+                    if (_corruptedRequest)
+                    {
+                        await ProduceEnd();
+                        return;
+                    }
+
                     while (!_requestProcessingStopping && !TakeMessageHeaders(SocketInput, FrameRequestHeaders))
                     {
                         if (SocketInput.RemoteIntakeFin)

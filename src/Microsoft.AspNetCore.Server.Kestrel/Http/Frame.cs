@@ -804,8 +804,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 QueryString = queryString;
                 HttpVersion = httpVersion;
 
-                bool caseMatches;
+                if (requestUrlPath.Length > 0 && requestUrlPath[0] != '/')
+                {
+                    Uri uri;
+                    if (Uri.TryCreate(requestUrlPath, UriKind.Absolute, out uri))
+                    {
+                        requestUrlPath = uri.PathAndQuery;
+                    }
+                    else
+                    {
+                        ReportCorruptedHttpRequest(new BadHttpRequestException($"Invalid request path: {requestUrlPath}"));
+                        return true;
+                    }
+                }
 
+                bool caseMatches;
                 if (!string.IsNullOrEmpty(_pathBase) &&
                     (requestUrlPath.Length == _pathBase.Length || (requestUrlPath.Length > _pathBase.Length && requestUrlPath[_pathBase.Length] == '/')) &&
                     RequestUrlStartsWithPathBase(requestUrlPath, out caseMatches))
