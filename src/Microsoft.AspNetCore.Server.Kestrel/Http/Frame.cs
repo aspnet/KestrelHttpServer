@@ -806,15 +806,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 if (requestUrlPath.Length > 0 && requestUrlPath[0] != '/')
                 {
-                    Uri uri;
-                    if (Uri.TryCreate(requestUrlPath, UriKind.Absolute, out uri))
+                    int hostIndex;
+                    if (requestUrlPath.StartsWith("http://"))
                     {
-                        requestUrlPath = uri.PathAndQuery;
+                        hostIndex = 7;
+                    }
+                    else if (requestUrlPath.StartsWith("https://"))
+                    {
+                        hostIndex = 8;
                     }
                     else
                     {
                         ReportCorruptedHttpRequest(new BadHttpRequestException($"Invalid request path: {requestUrlPath}"));
                         return true;
+                    }
+
+                    int pathIndex = requestUrlPath.IndexOf('/', hostIndex);
+                    if (pathIndex == -1)
+                    {
+                        int queryIndex = requestUrlPath.IndexOf('?', hostIndex);
+                        if (queryIndex == -1)
+                        {
+                            requestUrlPath = "/";
+                        }
+                        else
+                        {
+                            requestUrlPath = "/" + requestUrlPath.Substring(queryIndex);
+                        }
+                    }
+                    else
+                    {
+                        requestUrlPath = requestUrlPath.Substring(pathIndex);
                     }
                 }
 

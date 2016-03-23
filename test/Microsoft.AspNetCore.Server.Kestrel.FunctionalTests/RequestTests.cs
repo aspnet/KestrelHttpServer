@@ -206,8 +206,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [Fact]
-        public void RequestWithFullUriHasSchemeHostAndPortIgnored()
+        [Theory]
+        [InlineData("http://doesnotmatter:8080", "/", "")]
+        [InlineData("http://doesnotmatter:8080/", "/", "")]
+        [InlineData("http://doesnotmatter:8080/test", "/test", "")]
+        [InlineData("http://doesnotmatter:8080/test?arg=value", "/test", "?arg=value")]
+        [InlineData("http://doesnotmatter:8080?arg=value", "/", "?arg=value")]
+        [InlineData("https://doesnotmatter:8080", "/", "")]
+        [InlineData("https://doesnotmatter:8080/", "/", "")]
+        [InlineData("https://doesnotmatter:8080/test", "/test", "")]
+        [InlineData("https://doesnotmatter:8080/test?arg=value", "/test", "?arg=value")]
+        [InlineData("https://doesnotmatter:8080?arg=value", "/", "?arg=value")]
+        public void RequestWithFullUriHasSchemeHostAndPortIgnored(string requestUri, string expectedPath, string expectedQuery)
         {
             var port = PortManager.GetPort();
             var builder = new WebHostBuilder()
@@ -217,8 +227,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     app.Run(async context =>
                     {
-                        Assert.Equal("/test", context.Request.Path.Value);
-                        Assert.Equal("?arg=value", context.Request.QueryString.Value);
+                        Assert.Equal(expectedPath, context.Request.Path.Value);
+                        Assert.Equal(expectedQuery, context.Request.QueryString.Value);
                         await context.Response.WriteAsync("hello, world");
                     });
                 });
@@ -229,7 +239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 using (var socket = TestConnection.CreateConnectedLoopbackSocket(port))
                 {
-                    socket.Send(Encoding.ASCII.GetBytes($"GET http://doesnotmatter:8080/test?arg=value HTTP/1.1\r\n\r\n"));
+                    socket.Send(Encoding.ASCII.GetBytes($"GET {requestUri} HTTP/1.1\r\n\r\n"));
                     socket.Shutdown(SocketShutdown.Send);
 
                     var response = new StringBuilder();
