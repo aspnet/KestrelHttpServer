@@ -145,7 +145,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     app.Run(async context =>
                     {
-                        var connection = context.Connection;
                         await context.Response.WriteAsync("hello, world");
                     });
                 });
@@ -174,7 +173,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     app.Run(async context =>
                     {
-                        var connection = context.Connection;
                         Assert.Equal("/\u00C5", context.Request.PathBase.Value);
                         Assert.Equal("/B/\u00C5", context.Request.Path.Value);
                         await context.Response.WriteAsync("hello, world");
@@ -204,6 +202,102 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
 
                     Assert.StartsWith("HTTP/1.1 200 OK", response.ToString());
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData("http://doesnotmatter:8080", "/", "")]
+        [InlineData("http://doesnotmatter:8080/", "/", "")]
+        [InlineData("http://doesnotmatter:8080/test", "/test", "")]
+        [InlineData("http://doesnotmatter:8080/test?arg=value", "/test", "?arg=value")]
+        [InlineData("http://doesnotmatter:8080?arg=value", "/", "?arg=value")]
+        [InlineData("https://doesnotmatter:8080", "/", "")]
+        [InlineData("https://doesnotmatter:8080/", "/", "")]
+        [InlineData("https://doesnotmatter:8080/test", "/test", "")]
+        [InlineData("https://doesnotmatter:8080/test?arg=value", "/test", "?arg=value")]
+        [InlineData("https://doesnotmatter:8080?arg=value", "/", "?arg=value")]
+        public void RequestWithFullUriHasSchemeHostAndPortIgnored(string requestUri, string expectedPath, string expectedQuery)
+        {
+            var port = PortManager.GetPort();
+            var builder = new WebHostBuilder()
+                .UseServer("Microsoft.AspNetCore.Server.Kestrel")
+                .UseUrls($"http://localhost:{port}")
+                .Configure(app =>
+                {
+                    app.Run(async context =>
+                    {
+                        Assert.Equal(expectedPath, context.Request.Path.Value);
+                        Assert.Equal(expectedQuery, context.Request.QueryString.Value);
+                        await context.Response.WriteAsync("hello, world");
+                    });
+                });
+
+            using (var host = builder.Build())
+            {
+                host.Start();
+
+                using (var socket = TestConnection.CreateConnectedLoopbackSocket(port))
+                {
+                    socket.Send(Encoding.ASCII.GetBytes($"GET {requestUri} HTTP/1.1\r\n\r\n"));
+                    socket.Shutdown(SocketShutdown.Send);
+
+                    var response = new StringBuilder();
+                    var buffer = new byte[4096];
+                    while (true)
+                    {
+                        var length = socket.Receive(buffer);
+                        if (length == 0)
+                        {
+                            break;
+                        }
+
+                        response.Append(Encoding.ASCII.GetString(buffer, 0, length));
+                    }
+
+                    Assert.StartsWith("HTTP/1.1 200 OK", response.ToString());
+                }
+            }
+        }
+
+        [Fact]
+        public void RequestWithInvalidPathReturns400()
+        {
+            var port = PortManager.GetPort();
+            var builder = new WebHostBuilder()
+                .UseServer("Microsoft.AspNetCore.Server.Kestrel")
+                .UseUrls($"http://localhost:{port}")
+                .Configure(app =>
+                {
+                    app.Run(async context =>
+                    {
+                        await context.Response.WriteAsync("hello, world");
+                    });
+                });
+
+            using (var host = builder.Build())
+            {
+                host.Start();
+
+                using (var socket = TestConnection.CreateConnectedLoopbackSocket(port))
+                {
+                    socket.Send(Encoding.ASCII.GetBytes($"GET invalid HTTP/1.1\r\n\r\n"));
+                    socket.Shutdown(SocketShutdown.Send);
+
+                    var response = new StringBuilder();
+                    var buffer = new byte[4096];
+                    while (true)
+                    {
+                        var length = socket.Receive(buffer);
+                        if (length == 0)
+                        {
+                            break;
+                        }
+
+                        response.Append(Encoding.ASCII.GetString(buffer, 0, length));
+                    }
+
+                    Assert.StartsWith("HTTP/1.1 400 Bad Request", response.ToString());
                 }
             }
         }
