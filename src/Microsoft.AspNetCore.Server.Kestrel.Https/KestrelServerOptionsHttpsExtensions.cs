@@ -12,17 +12,74 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public static class KestrelServerOptionsHttpsExtensions
     {
+        /// <summary>
+        /// Configure Kestrel to use HTTPS.
+        /// </summary>
+        /// <param name="options">
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions to configure.
+        /// </param>
+        /// <param name="fileName">
+        /// The name of a certificate file, relative to the directory that contains the application content files.
+        /// </param>
+        /// <returns>
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
+        /// </returns>
+        public static KestrelServerOptions UseHttps(this KestrelServerOptions options, string fileName)
+        {
+            var env = options.ApplicationServices.GetRequiredService<IHostingEnvironment>();
+            return options.UseHttps(new X509Certificate2(Path.Combine(env.ContentRootPath, fileName)));
+        }
+
+        /// <summary>
+        /// Configure Kestrel to use HTTPS.
+        /// </summary>
+        /// <param name="options">
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions to configure.
+        /// </param>
+        /// <param name="fileName">
+        /// The name of a certificate file, relative to the directory that contains the application content files.
+        /// </param>
+        /// <param name="password">
+        /// The password required to access the X.509 certificate data.
+        /// </param>
+        /// <returns>
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
+        /// </returns>
         public static KestrelServerOptions UseHttps(this KestrelServerOptions options, string fileName, string password)
         {
             var env = options.ApplicationServices.GetRequiredService<IHostingEnvironment>();
             return options.UseHttps(new X509Certificate2(Path.Combine(env.ContentRootPath, fileName), password));
         }
 
+        /// <summary>
+        /// Configure Kestrel to use HTTPS.
+        /// </summary>
+        /// <param name="options">
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions to configure.
+        /// </param>
+        /// <param name="serverCertificate">
+        /// The X.509 certificate.
+        /// </param>
+        /// <returns>
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
+        /// </returns>
         public static KestrelServerOptions UseHttps(this KestrelServerOptions options, X509Certificate2 serverCertificate)
         {
             return options.UseHttps(new HttpsConnectionFilterOptions { ServerCertificate = serverCertificate });
         }
 
+        /// <summary>
+        /// Configure Kestrel to use HTTPS.
+        /// </summary>
+        /// <param name="options">
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions to configure.
+        /// </param>
+        /// <param name="httpsOptions">
+        /// Options to configure HTTPS.
+        /// </param>
+        /// <returns>
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
+        /// </returns>
         public static KestrelServerOptions UseHttps(this KestrelServerOptions options, HttpsConnectionFilterOptions httpsOptions)
         {
             var prevFilter = options.ConnectionFilter ?? new NoOpConnectionFilter();
