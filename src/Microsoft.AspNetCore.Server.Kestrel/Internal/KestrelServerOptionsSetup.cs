@@ -4,10 +4,9 @@
 using System;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.AspNetCore.Server.Kestrel
+namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    // TODO: Move to internal namespace (like Microsoft.AspNetCore.Mvc.Internal) or make public?
-    internal class KestrelServerOptionsSetup : IConfigureOptions<KestrelServerOptions>
+    public class KestrelServerOptionsSetup : IConfigureOptions<KestrelServerOptions>
     {
         private IServiceProvider _services;
 

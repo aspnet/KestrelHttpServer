@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel;
+using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 

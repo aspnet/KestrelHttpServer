@@ -4,10 +4,9 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Server.Features;
 
-namespace Microsoft.AspNetCore.Server.Kestrel
+namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    // TODO: Move to internal namespace (like Microsoft.AspNetCore.Mvc.Internal) or make public?
-    internal class ServerAddressesFeature : IServerAddressesFeature
+    public class ServerAddressesFeature : IServerAddressesFeature
     {
         public ICollection<string> Addresses { get; } = new List<string>();
     }

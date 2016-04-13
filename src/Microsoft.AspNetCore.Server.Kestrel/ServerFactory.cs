@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
