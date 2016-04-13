@@ -13,7 +13,9 @@ namespace Microsoft.AspNetCore.Hosting
         /// <summary>
         /// Emits verbose logs for bytes read from and written to the connection.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
+        /// </returns>
         public static KestrelServerOptions UseConnectionLogging(this KestrelServerOptions options)
         {
             return options.UseConnectionLogging(nameof(LoggingConnectionFilter));
@@ -22,7 +24,9 @@ namespace Microsoft.AspNetCore.Hosting
         /// <summary>
         /// Emits verbose logs for bytes read from and written to the connection.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>
+        /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
+        /// </returns>
         public static KestrelServerOptions UseConnectionLogging(this KestrelServerOptions options, string loggerName)
         {
             var prevFilter = options.ConnectionFilter ?? new NoOpConnectionFilter();
