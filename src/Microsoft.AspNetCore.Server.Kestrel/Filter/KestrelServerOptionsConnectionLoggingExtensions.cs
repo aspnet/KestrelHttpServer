@@ -1,12 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Filter
+namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public static class LoggingFilterKestrelOptionsExtensions
+    public static class KestrelServerOptionsConnectionLoggingExtensions
     {
         /// <summary>
         /// Emits verbose logs for bytes read from and written to the connection.
