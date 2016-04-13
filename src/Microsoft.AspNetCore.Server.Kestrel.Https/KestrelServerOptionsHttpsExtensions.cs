@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public static class KestrelServerOptionsExtensions
+    public static class KestrelServerOptionsHttpsExtensions
     {
         public static KestrelServerOptions UseHttps(this KestrelServerOptions options, string fileName, string password)
         {
