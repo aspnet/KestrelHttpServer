@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     {
         public string Host { get; private set; }
         public string PathBase { get; private set; }
-        public int Port { get; private set; }
+        public int Port { get; set; }
         public string Scheme { get; private set; }
 
         public bool IsUnixPipe
