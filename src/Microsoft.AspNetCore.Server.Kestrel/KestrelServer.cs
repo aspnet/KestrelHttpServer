@@ -43,8 +43,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _applicationLifetime = applicationLifetime;
             _logger = loggerFactory.CreateLogger(typeof(KestrelServer).GetTypeInfo().Assembly.FullName);
             Features = new FeatureCollection();
-            var componentFactory = new HttpComponentFactory(Options);
-            Features.Set<IHttpComponentFactory>(componentFactory);
             _serverAddresses = new ServerAddressesFeature();
             Features.Set<IServerAddressesFeature>(_serverAddresses);
         }
@@ -64,7 +62,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             try
             {
-                var componentFactory = Features.Get<IHttpComponentFactory>();
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
                 var engine = new KestrelEngine(new ServiceContext
@@ -77,8 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Log = trace,
                     ThreadPool = new LoggingThreadPool(trace),
                     DateHeaderValueManager = dateHeaderValueManager,
-                    ServerOptions = Options,
-                    HttpComponentFactory = componentFactory
+                    ServerOptions = Options
                 });
 
                 _disposables.Push(engine);

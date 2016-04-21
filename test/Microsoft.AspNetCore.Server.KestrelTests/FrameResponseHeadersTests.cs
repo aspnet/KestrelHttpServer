@@ -22,8 +22,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = serverOptions,
-                HttpComponentFactory = new HttpComponentFactory(serverOptions)
+                ServerOptions = serverOptions
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -55,8 +54,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = serverOptions,
-                HttpComponentFactory = new HttpComponentFactory(serverOptions)
+                ServerOptions = serverOptions
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
