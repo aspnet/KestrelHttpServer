@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         public TestServer(RequestDelegate app, ServiceContext context)
-            : this(app, context, $"http://localhost:{GetNextPort()}/")
+            : this(app, context, "http://localhost:0/")
         {
         }
 
@@ -57,11 +57,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             _server.Dispose();
             _engine.Dispose();
-        }
-
-        public static int GetNextPort()
-        {
-            return PortManager.GetNextPort();
         }
     }
 }
