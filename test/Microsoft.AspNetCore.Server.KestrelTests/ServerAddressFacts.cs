@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
+        [InlineData("5000", "http", "+", 5000, "/")]
         [InlineData("://emptyscheme", "", "emptyscheme", 0, "")]
         [InlineData("http://localhost", "http", "localhost", 80, "")]
         [InlineData("http://www.example.com", "http", "www.example.com", 80, "")]
