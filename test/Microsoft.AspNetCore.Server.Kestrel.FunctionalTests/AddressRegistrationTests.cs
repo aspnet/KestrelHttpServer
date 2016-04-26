@@ -7,13 +7,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Server.Kestrel.TestCommon;
 using Microsoft.AspNetCore.Testing.xunit;
 using Microsoft.Extensions.Configuration;
 using Xunit;
@@ -113,8 +113,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add("https://localhost", _ => new[] { "https://localhost/" });
 
                 // Static port
-                var port1 = PortManager.GetNextPort();
-                var port2 = PortManager.GetNextPort();
+                var port1 = GetNextPort();
+                var port2 = GetNextPort();
                 dataset.Add($"{port1}", _ => new[] { $"http://localhost:{port1}/" });
                 dataset.Add($"{port1};{port2}", _ => new[] { $"http://localhost:{port1}/", $"http://localhost:{port2}/" });
 
@@ -139,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 var dataset = new TheoryData<string, Func<IServerAddressesFeature, string[]>>();
 
-                var port = PortManager.GetNextPort();
+                var port = GetNextPort();
                 dataset.Add($"http://*:{port}/", _ => new[] { $"http://localhost:{port}/", $"http://127.0.0.1:{port}/", $"http://[::1]:{port}/" });
                 dataset.Add($"http://localhost:{port}/", _ => new[] { $"http://localhost:{port}/", $"http://127.0.0.1:{port}/",
                     /* // https://github.com/aspnet/KestrelHttpServer/issues/231
@@ -166,6 +166,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 return context.Response.WriteAsync(context.Request.GetDisplayUrl());
             });
+        }
+
+        private static int _nextPort = 8001;
+        private static object _portLock = new object();
+        private static int GetNextPort()
+        {
+            lock (_portLock)
+            {
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    while (true)
+                    {
+                        try
+                        {
+                            var port = _nextPort++;
+                            socket.Bind(new IPEndPoint(IPAddress.Loopback, port));
+                            return port;
+                        }
+                        catch (SocketException)
+                        {
+                            // Retry unless exhausted
+                            if (_nextPort == 65536)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
