@@ -60,8 +60,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     foreach (var testUrl in testUrls(host.ServerFeatures.Get<IServerAddressesFeature>()))
                     {
-                        var responseText = await client.GetStringAsync(testUrl);
-                        Assert.Equal(testUrl, responseText);
+                        var response = await client.GetAsync(testUrl);
+                        
+                        // Compare the response with the RequestMessage.RequestUri, rather than testUrl directly.
+                        // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
+                        Assert.Equal(
+                            response.RequestMessage.RequestUri.ToString(),
+                            await response.Content.ReadAsStringAsync());
                     }
                 }
             }
