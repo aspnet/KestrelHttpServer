@@ -95,8 +95,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add($"http://localhost:{port1}/base/path", _ => new[] { $"http://localhost:{port1}/base/path" });
 
                 // Dynamic port
-                dataset.Add("0", GetTestUrlsIPv4);
-                dataset.Add("http://localhost:0/", GetTestUrlsIPv4);
+                dataset.Add("0", GetTestUrls);
+                dataset.Add("http://localhost:0/", GetTestUrls);
+                dataset.Add($"http://{Dns.GetHostName()}:0/", GetTestUrls);
+
+                var ipv4Addresses = Dns.GetHostAddressesAsync(Dns.GetHostName()).Result
+                    .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork);
+                foreach (var ip in ipv4Addresses)
+                {
+                    dataset.Add($"http://{ip}:0/", GetTestUrls);
+                }
 
                 return dataset;
             }
@@ -108,6 +116,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 var dataset = new TheoryData<string, Func<IServerAddressesFeature, string[]>>();
 
+                // Static port
                 var port = GetNextPort();
                 dataset.Add($"http://*:{port}/", _ => new[] { $"http://localhost:{port}/", $"http://127.0.0.1:{port}/", $"http://[::1]:{port}/" });
                 dataset.Add($"http://localhost:{port}/", _ => new[] { $"http://localhost:{port}/", $"http://127.0.0.1:{port}/",
@@ -117,11 +126,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add($"http://[::1]:{port}/", _ => new[] { $"http://[::1]:{port}/", });
                 dataset.Add($"http://127.0.0.1:{port}/;http://[::1]:{port}/", _ => new[] { $"http://127.0.0.1:{port}/", $"http://[::1]:{port}/" });
 
+                // Dynamic port
+                var ipv6Addresses = Dns.GetHostAddressesAsync(Dns.GetHostName()).Result
+                    .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6);
+                foreach (var ip in ipv6Addresses)
+                {
+                    dataset.Add($"http://[{ip}]:0/", GetTestUrls);
+                }
+
                 return dataset;
             }
         }
 
-        private static string[] GetTestUrlsIPv4(IServerAddressesFeature addressesFeature)
+        private static string[] GetTestUrls(IServerAddressesFeature addressesFeature)
         {
             return addressesFeature.Addresses
                 .Select(a => a.StartsWith("http://+") ? a.Replace("http://+", "http://localhost") : a)
