@@ -28,6 +28,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             await RegisterAddresses_Success(addressInput, testUrls);
         }
 
+        [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv4Port80))]
+        [Port80SupportedCondition]
+        public async Task RegisterAddresses_IPv4Port80_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
+        {
+            await RegisterAddresses_Success(addressInput, testUrls);
+        }
+
         [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv6))]
         [IPv6SupportedCondition]
         public async Task RegisterAddresses_IPv6_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
@@ -82,10 +89,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add(null, _ => new[] { "http://localhost:5000/" });
                 dataset.Add(string.Empty, _ => new[] { "http://localhost:5000/" });
 
-                // Default port
-                dataset.Add("http://*", _ => new[] { "http://localhost/" });
-                dataset.Add("http://localhost", _ => new[] { "http://localhost/" });
-
                 // Static port
                 var port1 = GetNextPort();
                 var port2 = GetNextPort();
@@ -110,6 +113,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     dataset.Add($"http://{ip}:0/", GetTestUrls);
                 }
+
+                return dataset;
+            }
+        }
+
+        public static TheoryData<string, Func<IServerAddressesFeature, string[]>> AddressRegistrationDataIPv4Port80
+        {
+            get
+            {
+                var dataset = new TheoryData<string, Func<IServerAddressesFeature, string[]>>();
+
+                // Default port for HTTP (80)
+                dataset.Add("http://*", _ => new[] { "http://localhost/" });
+                dataset.Add("http://localhost", _ => new[] { "http://localhost/" });
 
                 return dataset;
             }
@@ -184,6 +201,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             }
                         }
                     }
+                }
+            }
+        }
+
+        [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+        private class Port80SupportedConditionAttribute : Attribute, ITestCondition
+        {
+            private static readonly Lazy<bool> _port80Supported = new Lazy<bool>(CanBindToPort80);
+
+            public bool IsMet
+            {
+                get
+                {
+                    return _port80Supported.Value;
+                }
+            }
+
+            public string SkipReason
+            {
+                get
+                {
+                    return "Cannot bind to port 80 on the host.";
+                }
+            }
+
+            private static bool CanBindToPort80()
+            {
+                try
+                {
+                    using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                    {
+                        socket.Bind(new IPEndPoint(IPAddress.Loopback, 80));
+                        return true;
+                    }
+                }
+                catch (SocketException)
+                {
+                    return false;
                 }
             }
         }
