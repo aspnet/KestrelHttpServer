@@ -7,7 +7,27 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class UvConnectionContext : UvListenerContext
+    public interface IConnectionContext : IServiceContext
+    {
+        
+        SocketInput SocketInput { get; }
+
+        ISocketOutput SocketOutput { get; }
+
+        IConnectionControl ConnectionControl { get;}
+
+        IPEndPoint RemoteEndPoint { get; }
+
+        IPEndPoint LocalEndPoint { get; }
+
+        string ConnectionId { get;  }
+
+        Action<IFeatureCollection> PrepareRequest { get; }
+        
+        ServerAddress ServerAddress { get; }
+    }
+    
+    public class UvConnectionContext : UvListenerContext, IConnectionContext
     {
         public UvConnectionContext()
         {

@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    class FrameResponseStream : Stream
+    public class FrameResponseStream : Stream
     {
-        private FrameContext _context;
+        private IFrameContext _context;
         private FrameStreamState _state;
 
         public FrameResponseStream()
@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public void Initialize(FrameContext context)
+        public void Initialize(IFrameContext context)
         {
             _context = context;
         }

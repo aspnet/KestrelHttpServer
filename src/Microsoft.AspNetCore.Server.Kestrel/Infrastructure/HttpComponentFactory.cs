@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
-    class HttpComponentFactory : IHttpComponentFactory
+    public class HttpComponentFactory : IHttpComponentFactory
     {
         
         private ConcurrentQueue<Streams> _streamPool = new ConcurrentQueue<Streams>();
@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             ServerOptions = serverOptions;
         }
 
-        public Streams CreateStreams(FrameContext owner)
+        public Streams CreateStreams(IFrameContext owner)
         {
             Streams streams;
 
@@ -69,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         }
     }
 
-    internal class Headers
+    public class Headers
     {
         public static readonly byte[] BytesServer = Encoding.ASCII.GetBytes("\r\nServer: Kestrel");
 
@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         }
     }
 
-    internal class Streams
+    public class Streams
     {
         public readonly FrameRequestStream RequestBody;
         public readonly FrameResponseStream ResponseBody;
@@ -104,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             DuplexStream = new FrameDuplexStream(RequestBody, ResponseBody);
         }
 
-        public void Initialize(FrameContext renter)
+        public void Initialize(IFrameContext renter)
         {
             ResponseBody.Initialize(renter);
         }

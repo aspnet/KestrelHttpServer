@@ -3,7 +3,12 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class FrameContext : UvConnectionContext
+    public interface IFrameContext : IConnectionContext
+    {
+        IFrameControl FrameControl { get; }
+    }
+    
+    public class FrameContext : UvConnectionContext, IFrameContext
     {
         public FrameContext()
         {

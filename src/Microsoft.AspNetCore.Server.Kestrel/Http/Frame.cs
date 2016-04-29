@@ -5,10 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
@@ -20,7 +22,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public abstract partial class Frame : FrameContext, IFrameControl
+    public abstract partial class Frame : IFrameContext, IFrameControl
     {
         private static readonly Encoding _ascii = Encoding.ASCII;
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
@@ -69,14 +71,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private readonly string _pathBase;
 
-        public Frame(UvConnectionContext context)
-            : base(context)
+        private readonly IConnectionContext _context;
+
+        public Frame(IConnectionContext context)
         {
+
+            _context = context;
+
             _pathBase = context.ServerAddress.PathBase;
 
-            FrameControl = this;
             Reset();
         }
+
+        public IFrameControl FrameControl => this;
+
+        public SocketInput SocketInput => _context.SocketInput;
+
+        public ISocketOutput SocketOutput => _context.SocketOutput;
+
+        public IConnectionControl ConnectionControl => _context.ConnectionControl;
+
+        public IPEndPoint RemoteEndPoint => _context.RemoteEndPoint;
+
+        public IPEndPoint LocalEndPoint => _context.LocalEndPoint;
+
+        public string ConnectionId => _context.ConnectionId;
+
+        public Action<IFeatureCollection> PrepareRequest => _context.PrepareRequest;
+
+        public ServerAddress ServerAddress => _context.ServerAddress;
+
+        public IApplicationLifetime AppLifetime => _context.AppLifetime;
+
+        public IKestrelTrace Log => _context.Log;
+
+        public IThreadPool ThreadPool => _context.ThreadPool;
+
+        public Func<IConnectionContext, Frame> FrameFactory => _context.FrameFactory;
+
+        public DateHeaderValueManager DateHeaderValueManager => _context.DateHeaderValueManager;
+
+        public KestrelServerOptions ServerOptions => _context.ServerOptions;
+
+        public IHttpComponentFactory HttpComponentFactory => _context.HttpComponentFactory;
 
         public string Scheme { get; set; }
         public string Method { get; set; }

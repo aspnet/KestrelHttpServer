@@ -2,16 +2,30 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Net;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class ServiceContext
+    public interface IServiceContext
+    {
+        IApplicationLifetime AppLifetime { get; }
+
+        IKestrelTrace Log { get; }
+
+        IThreadPool ThreadPool { get; }
+
+        Func<IConnectionContext, Frame> FrameFactory { get; }
+
+        DateHeaderValueManager DateHeaderValueManager { get; }
+
+        KestrelServerOptions ServerOptions { get; }
+
+        IHttpComponentFactory HttpComponentFactory { get; }
+    }
+    
+    public class ServiceContext : IServiceContext
     {
         public ServiceContext()
         {
@@ -34,12 +48,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IThreadPool ThreadPool { get; set; }
 
-        public Func<UvConnectionContext, Frame> FrameFactory { get; set; }
+        public Func<IConnectionContext, Frame> FrameFactory { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public KestrelServerOptions ServerOptions { get; set; }
 
-        internal IHttpComponentFactory HttpComponentFactory { get; set; }
+        public IHttpComponentFactory HttpComponentFactory { get; set; }
     }
 }

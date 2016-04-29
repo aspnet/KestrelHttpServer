@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Server.Kestrel.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
-    interface IHttpComponentFactory
+    public interface IHttpComponentFactory
     {
         KestrelServerOptions ServerOptions { get; set; }
 
-        Streams CreateStreams(FrameContext owner);
+        Streams CreateStreams(IFrameContext owner);
 
         void DisposeStreams(Streams streams);
 
