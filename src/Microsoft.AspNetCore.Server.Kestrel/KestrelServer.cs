@@ -67,19 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var componentFactory = Features.Get<IHttpComponentFactory>();
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
-                var engine = new UvEngine(new ServiceContext
-                {
-                    FrameFactory = context =>
-                    {
-                        return new Frame<TContext>(application, context);
-                    },
-                    AppLifetime = _applicationLifetime,
-                    Log = trace,
-                    ThreadPool = new LoggingThreadPool(trace),
-                    DateHeaderValueManager = dateHeaderValueManager,
-                    ServerOptions = Options,
-                    HttpComponentFactory = componentFactory
-                });
+                var engine = Options.Engine;
 
                 _disposables.Push(engine);
                 _disposables.Push(dateHeaderValueManager);
@@ -93,7 +81,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         "ThreadCount must be positive.");
                 }
 
-                engine.Start(threadCount);
+                engine.Start(new ServiceContext
+                {
+                    FrameFactory = context =>
+                    {
+                        return new Frame<TContext>(application, context);
+                    },
+                    AppLifetime = _applicationLifetime,
+                    Log = trace,
+                    ThreadPool = new LoggingThreadPool(trace),
+                    DateHeaderValueManager = dateHeaderValueManager,
+                    ServerOptions = Options,
+                    HttpComponentFactory = componentFactory
+                });
+                
                 var atLeastOneListener = false;
 
                 foreach (var address in _serverAddresses.Addresses)

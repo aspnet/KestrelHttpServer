@@ -2,36 +2,17 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Filter;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Networking;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class KestrelServerOptions
+
+    public class UvOptions
     {
-        public IServiceProvider ApplicationServices { get; set; }
-
-        public IConnectionFilter ConnectionFilter { get; set; }
-        
-        public IKestrelEngine Engine { get; set; }
-
-        /// <summary>
-        /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 
-        /// pool the Request and Response <seealso cref="System.IO.Stream"/> objects
-        /// for another request after the Response's OnCompleted callback has fired. 
-        /// When this values is greater than zero, it is not safe to retain references to feature components after this event has fired.
-        /// Value is zero by default.
-        /// </summary>
-        public int MaxPooledStreams { get; set; }
-
-        /// <summary>
-        /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 
-        /// pool the Request and Response headers
-        /// for another request after the Response's OnCompleted callback has fired. 
-        /// When this values is greater than zero, it is not safe to retain references to feature components after this event has fired.
-        /// Value is zero by default.
-        /// </summary>
-        public int MaxPooledHeaders { get; set; }
-
         public bool NoDelay { get; set; } = true;
 
         /// <summary>

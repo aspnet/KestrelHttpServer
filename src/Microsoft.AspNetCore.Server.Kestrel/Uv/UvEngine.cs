@@ -6,29 +6,41 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class UvEngine : ServiceContext, IDisposable
+    public class UvEngine : ServiceContext, IKestrelEngine
     {
-        public UvEngine(ServiceContext context)
-            : this(new Libuv(), context)
+        private readonly UvOptions _options;
+        private ServiceContext _context;
+        
+        public UvEngine(IOptions<UvOptions> options)
+            : this(new Libuv(), options)
         { }
 
         // For testing
-        internal UvEngine(Libuv uv, ServiceContext context)
-           : base(context)
+        internal UvEngine(Libuv uv, IOptions<UvOptions> options)
         {
             Libuv = uv;
+            _options = options.Value;
             Threads = new List<KestrelThread>();
         }
 
         public Libuv Libuv { get; private set; }
         public List<KestrelThread> Threads { get; private set; }
 
-        public void Start(int count)
+        public void Start(ServiceContext context)
         {
-            for (var index = 0; index < count; index++)
+            HttpComponentFactory = context.HttpComponentFactory;
+            AppLifetime = context.AppLifetime;
+            DateHeaderValueManager = context.DateHeaderValueManager;
+            FrameFactory = context.FrameFactory;
+            Log = context.Log;
+            ThreadPool = context.ThreadPool;
+            ServerOptions = context.ServerOptions;
+
+            for (var index = 0; index < _options.ThreadCount; index++)
             {
                 Threads.Add(new KestrelThread(this));
             }

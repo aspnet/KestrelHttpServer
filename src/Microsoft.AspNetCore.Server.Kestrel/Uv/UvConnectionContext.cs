@@ -7,17 +7,17 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class ConnectionContext : UvListenerContext
+    public class UvConnectionContext : UvListenerContext
     {
-        public ConnectionContext()
+        public UvConnectionContext()
         {
         }
 
-        public ConnectionContext(UvListenerContext context) : base(context)
+        public UvConnectionContext(UvListenerContext context) : base(context)
         {
         }
 
-        public ConnectionContext(ConnectionContext context) : base(context)
+        public UvConnectionContext(UvConnectionContext context) : base(context)
         {
             SocketInput = context.SocketInput;
             SocketOutput = context.SocketOutput;

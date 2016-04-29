@@ -3,13 +3,13 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class FrameContext : ConnectionContext
+    public class FrameContext : UvConnectionContext
     {
         public FrameContext()
         {
         }
 
-        public FrameContext(ConnectionContext context) : base(context)
+        public FrameContext(UvConnectionContext context) : base(context)
         {
         }
 

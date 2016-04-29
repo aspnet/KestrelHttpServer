@@ -69,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private readonly string _pathBase;
 
-        public Frame(ConnectionContext context)
+        public Frame(UvConnectionContext context)
             : base(context)
         {
             _pathBase = context.ServerAddress.PathBase;
