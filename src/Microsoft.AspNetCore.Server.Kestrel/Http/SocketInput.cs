@@ -43,17 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolBlock IncomingStart()
         {
-            const int minimumSize = 2048;
-
-            if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
-            {
-                _pinned = _tail;
-            }
-            else
-            {
-                _pinned = _memory.Lease();
-            }
-
+            _pinned = _memory.Lease();
             return _pinned;
         }
 
@@ -63,17 +53,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 if (count > 0)
                 {
-                    if (_tail == null)
-                    {
-                        _tail = _memory.Lease();
-                    }
-
-                    var iterator = new MemoryPoolIterator(_tail, _tail.End);
+                    var startBlock = _memory.Lease();
+                    var iterator = new MemoryPoolIterator(startBlock);
                     iterator.CopyFrom(buffer, offset, count);
 
                     if (_head == null)
                     {
-                        _head = _tail;
+                        _head = startBlock;
+                    }
+                    else
+                    {
+                        _tail.Next = startBlock;
                     }
 
                     _tail = iterator.Block;
@@ -98,10 +88,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     if (_head == null)
                     {
                         _head = _tail = _pinned;
-                    }
-                    else if (_tail == _pinned)
-                    {
-                        // NO-OP: this was a read into unoccupied tail-space
                     }
                     else
                     {
