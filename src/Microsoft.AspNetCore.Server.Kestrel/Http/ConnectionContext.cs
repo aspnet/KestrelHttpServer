@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class ConnectionContext : ListenerContext
+    public class ConnectionContext : UvListenerContext
     {
         public ConnectionContext()
         {
         }
 
-        public ConnectionContext(ListenerContext context) : base(context)
+        public ConnectionContext(UvListenerContext context) : base(context)
         {
         }
 

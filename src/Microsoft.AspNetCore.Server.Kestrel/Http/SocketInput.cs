@@ -43,48 +43,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolBlock IncomingStart()
         {
-            const int minimumSize = 2048;
-
-            if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
-            {
-                _pinned = _tail;
-            }
-            else
-            {
-                _pinned = _memory.Lease();
-            }
+            _pinned = _memory.Lease();
 
             return _pinned;
-        }
-
-        public void IncomingData(byte[] buffer, int offset, int count)
-        {
-            lock (_sync)
-            {
-                if (count > 0)
-                {
-                    if (_tail == null)
-                    {
-                        _tail = _memory.Lease();
-                    }
-
-                    var iterator = new MemoryPoolIterator(_tail, _tail.End);
-                    iterator.CopyFrom(buffer, offset, count);
-
-                    if (_head == null)
-                    {
-                        _head = _tail;
-                    }
-
-                    _tail = iterator.Block;
-                }
-                else
-                {
-                    RemoteIntakeFin = true;
-                }
-
-                Complete();
-            }
         }
 
         public void IncomingComplete(int count, Exception error)
@@ -98,10 +59,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     if (_head == null)
                     {
                         _head = _tail = _pinned;
-                    }
-                    else if (_tail == _pinned)
-                    {
-                        // NO-OP: this was a read into unoccupied tail-space
                     }
                     else
                     {
@@ -143,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void IncomingFin()
         {
             // Force a FIN
-            IncomingData(null, 0, 0);
+            IncomingComplete(0, null);
         }
 
         private void Complete()

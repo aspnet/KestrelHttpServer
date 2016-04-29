@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var componentFactory = Features.Get<IHttpComponentFactory>();
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
-                var engine = new KestrelEngine(new ServiceContext
+                var engine = new UvEngine(new ServiceContext
                 {
                     FrameFactory = context =>
                     {

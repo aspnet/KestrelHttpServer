@@ -9,14 +9,14 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class KestrelEngine : ServiceContext, IDisposable
+    public class UvEngine : ServiceContext, IDisposable
     {
-        public KestrelEngine(ServiceContext context)
+        public UvEngine(ServiceContext context)
             : this(new Libuv(), context)
         { }
 
         // For testing
-        internal KestrelEngine(Libuv uv, ServiceContext context)
+        internal UvEngine(Libuv uv, ServiceContext context)
            : base(context)
         {
             Libuv = uv;
@@ -66,16 +66,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     if (single)
                     {
                         var listener = usingPipes ?
-                            (Listener) new PipeListener(this) :
-                            new TcpListener(this);
+                            (UvListener) new UvPipeListener(this) :
+                            new UvTcpListener(this);
                         listeners.Add(listener);
                         listener.StartAsync(address, thread).Wait();
                     }
                     else if (first)
                     {
                         var listener = usingPipes
-                            ? (ListenerPrimary) new PipeListenerPrimary(this)
-                            : new TcpListenerPrimary(this);
+                            ? (UvListenerPrimary) new UvPipeListenerPrimary(this)
+                            : new UvTcpListenerPrimary(this);
 
                         listeners.Add(listener);
                         listener.StartAsync(pipeName, address, thread).Wait();
@@ -83,8 +83,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     else
                     {
                         var listener = usingPipes
-                            ? (ListenerSecondary) new PipeListenerSecondary(this)
-                            : new TcpListenerSecondary(this);
+                            ? (UvListenerSecondary) new UvPipeListenerSecondary(this)
+                            : new UvTcpListenerSecondary(this);
                         listeners.Add(listener);
                         listener.StartAsync(pipeName, address, thread).Wait();
                     }

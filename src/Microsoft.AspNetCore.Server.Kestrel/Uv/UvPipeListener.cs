@@ -9,11 +9,11 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     /// <summary>
-    /// Implementation of <see cref="Listener"/> that uses UNIX domain sockets as its transport.
+    /// Implementation of <see cref="UvListener"/> that uses UNIX domain sockets as its transport.
     /// </summary>
-    public class PipeListener : Listener
+    public class UvPipeListener : UvListener
     {
-        public PipeListener(ServiceContext serviceContext) : base(serviceContext)
+        public UvPipeListener(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 

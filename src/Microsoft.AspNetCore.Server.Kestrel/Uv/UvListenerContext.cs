@@ -7,20 +7,20 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class ListenerContext : ServiceContext
+    public class UvListenerContext : ServiceContext
     {
-        public ListenerContext()
+        public UvListenerContext()
         {
         }
 
-        public ListenerContext(ServiceContext serviceContext) 
+        public UvListenerContext(ServiceContext serviceContext) 
             : base(serviceContext)
         {
             Memory = new MemoryPool();
-            WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
+            WriteReqPool = new Queue<UvWriteReq>(UvSocketOutput.MaxPooledWriteReqs);
         }
 
-        public ListenerContext(ListenerContext listenerContext)
+        public UvListenerContext(UvListenerContext listenerContext)
             : base(listenerContext)
         {
             ServerAddress = listenerContext.ServerAddress;

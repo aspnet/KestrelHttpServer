@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class Connection : ConnectionContext, IConnectionControl
+    public class UvConnection : ConnectionContext, IConnectionControl
     {
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly string _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
@@ -29,12 +29,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly UvStreamHandle _socket;
         private Frame _frame;
         private ConnectionFilterContext _filterContext;
-        private LibuvStream _libuvStream;
+        private FilterStream _libuvStream;
         private FilteredStreamAdapter _filteredStreamAdapter;
         private Task _readInputTask;
 
         private readonly SocketInput _rawSocketInput;
-        private readonly SocketOutput _rawSocketOutput;
+        private readonly UvSocketOutput _rawSocketOutput;
 
         private readonly object _stateLock = new object();
         private ConnectionState _connectionState;
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         bool _eConnResetChecked = false;
 
-        public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
+        public UvConnection(UvListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
             socket.Connection = this;
@@ -51,11 +51,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
             _rawSocketInput = new SocketInput(Memory, ThreadPool);
-            _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
+            _rawSocketOutput = new UvSocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
         }
 
         // Internal for testing
-        internal Connection()
+        internal UvConnection()
         {
         }
 
@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                _libuvStream = new LibuvStream(_rawSocketInput, _rawSocketOutput);
+                _libuvStream = new FilterStream(_rawSocketInput, _rawSocketOutput);
 
                 _filterContext = new ConnectionFilterContext
                 {
@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     ServerOptions.ConnectionFilter.OnConnectionAsync(_filterContext).ContinueWith((task, state) =>
                     {
-                        var connection = (Connection)state;
+                        var connection = (UvConnection)state;
 
                         if (task.IsFaulted)
                         {
@@ -185,9 +185,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _rawSocketInput.IncomingFin();
                 _readInputTask.ContinueWith((task, state) =>
                 {
-                    ((Connection)state)._filterContext.Connection.Dispose();
-                    ((Connection)state)._filteredStreamAdapter.Dispose();
-                    ((Connection)state)._rawSocketInput.Dispose();
+                    ((UvConnection)state)._filterContext.Connection.Dispose();
+                    ((UvConnection)state)._filteredStreamAdapter.Dispose();
+                    ((UvConnection)state)._rawSocketInput.Dispose();
                 }, this);
             }
             else
@@ -245,7 +245,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
         {
-            return ((Connection)state).OnAlloc(handle, suggestedSize);
+            return ((UvConnection)state).OnAlloc(handle, suggestedSize);
         }
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
@@ -259,7 +259,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static void ReadCallback(UvStreamHandle handle, int status, object state)
         {
-            ((Connection)state).OnRead(handle, status);
+            ((UvConnection)state).OnRead(handle, status);
         }
 
         private void OnRead(UvStreamHandle handle, int status)

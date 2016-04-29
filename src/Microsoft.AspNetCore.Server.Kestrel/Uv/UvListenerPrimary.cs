@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// A primary listener waits for incoming connections on a specified socket. Incoming 
     /// connections may be passed to a secondary listener to handle.
     /// </summary>
-    public abstract class ListenerPrimary : Listener
+    public abstract class UvListenerPrimary : UvListener
     {
         private readonly List<UvPipeHandle> _dispatchPipes = new List<UvPipeHandle>();
         private int _dispatchIndex;
@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         // but it has no other functional significance
         private readonly ArraySegment<ArraySegment<byte>> _dummyMessage = new ArraySegment<ArraySegment<byte>>(new[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) });
 
-        protected ListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
+        protected UvListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 
@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             await StartAsync(address, thread).ConfigureAwait(false);
 
-            await Thread.PostAsync(state => ((ListenerPrimary)state).PostCallback(),
+            await Thread.PostAsync(state => ((UvListenerPrimary)state).PostCallback(),
                                    this).ConfigureAwait(false);
         }
 
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ListenPipe.Init(Thread.Loop, Thread.QueueCloseHandle, false);
             ListenPipe.Bind(_pipeName);
             ListenPipe.Listen(Constants.ListenBacklog,
-                (pipe, status, error, state) => ((ListenerPrimary)state).OnListenPipe(pipe, status, error), this);
+                (pipe, status, error, state) => ((UvListenerPrimary)state).OnListenPipe(pipe, status, error), this);
         }
 
         private void OnListenPipe(UvStreamHandle pipe, int status, Exception error)
@@ -111,7 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 await Thread.PostAsync(state =>
                 {
-                    var listener = (ListenerPrimary)state;
+                    var listener = (UvListenerPrimary)state;
                     listener.ListenPipe.Dispose();
 
                     foreach (var dispatchPipe in listener._dispatchPipes)

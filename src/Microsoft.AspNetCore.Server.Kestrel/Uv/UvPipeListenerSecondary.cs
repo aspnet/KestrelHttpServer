@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     /// <summary>
-    /// An implementation of <see cref="ListenerSecondary"/> using TCP sockets.
+    /// An implementation of <see cref="UvListenerSecondary"/> using UNIX sockets.
     /// </summary>
-    public class TcpListenerSecondary : ListenerSecondary
+    public class UvPipeListenerSecondary : UvListenerSecondary
     {
-        public TcpListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        public UvPipeListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 
@@ -19,9 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         protected override UvStreamHandle CreateAcceptSocket()
         {
-            var acceptSocket = new UvTcpHandle(Log);
-            acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-            acceptSocket.NoDelay(ServerOptions.NoDelay);
+            var acceptSocket = new UvPipeHandle(Log);
+            acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle, false);
             return acceptSocket;
         }
     }

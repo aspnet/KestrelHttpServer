@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class SocketOutput : ISocketOutput
+    public class UvSocketOutput : ISocketOutput
     {
         public const int MaxPooledWriteReqs = 1024;
 
@@ -21,11 +21,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private const int _maxPooledWriteContexts = 32;
 
         private static readonly WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock)state);
-        private static readonly Action<object> _connectionCancellation = (state) => ((SocketOutput)state).CancellationTriggered();
+        private static readonly Action<object> _connectionCancellation = (state) => ((UvSocketOutput)state).CancellationTriggered();
 
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
-        private readonly Connection _connection;
+        private readonly UvConnection _connection;
         private readonly string _connectionId;
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
@@ -53,11 +53,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly Queue<WriteContext> _writeContextPool;
         private readonly Queue<UvWriteReq> _writeReqPool;
 
-        public SocketOutput(
+        public UvSocketOutput(
             KestrelThread thread,
             UvStreamHandle socket,
             MemoryPool memory,
-            Connection connection,
+            UvConnection connection,
             string connectionId,
             IKestrelTrace log,
             IThreadPool threadPool,
@@ -315,7 +315,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private void ScheduleWrite()
         {
-            _thread.Post(state => ((SocketOutput)state).WriteAllPending(), this);
+            _thread.Post(state => ((UvSocketOutput)state).WriteAllPending(), this);
         }
 
         // This is called on the libuv event loop
@@ -523,7 +523,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             private static WaitCallback _returnWrittenBlocks = (state) => ReturnWrittenBlocks((MemoryPoolBlock)state);
             private static WaitCallback _completeWrite = (state) => ((WriteContext)state).CompleteOnThreadPool();
 
-            private SocketOutput Self;
+            private UvSocketOutput Self;
             private UvWriteReq _writeReq;
             private MemoryPoolIterator _lockedStart;
             private MemoryPoolIterator _lockedEnd;
@@ -537,7 +537,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             public Exception WriteError;
             public int ShutdownSendStatus;
 
-            public WriteContext(SocketOutput self)
+            public WriteContext(UvSocketOutput self)
             {
                 Self = self;
             }

@@ -11,11 +11,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// <summary>
     /// Base class for listeners in Kestrel. Listens for incoming connections
     /// </summary>
-    public abstract class Listener : ListenerContext, IAsyncDisposable
+    public abstract class UvListener : UvListenerContext, IAsyncDisposable
     {
         private bool _closed;
 
-        protected Listener(ServiceContext serviceContext) 
+        protected UvListener(ServiceContext serviceContext)
             : base(serviceContext)
         {
         }
@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 var tcs2 = (TaskCompletionSource<int>)state;
                 try
                 {
-                    var listener = ((Listener)tcs2.Task.AsyncState);
+                    var listener = ((UvListener)tcs2.Task.AsyncState);
                     listener.ListenSocket = listener.CreateListenSocket();
                     tcs2.SetResult(0);
                 }
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected static void ConnectionCallback(UvStreamHandle stream, int status, Exception error, object state)
         {
-            var listener = (Listener) state;
+            var listener = (UvListener)state;
 
             if (error != null)
             {
@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected virtual void DispatchConnection(UvStreamHandle socket)
         {
-            var connection = new Connection(this, socket);
+            var connection = new UvConnection(this, socket);
             connection.Start();
         }
 
@@ -92,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 await Thread.PostAsync(state =>
                 {
-                    var listener = (Listener)state;
+                    var listener = (UvListener)state;
                     listener.ListenSocket.Dispose();
 
                     listener._closed = true;
@@ -104,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 await Thread.PostAsync(state =>
                 {
-                    var writeReqPool = ((Listener)state).WriteReqPool;
+                    var writeReqPool = ((UvListener)state).WriteReqPool;
                     while (writeReqPool.Count > 0)
                     {
                         writeReqPool.Dequeue().Dispose();

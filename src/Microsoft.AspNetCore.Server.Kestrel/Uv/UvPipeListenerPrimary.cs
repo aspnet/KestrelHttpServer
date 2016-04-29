@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
@@ -10,11 +9,11 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     /// <summary>
-    /// An implementation of <see cref="ListenerPrimary"/> using TCP sockets.
+    /// An implementation of <see cref="UvListenerPrimary"/> using UNIX sockets.
     /// </summary>
-    public class TcpListenerPrimary : ListenerPrimary
+    public class UvPipeListenerPrimary : UvListenerPrimary
     {
-        public TcpListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
+        public UvPipeListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 
@@ -23,10 +22,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         protected override UvStreamHandle CreateListenSocket()
         {
-            var socket = new UvTcpHandle(Log);
-            socket.Init(Thread.Loop, Thread.QueueCloseHandle);
-            socket.NoDelay(ServerOptions.NoDelay);
-            socket.Bind(ServerAddress);
+            var socket = new UvPipeHandle(Log);
+            socket.Init(Thread.Loop, Thread.QueueCloseHandle, false);
+            socket.Bind(ServerAddress.UnixPipePath);
             socket.Listen(Constants.ListenBacklog, (stream, status, error, state) => ConnectionCallback(stream, status, error, state), this);
             return socket;
         }
@@ -38,19 +36,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// <param name="status">Connection status</param>
         protected override void OnConnection(UvStreamHandle listenSocket, int status)
         {
-            var acceptSocket = new UvTcpHandle(Log);
+            var acceptSocket = new UvPipeHandle(Log);
 
             try
             {
-                acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
-                acceptSocket.NoDelay(ServerOptions.NoDelay);
+                acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle, false);
                 listenSocket.Accept(acceptSocket);
                 DispatchConnection(acceptSocket);
-
             }
             catch (UvException ex)
             {
-                Log.LogError(0, ex, "TcpListenerPrimary.OnConnection");
+                Log.LogError(0, ex, "ListenerPrimary.OnConnection");
                 acceptSocket.Dispose();
                 return;
             }

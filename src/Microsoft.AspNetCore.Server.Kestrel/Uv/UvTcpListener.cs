@@ -8,11 +8,11 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     /// <summary>
-    /// Implementation of <see cref="Listener"/> that uses TCP sockets as its transport.
+    /// Implementation of <see cref="UvListener"/> that uses TCP sockets as its transport.
     /// </summary>
-    public class TcpListener : Listener
+    public class UvTcpListener : UvListener
     {
-        public TcpListener(ServiceContext serviceContext) : base(serviceContext)
+        public UvTcpListener(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 

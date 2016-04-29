@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private static readonly Action<object, object> _postCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private static readonly Action<object, object> _postAsyncCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
 
-        private readonly KestrelEngine _engine;
+        private readonly UvEngine _engine;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
         private readonly UvLoopHandle _loop;
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
 
-        public KestrelThread(KestrelEngine engine)
+        public KestrelThread(UvEngine engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;

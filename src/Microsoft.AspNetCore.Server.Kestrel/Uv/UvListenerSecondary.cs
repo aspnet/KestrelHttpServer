@@ -15,14 +15,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// A secondary listener is delegated requests from a primary listener via a named pipe or 
     /// UNIX domain socket.
     /// </summary>
-    public abstract class ListenerSecondary : ListenerContext, IAsyncDisposable
+    public abstract class UvListenerSecondary : UvListenerContext, IAsyncDisposable
     {
         private string _pipeName;
         private IntPtr _ptr;
         private Libuv.uv_buf_t _buf;
         private bool _closed;
 
-        protected ListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        protected UvListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
         {
             _ptr = Marshal.AllocHGlobal(4);
         }
@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static void StartCallback(TaskCompletionSource<int> tcs)
         {
-            var listener = (ListenerSecondary)tcs.Task.AsyncState;
+            var listener = (UvListenerSecondary)tcs.Task.AsyncState;
             listener.StartedCallback(tcs);
         }
 
@@ -76,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static void ConnectCallback(UvConnectRequest connect, int status, Exception error, TaskCompletionSource<int> tcs)
         {
-            var listener = (ListenerSecondary)tcs.Task.AsyncState;
+            var listener = (UvListenerSecondary)tcs.Task.AsyncState;
             listener.ConnectedCallback(connect, status, error, tcs);
         }
 
@@ -92,8 +92,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             try
             {
                 DispatchPipe.ReadStart(
-                    (handle, status2, state) => ((ListenerSecondary)state)._buf,
-                    (handle, status2, state) => ((ListenerSecondary)state).ReadStartCallback(handle, status2),
+                    (handle, status2, state) => ((UvListenerSecondary)state)._buf,
+                    (handle, status2, state) => ((UvListenerSecondary)state).ReadStartCallback(handle, status2),
                     this);
 
                 tcs.SetResult(0);
@@ -138,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return;
             }
 
-            var connection = new Connection(this, acceptSocket);
+            var connection = new UvConnection(this, acceptSocket);
             connection.Start();
         }
 
@@ -166,7 +166,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 await Thread.PostAsync(state =>
                 {
-                    var listener = (ListenerSecondary)state;
+                    var listener = (UvListenerSecondary)state;
                     listener.DispatchPipe.Dispose();
                     listener.FreeBuffer();
 
@@ -179,7 +179,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 await Thread.PostAsync(state =>
                 {
-                    var listener = (ListenerSecondary)state;
+                    var listener = (UvListenerSecondary)state;
                     var writeReqPool = listener.WriteReqPool;
                     while (writeReqPool.Count > 0)
                     {
