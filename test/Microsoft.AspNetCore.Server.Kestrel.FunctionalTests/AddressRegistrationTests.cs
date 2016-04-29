@@ -53,10 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var hostBuilder = new WebHostBuilder()
                 .UseConfiguration(config)
-                .UseKestrel(options =>
-                {
-                    options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
-                })
+                .UseKestrel()
                 .Configure(ConfigureEchoAddress);
 
             using (var host = hostBuilder.Build())

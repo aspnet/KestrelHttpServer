@@ -39,8 +39,5 @@
   "buildOptions": {
     "allowUnsafe": true
   },
-  "testRunner": "xunit",
-  "content": [
-    "TestResources/testCert.pfx"
-  ]
+  "testRunner": "xunit"
 }
