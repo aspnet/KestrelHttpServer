@@ -4,19 +4,21 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
     public class LoggingThreadPool : IThreadPool
     {
-        private readonly IKestrelTrace _log;
+        private readonly IConnectionTrace _log;
 
         private readonly WaitCallback _runAction;
         private readonly WaitCallback _cancelTcs;
         private readonly WaitCallback _completeTcs;
 
-        public LoggingThreadPool(IKestrelTrace log)
+        public LoggingThreadPool(IConnectionTrace log)
         {
             _log = log;
 

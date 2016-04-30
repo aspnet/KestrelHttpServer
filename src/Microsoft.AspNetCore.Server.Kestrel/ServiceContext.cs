@@ -3,28 +3,14 @@
 
 using System;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public interface IServiceContext
-    {
-        IApplicationLifetime AppLifetime { get; }
-
-        IKestrelTrace Log { get; }
-
-        IThreadPool ThreadPool { get; }
-
-        Func<IConnectionContext, Frame> FrameFactory { get; }
-
-        DateHeaderValueManager DateHeaderValueManager { get; }
-
-        KestrelServerOptions ServerOptions { get; }
-
-        IHttpComponentFactory HttpComponentFactory { get; }
-    }
-    
     public class ServiceContext : IServiceContext
     {
         public ServiceContext()
@@ -44,16 +30,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IApplicationLifetime AppLifetime { get; set; }
 
-        public IKestrelTrace Log { get; set; }
+        public IConnectionTrace Log { get; set; }
 
         public IThreadPool ThreadPool { get; set; }
-
-        public Func<IConnectionContext, Frame> FrameFactory { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public KestrelServerOptions ServerOptions { get; set; }
 
         public IHttpComponentFactory HttpComponentFactory { get; set; }
+
+        public Func<IConnectionContext, Frame> FrameFactory { get; set; }
+
+        public Action<IFeatureCollection> PrepareRequest { get; set; }
     }
 }

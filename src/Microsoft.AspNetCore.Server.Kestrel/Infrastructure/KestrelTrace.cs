@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Exceptions;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     /// <summary>
     /// Summary description for KestrelTrace
     /// </summary>
-    public class KestrelTrace : IKestrelTrace
+    public class KestrelTrace : IConnectionTrace
     {
         private static readonly Action<ILogger, string, Exception> _connectionStart;
         private static readonly Action<ILogger, string, Exception> _connectionStop;

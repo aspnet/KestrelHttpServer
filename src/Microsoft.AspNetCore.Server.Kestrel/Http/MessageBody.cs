@@ -6,8 +6,9 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Exceptions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {

@@ -7,8 +7,10 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Networking;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Infrastructure;
+using Microsoft.AspNetCore.Server.Networking.Uv;
+using Microsoft.AspNetCore.Server.Networking.Uv.Interop;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
@@ -40,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private bool _stopImmediate = false;
         private bool _initCompleted = false;
         private ExceptionDispatchInfo _closeError;
-        private readonly IKestrelTrace _log;
+        private readonly IConnectionTrace _log;
         private readonly IThreadPool _threadPool;
 
         public KestrelThread(UvEngine engine)

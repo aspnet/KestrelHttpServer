@@ -3,7 +3,7 @@
 
 using System.Collections;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
+using Microsoft.AspNetCore.Server.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
