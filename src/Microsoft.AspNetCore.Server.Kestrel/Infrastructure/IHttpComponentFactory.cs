@@ -10,11 +10,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         KestrelServerOptions ServerOptions { get; set; }
 
         Streams CreateStreams(FrameContext owner);
-
+        void ResetStreams(Streams streams);
         void DisposeStreams(Streams streams);
 
         Headers CreateHeaders(DateHeaderValueManager dateValueManager);
-
+        void ResetHeaders(Headers headers);
         void DisposeHeaders(Headers headers);
     }
 }

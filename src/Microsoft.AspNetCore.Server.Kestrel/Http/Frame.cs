@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _pathBase = context.ServerAddress.PathBase;
 
             FrameControl = this;
-            Reset();
+            Reset(true);
         }
 
         public string Scheme { get; set; }
@@ -176,15 +176,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void InitializeHeaders()
         {
-            _frameHeaders = HttpComponentFactory.CreateHeaders(DateHeaderValueManager);
+            if (_frameHeaders == null)
+            {
+                _frameHeaders = HttpComponentFactory.CreateHeaders(DateHeaderValueManager);
+            }
             RequestHeaders = _frameHeaders.RequestHeaders;
             ResponseHeaders = _frameHeaders.ResponseHeaders;
         }
 
-
         public void InitializeStreams(MessageBody messageBody)
         {
-            _frameStreams = HttpComponentFactory.CreateStreams(this);
+            if (_frameStreams == null)
+            {
+                _frameStreams = HttpComponentFactory.CreateStreams(this);
+            }
 
             RequestBody = _frameStreams.RequestBody.StartAcceptingReads(messageBody);
             ResponseBody = _frameStreams.ResponseBody.StartAcceptingWrites();
@@ -209,9 +214,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _frameStreams.ResponseBody.StopAcceptingWrites();
         }
 
-        public void Reset()
+        public void Reset(bool isRequestWaiting)
         {
-            ResetComponents();
+            ResetComponents(isRequestWaiting);
 
             _onStarting = null;
             _onCompleted = null;
@@ -248,23 +253,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _abortedCts = null;
         }
 
-        protected void ResetComponents()
+        protected void ResetComponents(bool isRequestWaiting)
         {
-            var frameHeaders = Interlocked.Exchange(ref _frameHeaders, null);
-            if (frameHeaders != null)
+            if ((ServerOptions?.MaxPooledHeaders ?? 0) > 0 && isRequestWaiting)
             {
-                RequestHeaders = null;
-                ResponseHeaders = null;
-                HttpComponentFactory.DisposeHeaders(frameHeaders);
+                if (_frameHeaders != null)
+                {
+                    HttpComponentFactory.ResetHeaders(_frameHeaders);
+                }
+            }
+            else
+            {
+                var frameHeaders = Interlocked.Exchange(ref _frameHeaders, null);
+                if (frameHeaders != null)
+                {
+                    RequestHeaders = null;
+                    ResponseHeaders = null;
+                    HttpComponentFactory.DisposeHeaders(frameHeaders);
+                }
             }
 
-            var frameStreams = Interlocked.Exchange(ref _frameStreams, null);
-            if (frameStreams != null)
+            if ((ServerOptions?.MaxPooledStreams ?? 0) > 0 && isRequestWaiting)
             {
-                RequestBody = null;
-                ResponseBody = null;
-                DuplexStream = null;
-                HttpComponentFactory.DisposeStreams(frameStreams);
+                if (_frameStreams != null)
+                {
+                    HttpComponentFactory.ResetStreams(_frameStreams);
+                }
+            }
+            else
+            {
+                var frameStreams = Interlocked.Exchange(ref _frameStreams, null);
+                if (frameStreams != null)
+                {
+                    RequestBody = null;
+                    ResponseBody = null;
+                    DuplexStream = null;
+                    HttpComponentFactory.DisposeStreams(frameStreams);
+                }
             }
         }
 
