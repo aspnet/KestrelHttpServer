@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Server.Filter;
+using Microsoft.AspNetCore.Server.Abstractions;
 
 namespace Microsoft.AspNetCore.Hosting
 {
@@ -24,7 +25,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
         /// </returns>
-        public static KestrelServerOptions UseHttps(this KestrelServerOptions options, string fileName)
+        public static ServerOptions UseHttps(this ServerOptions options, string fileName)
         {
             var env = options.ApplicationServices.GetRequiredService<IHostingEnvironment>();
             return options.UseHttps(new X509Certificate2(Path.Combine(env.ContentRootPath, fileName)));
@@ -45,7 +46,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
         /// </returns>
-        public static KestrelServerOptions UseHttps(this KestrelServerOptions options, string fileName, string password)
+        public static ServerOptions UseHttps(this ServerOptions options, string fileName, string password)
         {
             var env = options.ApplicationServices.GetRequiredService<IHostingEnvironment>();
             return options.UseHttps(new X509Certificate2(Path.Combine(env.ContentRootPath, fileName), password));
@@ -63,7 +64,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
         /// </returns>
-        public static KestrelServerOptions UseHttps(this KestrelServerOptions options, X509Certificate2 serverCertificate)
+        public static ServerOptions UseHttps(this ServerOptions options, X509Certificate2 serverCertificate)
         {
             return options.UseHttps(new HttpsConnectionFilterOptions { ServerCertificate = serverCertificate });
         }
@@ -80,7 +81,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
         /// </returns>
-        public static KestrelServerOptions UseHttps(this KestrelServerOptions options, HttpsConnectionFilterOptions httpsOptions)
+        public static ServerOptions UseHttps(this ServerOptions options, HttpsConnectionFilterOptions httpsOptions)
         {
             var prevFilter = options.ConnectionFilter ?? new NoOpConnectionFilter();
             options.ConnectionFilter = new HttpsConnectionFilter(httpsOptions, prevFilter);

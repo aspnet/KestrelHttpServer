@@ -4,7 +4,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Server.Infrastructure
+namespace Microsoft.AspNetCore.Server.Abstractions
 {
     public interface IThreadPool
     {

@@ -5,9 +5,8 @@ using System;
 using System.Text;
 using System.Threading;
 using Microsoft.AspNetCore.Server.Abstractions;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Http
+namespace Microsoft.AspNetCore.Server.Infrastructure
 {
     /// <summary>
     /// Manages the generation of the date header value.

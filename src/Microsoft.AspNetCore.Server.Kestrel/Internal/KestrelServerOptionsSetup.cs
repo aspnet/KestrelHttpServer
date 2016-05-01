@@ -3,10 +3,11 @@
 
 using System;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Server.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    public class KestrelServerOptionsSetup : IConfigureOptions<KestrelServerOptions>
+    public class KestrelServerOptionsSetup : IConfigureOptions<ServerOptions>
     {
         private IServiceProvider _services;
 
@@ -15,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _services = services;
         }
 
-        public void Configure(KestrelServerOptions options)
+        public void Configure(ServerOptions options)
         {
             options.ApplicationServices = _services;
         }

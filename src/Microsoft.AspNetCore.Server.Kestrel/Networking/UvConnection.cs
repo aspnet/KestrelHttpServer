@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
         private readonly UvStreamHandle _socket;
-        private Frame _frame;
+        private IFrameControl _frame;
         private ConnectionFilterContext _filterContext;
         private FilterStream _libuvStream;
         private FilteredStreamAdapter _filteredStreamAdapter;
@@ -311,7 +311,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        private Frame CreateFrame()
+        private IFrameControl CreateFrame()
         {
             return FrameFactory(this);
         }

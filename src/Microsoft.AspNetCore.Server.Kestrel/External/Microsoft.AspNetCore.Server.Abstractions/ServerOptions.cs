@@ -4,15 +4,15 @@
 using System;
 using Microsoft.AspNetCore.Server.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel
+namespace Microsoft.AspNetCore.Server.Abstractions
 {
-    public class KestrelServerOptions
+    public class ServerOptions
     {
         public IServiceProvider ApplicationServices { get; set; }
 
         public IConnectionFilter ConnectionFilter { get; set; }
         
-        public IKestrelEngine Engine { get; set; }
+        public IServerEngine Engine { get; set; }
 
         /// <summary>
         /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 

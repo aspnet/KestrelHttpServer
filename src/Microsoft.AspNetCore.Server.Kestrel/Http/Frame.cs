@@ -17,12 +17,13 @@ using Microsoft.AspNetCore.Server.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Hosting;
 
 // ReSharper disable AccessToModifiedClosure
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public abstract partial class Frame : ServiceContext, IFrameContext, IFrameControl
+    public abstract partial class Frame : IFrameContext, IFrameControl
     {
         private static readonly Encoding _ascii = Encoding.ASCII;
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
@@ -97,7 +98,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public string ConnectionId => _context.ConnectionId;
 
+        public Action<IFeatureCollection> PrepareRequest => _context.PrepareRequest;		
+
         public ServerAddress ServerAddress => _context.ServerAddress;
+  		  
+        public IApplicationLifetime AppLifetime => _context.AppLifetime;		
+        
+        public IConnectionTrace Log => _context.Log;		
+        
+        public IThreadPool ThreadPool => _context.ThreadPool;		
+        
+        public Func<IConnectionContext, IFrameControl> FrameFactory => _context.FrameFactory;		
+        
+        public DateHeaderValueManager DateHeaderValueManager => _context.DateHeaderValueManager;		
+        
+        public ServerOptions ServerOptions => _context.ServerOptions;		
+        
+        public IHttpComponentFactory HttpComponentFactory => _context.HttpComponentFactory;
 
         public string Scheme { get; set; }
         public string Method { get; set; }

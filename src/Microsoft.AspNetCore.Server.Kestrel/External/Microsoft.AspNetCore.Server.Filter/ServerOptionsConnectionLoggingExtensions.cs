@@ -1,14 +1,14 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNetCore.Server.Filter;
-using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Filter;
 
 namespace Microsoft.AspNetCore.Hosting
 {
-    public static class KestrelServerOptionsConnectionLoggingExtensions
+    public static class ServerOptionsConnectionLoggingExtensions
     {
         /// <summary>
         /// Emits verbose logs for bytes read from and written to the connection.
@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
         /// </returns>
-        public static KestrelServerOptions UseConnectionLogging(this KestrelServerOptions options)
+        public static ServerOptions UseConnectionLogging(this ServerOptions options)
         {
             return options.UseConnectionLogging(nameof(LoggingConnectionFilter));
         }
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Server.KestrelServerOptions.
         /// </returns>
-        public static KestrelServerOptions UseConnectionLogging(this KestrelServerOptions options, string loggerName)
+        public static ServerOptions UseConnectionLogging(this ServerOptions options, string loggerName)
         {
             var prevFilter = options.ConnectionFilter ?? new NoOpConnectionFilter();
             var loggerFactory = options.ApplicationServices.GetRequiredService<ILoggerFactory>();

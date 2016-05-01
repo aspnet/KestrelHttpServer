@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Server.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
@@ -23,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly ILogger _logger;
         private readonly IServerAddressesFeature _serverAddresses;
 
-        public KestrelServer(IOptions<KestrelServerOptions> options, IApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)
+        public KestrelServer(IOptions<ServerOptions> options, IApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)
         {
             if (options == null)
             {
@@ -40,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            Options = options.Value ?? new KestrelServerOptions();
+            Options = options.Value ?? new ServerOptions();
             _applicationLifetime = applicationLifetime;
             _logger = loggerFactory.CreateLogger(typeof(KestrelServer).GetTypeInfo().Assembly.FullName);
             Features = new FeatureCollection();
@@ -52,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IFeatureCollection Features { get; }
 
-        public KestrelServerOptions Options { get; }
+        public ServerOptions Options { get; }
 
         public void Start<TContext>(IHttpApplication<TContext> application)
         {

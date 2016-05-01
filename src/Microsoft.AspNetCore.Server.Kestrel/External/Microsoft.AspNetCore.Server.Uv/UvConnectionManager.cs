@@ -4,17 +4,16 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Networking.Uv.Interop;
 
 namespace Microsoft.AspNetCore.Server.Networking.Uv
 {
-    public class ConnectionManager
+    public class UvConnectionManager
     {
-        private KestrelThread _thread;
+        private UvThread _thread;
         private List<Task> _connectionStopTasks;
 
-        public ConnectionManager(KestrelThread thread)
+        public UvConnectionManager(UvThread thread)
         {
             _thread = thread;
         }

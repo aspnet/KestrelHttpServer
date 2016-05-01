@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Networking.Uv
         public async Task StartAsync(
             string pipeName,
             ServerAddress address,
-            KestrelThread thread)
+            UvThread thread)
         {
             _pipeName = pipeName;
 

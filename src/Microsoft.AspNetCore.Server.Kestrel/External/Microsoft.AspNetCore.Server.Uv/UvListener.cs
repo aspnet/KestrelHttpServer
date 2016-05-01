@@ -27,11 +27,11 @@ namespace Microsoft.AspNetCore.Server.Networking.Uv
 
         public Task StartAsync(
             ServerAddress address,
-            KestrelThread thread)
+            UvThread thread)
         {
             ServerAddress = address;
             Thread = thread;
-            ConnectionManager = new ConnectionManager(thread);
+            ConnectionManager = new UvConnectionManager(thread);
 
             var tcs = new TaskCompletionSource<int>(this);
 

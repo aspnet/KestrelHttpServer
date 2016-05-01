@@ -9,16 +9,15 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Abstractions;
 using Microsoft.AspNetCore.Server.Infrastructure;
-using Microsoft.AspNetCore.Server.Networking.Uv;
 using Microsoft.AspNetCore.Server.Networking.Uv.Interop;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.AspNetCore.Server.Kestrel
+namespace Microsoft.AspNetCore.Server.Networking.Uv
 {
     /// <summary>
-    /// Summary description for KestrelThread
+    /// Summary description for UvThread
     /// </summary>
-    public class KestrelThread
+    public class UvThread
     {
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
@@ -45,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly IConnectionTrace _log;
         private readonly IThreadPool _threadPool;
 
-        public KestrelThread(UvEngine engine)
+        public UvThread(UvEngine engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;
@@ -54,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
-            _thread.Name = "KestrelThread - libuv";
+            _thread.Name = "UvThread - libuv";
 #if !DEBUG
             // Mark the thread as being as unimportant to keeping the process alive.
             // Don't do this for debug builds, so we know if the thread isn't terminating.
@@ -106,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         Post(t => t.OnStopImmediate());
                         if (!_thread.Join(stepTimeout))
                         {
-                            _log.LogError(0, null, "KestrelThread.Stop failed to terminate libuv thread.");
+                            _log.LogError(0, null, "UvThread.Stop failed to terminate libuv thread.");
                         }
                     }
                 }
@@ -116,7 +115,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     // Until we rework this logic, ODEs are bound to happen sometimes.
                     if (!_thread.Join(stepTimeout))
                     {
-                        _log.LogError(0, null, "KestrelThread.Stop failed to terminate libuv thread.");
+                        _log.LogError(0, null, "UvThread.Stop failed to terminate libuv thread.");
                     }
                 }
             }
@@ -162,9 +161,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _post.Send();
         }
 
-        private void Post(Action<KestrelThread> callback)
+        private void Post(Action<UvThread> callback)
         {
-            Post(thread => callback((KestrelThread)thread), this);
+            Post(thread => callback((UvThread)thread), this);
         }
 
         public Task PostAsync(Action<object> callback, object state)
@@ -298,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     }
                     else
                     {
-                        _log.LogError(0, ex, "KestrelThread.DoPostWork");
+                        _log.LogError(0, ex, "UvThread.DoPostWork");
                         throw;
                     }
                 }
@@ -328,7 +327,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
                 catch (Exception ex)
                 {
-                    _log.LogError(0, ex, "KestrelThread.DoPostCloseHandle");
+                    _log.LogError(0, ex, "UvThread.DoPostCloseHandle");
                     throw;
                 }
             }

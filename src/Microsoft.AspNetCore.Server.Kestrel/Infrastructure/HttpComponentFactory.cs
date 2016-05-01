@@ -4,6 +4,8 @@
 using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
+using Microsoft.AspNetCore.Server.Abstractions;
+using Microsoft.AspNetCore.Server.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
@@ -13,9 +15,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         private ConcurrentQueue<Streams> _streamPool = new ConcurrentQueue<Streams>();
         private ConcurrentQueue<Headers> _headerPool = new ConcurrentQueue<Headers>();
 
-        public KestrelServerOptions ServerOptions { get; set; }
+        public ServerOptions ServerOptions { get; set; }
 
-        public HttpComponentFactory(KestrelServerOptions serverOptions)
+        public HttpComponentFactory(ServerOptions serverOptions)
         {
             ServerOptions = serverOptions;
         }

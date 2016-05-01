@@ -34,14 +34,14 @@ namespace Microsoft.AspNetCore.Server.Networking.Uv
         public Task StartAsync(
             string pipeName,
             ServerAddress address,
-            KestrelThread thread)
+            UvThread thread)
         {
             _pipeName = pipeName;
             _buf = thread.Loop.Libuv.buf_init(_ptr, 4);
 
             ServerAddress = address;
             Thread = thread;
-            ConnectionManager = new ConnectionManager(thread);
+            ConnectionManager = new UvConnectionManager(thread);
 
             DispatchPipe = new UvPipeHandle(Log);
 

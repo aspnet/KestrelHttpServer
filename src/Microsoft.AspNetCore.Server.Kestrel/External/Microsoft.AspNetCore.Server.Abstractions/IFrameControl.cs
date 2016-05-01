@@ -5,10 +5,13 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Http
+namespace Microsoft.AspNetCore.Server.Abstractions
 {
     public interface IFrameControl
     {
+        void Start();
+        Task Stop();
+        void Abort();
         void ProduceContinue();
         void Write(ArraySegment<byte> data);
         Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken);

@@ -3,22 +3,16 @@
 
 using System;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
+namespace Microsoft.AspNetCore.Server.Abstractions
 {
     /// <summary>
-    /// Provides access to the normal system clock.
+    /// Abstracts the system clock to facilitate testing.
     /// </summary>
-    internal class SystemClock : ISystemClock
+    internal interface ISystemClock
     {
         /// <summary>
         /// Retrieves the current system time in UTC.
         /// </summary>
-        public DateTimeOffset UtcNow
-        {
-            get
-            {
-                return DateTimeOffset.UtcNow;
-            }
-        }
+        DateTimeOffset UtcNow { get; }
     }
 }

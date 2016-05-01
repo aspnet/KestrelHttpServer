@@ -3,13 +3,10 @@
 
 using System;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Abstractions;
 using Microsoft.AspNetCore.Server.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
 
-namespace Microsoft.AspNetCore.Server.Kestrel
+namespace Microsoft.AspNetCore.Server.Abstractions
 {
     public class ServiceContext : IServiceContext
     {
@@ -36,11 +33,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
-        public KestrelServerOptions ServerOptions { get; set; }
+        public ServerOptions ServerOptions { get; set; }
 
         public IHttpComponentFactory HttpComponentFactory { get; set; }
 
-        public Func<IConnectionContext, Frame> FrameFactory { get; set; }
+        public Func<IConnectionContext, IFrameControl> FrameFactory { get; set; }
 
         public Action<IFeatureCollection> PrepareRequest { get; set; }
     }
