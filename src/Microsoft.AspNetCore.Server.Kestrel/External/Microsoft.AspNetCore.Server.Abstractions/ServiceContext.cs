@@ -4,7 +4,6 @@
 using System;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Infrastructure;
-using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Abstractions
 {
@@ -38,7 +37,5 @@ namespace Microsoft.AspNetCore.Server.Abstractions
         public IHttpComponentFactory HttpComponentFactory { get; set; }
 
         public Func<IConnectionContext, IFrameControl> FrameFactory { get; set; }
-
-        public Action<IFeatureCollection> PrepareRequest { get; set; }
     }
 }
