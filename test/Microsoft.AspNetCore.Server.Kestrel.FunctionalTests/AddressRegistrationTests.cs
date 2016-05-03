@@ -42,6 +42,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             await RegisterAddresses_Success(addressInput, testUrls);
         }
 
+        [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv6ScopeId))]
+        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "HttpClient does not support IPv6 with scope ID on Linux.")]
+        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "HttpClient does not support IPv6 with scope ID on Mac.")]
+        public async Task RegisterAddresses_IPv6ScopeId_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
+        {
+            await RegisterAddresses_Success(addressInput, testUrls);
+        }
+
         public async Task RegisterAddresses_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
         {
             var config = new ConfigurationBuilder()
@@ -147,7 +155,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // Dynamic port
                 var ipv6Addresses = Dns.GetHostAddressesAsync(Dns.GetHostName()).Result
-                    .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6);
+                    .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
+                    .Where(ip => ip.ScopeId == 0);
+                foreach (var ip in ipv6Addresses)
+                {
+                    dataset.Add($"http://[{ip}]:0/", GetTestUrls);
+                }
+
+                return dataset;
+            }
+        }
+
+        public static TheoryData<string, Func<IServerAddressesFeature, string[]>> AddressRegistrationDataIPv6ScopeId
+        {
+            get
+            {
+                var dataset = new TheoryData<string, Func<IServerAddressesFeature, string[]>>();
+
+                // Dynamic port
+                var ipv6Addresses = Dns.GetHostAddressesAsync(Dns.GetHostName()).Result
+                    .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
+                    .Where(ip => ip.ScopeId != 0);
                 foreach (var ip in ipv6Addresses)
                 {
                     dataset.Add($"http://[{ip}]:0/", GetTestUrls);
