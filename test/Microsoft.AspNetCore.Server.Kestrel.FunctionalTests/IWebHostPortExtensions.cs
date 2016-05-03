@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Hosting
         public static IEnumerable<int> GetPorts(this IWebHost host)
         {
             return host.ServerFeatures.Get<IServerAddressesFeature>().Addresses
-                .Select(a => a.StartsWith("http://+") ? a.Replace("http://+", "http://localhost") : a)
+                .Select(a => a.Replace("://+", "://localhost"))
                 .Select(a => (new Uri(a)).Port);
         }
     }

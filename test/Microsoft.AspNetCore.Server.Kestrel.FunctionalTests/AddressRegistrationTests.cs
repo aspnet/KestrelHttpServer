@@ -188,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private static string[] GetTestUrls(IServerAddressesFeature addressesFeature)
         {
             return addressesFeature.Addresses
-                .Select(a => a.StartsWith("http://+") ? a.Replace("http://+", "http://localhost") : a)
+                .Select(a => a.Replace("://+", "://localhost"))
                 .Select(a => a.EndsWith("/") ? a : a + "/")
                 .ToArray();
         }
