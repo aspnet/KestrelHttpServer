@@ -23,7 +23,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             frame.Scheme = "https";
 
             // Act
-            frame.Reset();
+            frame.Reset(false);
+
+            // Assert
+            Assert.Equal("http", ((IFeatureCollection)frame).Get<IHttpRequestFeature>().Scheme);
+
+            frame.Scheme = "https";
+
+            // Act
+            frame.Reset(true);
 
             // Assert
             Assert.Equal("http", ((IFeatureCollection)frame).Get<IHttpRequestFeature>().Scheme);
