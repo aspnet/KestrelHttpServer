@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
@@ -209,7 +210,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             var block = _block;
             var index = _index;
             var following = block.End - index;
-            byte[] array;
             var byte0 = byte0Vector[0];
 
             while (true)
@@ -227,7 +227,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     following = newBlock.End - index;
                     block = newBlock;
                 }
-                array = block.Array;
                 while (following > 0)
                 {
 // Need unit tests to test Vector path
@@ -238,7 +237,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
+                            var byte0Equals = Vector.Equals(Unsafe.Read<Vector<byte>>(block.DataFixedPtr + index), byte0Vector);
 
                             if (byte0Equals.Equals(Vector<byte>.Zero))
                             {
@@ -286,7 +285,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             var block = _block;
             var index = _index;
             var following = block.End - index;
-            byte[] array;
             int byte0Index = int.MaxValue;
             int byte1Index = int.MaxValue;
             var byte0 = byte0Vector[0];
@@ -307,7 +305,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     following = newBlock.End - index;
                     block = newBlock;
                 }
-                array = block.Array;
                 while (following > 0)
                 {
 
@@ -319,7 +316,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            var data = new Vector<byte>(array, index);
+                            var data = Unsafe.Read<Vector<byte>>(block.DataFixedPtr + index);
                             var byte0Equals = Vector.Equals(data, byte0Vector);
                             var byte1Equals = Vector.Equals(data, byte1Vector);
 
@@ -390,7 +387,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             var block = _block;
             var index = _index;
             var following = block.End - index;
-            byte[] array;
             int byte0Index = int.MaxValue;
             int byte1Index = int.MaxValue;
             int byte2Index = int.MaxValue;
@@ -413,7 +409,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     following = newBlock.End - index;
                     block = newBlock;
                 }
-                array = block.Array;
                 while (following > 0)
                 {
 // Need unit tests to test Vector path
@@ -424,7 +419,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            var data = new Vector<byte>(array, index);
+                            var data = Unsafe.Read<Vector<byte>>(block.DataFixedPtr + index);
                             var byte0Equals = Vector.Equals(data, byte0Vector);
                             var byte1Equals = Vector.Equals(data, byte1Vector);
                             var byte2Equals = Vector.Equals(data, byte2Vector);
@@ -655,6 +650,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 return this;
             }
 
+            if (array == null)
+            {
+                return Consume(offset, count, out actual);
+            }
+
             var block = _block;
             var index = _index;
             var remaining = count;
@@ -664,27 +664,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 if (remaining <= following)
                 {
                     actual = count;
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, remaining);
-                    }
+                    Buffer.BlockCopy(block.Array, index, array, offset, remaining);
                     return new MemoryPoolIterator(block, index + remaining);
                 }
                 else if (block.Next == null)
                 {
                     actual = count - remaining + following;
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    }
+                    Buffer.BlockCopy(block.Array, index, array, offset, following);
                     return new MemoryPoolIterator(block, index + following);
                 }
                 else
                 {
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    }
+                    Buffer.BlockCopy(block.Array, index, array, offset, following);
+                    offset += following;
+                    remaining -= following;
+                    block = block.Next;
+                    index = block.Start;
+                }
+            }
+        }
+
+        private MemoryPoolIterator Consume(int offset, int count, out int actual)
+        {
+            if (IsDefault)
+            {
+                actual = 0;
+                return this;
+            }
+
+            var block = _block;
+            var index = _index;
+            var remaining = count;
+            while (true)
+            {
+                var following = block.End - index;
+                if (remaining <= following)
+                {
+                    actual = count;
+                    return new MemoryPoolIterator(block, index + remaining);
+                }
+                else if (block.Next == null)
+                {
+                    actual = count - remaining + following;
+                    return new MemoryPoolIterator(block, index + following);
+                }
+                else
+                {
                     offset += following;
                     remaining -= following;
                     block = block.Next;
