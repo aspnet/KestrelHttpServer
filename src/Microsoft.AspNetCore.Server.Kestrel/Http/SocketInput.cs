@@ -36,7 +36,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public SocketInput(MemoryPool memory, IThreadPool threadPool)
         {
-            //Debugger.Launch();
             _memory = memory;
             _threadPool = threadPool;
             _awaitableState = _awaitableIsNotCompleted;
@@ -48,22 +47,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolBlock IncomingStart()
         {
-            lock (_sync)
-            {
-                return _socketBlock ?? (_socketBlock = _memory.Lease());
-            }
+            return _socketBlock ?? (_socketBlock = _memory.Lease());
         }
 
         public void ReturnSocketBlock()
         {
-            MemoryPoolBlock socketBlock;
-            lock (_sync)
-            {
-                socketBlock = _socketBlock;
-                _socketBlock = null;
-            }
-
-            socketBlock?.Pool.Return(socketBlock);
+            _socketBlock?.Pool.Return(_socketBlock);
+            _socketBlock = null;
         }
 
         public void IncomingComplete(int count, Exception error)
@@ -83,9 +73,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (count > thresholdSize)
             {
+                _socketBlock.End += count;
+
                 lock (_sync)
                 {
-                    _socketBlock.End += count;
                     if (_writeHead == null)
                     {
                         _writeHead = _socketBlock;
@@ -96,14 +87,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         _writeTail.Next = _socketBlock;
                         _writeTail = _socketBlock;
                     }
-
-                    _socketBlock = null;
                 }
 
-                return;
+                _socketBlock = null;
             }
-
-            IncomingData(_socketBlock.Array, _socketBlock.Start, count);
+            else
+            {
+                IncomingData(_socketBlock.Array, _socketBlock.Start, count);
+            }
         }
 
         public void IncomingData(byte[] buffer, int offset, int count)
@@ -186,7 +177,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             lock (_sync)
             {
                 var newData = _writeHead != null;
-
                 if (!consumed.IsDefault)
                 {
                     var block = consumed.Block;
