@@ -5,6 +5,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 
@@ -12,6 +14,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public abstract class FrameHeaders : IHeaderDictionary
     {
+        static readonly Vector<ushort> _minValidHeaderChar = new Vector<ushort>(0x20);
+        static readonly int _vectorUShortSpan = Vector<ushort>.Count;
+
         protected bool _isReadOnly;
         protected Dictionary<string, StringValues> MaybeUnknown;
 
@@ -222,12 +227,61 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             if (headerCharacters != null)
             {
-                foreach (var ch in headerCharacters)
+                var remaining = headerCharacters.Length;
+                if (remaining < _vectorUShortSpan)
                 {
-                    if (ch < 0x20)
+                    foreach (var ch in headerCharacters)
                     {
-                        throw new InvalidOperationException(string.Format("Invalid control character in header: 0x{0:X2}", (byte)ch));
+                        if (ch < 0x20)
+                        {
+                            throw new InvalidOperationException(string.Format("Invalid control character in header: 0x{0:X2}", (byte)ch));
+                        }
                     }
+                }
+                else
+                {
+                    VectorValidateHeaderCharacters(headerCharacters, remaining);
+                }
+            }
+        }
+
+        private static unsafe void VectorValidateHeaderCharacters(string headerCharacters, int remaining)
+        {
+            fixed (char* header = headerCharacters)
+            {
+                var offset = 0;
+                while (remaining - _vectorUShortSpan >= 0)
+                {
+                    remaining -= _vectorUShortSpan;
+                    var stringVector = Unsafe.Read<Vector<ushort>>(header + offset);
+                    if (Vector.LessThanAny(stringVector, _minValidHeaderChar))
+                    {
+                        ThrowSpecficInvalidCharForVector(header + offset);
+                    }
+
+                    offset += _vectorUShortSpan;
+                }
+                
+                while (remaining > 0)
+                {
+                    remaining--;
+                    if (*(header + offset) < 0x20)
+                    {
+                        throw new InvalidOperationException(string.Format("Invalid control character in header: 0x{0:X2}", (byte)*(header + offset)));
+                    }
+
+                    offset++;
+                }
+            }
+        }
+
+        private unsafe static void ThrowSpecficInvalidCharForVector(char* header)
+        {
+            for (var i = 0; i < _vectorUShortSpan; i++)
+            {
+                if (*(header + i) < 0x20)
+                {
+                    throw new InvalidOperationException(string.Format("Invalid control character in header: 0x{0:X2}", (byte)*(header + i)));
                 }
             }
         }
