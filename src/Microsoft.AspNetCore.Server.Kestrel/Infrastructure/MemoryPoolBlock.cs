@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
@@ -55,14 +54,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         /// the Start is guaranteed to be equal to Array.Offset. The value of Start may be assigned anywhere between Data.Offset and
         /// Data.Offset + Data.Count, and must be equal to or less than End.
         /// </summary>
-        public int Start { get; set; }
+        public int Start;
 
         /// <summary>
         /// The End represents the offset into Array where the range of "active" bytes ends. At the point when the block is leased
         /// the End is guaranteed to be equal to Array.Offset. The value of Start may be assigned anywhere between Data.Offset and
         /// Data.Offset + Data.Count, and must be equal to or less than End.
         /// </summary>
-        public int End { get; set; }
+        public int End;
 
         /// <summary>
         /// Reference to the next block of data when the overall "active" bytes spans multiple blocks. At the point when the block is
@@ -70,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         /// working memory. The "active" memory is grown when bytes are copied in, End is increased, and Next is assigned. The "active" 
         /// memory is shrunk when bytes are consumed, Start is increased, and blocks are returned to the pool.
         /// </summary>
-        public MemoryPoolBlock Next { get; set; }
+        public MemoryPoolBlock Next;
 
         ~MemoryPoolBlock()
         {

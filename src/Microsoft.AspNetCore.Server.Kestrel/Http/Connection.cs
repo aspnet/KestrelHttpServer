@@ -270,7 +270,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 // there is no data to be read right now.
                 // See the note at http://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb.
                 // We need to clean up whatever was allocated by OnAlloc.
-                _rawSocketInput.IncomingDeferred();
+                _rawSocketInput.ReturnSocketBlock();
                 return;
             }
 

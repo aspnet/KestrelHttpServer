@@ -23,9 +23,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private Action _awaitableState;
         private Exception _awaitableError;
 
-        private MemoryPoolBlock _head;
-        private MemoryPoolBlock _tail;
-        private MemoryPoolBlock _pinned;
+        private MemoryPoolBlock _writeHead;
+        private MemoryPoolBlock _writeTail;
+
+        private MemoryPoolBlock _readHead;
+        private MemoryPoolBlock _readTail;
+
+        private MemoryPoolBlock _socketBlock;
 
         private int _consumingState;
         private object _sync = new object();
@@ -43,18 +47,54 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolBlock IncomingStart()
         {
-            const int minimumSize = 2048;
+            return _socketBlock ?? (_socketBlock = _memory.Lease());
+        }
 
-            if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
+        public void ReturnSocketBlock()
+        {
+            _socketBlock?.Pool.Return(_socketBlock);
+            _socketBlock = null;
+        }
+
+        public void IncomingComplete(int count, Exception error)
+        {
+            const int thresholdSize = 2048;
+            if (error != null)
             {
-                _pinned = _tail;
+                _awaitableError = error;
+            }
+
+            if (count == 0)
+            {
+                ReturnSocketBlock();
+                IncomingData(null, 0, 0);
+                return;
+            }
+
+            if (count > thresholdSize)
+            {
+                _socketBlock.End += count;
+
+                lock (_sync)
+                {
+                    if (_writeHead == null)
+                    {
+                        _writeHead = _socketBlock;
+                        _writeTail = _writeHead;
+                    }
+                    else
+                    {
+                        _writeTail.Next = _socketBlock;
+                        _writeTail = _socketBlock;
+                    }
+                }
+
+                _socketBlock = null;
             }
             else
             {
-                _pinned = _memory.Lease();
+                IncomingData(_socketBlock.Array, _socketBlock.Start, count);
             }
-
-            return _pinned;
         }
 
         public void IncomingData(byte[] buffer, int offset, int count)
@@ -63,20 +103,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 if (count > 0)
                 {
-                    if (_tail == null)
+                    if (_writeHead == null)
                     {
-                        _tail = _memory.Lease();
+                        _writeHead = _memory.Lease();
+                        _writeTail = _writeHead;
                     }
 
-                    var iterator = new MemoryPoolIterator(_tail, _tail.End);
+                    var iterator = new MemoryPoolIterator(_writeTail, _writeTail.End);
                     iterator.CopyFrom(buffer, offset, count);
 
-                    if (_head == null)
-                    {
-                        _head = _tail;
-                    }
-
-                    _tail = iterator.Block;
+                    _writeTail = iterator.Block;
                 }
                 else
                 {
@@ -84,59 +120,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
 
                 Complete();
-            }
-        }
-
-        public void IncomingComplete(int count, Exception error)
-        {
-            lock (_sync)
-            {
-                if (_pinned != null)
-                {
-                    _pinned.End += count;
-
-                    if (_head == null)
-                    {
-                        _head = _tail = _pinned;
-                    }
-                    else if (_tail == _pinned)
-                    {
-                        // NO-OP: this was a read into unoccupied tail-space
-                    }
-                    else
-                    {
-                        _tail.Next = _pinned;
-                        _tail = _pinned;
-                    }
-
-                    _pinned = null;
-                }
-
-                if (count == 0)
-                {
-                    RemoteIntakeFin = true;
-                }
-                if (error != null)
-                {
-                    _awaitableError = error;
-                }
-
-                Complete();
-            }
-        }
-
-        public void IncomingDeferred()
-        {
-            Debug.Assert(_pinned != null);
-
-            if (_pinned != null)
-            {
-                if (_pinned != _tail)
-                {
-                    _memory.Return(_pinned);
-                }
-
-                _pinned = null;
             }
         }
 
@@ -168,27 +151,84 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 throw new InvalidOperationException("Already consuming input.");
             }
 
-            return new MemoryPoolIterator(_head);
-        }
-
-        public void ConsumingComplete(
-            MemoryPoolIterator consumed,
-            MemoryPoolIterator examined)
-        {
             lock (_sync)
             {
-                MemoryPoolBlock returnStart = null;
-                MemoryPoolBlock returnEnd = null;
-
-                if (!consumed.IsDefault)
+                if (_writeHead == null)
                 {
-                    returnStart = _head;
-                    returnEnd = consumed.Block;
-                    _head = consumed.Block;
-                    _head.Start = consumed.Index;
+                    return default(MemoryPoolIterator);
                 }
 
-                if (!examined.IsDefault &&
+                Debug.Assert(_writeHead.Start != _writeHead.End);
+
+                _readHead = _writeHead;
+                _readTail = _writeTail;
+                _writeHead = null;
+                _writeTail = null;
+                return new MemoryPoolIterator(_readHead);
+            }
+        }
+
+        public void ConsumingComplete(MemoryPoolIterator consumed, MemoryPoolIterator examined)
+        {
+            MemoryPoolBlock returnStart = null;
+            MemoryPoolBlock returnEnd = null;
+
+            var returnLastBlock = false;
+            lock (_sync)
+            {
+                var newData = _writeHead != null;
+                if (!consumed.IsDefault)
+                {
+                    var block = consumed.Block;
+
+                    returnStart = _readHead;
+                    returnEnd = block;
+
+                    if (block == _readTail)
+                    {
+                        // consumed to last block
+                        if (consumed.Index == block.End)
+                        {
+                            // consumed everything
+                            returnLastBlock = true;
+                        }
+                        else
+                        {
+                            // add remaining data to write head
+                            _readTail.Next = _writeHead;
+                            _writeHead = block;
+                            block.Start = consumed.Index;
+                        }
+                    }
+                    else
+                    {
+                        // not consumed to last block
+                        if (consumed.Index == block.End)
+                        {
+                            // consumed to end of block
+                            returnLastBlock = true;
+                            block = block.Next;
+                        }
+                        else
+                        {
+                            block.Start = consumed.Index;
+                        }
+
+                        // add remaining data to write head
+                        _readTail.Next = _writeHead;
+                        _writeHead = block;
+                    }
+
+                    if (_writeTail == null)
+                    {
+                        _writeTail = _readTail.Next ?? _readTail;
+                    }
+
+                    _readHead = null;
+                    _readTail = null;
+                }
+
+                if (!newData &&
                     examined.IsEnd &&
                     RemoteIntakeFin == false &&
                     _awaitableError == null)
@@ -201,17 +241,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         _awaitableIsCompleted);
                 }
 
-                while (returnStart != returnEnd)
+            }
+
+            while (returnStart != null)
+            {
+                if (returnStart == returnEnd)
                 {
-                    var returnBlock = returnStart;
-                    returnStart = returnStart.Next;
-                    returnBlock.Pool.Return(returnBlock);
+                    if (returnLastBlock)
+                    {
+                        returnStart.Pool.Return(returnStart);
+                    }
+                    break;
+
                 }
 
-                if (Interlocked.CompareExchange(ref _consumingState, 0, 1) != 1)
-                {
-                    throw new InvalidOperationException("No ongoing consuming operation to complete.");
-                }
+                var returnBlock = returnStart;
+                returnStart = returnStart.Next;
+                returnBlock.Pool.Return(returnBlock);
+            }
+
+            if (Interlocked.CompareExchange(ref _consumingState, 0, 1) != 1)
+            {
+                throw new InvalidOperationException("No ongoing consuming operation to complete.");
             }
         }
 
@@ -289,7 +340,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             AbortAwaiting();
 
             // Return all blocks
-            var block = _head;
+            var block = _writeHead;
             while (block != null)
             {
                 var returnBlock = block;
@@ -298,8 +349,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 returnBlock.Pool.Return(returnBlock);
             }
 
-            _head = null;
-            _tail = null;
+            block = _readHead;
+            while (block != null)
+            {
+                var returnBlock = block;
+                block = block.Next;
+
+                returnBlock.Pool.Return(returnBlock);
+            }
+
+            ReturnSocketBlock();
+
+            _writeHead = null;
+            _writeTail = null;
+
+            _readHead = null;
+            _readTail = null;
         }
     }
 }
