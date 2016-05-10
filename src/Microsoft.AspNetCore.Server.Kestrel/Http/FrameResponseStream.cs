@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    class FrameResponseStream : Stream
+    public class FrameResponseStream : Stream
     {
-        private FrameContext _context;
+        private IFrameControl _context;
         private FrameStreamState _state;
 
         public FrameResponseStream()
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             ValidateState(default(CancellationToken));
 
-            _context.FrameControl.Flush();
+            _context.Flush();
         }
 
         public override Task FlushAsync(CancellationToken cancellationToken)
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var task = ValidateState(cancellationToken);
             if (task == null)
             {
-                return _context.FrameControl.FlushAsync(cancellationToken);
+                return _context.FlushAsync(cancellationToken);
             }
             return task;
         }
@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             ValidateState(default(CancellationToken));
 
-            _context.FrameControl.Write(new ArraySegment<byte>(buffer, offset, count));
+            _context.Write(new ArraySegment<byte>(buffer, offset, count));
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var task = ValidateState(cancellationToken);
             if (task == null)
             {
-                return _context.FrameControl.WriteAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
+                return _context.WriteAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
             }
             return task;
         }
@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public void Initialize(FrameContext context)
+        public void Initialize(IFrameControl context)
         {
             _context = context;
         }

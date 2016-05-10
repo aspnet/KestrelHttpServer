@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel;
+using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Xunit;
 
@@ -16,14 +17,24 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             // Arrange
             var connectionContext = new ConnectionContext()
             {
-                DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
             };
-            var frame = new Frame<object>(application: null, context: connectionContext);
+            var frame = new Frame<object>(application: null, context: connectionContext)
+            {
+                DateHeaderValueManager = new DateHeaderValueManager()
+            };
             frame.Scheme = "https";
 
             // Act
-            frame.Reset();
+            frame.Reset(false);
+
+            // Assert
+            Assert.Equal("http", ((IFeatureCollection)frame).Get<IHttpRequestFeature>().Scheme);
+
+            frame.Scheme = "https";
+
+            // Act
+            frame.Reset(true);
 
             // Assert
             Assert.Equal("http", ((IFeatureCollection)frame).Get<IHttpRequestFeature>().Scheme);

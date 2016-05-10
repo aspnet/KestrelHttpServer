@@ -6,6 +6,7 @@ using System.Threading;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
@@ -32,9 +33,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public TestServer(RequestDelegate app, ServiceContext context, string serverAddress)
         {
+            var dateHeaderValueManager = new DateHeaderValueManager();
             context.FrameFactory = connectionContext =>
             {
-                return new Frame<HttpContext>(new DummyApplication(app), connectionContext);
+                return new Frame<HttpContext>(new DummyApplication(app), connectionContext)
+                {
+                    DateHeaderValueManager = dateHeaderValueManager
+                };
             };
 
             try

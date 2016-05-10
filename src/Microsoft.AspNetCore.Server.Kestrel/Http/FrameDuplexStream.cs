@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    class FrameDuplexStream : Stream
+    public class FrameDuplexStream : Stream
     {
         private readonly Stream _requestStream;
         private readonly Stream _responseStream;

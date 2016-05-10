@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0-*",
+  "dependencies": {
+    "Microsoft.NETCore.Platforms": "1.0.1-*",
+    "Microsoft.AspNetCore.Server.Kestrel": "1.0.0-*",
+    "Microsoft.AspNetCore.Server.Kestrel.Pools": "0.1.0-*"
+  },
+
+  "buildOptions": {
+    "emitEntryPoint": true
+  },
+
+  "frameworks": {
+    "net451": { },
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "version": "1.0.0-*",
+          "type": "platform"
+        },
+        "System.Console": "4.0.0-*"
+      },
+      "imports": [
+        "dnxcore50"
+      ]
+    }
+  },
+
+  "runtimeOptions": {
+    "configProperties": {
+      "System.GC.Server": true
+    }
+  }
+}

@@ -2,10 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Net;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
@@ -23,9 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             Log = context.Log;
             ThreadPool = context.ThreadPool;
             FrameFactory = context.FrameFactory;
-            DateHeaderValueManager = context.DateHeaderValueManager;
             ServerOptions = context.ServerOptions;
-            HttpComponentFactory = context.HttpComponentFactory;
         }
 
         public IApplicationLifetime AppLifetime { get; set; }
@@ -36,10 +31,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public Func<ConnectionContext, Frame> FrameFactory { get; set; }
 
-        public DateHeaderValueManager DateHeaderValueManager { get; set; }
-
         public KestrelServerOptions ServerOptions { get; set; }
-
-        internal IHttpComponentFactory HttpComponentFactory { get; set; }
     }
 }

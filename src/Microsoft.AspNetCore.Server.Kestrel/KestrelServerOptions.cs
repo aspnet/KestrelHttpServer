@@ -3,6 +3,8 @@
 
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
+using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
@@ -12,23 +14,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IConnectionFilter ConnectionFilter { get; set; }
 
-        /// <summary>
-        /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 
-        /// pool the Request and Response <seealso cref="System.IO.Stream"/> objects
-        /// for another request after the Response's OnCompleted callback has fired. 
-        /// When this values is greater than zero, it is not safe to retain references to feature components after this event has fired.
-        /// Value is zero by default.
-        /// </summary>
-        public int MaxPooledStreams { get; set; }
+        public IComponentFactory<Streams> StreamFactory { get; set; }
 
-        /// <summary>
-        /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 
-        /// pool the Request and Response headers
-        /// for another request after the Response's OnCompleted callback has fired. 
-        /// When this values is greater than zero, it is not safe to retain references to feature components after this event has fired.
-        /// Value is zero by default.
-        /// </summary>
-        public int MaxPooledHeaders { get; set; }
+        public IComponentFactory<Headers> HeaderFactory { get; set; }
 
         public bool NoDelay { get; set; } = true;
 
