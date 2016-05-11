@@ -102,10 +102,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 "");
             await connection.Receive(
                 "Connection: close",
+                "Content-Length: 0",
                 "");
             await connection.ReceiveStartsWith("Date: ");
             await connection.ReceiveEnd(
-                "Content-Length: 0",
                 "Server: Kestrel",
                 "",
                 "");
