@@ -18,31 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Pools
 
         // https://github.com/dotnet/coreclr/pull/4468#issuecomment-212931043
         // 12x Faster than new T() which uses System.Activator 
-        protected override Headers CreateNew(int correlationId) => new CorrelatedHeaders() { CorrelationId = correlationId };
-
-        public override void Dispose(ref Headers component, bool requestImmediateReuse)
-        {
-            if (MaxPooled > 0)
-            {
-                if (requestImmediateReuse)
-                {
-                    component.Reset();
-                }
-                else
-                {
-                    CorrelatedHeaders headers = null;
-                    if ((headers = component as CorrelatedHeaders) != null)
-                    {
-                        component.Uninitialize();
-                        GetPool(headers.CorrelationId).Return(component);
-                    }
-                    component = null;
-                }
-            }
-            else
-            {
-                component = null;
-            }
-        }
+        protected override Headers CreateNew() => new Headers();
     }
 }

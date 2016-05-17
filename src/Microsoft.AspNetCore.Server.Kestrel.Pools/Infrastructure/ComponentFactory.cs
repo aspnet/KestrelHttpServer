@@ -13,7 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Pools.Infrastructure
         private static readonly int _poolCount = CalculatePoolCount();
         private static readonly int _poolMask = _poolCount - 1;
 
-        private CacheLinePadded<int> _poolIndex = new CacheLinePadded<int>();
+        private CacheLinePadded<int> _rentPoolIndex = new CacheLinePadded<int>();
+        private CacheLinePadded<int> _returnPoolIndex = new CacheLinePadded<int>();
         private ComponentPool<T>[] _pools = new ComponentPool<T>[_poolCount];
 
         private int _maxPooled;
@@ -52,37 +53,58 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Pools.Infrastructure
             MaxPooled = maxPooled;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ComponentPool<T> GetPool(int poolIndex)
+        private ComponentPool<T> RentPool
         {
-            return Volatile.Read(ref _pools[poolIndex]);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            { 
+                return Volatile.Read(ref _pools[Interlocked.Increment(ref _rentPoolIndex.Value) & _poolMask]);
+            }
         }
 
-        private int NextPoolIndex
+        private ComponentPool<T> ReturnPool
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return Interlocked.Increment(ref _poolIndex.Value) & _poolMask;
+                return Volatile.Read(ref _pools[Interlocked.Increment(ref _returnPoolIndex.Value) & _poolMask]);
             }
         }
 
-        protected abstract T CreateNew(int correlationId);
+        protected abstract T CreateNew();
 
-        public abstract void Dispose(ref T component, bool requestImmediateReuse);
+        public void Dispose(ref T component, bool requestImmediateReuse)
+        {
+            if (MaxPooled > 0)
+            {
+                if (requestImmediateReuse)
+                {
+                    component.Reset();
+                }
+                else
+                {
+                    component.Uninitialize();
+                    ReturnPool.Return(component);
+                    component = null;
+                }
+            }
+            else
+            {
+                component = null;
+            }
+        }
 
         public T Create()
         {
             if (_maxPooled == 0)
             {
-                return CreateNew(0);
+                return CreateNew();
             }
 
-            int poolIndex = NextPoolIndex;
             T component = null;
-            if (!GetPool(poolIndex).TryRent(out component))
+            if (!RentPool.TryRent(out component))
             {
-                component = CreateNew(poolIndex);
+                component = CreateNew();
             }
             return component;
         }

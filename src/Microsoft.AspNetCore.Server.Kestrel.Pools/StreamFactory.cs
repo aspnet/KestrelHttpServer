@@ -18,31 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Pools
 
         // https://github.com/dotnet/coreclr/pull/4468#issuecomment-212931043
         // 12x Faster than new T() which uses System.Activator 
-        protected override Streams CreateNew(int correlationId) => new CorrelatedStreams() { CorrelationId = correlationId };
-
-        public override void Dispose(ref Streams component, bool requestImmediateReuse)
-        {
-            if (MaxPooled > 0)
-            {
-                if (requestImmediateReuse)
-                {
-                    component.Reset();
-                }
-                else
-                {
-                    CorrelatedStreams streams = null;
-                    if ((streams = component as CorrelatedStreams) != null)
-                    {
-                        component.Uninitialize();
-                        GetPool(streams.CorrelationId).Return(component);
-                    }
-                    component = null;
-                }
-            }
-            else
-            {
-                component = null;
-            }
-        }
+        protected override Streams CreateNew() => new Streams();
     }
 }
