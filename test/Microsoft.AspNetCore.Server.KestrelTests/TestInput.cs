@@ -20,12 +20,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var ltp = new LoggingThreadPool(trace);
             var context = new FrameContext()
             {
-                DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
                 ConnectionControl = this,
                 FrameControl = this
             };
-            FrameContext = new Frame<object>(null, context);
+            FrameContext = new Frame<object>(null, context)
+            {
+                DateHeaderValueManager = new DateHeaderValueManager()
+            };
 
             _memoryPool = new MemoryPool();
             FrameContext.SocketInput = new SocketInput(_memoryPool, ltp);

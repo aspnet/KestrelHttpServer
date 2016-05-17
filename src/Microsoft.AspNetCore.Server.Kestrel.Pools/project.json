@@ -1,0 +1,33 @@
+{
+  "version": "0.1.0-*",
+  "description": "Pooling support for the ASP.NET Core Kestrel cross-platform web server.",
+  "buildOptions": {
+    "allowUnsafe": true,
+    "keyFile": "../../tools/Key.snk",
+    "nowarn": [
+      "CS1591"
+    ],
+    "xmlDoc": true
+  },
+  "packOptions": {
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/aspnet/kestrelhttpserver"
+    },
+    "tags": [
+      "aspnetcore",
+      "kestrel"
+    ]
+  },
+  "dependencies": {
+    "Microsoft.AspNetCore.Server.Kestrel": "1.0.0-*"
+  },
+  "frameworks": {
+    "net451": {},
+    "netstandard1.3": {
+      "imports": [
+        "portable-net45+win8"
+      ]
+    }
+  }
+}

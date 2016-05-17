@@ -21,12 +21,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var serverOptions = new KestrelServerOptions();
             var connectionContext = new ConnectionContext
             {
-                DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = serverOptions,
-                HttpComponentFactory = new HttpComponentFactory(serverOptions)
+                ServerOptions = serverOptions
             };
-            var frame = new Frame<object>(application: null, context: connectionContext);
+            var frame = new Frame<object>(application: null, context: connectionContext)
+            {
+                DateHeaderValueManager = new DateHeaderValueManager()
+            };
+
             frame.InitializeHeaders();
 
             IDictionary<string, StringValues> headers = frame.ResponseHeaders;
@@ -54,12 +56,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var serverOptions = new KestrelServerOptions();
             var connectionContext = new ConnectionContext
             {
-                DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = serverOptions,
-                HttpComponentFactory = new HttpComponentFactory(serverOptions)
+                ServerOptions = serverOptions
             };
-            var frame = new Frame<object>(application: null, context: connectionContext);
+            var frame = new Frame<object>(application: null, context: connectionContext)
+            {
+                DateHeaderValueManager = new DateHeaderValueManager()
+            };
             frame.InitializeHeaders();
 
             Assert.True(frame.ResponseHeaders.Count > 0);

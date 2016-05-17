@@ -45,6 +45,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly object _onCompletedSync = new Object();
 
         private bool _requestRejected;
+
+        public DateHeaderValueManager DateHeaderValueManager { get; set; }
+        public IComponentFactory<Headers> HeaderFactory { get; set; }
+        public IComponentFactory<Streams> StreamFactory { get; set; }
+
         private Headers _frameHeaders;
         private Streams _frameStreams;
 
@@ -74,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _pathBase = context.ServerAddress.PathBase;
 
             FrameControl = this;
-            Reset();
+            Reset(false);
         }
 
         public string Scheme { get; set; }
@@ -176,19 +181,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void InitializeHeaders()
         {
-            _frameHeaders = HttpComponentFactory.CreateHeaders(DateHeaderValueManager);
-            RequestHeaders = _frameHeaders.RequestHeaders;
-            ResponseHeaders = _frameHeaders.ResponseHeaders;
+            if (_frameHeaders == null)
+            {
+                _frameHeaders = HeaderFactory?.Create() ?? new Headers();
+                RequestHeaders = _frameHeaders.RequestHeaders;
+                ResponseHeaders = _frameHeaders.ResponseHeaders;
+            }
+            _frameHeaders.Initialize(DateHeaderValueManager);
         }
-
 
         public void InitializeStreams(MessageBody messageBody)
         {
-            _frameStreams = HttpComponentFactory.CreateStreams(this);
-
+            if (_frameStreams == null)
+            {
+                _frameStreams = StreamFactory?.Create() ?? new Streams();
+                DuplexStream = _frameStreams.DuplexStream;
+            }
+            _frameStreams.Initialize(this);
             RequestBody = _frameStreams.RequestBody.StartAcceptingReads(messageBody);
             ResponseBody = _frameStreams.ResponseBody.StartAcceptingWrites();
-            DuplexStream = _frameStreams.DuplexStream;
         }
 
         public void PauseStreams()
@@ -209,9 +220,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _frameStreams.ResponseBody.StopAcceptingWrites();
         }
 
-        public void Reset()
+        public void Reset(bool requestImmediateReuse)
         {
-            ResetComponents();
+            ResetComponents(requestImmediateReuse);
 
             _onStarting = null;
             _onCompleted = null;
@@ -248,23 +259,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _abortedCts = null;
         }
 
-        protected void ResetComponents()
+        protected void ResetComponents(bool requestImmediateReuse)
         {
-            var frameHeaders = Interlocked.Exchange(ref _frameHeaders, null);
-            if (frameHeaders != null)
+            if (_frameHeaders != null)
             {
-                RequestHeaders = null;
-                ResponseHeaders = null;
-                HttpComponentFactory.DisposeHeaders(frameHeaders);
+                var headerFactory = HeaderFactory;
+                if (headerFactory == null)
+                {
+                    _frameHeaders = null;
+                    RequestHeaders = null;
+                    ResponseHeaders = null;
+                }
+                else
+                {
+                    headerFactory.Dispose(ref _frameHeaders, requestImmediateReuse);
+                    RequestHeaders = _frameHeaders?.RequestHeaders;
+                    ResponseHeaders = _frameHeaders?.ResponseHeaders;
+                }
             }
 
-            var frameStreams = Interlocked.Exchange(ref _frameStreams, null);
-            if (frameStreams != null)
+            if (_frameStreams != null)
             {
-                RequestBody = null;
-                ResponseBody = null;
-                DuplexStream = null;
-                HttpComponentFactory.DisposeStreams(frameStreams);
+                var streamFactory = StreamFactory;
+                if (streamFactory == null)
+                {
+                    _frameStreams = null;
+                    RequestBody = null;
+                    ResponseBody = null;
+                    DuplexStream = null;
+                }
+                else
+                {
+                    streamFactory.Dispose(ref _frameStreams, requestImmediateReuse);
+                    RequestBody = _frameStreams?.RequestBody;
+                    ResponseBody = _frameStreams?.ResponseBody;
+                    DuplexStream = _frameStreams?.DuplexStream;
+                }
+
             }
         }
 
@@ -614,12 +645,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     var responseHeaders = _frameHeaders.ResponseHeaders;
                     responseHeaders.Reset();
-                    responseHeaders.SetRawDate(
-                        DateHeaderValueManager.GetDateHeaderValue(),
-                        DateHeaderValueManager.GetDateHeaderValueBytes());
-                    responseHeaders.SetRawServer(
-                        "Kestrel",
-                        Headers.BytesServer);
+                    var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
+                    responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
+                    responseHeaders.SetRawServer("Kestrel", Headers.BytesServer);
                     responseHeaders.SetRawContentLength("0", _bytesContentLengthZero);
 
                     ResponseHeaders = responseHeaders;
