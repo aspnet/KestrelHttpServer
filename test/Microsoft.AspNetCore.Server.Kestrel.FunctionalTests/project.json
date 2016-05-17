@@ -2,9 +2,9 @@
   "version": "1.0.0-*",
   "dependencies": {
     "dotnet-test-xunit": "1.0.0-*",
-    "Microsoft.NETCore.Platforms": "1.0.1-*",
-    "Microsoft.AspNetCore.Http.Abstractions": "1.0.0-*",
-    "Microsoft.AspNetCore.Server.Kestrel": "1.0.0-*",
+    "Microsoft.NETCore.Platforms": "1.0.1-rc2-24027",
+    "Microsoft.AspNetCore.Http.Abstractions": "1.0.0-rc2-final",
+    "Microsoft.AspNetCore.Server.Kestrel": "1.0.0-rc2-final",
     "Microsoft.AspNetCore.Server.Kestrel.TestCommon": "1.0.0-*",
     "Microsoft.AspNetCore.Testing": "1.0.0-*",
     "Newtonsoft.Json": "8.0.3",
@@ -14,11 +14,11 @@
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.0-*",
+          "version": "1.0.0-rc2-3002702",
           "type": "platform"
         },
-        "System.Net.Http": "4.0.1-*",
-        "System.Runtime.Serialization.Primitives": "4.1.1-*"
+        "System.Net.Http": "4.0.1-rc2-24027",
+        "System.Runtime.Serialization.Primitives": "4.1.1-rc2-24027"
       },
       "imports": [
         "portable-dnxcore50+net45+win8+wp8+wpa81",
