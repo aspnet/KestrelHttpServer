@@ -663,6 +663,109 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
+        public static unsafe void FastByteCopy(byte[] srcArray, uint srcOffset, byte[] destArray, uint destOffset, uint byteCount)
+        {
+            Debug.Assert(srcOffset + byteCount <= srcArray.Length);
+            Debug.Assert(destOffset + byteCount <= destArray.Length);
+            
+            if (byteCount < 64)
+            {
+                // Buffer.BlockCopy is expensive for small copies.  Do it manually ourselves.
+                
+                fixed (byte* pSrc = srcArray)
+                fixed (byte* pDest = destArray)
+                {
+                    var src = pSrc + srcOffset;
+                    var dest = pDest + destOffset;
+
+                    while (byteCount >= 16)
+                    {
+                        *(long*)dest = *(long*)src;
+                        *(long*)(dest + 8) = *(long*)(src + 8);
+                        
+                        src += 16;
+                        dest += 16;
+                        byteCount -= 16;
+                    }
+                    
+                    switch (byteCount)
+                    {
+                    case 0:
+                        return;
+                    case 1:
+                        *dest = *src;
+                        return;
+                    case 2:
+                        *(short *)dest = *(short *)src;
+                        return;
+                    case 3:
+                        *(short *)dest = *(short *)src;
+                        *(dest + 2) = *(src + 2);
+                        return;
+                    case 4:
+                        *(int *)dest = *(int *)src;
+                        return;
+                    case 5:
+                        *(int*)dest = *(int*)src;
+                        *(dest + 4) = *(src + 4);
+                        return;
+                    case 6:
+                        *(int*)dest = *(int*)src;
+                        *(short*)(dest + 4) = *(short*)(src + 4);
+                        return;
+                    case 7:
+                        *(int*)dest = *(int*)src;
+                        *(short*)(dest + 4) = *(short*)(src + 4);
+                        *(dest + 6) = *(src + 6);
+                        return;
+                    case 8:
+                        *(long*)dest = *(long*)src;
+                        return;
+                    case 9:
+                        *(long*)dest = *(long*)src;
+                        *(dest + 8) = *(src + 8);
+                        return;
+                    case 10:
+                        *(long*)dest = *(long*)src;
+                        *(short*)(dest + 8) = *(short*)(src + 8);
+                        return;
+                    case 11:
+                        *(long*)dest = *(long*)src;
+                        *(short*)(dest + 8) = *(short*)(src + 8);
+                        *(dest + 10) = *(src + 10);
+                        return;
+                    case 12:
+                        *(long*)dest = *(long*)src;
+                        *(int*)(dest + 8) = *(int*)(src + 8);
+                        return;
+                    case 13:
+                        *(long*)dest = *(long*)src;
+                        *(int*)(dest + 8) = *(int*)(src + 8);
+                        *(dest + 12) = *(src + 12);
+                        return;
+                    case 14:
+                        *(long*)dest = *(long*)src;
+                        *(int*)(dest + 8) = *(int*)(src + 8);
+                        *(short*)(dest + 12) = *(short*)(src + 12);
+                        return;
+                    case 15:
+                        *(long*)dest = *(long*)src;
+                        *(int*)(dest + 8) = *(int*)(src + 8);
+                        *(short*)(dest + 12) = *(short*)(src + 12);
+                        *(dest + 14) = *(src + 14);
+                        return;
+                    default:
+                        Debug.Assert(false);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                Buffer.BlockCopy(srcArray, (int)srcOffset, destArray, (int)destOffset, (int)byteCount);
+            }
+        }
+        
         public MemoryPoolIterator CopyTo(byte[] array, int offset, int count, out int actual)
         {
             if (IsDefault)
@@ -687,7 +790,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     actual = count;
                     if (array != null)
                     {
-                        Buffer.BlockCopy(block.Array, index, array, offset, remaining);
+                        FastByteCopy(block.Array, (uint)index, array, (uint)offset, (uint)remaining);
                     }
                     return new MemoryPoolIterator(block, index + remaining);
                 }
@@ -696,7 +799,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     actual = count - remaining + following;
                     if (array != null)
                     {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
+                        FastByteCopy(block.Array, (uint)index, array, (uint)offset, (uint)following);
                     }
                     return new MemoryPoolIterator(block, index + following);
                 }
@@ -704,7 +807,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 {
                     if (array != null)
                     {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
+                        FastByteCopy(block.Array, (uint)index, array, (uint)offset, (uint)following);
                     }
                     offset += following;
                     remaining -= following;
@@ -758,7 +861,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
                 var bytesToCopy = remaining < bytesLeftInBlock ? remaining : bytesLeftInBlock;
 
-                Buffer.BlockCopy(data, bufferIndex, block.Array, blockIndex, bytesToCopy);
+                FastByteCopy(data, (uint)bufferIndex, block.Array, (uint)blockIndex, (uint)bytesToCopy);
 
                 blockIndex += bytesToCopy;
                 bufferIndex += bytesToCopy;
