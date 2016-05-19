@@ -14,21 +14,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         /// <summary>
         /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 
-        /// pool the Request and Response <seealso cref="System.IO.Stream"/> objects
+        /// cache the headers and streams
         /// for another request after the Response's OnCompleted callback has fired. 
-        /// When this values is greater than zero, it is not safe to retain references to feature components after this event has fired.
-        /// Value is zero by default.
+        /// When this values is true, it is not safe to retain references to feature components after this event has fired.
+        /// Value is false by default.
         /// </summary>
-        public int MaxPooledStreams { get; set; }
-
-        /// <summary>
-        /// Gets or sets value that instructs <seealso cref="KestrelServer"/> whether it is safe to 
-        /// pool the Request and Response headers
-        /// for another request after the Response's OnCompleted callback has fired. 
-        /// When this values is greater than zero, it is not safe to retain references to feature components after this event has fired.
-        /// Value is zero by default.
-        /// </summary>
-        public int MaxPooledHeaders { get; set; }
+        public bool CacheHeadersAndStreams { get; set; }
 
         public bool NoDelay { get; set; } = true;
 

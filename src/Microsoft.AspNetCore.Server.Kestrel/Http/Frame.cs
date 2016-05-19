@@ -177,16 +177,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void InitializeHeaders()
         {
-            _frameHeaders = HttpComponentFactory.CreateHeaders(DateHeaderValueManager);
-            RequestHeaders = _frameHeaders.RequestHeaders;
-            ResponseHeaders = _frameHeaders.ResponseHeaders;
+            if(_frameHeaders == null)
+            {
+                _frameHeaders = new Headers();
+                _frameHeaders.Initialize(DateHeaderValueManager);
+                RequestHeaders = _frameHeaders.RequestHeaders;
+                ResponseHeaders = _frameHeaders.ResponseHeaders;
+            }
+            else
+            {
+                _frameHeaders.Initialize(DateHeaderValueManager);
+            }
         }
 
 
         public void InitializeStreams(MessageBody messageBody)
         {
-            _frameStreams = HttpComponentFactory.CreateStreams(this);
-
+            if(_frameStreams == null)
+            {
+                _frameStreams = new Streams();
+            }
+            
+            _frameStreams.Initialize(this);
             RequestBody = _frameStreams.RequestBody.StartAcceptingReads(messageBody);
             ResponseBody = _frameStreams.ResponseBody.StartAcceptingWrites();
             DuplexStream = _frameStreams.DuplexStream;
@@ -251,21 +263,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected void ResetComponents()
         {
-            var frameHeaders = Interlocked.Exchange(ref _frameHeaders, null);
-            if (frameHeaders != null)
+            if(ServerOptions?.CacheHeadersAndStreams ?? false)
             {
-                RequestHeaders = null;
-                ResponseHeaders = null;
-                HttpComponentFactory.DisposeHeaders(frameHeaders);
-            }
+                if (_frameHeaders != null)
+                {
+                    _frameHeaders.Uninitialize();
+                }
 
-            var frameStreams = Interlocked.Exchange(ref _frameStreams, null);
-            if (frameStreams != null)
+                if (_frameStreams != null)
+                {
+                    _frameStreams.Uninitialize();
+                }
+            }
+            else
             {
-                RequestBody = null;
-                ResponseBody = null;
-                DuplexStream = null;
-                HttpComponentFactory.DisposeStreams(frameStreams);
+               var frameHeaders = Interlocked.Exchange(ref _frameHeaders, null);
+               if (frameHeaders != null)
+               {
+                    RequestHeaders = null;
+                    ResponseHeaders = null;
+                    frameHeaders.Uninitialize();
+               }
+               
+               var frameStreams = Interlocked.Exchange(ref _frameStreams, null);
+               if (frameStreams != null)
+               {
+                    RequestBody = null;
+                    ResponseBody = null;
+                    DuplexStream = null;
+                    frameStreams.Uninitialize();
+               }
             }
         }
 

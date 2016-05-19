@@ -24,8 +24,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             ServerOptions = new KestrelServerOptions();
             ServerOptions.ShutdownTimeout = TimeSpan.FromSeconds(5);
-
-            HttpComponentFactory = new HttpComponentFactory(ServerOptions);
         }
 
         public TestServiceContext(IConnectionFilter filter)
