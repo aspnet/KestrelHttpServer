@@ -59,6 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void IncomingData(byte[] buffer, int offset, int count)
         {
+            Action awaitableState;
             lock (_sync)
             {
                 if (count > 0)
@@ -83,12 +84,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     RemoteIntakeFin = true;
                 }
 
-                Complete();
+                awaitableState = Complete();
+            }
+
+            if (awaitableState != null)
+            {
+                _threadPool.Run(awaitableState);
             }
         }
 
         public void IncomingComplete(int count, Exception error)
         {
+            Action awaitableState;
             lock (_sync)
             {
                 if (_pinned != null)
@@ -121,7 +128,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     _awaitableError = error;
                 }
 
-                Complete();
+                awaitableState = Complete();
+            }
+
+            if (awaitableState != null)
+            {
+                _threadPool.Run(awaitableState);
             }
         }
 
@@ -146,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             IncomingData(null, 0, 0);
         }
 
-        private void Complete()
+        private Action Complete()
         {
             var awaitableState = Interlocked.Exchange(
                 ref _awaitableState,
@@ -157,8 +169,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (!ReferenceEquals(awaitableState, _awaitableIsCompleted) &&
                 !ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
             {
-                _threadPool.Run(awaitableState);
+                return awaitableState;
             }
+            return null;
         }
 
         public MemoryPoolIterator ConsumingStart()
@@ -217,14 +230,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void CompleteAwaiting()
         {
-            Complete();
+            var awaitableState = Complete();
+            if (awaitableState != null)
+            {
+                _threadPool.Run(awaitableState);
+            }
         }
 
         public void AbortAwaiting()
         {
             _awaitableError = new TaskCanceledException("The request was aborted");
 
-            Complete();
+            var awaitableState = Complete();
+            if (awaitableState != null)
+            {
+                _threadPool.Run(awaitableState);
+            }
         }
 
         public SocketInput GetAwaiter()
