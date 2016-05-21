@@ -455,9 +455,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             SocketOutput.Write(_emptyData);
         }
 
-        public async Task FlushAsync(CancellationToken cancellationToken)
+        public Task FlushAsync(CancellationToken cancellationToken)
         {
-            await ProduceStartAndFireOnStarting();
+            var produceStartTask = ProduceStartAndFireOnStarting();
+            // ProduceStartAndFireOnStarting normally returns a CompletedTask
+            if (produceStartTask.Status != TaskStatus.RanToCompletion)
+            {
+                // If the Task was not completed go async and await the task
+                // to surface any errors, cancellation or wait for the Task 
+                // to complete before calling SocketOutput.WriteAsync
+                return FlushAsyncAwaited(produceStartTask, cancellationToken);
+            }
+
+            // ProduceStartAndFireOnStarting completed sync 
+            // fast-path by not constructing an async statemachine, 
+            // examining the various contexts and just return the final Write Task
+            return SocketOutput.WriteAsync(_emptyData, cancellationToken: cancellationToken);
+        }
+
+        public async Task FlushAsyncAwaited(Task produceStartTask, CancellationToken cancellationToken)
+        {
+            await produceStartTask;
             await SocketOutput.WriteAsync(_emptyData, cancellationToken: cancellationToken);
         }
 
@@ -483,9 +501,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             if (!HasResponseStarted)
             {
-                return WriteAsyncAwaited(data, cancellationToken);
+                var produceStartTask = ProduceStartAndFireOnStarting();
+                // ProduceStartAndFireOnStarting normally returns a CompletedTask
+                if (produceStartTask.Status != TaskStatus.RanToCompletion)
+                {
+                    // If the Task was not completed go async and await the task
+                    // to surface any errors, cancellation or wait for the Task 
+                    // to complete before calling SocketOutput.WriteAsync
+                    return WriteAsyncAwaited(produceStartTask, data, cancellationToken);
+                }
             }
 
+            // Otherwise fast-path by not constructing an async statemachine, 
+            // examining the various contexts and just return the final Write Task
             if (_autoChunk)
             {
                 if (data.Count == 0)
@@ -500,9 +528,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public async Task WriteAsyncAwaited(ArraySegment<byte> data, CancellationToken cancellationToken)
+        public async Task WriteAsyncAwaited(Task produceStartTask, ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            await ProduceStartAndFireOnStarting();
+            await produceStartTask;
 
             if (_autoChunk)
             {
@@ -662,18 +690,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!HasResponseStarted)
             {
-                return ProduceEndAwaited();
+                ProduceStart(appCompleted: true);
+                // Force flush
+                var flushTask = SocketOutput.WriteAsync(_emptyData);
+                // Flush will normally return a CompletedTask, however it may be a wrapped stream in an invalid state
+                if (flushTask.Status != TaskStatus.RanToCompletion)
+                {
+                    // If the Task was not completed go async and await the task
+                    // to surface any errors, cancellation or wait for the Task 
+                    // to complete before calling WriteSuffix
+                    return ProduceEndAwaited(flushTask);
+                }
             }
 
             return WriteSuffix();
         }
 
-        private async Task ProduceEndAwaited()
+        private async Task ProduceEndAwaited(Task flushTask)
         {
-            ProduceStart(appCompleted: true);
-
-            // Force flush
-            await SocketOutput.WriteAsync(_emptyData);
+            await flushTask;
 
             await WriteSuffix();
         }
@@ -684,7 +719,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // since ProduceStart() may set _autoChunk to true.
             if (_autoChunk)
             {
-                return WriteAutoChunkSuffixAwaited();
+                var writeAutoChunkSuffixTask = WriteChunkedResponseSuffix();
+                if (writeAutoChunkSuffixTask.Status != TaskStatus.RanToCompletion)
+                {
+                    return WriteAutoChunkSuffixAwaited(writeAutoChunkSuffixTask);
+                }
             }
 
             if (_keepAlive)
@@ -695,9 +734,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return TaskUtilities.CompletedTask;
         }
 
-        private async Task WriteAutoChunkSuffixAwaited()
+        private async Task WriteAutoChunkSuffixAwaited(Task writeAutoChunkSuffixTask)
         {
-            await WriteChunkedResponseSuffix();
+            await writeAutoChunkSuffixTask;
 
             if (_keepAlive)
             {
