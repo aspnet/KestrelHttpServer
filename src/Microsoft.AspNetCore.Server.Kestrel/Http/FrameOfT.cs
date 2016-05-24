@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     public class Frame<TContext> : Frame
     {
         private readonly IHttpApplication<TContext> _application;
+        private MessageBody _messageBody;
 
         public Frame(IHttpApplication<TContext> application,
                      ConnectionContext context)
@@ -81,10 +82,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     if (!_requestProcessingStopping)
                     {
-                        var messageBody = MessageBody.For(HttpVersion, FrameRequestHeaders, this);
-                        _keepAlive = messageBody.RequestKeepAlive;
+                        _messageBody = MessageBody.For(_messageBody, HttpVersion, FrameRequestHeaders, this);
+                        _keepAlive = _messageBody.RequestKeepAlive;
 
-                        InitializeStreams(messageBody);
+                        InitializeStreams(_messageBody);
 
                         _abortedCts = null;
                         _manuallySetRequestAbortToken = null;
@@ -127,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             if (_keepAlive)
                             {
                                 // Finish reading the request body in case the app did not.
-                                await messageBody.Consume();
+                                await _messageBody.Consume();
                             }
 
                             await ProduceEnd();

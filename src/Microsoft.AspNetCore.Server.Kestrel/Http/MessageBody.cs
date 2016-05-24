@@ -2,12 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Exceptions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
@@ -99,6 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public abstract ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken);
 
         public static MessageBody For(
+            MessageBody lastMessageBody,
             string httpVersion,
             FrameRequestHeaders headers,
             Frame context)
@@ -116,6 +115,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var transferEncoding = headers.HeaderTransferEncoding.ToString();
             if (transferEncoding.Length > 0)
             {
+                var messageBody = lastMessageBody as ForChunkedEncoding;
+                if (messageBody != null)
+                {
+                    messageBody.Reset(keepAlive, headers);
+                    return messageBody;
+                }
+
                 return new ForChunkedEncoding(keepAlive, headers, context);
             }
 
@@ -129,13 +135,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
                 else
                 {
+                    var messageBody = lastMessageBody as ForContentLength;
+                    if (messageBody != null)
+                    {
+                        messageBody.Reset(keepAlive, contentLength);
+                        return messageBody;
+                    }
+
                     return new ForContentLength(keepAlive, contentLength, context);
                 }
             }
 
             if (keepAlive)
             {
+                var messageBody = lastMessageBody as ForContentLength;
+                if (messageBody != null)
+                {
+                    messageBody.Reset(keepAlive, 0);
+                    return messageBody;
+                }
+
                 return new ForContentLength(true, 0, context);
+            }
+
+            if (lastMessageBody != null && lastMessageBody is ForRemainingData)
+            {
+                return lastMessageBody;
             }
 
             return new ForRemainingData(context);
@@ -156,7 +181,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private class ForContentLength : MessageBody
         {
-            private readonly long _contentLength;
+            private long _contentLength;
             private long _inputLength;
 
             public ForContentLength(bool keepAlive, long contentLength, Frame context)
@@ -164,7 +189,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 RequestKeepAlive = keepAlive;
                 _contentLength = contentLength;
-                _inputLength = _contentLength;
+                _inputLength = contentLength;
+            }
+
+            public void Reset(bool keepAlive, long contentLength)
+            {
+                RequestKeepAlive = keepAlive;
+                _contentLength = contentLength;
+                _inputLength = contentLength;
             }
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
@@ -224,6 +256,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             public ForChunkedEncoding(bool keepAlive, FrameRequestHeaders headers, Frame context)
                 : base(context)
             {
+                RequestKeepAlive = keepAlive;
+                _requestHeaders = headers;
+            }
+
+            public void Reset(bool keepAlive, FrameRequestHeaders headers)
+            {
+                _inputLength = 0;
+                _mode = Mode.Prefix;
                 RequestKeepAlive = keepAlive;
                 _requestHeaders = headers;
             }
