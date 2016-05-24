@@ -49,6 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _timeWithoutRequestsUntilIdle = timeWithoutRequestsUntilIdle;
             _timerInterval = timerInterval;
             _dateValueTimer = new Timer(TimerLoop, state: null, dueTime: Timeout.Infinite, period: Timeout.Infinite);
+            SetDateValues(systemClock.UtcNow);
         }
 
         /// <summary>

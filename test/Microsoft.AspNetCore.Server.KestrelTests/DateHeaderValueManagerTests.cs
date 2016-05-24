@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             Assert.Equal(now.ToString(Constants.RFC1123DateFormat), result1);
             Assert.Equal(now.ToString(Constants.RFC1123DateFormat), result2);
-            Assert.Equal(1, systemClock.UtcNowCalled);
+            Assert.Equal(2, systemClock.UtcNowCalled);
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             Assert.Equal(now.ToString(Constants.RFC1123DateFormat), result1);
             Assert.Equal(future.ToString(Constants.RFC1123DateFormat), result2);
-            Assert.True(systemClock.UtcNowCalled >= 2);
+            Assert.True(systemClock.UtcNowCalled >= 3);
         }
 
         [Fact]
