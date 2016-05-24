@@ -2,12 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Exceptions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
@@ -215,7 +213,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         private class ForChunkedEncoding : MessageBody
         {
-            private Vector<byte> _vectorCRs = new Vector<byte>((byte)'\r');
+            private static Vector<byte> _vectorCRs = new Vector<byte>((byte)'\r');
 
             private int _inputLength;
             private Mode _mode = Mode.Prefix;
