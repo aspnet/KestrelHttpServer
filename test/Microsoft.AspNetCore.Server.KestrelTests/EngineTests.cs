@@ -555,19 +555,20 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         "");
                     await connection.Receive(
                         "HTTP/1.1 500 Internal Server Error",
+                        "Content-Length: 0",
                         "");
                     await connection.ReceiveStartsWith("Date:");
                     await connection.Receive(
-                        "Content-Length: 0",
                         "Server: Kestrel",
                         "",
                         "HTTP/1.1 500 Internal Server Error",
                         "");
-                    await connection.Receive("Connection: close",
+                    await connection.Receive(
+                        "Connection: close",
+                        "Content-Length: 0",
                         "");
                     await connection.ReceiveStartsWith("Date:");
                     await connection.ReceiveEnd(
-                        "Content-Length: 0",
                         "Server: Kestrel",
                         "",
                         "");
@@ -708,9 +709,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         "HTTP/1.1 400 Bad Request",
                         "Connection: close",
                         "");
+                    await connection.Receive("Content-Length: 0", "");
                     await connection.ReceiveStartsWith("Date:");
                     await connection.ReceiveForcedEnd(
-                        "Content-Length: 0",
                         "Server: Kestrel",
                         "",
                         "");
@@ -729,10 +730,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         "",
                         "HTTP/1.1 400 Bad Request",
                         "Connection: close",
+                        "Content-Length: 0",
                         "");
                     await connection.ReceiveStartsWith("Date:");
                     await connection.ReceiveForcedEnd(
-                        "Content-Length: 0",
                         "Server: Kestrel",
                         "",
                         "");
@@ -789,18 +790,18 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         "");
                     await connection.Receive(
                         "HTTP/1.1 500 Internal Server Error",
+                        "Content-Length: 0",
                         "");
                     await connection.ReceiveStartsWith("Date:");
                     await connection.Receive(
-                        "Content-Length: 0",
                         "Server: Kestrel",
                         "",
                         "HTTP/1.1 500 Internal Server Error",
                         "Connection: close",
+                        "Content-Length: 0",
                         "");
                     await connection.ReceiveStartsWith("Date:");
                     await connection.ReceiveEnd(
-                        "Content-Length: 0",
                         "Server: Kestrel",
                         "",
                         "");
