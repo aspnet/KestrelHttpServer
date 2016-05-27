@@ -21,9 +21,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         [Theory]
         [InlineData("://", "", "", 0, "", "://:0")]
+        [InlineData("://:5000", "", "", 5000, "", "://:5000")]
         [InlineData("http://", "http", "", 80, "", "http://:80")]
+        [InlineData("http://:5000", "http", "", 5000, "", "http://:5000")]
         [InlineData("http:///", "http", "", 80, "", "http://:80")]
+        [InlineData("http:///:5000", "http", "", 80, "/:5000", "http://:80/:5000")]
         [InlineData("http:////", "http", "", 80, "/", "http://:80/")]
+        [InlineData("http:////:5000", "http", "", 80, "//:5000", "http://:80//:5000")]
         [InlineData("://emptyscheme", "", "emptyscheme", 0, "", "://emptyscheme:0")]
         [InlineData("http://+", "http", "+", 80, "", "http://+:80")]
         [InlineData("http://*", "http", "*", 80, "", "http://*:80")]
