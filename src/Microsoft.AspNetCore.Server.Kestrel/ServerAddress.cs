@@ -142,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
 
             // Path should not end with a / since it will be used as PathBase later
-            if (url[url.Length - 1] == '/')
+            if (url[url.Length - 1] == '/' && url.Length > pathDelimiterEnd)
             {
                 serverAddress.PathBase = url.Substring(pathDelimiterEnd, url.Length - pathDelimiterEnd - 1);
             }
