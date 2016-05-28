@@ -726,11 +726,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public void CopyFrom(byte[] data, int offset, int count)
         {
-            if (IsDefault)
-            {
-                return;
-            }
-
             Debug.Assert(_block != null);
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);
@@ -773,11 +768,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public unsafe void CopyFromAscii(string data)
         {
-            if (IsDefault)
-            {
-                return;
-            }
-
             Debug.Assert(_block != null);
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);

@@ -706,6 +706,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var hasConnection = responseHeaders.HasConnection;
 
             var end = SocketOutput.ProducingStart();
+            if (end.IsDefault)
+            { 
+                return;
+            }
+            
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
