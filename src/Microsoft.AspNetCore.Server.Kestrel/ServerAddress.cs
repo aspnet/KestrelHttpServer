@@ -141,8 +141,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 serverAddress.Host = url.Substring(schemeDelimiterEnd, pathDelimiterStart - schemeDelimiterEnd);
             }
 
+            if (string.IsNullOrEmpty(serverAddress.Host))
+            {
+                throw new FormatException($"Invalid URL: {url}");
+            }
+
             // Path should not end with a / since it will be used as PathBase later
-            if (url[url.Length - 1] == '/' && url.Length > pathDelimiterEnd)
+            if (url[url.Length - 1] == '/')
             {
                 serverAddress.PathBase = url.Substring(pathDelimiterEnd, url.Length - pathDelimiterEnd - 1);
             }
