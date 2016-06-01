@@ -8,16 +8,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public class KestrelServerOptions
     {
-        public IServiceProvider ApplicationServices { get; set; }
-
-        public IConnectionFilter ConnectionFilter { get; set; }
-
-        public bool NoDelay { get; set; } = true;
-
         /// <summary>
         /// Gets or sets whether the <c>Server</c> header should be included in each response.
         /// </summary>
         public bool AddServerHeader { get; set; } = true;
+
+        public IServiceProvider ApplicationServices { get; set; }
+
+        public IConnectionFilter ConnectionFilter { get; set; }
+
+        private int _maxInputBufferLength = 1024 * 1024;
+        public int MaxInputBufferLength
+        {
+            get
+            {
+                return _maxInputBufferLength;
+            }
+            set
+            {
+                if (value < -1 || value == 0)
+                {
+                    throw new ArgumentOutOfRangeException("value", "Value must be positive or -1.");
+                }
+            }
+        }
+
+        public bool NoDelay { get; set; } = true;
 
         /// <summary>
         /// The amount of time after the server begins shutting down before connections will be forcefully closed.

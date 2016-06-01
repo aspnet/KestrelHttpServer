@@ -49,7 +49,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
-            _rawSocketInput = new SocketInput(Memory, ThreadPool);
+            if (ServerOptions.MaxInputBufferLength == -1)
+            {
+                _rawSocketInput = new SocketInput(Memory, ThreadPool);
+            }
+            else
+            {
+                _rawSocketInput = new SocketInput(Memory, ThreadPool, ServerOptions.MaxInputBufferLength, this, Thread);
+            }
+
             _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
         }
 
