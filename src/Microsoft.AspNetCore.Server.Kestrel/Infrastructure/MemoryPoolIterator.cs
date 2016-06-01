@@ -665,10 +665,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public MemoryPoolIterator CopyTo(byte[] array, int offset, int count, out int actual)
         {
-            if (IsDefault)
+            if (count == 0 || IsDefault)
             {
                 actual = 0;
                 return this;
+            }
+            if (array == null)
+            {
+                return Consume(count, out actual);
             }
 
             var block = _block;
@@ -685,28 +689,70 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 if (remaining <= following)
                 {
                     actual = count;
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, remaining);
-                    }
+
+                    Debug.Assert(index - block.Data.Offset + remaining <= block.Data.Count);
+                    Debug.Assert(offset + remaining <= array.Length);
+
+                    Buffer.BlockCopy(block.Array, index, array, offset, remaining);
                     return new MemoryPoolIterator(block, index + remaining);
                 }
                 else if (wasLastBlock)
                 {
                     actual = count - remaining + following;
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    }
+
+                    Debug.Assert(index - block.Data.Offset + following <= block.Data.Count);
+                    Debug.Assert(offset + following <= array.Length);
+
+                    Buffer.BlockCopy(block.Array, index, array, offset, following);
                     return new MemoryPoolIterator(block, index + following);
                 }
                 else
                 {
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    }
+                    Debug.Assert(index - block.Data.Offset + following <= block.Data.Count);
+                    Debug.Assert(offset + following <= array.Length);
+
+                    Buffer.BlockCopy(block.Array, index, array, offset, following);
                     offset += following;
+                    remaining -= following;
+                    block = block.Next;
+                    index = block.Start;
+                }
+            }
+        }
+
+        private MemoryPoolIterator Consume(int count, out int actual)
+        {
+            var block = _block;
+            var index = _index;
+            var remaining = count;
+            while (true)
+            {
+                // Determine if we might attempt to copy data from block.Next before
+                // calculating "following" so we don't risk skipping data that could
+                // be added after block.End when we decide to copy from block.Next.
+                // block.End will always be advanced before block.Next is set.
+                var wasLastBlock = block.Next == null;
+                var following = block.End - index;
+                if (remaining <= following)
+                {
+                    actual = count;
+
+                    Debug.Assert(index - block.Data.Offset + remaining <= block.Data.Count);
+
+                    return new MemoryPoolIterator(block, index + remaining);
+                }
+                else if (wasLastBlock)
+                {
+                    actual = count - remaining + following;
+
+                    Debug.Assert(index - block.Data.Offset + following <= block.Data.Count);
+
+                    return new MemoryPoolIterator(block, index + following);
+                }
+                else
+                {
+                    Debug.Assert(index - block.Data.Offset + following <= block.Data.Count);
+
                     remaining -= following;
                     block = block.Next;
                     index = block.Start;
@@ -726,7 +772,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public void CopyFrom(byte[] data, int offset, int count)
         {
-            if (IsDefault)
+            if (count == 0 || IsDefault)
             {
                 return;
             }
@@ -757,6 +803,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 }
 
                 var bytesToCopy = remaining < bytesLeftInBlock ? remaining : bytesLeftInBlock;
+
+                Debug.Assert(offset + bytesToCopy <= data.Length);
+                Debug.Assert(blockIndex - block.Data.Offset + bytesToCopy <= block.Data.Count);
 
                 Buffer.BlockCopy(data, bufferIndex, block.Array, blockIndex, bytesToCopy);
 
