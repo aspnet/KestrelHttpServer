@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Numerics;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
@@ -726,11 +727,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public void CopyFrom(byte[] data, int offset, int count)
         {
-            if (IsDefault)
-            {
-                return;
-            }
-
             Debug.Assert(_block != null);
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);
@@ -773,11 +769,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public unsafe void CopyFromAscii(string data)
         {
-            if (IsDefault)
-            {
-                return;
-            }
-
             Debug.Assert(_block != null);
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);
@@ -832,6 +823,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 }
             }
 
+            block.End = blockIndex;
+            _block = block;
+            _index = blockIndex;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe bool GetRawBuffer(int bytesRequired, out byte* rawBuffer)
+        {
+            Debug.Assert(_block != null);
+            Debug.Assert(_block.Next == null);
+            Debug.Assert(_block.End == _index);
+
+            var block = _block;
+            var blockIndex = _index;
+
+            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+            
+            if (bytesLeftInBlock >= bytesRequired)
+            {
+                rawBuffer = block.DataFixedPtr + blockIndex;
+                return true;
+            }
+
+            rawBuffer = null;            
+            return false;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UpdateEnd(int bytesWritten)
+        {
+            Debug.Assert(_block != null);
+            Debug.Assert(_block.Next == null);
+            Debug.Assert(_block.End == _index);
+
+            var block = _block;
+            var blockIndex = _index + bytesWritten;
+
+            Debug.Assert(blockIndex <= block.Data.Offset + block.Data.Count);
+            
             block.End = blockIndex;
             _block = block;
             _index = blockIndex;

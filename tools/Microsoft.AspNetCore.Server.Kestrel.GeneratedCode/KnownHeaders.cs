@@ -27,6 +27,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
             public string TestBit() => $"((_bits & {1L << Index}L) != 0)";
             public string SetBit() => $"_bits |= {1L << Index}L";
             public string ClearBit() => $"_bits &= ~{1L << Index}L";
+            public string EmitCode()
+            {
+                string s = $@" 
+            byte* b;
+            
+            if (output.GetRawBuffer({BytesCount}, out b))
+            {{
+                 // Emit directly
+";
+
+                int i = 0;
+                while (BytesCount - i > 8)
+                {
+                    s += $"*(long*)(b + {i}) = 0x{Bytes[i+7]:X2}{Bytes[i+6]:X2}{Bytes[i+5]:X2}{Bytes[i+4]:X2}{Bytes[i+3]:X2}{Bytes[i+2]:X2}{Bytes[i+1]:X2}{Bytes[i]:X2};\r\n";
+                    i += 8;
+                }
+                if (BytesCount - i >= 4)
+                {
+                    s += $"*(int*)(b + {i}) = 0x{Bytes[i+3]:X2}{Bytes[i+2]:X2}{Bytes[i+1]:X2}{Bytes[i]:X2};\r\n";
+                    i += 4;
+                }
+                if (BytesCount - i >= 2)
+                {
+                    s += $"*(short*)(b + {i}) = 0x{Bytes[i+1]:X2}{Bytes[i]:X2};\r\n";
+                    i += 2;
+                }
+                if (BytesCount - i >= 1)
+                {
+                    s += $"*(short*)(b + {i}) = 0x{Bytes[i]:X2};\r\n";
+                    i += 1;
+                }
+                
+                s += $@"
+                output.UpdateEnd({BytesCount});
+            }}
+            else
+            {{
+                output.CopyFrom(_headerBytes, {BytesOffset}, {BytesCount});
+            }}
+";                
+                return s;
+            }
+            
             public string EqualIgnoreCaseBytes()
             {
                 var result = "";
@@ -394,7 +437,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
         }}
         {(loop.ClassName == "FrameResponseHeaders" ? $@"
-        protected void CopyToFast(ref MemoryPoolIterator output)
+        protected unsafe void CopyToFast(ref MemoryPoolIterator output)
         {{
             {Each(loop.Headers, header => $@"
                 if ({header.TestBit()})
@@ -408,7 +451,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {{
                             if (value != null)
                             {{
-                                output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
+                                {header.EmitCode()}
                                 output.CopyFromAscii(value);
                             }}
                         }}

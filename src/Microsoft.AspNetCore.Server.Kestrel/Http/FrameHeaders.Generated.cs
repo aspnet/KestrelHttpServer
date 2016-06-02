@@ -9010,7 +9010,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
         }
         
-        protected void CopyToFast(ref MemoryPoolIterator output)
+        protected unsafe void CopyToFast(ref MemoryPoolIterator output)
         {
             
                 if (((_bits & 1L) != 0))
@@ -9019,7 +9019,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 0, 17);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(17, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x2D65686361430A0D;
+*(long*)(b + 8) = 0x3A6C6F72746E6F43;
+*(short*)(b + 16) = 0x20;
+
+                output.UpdateEnd(17);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 0, 17);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9036,7 +9052,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 17, 14);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(14, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x63656E6E6F430A0D;
+*(int*)(b + 8) = 0x6E6F6974;
+*(short*)(b + 12) = 0x203A;
+
+                output.UpdateEnd(14);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 17, 14);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9053,7 +9085,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 31, 8);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(8, out b))
+            {
+                 // Emit directly
+*(int*)(b + 0) = 0x61440A0D;
+*(short*)(b + 4) = 0x6574;
+*(short*)(b + 6) = 0x3A;
+
+                output.UpdateEnd(8);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 31, 8);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9065,7 +9113,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 39, 14);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(14, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x412D7065654B0A0D;
+*(int*)(b + 8) = 0x6576696C;
+*(short*)(b + 12) = 0x203A;
+
+                output.UpdateEnd(14);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 39, 14);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9077,7 +9141,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 53, 10);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(10, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x616D676172500A0D;
+*(short*)(b + 8) = 0x203A;
+
+                output.UpdateEnd(10);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 53, 10);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9089,7 +9168,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 63, 11);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(11, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x656C696172540A0D;
+*(short*)(b + 8) = 0x3A72;
+*(short*)(b + 10) = 0x20;
+
+                output.UpdateEnd(11);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 63, 11);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9106,7 +9201,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 74, 21);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(21, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x66736E6172540A0D;
+*(long*)(b + 8) = 0x646F636E452D7265;
+*(int*)(b + 16) = 0x3A676E69;
+*(short*)(b + 20) = 0x20;
+
+                output.UpdateEnd(21);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 74, 21);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9118,7 +9230,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 95, 11);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(11, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6461726770550A0D;
+*(short*)(b + 8) = 0x3A65;
+*(short*)(b + 10) = 0x20;
+
+                output.UpdateEnd(11);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 95, 11);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9130,7 +9258,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 106, 7);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(7, out b))
+            {
+                 // Emit directly
+*(int*)(b + 0) = 0x69560A0D;
+*(short*)(b + 4) = 0x3A61;
+*(short*)(b + 6) = 0x20;
+
+                output.UpdateEnd(7);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 106, 7);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9142,7 +9286,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 113, 11);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(11, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E696E7261570A0D;
+*(short*)(b + 8) = 0x3A67;
+*(short*)(b + 10) = 0x20;
+
+                output.UpdateEnd(11);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 113, 11);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9154,7 +9314,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 124, 9);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(9, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x3A776F6C6C410A0D;
+*(short*)(b + 8) = 0x20;
+
+                output.UpdateEnd(9);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 124, 9);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9171,7 +9346,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 133, 18);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(18, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(long*)(b + 8) = 0x6874676E654C2D74;
+*(short*)(b + 16) = 0x203A;
+
+                output.UpdateEnd(18);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 133, 18);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9183,7 +9374,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 151, 16);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(16, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(int*)(b + 8) = 0x79542D74;
+*(short*)(b + 12) = 0x6570;
+*(short*)(b + 14) = 0x3A;
+
+                output.UpdateEnd(16);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 151, 16);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9195,7 +9403,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 167, 20);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(20, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(long*)(b + 8) = 0x69646F636E452D74;
+*(int*)(b + 16) = 0x203A676E;
+
+                output.UpdateEnd(20);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 167, 20);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9207,7 +9431,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 187, 20);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(20, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(long*)(b + 8) = 0x6175676E614C2D74;
+*(int*)(b + 16) = 0x203A6567;
+
+                output.UpdateEnd(20);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 187, 20);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9219,7 +9459,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 207, 20);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(20, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(long*)(b + 8) = 0x697461636F4C2D74;
+*(int*)(b + 16) = 0x203A6E6F;
+
+                output.UpdateEnd(20);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 207, 20);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9231,7 +9487,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 227, 15);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(15, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(int*)(b + 8) = 0x444D2D74;
+*(short*)(b + 12) = 0x3A35;
+*(short*)(b + 14) = 0x20;
+
+                output.UpdateEnd(15);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 227, 15);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9243,7 +9516,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 242, 17);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(17, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6E65746E6F430A0D;
+*(long*)(b + 8) = 0x3A65676E61522D74;
+*(short*)(b + 16) = 0x20;
+
+                output.UpdateEnd(17);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 242, 17);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9255,7 +9544,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 259, 11);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(11, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6572697078450A0D;
+*(short*)(b + 8) = 0x3A73;
+*(short*)(b + 10) = 0x20;
+
+                output.UpdateEnd(11);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 259, 11);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9267,7 +9572,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 270, 17);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(17, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x4D2D7473614C0A0D;
+*(long*)(b + 8) = 0x3A6465696669646F;
+*(short*)(b + 16) = 0x20;
+
+                output.UpdateEnd(17);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 270, 17);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9279,7 +9600,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 287, 17);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(17, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7470656363410A0D;
+*(long*)(b + 8) = 0x3A7365676E61522D;
+*(short*)(b + 16) = 0x20;
+
+                output.UpdateEnd(17);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 287, 17);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9291,7 +9628,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 304, 7);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(7, out b))
+            {
+                 // Emit directly
+*(int*)(b + 0) = 0x67410A0D;
+*(short*)(b + 4) = 0x3A65;
+*(short*)(b + 6) = 0x20;
+
+                output.UpdateEnd(7);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 304, 7);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9303,7 +9656,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 311, 8);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(8, out b))
+            {
+                 // Emit directly
+*(int*)(b + 0) = 0x54450A0D;
+*(short*)(b + 4) = 0x6761;
+*(short*)(b + 6) = 0x3A;
+
+                output.UpdateEnd(8);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 311, 8);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9315,7 +9684,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 319, 12);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(12, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x697461636F4C0A0D;
+*(int*)(b + 8) = 0x203A6E6F;
+
+                output.UpdateEnd(12);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 319, 12);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9327,7 +9711,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 331, 21);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(21, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x2D79786F72500A0D;
+*(long*)(b + 8) = 0x6369746568747541;
+*(int*)(b + 16) = 0x3A657461;
+*(short*)(b + 20) = 0x20;
+
+                output.UpdateEnd(21);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 331, 21);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9339,7 +9740,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 352, 15);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(15, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x2D79727465520A0D;
+*(int*)(b + 8) = 0x65746641;
+*(short*)(b + 12) = 0x3A72;
+*(short*)(b + 14) = 0x20;
+
+                output.UpdateEnd(15);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 352, 15);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9356,7 +9774,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 367, 10);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(10, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7265767265530A0D;
+*(short*)(b + 8) = 0x203A;
+
+                output.UpdateEnd(10);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 367, 10);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9368,7 +9801,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 377, 14);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(14, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x6F432D7465530A0D;
+*(int*)(b + 8) = 0x65696B6F;
+*(short*)(b + 12) = 0x203A;
+
+                output.UpdateEnd(14);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 377, 14);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9380,7 +9829,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 391, 8);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(8, out b))
+            {
+                 // Emit directly
+*(int*)(b + 0) = 0x61560A0D;
+*(short*)(b + 4) = 0x7972;
+*(short*)(b + 6) = 0x3A;
+
+                output.UpdateEnd(8);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 391, 8);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9392,7 +9857,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 399, 20);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(20, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x75412D5757570A0D;
+*(long*)(b + 8) = 0x616369746E656874;
+*(int*)(b + 16) = 0x203A6574;
+
+                output.UpdateEnd(20);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 399, 20);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9404,7 +9885,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 419, 36);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(36, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7373656363410A0D;
+*(long*)(b + 8) = 0x6C6F72746E6F432D;
+*(long*)(b + 16) = 0x432D776F6C6C412D;
+*(long*)(b + 24) = 0x6169746E65646572;
+*(int*)(b + 32) = 0x203A736C;
+
+                output.UpdateEnd(36);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 419, 36);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9416,7 +9915,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 455, 32);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(32, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7373656363410A0D;
+*(long*)(b + 8) = 0x6C6F72746E6F432D;
+*(long*)(b + 16) = 0x482D776F6C6C412D;
+*(int*)(b + 24) = 0x65646165;
+*(short*)(b + 28) = 0x7372;
+*(short*)(b + 30) = 0x3A;
+
+                output.UpdateEnd(32);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 455, 32);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9428,7 +9946,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 487, 32);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(32, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7373656363410A0D;
+*(long*)(b + 8) = 0x6C6F72746E6F432D;
+*(long*)(b + 16) = 0x4D2D776F6C6C412D;
+*(int*)(b + 24) = 0x6F687465;
+*(short*)(b + 28) = 0x7364;
+*(short*)(b + 30) = 0x3A;
+
+                output.UpdateEnd(32);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 487, 32);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9440,7 +9977,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 519, 31);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(31, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7373656363410A0D;
+*(long*)(b + 8) = 0x6C6F72746E6F432D;
+*(long*)(b + 16) = 0x4F2D776F6C6C412D;
+*(int*)(b + 24) = 0x69676972;
+*(short*)(b + 28) = 0x3A6E;
+*(short*)(b + 30) = 0x20;
+
+                output.UpdateEnd(31);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 519, 31);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9452,7 +10008,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 550, 33);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(33, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7373656363410A0D;
+*(long*)(b + 8) = 0x6C6F72746E6F432D;
+*(long*)(b + 16) = 0x2D65736F7078452D;
+*(long*)(b + 24) = 0x3A73726564616548;
+*(short*)(b + 32) = 0x20;
+
+                output.UpdateEnd(33);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 550, 33);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }
@@ -9464,7 +10038,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 583, 26);
+                                 
+            byte* b;
+            
+            if (output.GetRawBuffer(26, out b))
+            {
+                 // Emit directly
+*(long*)(b + 0) = 0x7373656363410A0D;
+*(long*)(b + 8) = 0x6C6F72746E6F432D;
+*(long*)(b + 16) = 0x6567412D78614D2D;
+*(short*)(b + 24) = 0x203A;
+
+                output.UpdateEnd(26);
+            }
+            else
+            {
+                output.CopyFrom(_headerBytes, 583, 26);
+            }
+
                                 output.CopyFromAscii(value);
                             }
                         }

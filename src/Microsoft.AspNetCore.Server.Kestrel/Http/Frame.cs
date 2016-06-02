@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -602,9 +604,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             _requestProcessingStatus = RequestProcessingStatus.ResponseStarted;
 
-            var statusBytes = ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase);
-
-            CreateResponseHeader(statusBytes, appCompleted);
+            CreateResponseHeader(appCompleted);
         }
 
         protected Task TryProduceInvalidRequestResponse()
@@ -705,8 +705,129 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void EmitHttp11(ref MemoryPoolIterator end)
+        {
+            byte* b;
+            
+            if (end.GetRawBuffer(9, out b))
+            {
+                 // Emit directly
+                *(long*)b = 0x312E312F50545448;
+                *(b + 8) = 0x20;
+                
+                end.UpdateEnd(9);
+            }
+            else
+            {
+                end.CopyFrom(_bytesHttpVersion11);
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void Emit200OK(ref MemoryPoolIterator end)
+        {
+            byte* b;
+            
+            if (end.GetRawBuffer(6, out b))
+            {
+                 // Emit directly
+                *(int*)b = 0x20303032;
+                *(short*)(b + 4) = 0x4B4F;
+
+                end.UpdateEnd(6);
+            }
+            else
+            {
+                end.CopyFrom(ReasonPhrases.ToStatusBytes(200, null));
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void EmitServerKestrel(ref MemoryPoolIterator end)
+        {
+            byte* b;
+            
+            if (end.GetRawBuffer(17, out b))
+            {
+                // Emit directly
+                *(long*)b = 0x7265767265530A0D;
+                *(long*)(b + 8) = 0x65727473654B203A;
+                *(b + 16) = 0x6C;
+                
+                end.UpdateEnd(17);
+            }
+            else
+            {
+                end.CopyFrom(_bytesServer);
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void EmitHeaderEnd(ref MemoryPoolIterator end)
+        {
+            byte* b;
+                        
+            if (end.GetRawBuffer(4, out b))
+            {
+                 // Emit directly
+                *(int*)b = 0x0A0D0A0D;
+                
+                end.UpdateEnd(4);
+            }
+            else
+            {
+                end.CopyFrom(_bytesEndHeaders);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void WriteStatus(ref MemoryPoolIterator end)
+        {
+            // Fast path for 200 OK
+            if (StatusCode == 200 && ReasonPhrase == null)
+            {
+                Emit200OK(ref end);
+            }
+            else
+            {
+                var statusBytes = ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase);
+                end.CopyFrom(statusBytes);
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void WriteDate(ref MemoryPoolIterator end, byte[] dateHeaderBytes)
+        {
+            // Auto-generated date header should always be exactly the same length.
+            Debug.Assert(dateHeaderBytes.Length == 37);
+            
+            byte* b;
+            
+            if (end.GetRawBuffer(37, out b))
+            {
+                 // Copy directly
+                fixed (byte * pDateBytes = dateHeaderBytes)
+                {
+                    byte * d = pDateBytes;
+                    
+                    *(long*)b = *(long*)d;
+                    *(long*)(b + 8) = *(long*)(d + 8);
+                    *(long*)(b + 16) = *(long*)(d + 16);
+                    *(long*)(b + 24) = *(long*)(d + 24);
+                    *(int*)(b + 32) = *(int*)(d + 32);
+                    *(b + 36) = *(d + 36);
+                }
+                
+                end.UpdateEnd(37);
+            }
+            else
+            {
+                end.CopyFrom(dateHeaderBytes);
+            }
+        }
+
         private void CreateResponseHeader(
-            byte[] statusBytes,
             bool appCompleted)
         {
             var responseHeaders = FrameResponseHeaders;
@@ -715,6 +836,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var hasConnection = responseHeaders.HasConnection;
 
             var end = SocketOutput.ProducingStart();
+            if (end.IsDefault)
+            { 
+                return;
+            }
+            
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
@@ -770,21 +896,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 responseHeaders.SetRawConnection("keep-alive", _bytesConnectionKeepAlive);
             }
 
-            if (ServerOptions.AddServerHeader && !responseHeaders.HasServer)
-            {
-                responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
-            }
+            EmitHttp11(ref end);
+            WriteStatus(ref end);
+            responseHeaders.CopyTo(ref end);
 
             if (!responseHeaders.HasDate)
             {
                 var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
+                
+                WriteDate(ref end, dateHeaderValues.Bytes);
             }
 
-            end.CopyFrom(_bytesHttpVersion11);
-            end.CopyFrom(statusBytes);
-            responseHeaders.CopyTo(ref end);
-            end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
+            if (ServerOptions.AddServerHeader && !responseHeaders.HasServer)
+            {
+                responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
+                
+                EmitServerKestrel(ref end);
+            }
+            
+            EmitHeaderEnd(ref end);
 
             SocketOutput.ProducingComplete(end);
         }
