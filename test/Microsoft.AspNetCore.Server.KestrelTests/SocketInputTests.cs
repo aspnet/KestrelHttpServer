@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
@@ -17,54 +18,73 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public void ConnectionPausedWhenInputBufferFullUsingIncomingData()
         {
-            const int maxBufferLength = 10;
-            var data = new byte[5];
-
-            var mockLibuv = new MockLibuv();
             var connectionControl = new TestConnectionControl();
-
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var memory = new MemoryPool())
+            using (var socketInput = new SocketInput(memory, null, 10, connectionControl, null))
             {
-                kestrelEngine.Start(1);
+                Assert.Equal(false, connectionControl.Paused);
 
-                using (var memory = new MemoryPool())
-                using (var socketInput = new SocketInput(memory, null,
-                    maxBufferLength, connectionControl, kestrelEngine.Threads[0]))
-                {
-                    Assert.Equal(false, connectionControl.Paused);
+                var data = new byte[5];
+                socketInput.IncomingData(data, 0, data.Length);
+                Assert.Equal(false, connectionControl.Paused);
 
-                    socketInput.IncomingData(data, 0, data.Length);
-                    Assert.Equal(false, connectionControl.Paused);
-
-                    socketInput.IncomingData(data, 0, data.Length);
-                    Assert.Equal(true, connectionControl.Paused);
-                }
+                socketInput.IncomingData(data, 0, data.Length);
+                Assert.Equal(true, connectionControl.Paused);
             }
         }
 
         [Fact]
         public void ConnectionPausedWhenInputBufferFullUsingIncomingComplete()
         {
-            const int maxBufferLength = 10;
-
-            var mockLibuv = new MockLibuv();
             var connectionControl = new TestConnectionControl();
+            using (var memory = new MemoryPool())
+            using (var socketInput = new SocketInput(memory, null, 10, connectionControl, null))
+            {
+                Assert.Equal(false, connectionControl.Paused);
 
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+                socketInput.IncomingComplete(5, null);
+                Assert.Equal(false, connectionControl.Paused);
+
+                socketInput.IncomingComplete(5, null);
+                Assert.Equal(true, connectionControl.Paused);
+            }
+        }
+
+        [Fact]
+        public void ConnectionResumedWhenInputBufferNotFull()
+        {
+            using (var kestrelEngine = new KestrelEngine(new MockLibuv(), new TestServiceContext()))
             {
                 kestrelEngine.Start(1);
 
+                var connectionControl = new TestConnectionControl();
                 using (var memory = new MemoryPool())
-                using (var socketInput = new SocketInput(memory, null,
-                    maxBufferLength, connectionControl, kestrelEngine.Threads[0]))
+                using (var socketInput = new SocketInput(memory, null, 10, connectionControl, kestrelEngine.Threads[0]))
                 {
-                    Assert.Equal(false, connectionControl.Paused);
-
-                    socketInput.IncomingComplete(5, null);
-                    Assert.Equal(false, connectionControl.Paused);
-
-                    socketInput.IncomingComplete(5, null);
+                    var data = new byte[20];
+                    socketInput.IncomingData(data, 0, data.Length);
                     Assert.Equal(true, connectionControl.Paused);
+
+                    var iterator = socketInput.ConsumingStart();
+                    iterator.Skip(5);
+                    socketInput.ConsumingComplete(iterator, iterator);
+                    Assert.Equal(true, connectionControl.Paused);
+
+                    iterator = socketInput.ConsumingStart();
+                    iterator.Skip(5);
+                    socketInput.ConsumingComplete(iterator, iterator);
+
+                    // TODO: Replace sleep with mock
+                    Thread.Sleep(100);
+                    Assert.Equal(true, connectionControl.Paused);
+
+                    iterator = socketInput.ConsumingStart();
+                    iterator.Skip(1);
+                    socketInput.ConsumingComplete(iterator, iterator);
+                    
+                    // TODO: Replace sleep with mock
+                    Thread.Sleep(100);
+                    Assert.Equal(false, connectionControl.Paused);
                 }
             }
         }
