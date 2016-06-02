@@ -12,6 +12,33 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     public class KestrelServerInformationTests
     {
         [Fact]
+        public void MaxInputBufferLengthDefault()
+        {
+            Assert.Equal(1024 * 1024, (new KestrelServerOptions()).MaxInputBufferLength);
+        }
+
+        [Theory]
+        [InlineData(-2)]
+        [InlineData(0)]
+        public void MaxInputBufferInvalid(int value)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                (new KestrelServerOptions()).MaxInputBufferLength = value;
+            });
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(1)]
+        public void MaxInputBufferValid(int value)
+        {
+            var o = new KestrelServerOptions();
+            o.MaxInputBufferLength = value;
+            Assert.Equal(value, o.MaxInputBufferLength);
+        }
+
+        [Fact]
         public void SetThreadCountUsingProcessorCount()
         {
             // Ideally we'd mock Environment.ProcessorCount to test edge cases.
