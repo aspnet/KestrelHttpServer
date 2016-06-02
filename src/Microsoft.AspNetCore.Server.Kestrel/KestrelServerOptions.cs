@@ -30,6 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     throw new ArgumentOutOfRangeException("value", "Value must be positive or -1.");
                 }
+                _maxInputBufferLength = value;
             }
         }
 
