@@ -7,12 +7,68 @@ using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     public class SocketInputTests
     {
+        [Fact]
+        public void ConnectionPausedWhenInputBufferFullUsingIncomingData()
+        {
+            const int maxBufferLength = 10;
+            var data = new byte[5];
+
+            var mockLibuv = new MockLibuv();
+            var connectionControl = new TestConnectionControl();
+
+            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            {
+                kestrelEngine.Start(1);
+
+                using (var memory = new MemoryPool())
+                using (var socketInput = new SocketInput(memory, null,
+                    maxBufferLength, connectionControl, kestrelEngine.Threads[0]))
+                {
+                    Assert.Equal(false, connectionControl.Paused);
+
+                    socketInput.IncomingData(data, 0, data.Length);
+                    Assert.Equal(false, connectionControl.Paused);
+
+                    socketInput.IncomingData(data, 0, data.Length);
+                    Assert.Equal(true, connectionControl.Paused);
+                }
+            }
+        }
+
+        [Fact]
+        public void ConnectionPausedWhenInputBufferFullUsingIncomingComplete()
+        {
+            const int maxBufferLength = 10;
+
+            var mockLibuv = new MockLibuv();
+            var connectionControl = new TestConnectionControl();
+
+            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            {
+                kestrelEngine.Start(1);
+
+                using (var memory = new MemoryPool())
+                using (var socketInput = new SocketInput(memory, null,
+                    maxBufferLength, connectionControl, kestrelEngine.Threads[0]))
+                {
+                    Assert.Equal(false, connectionControl.Paused);
+
+                    socketInput.IncomingComplete(5, null);
+                    Assert.Equal(false, connectionControl.Paused);
+
+                    socketInput.IncomingComplete(5, null);
+                    Assert.Equal(true, connectionControl.Paused);
+                }
+            }
+        }
+
         [Fact]
         public async Task ConcurrentReadsFailGracefully()
         {
@@ -114,6 +170,40 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         private async Task AwaitAsTaskAsync(SocketInput socketInput)
         {
             await socketInput;
+        }
+
+        private class TestConnectionControl : IConnectionControl
+        {
+            public bool Paused { get; set; }
+
+            public void End(ProduceEndType endType)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Pause()
+            {
+                if (Paused)
+                {
+                    throw new InvalidOperationException("already paused");
+                }
+                else
+                {
+                    Paused = true;
+                }
+            }
+
+            public void Resume()
+            {
+                if (Paused)
+                {
+                    Paused = false;
+                }
+                else
+                {
+                    throw new InvalidOperationException("not paused");
+                }
+            }
         }
     }
 }
