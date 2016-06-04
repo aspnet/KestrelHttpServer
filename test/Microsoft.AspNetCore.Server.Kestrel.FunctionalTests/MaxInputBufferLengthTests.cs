@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -12,114 +13,86 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class MaxInputBufferLengthTests
     {
-        private static readonly int _packetSize = 4096;
-        private static readonly byte[] _data = new byte[10 * 1024 * 1024];
-
-        static MaxInputBufferLengthTests()
-        {
-            // Fixed seed for reproducability
-            (new Random(0)).NextBytes(_data);
-        }
-
         [Theory]
-        [InlineData(-1, true)]
-        [InlineData(-1, false)]
-        [InlineData(10 * 1024 * 1024, true)]
-        [InlineData(10 * 1024 * 1024, false)]
-        [InlineData(Int32.MaxValue, true)]
-        [InlineData(Int32.MaxValue, false)]
-        public void LargeUploadNotPaused(int maxInputBufferLength, bool sendContentLengthHeader)
+        [InlineData(16 * 1024, true, true)]
+        [InlineData(16 * 1024, false, true)]
+        [InlineData(1024 * 1024, true, true)]
+        [InlineData(1024 * 1024, false, true)]
+        [InlineData(5 * 1024 * 1024, true, true)]
+        [InlineData(5 * 1024 * 1024, false, true)]
+        [InlineData(10 * 1024 * 1024, true, false)]
+        [InlineData(10 * 1024 * 1024, false, false)]
+        [InlineData(Int32.MaxValue, true, false)]
+        [InlineData(Int32.MaxValue, false, false)]
+        [InlineData(-1, true, false)]
+        [InlineData(-1, false, false)]
+        public async Task LargeUpload(int maxInputBufferLength, bool sendContentLengthHeader, bool expectPause)
         {
+            // Parameters
+            var data = new byte[10 * 1024 * 1024];
+            var bytesWrittenTimeout = TimeSpan.FromMilliseconds(100);
+            var maxSendSize = 4096;
+
+            // Initialize data with random bytes
+            (new Random()).NextBytes(data);
+
             var startReadingRequestBody = new ManualResetEvent(false);
             var clientFinishedSendingRequestBody = new ManualResetEvent(false);
+            var bytesWrittenEvent = new AutoResetEvent(false);
 
-            using (var host = StartWebHost(maxInputBufferLength, startReadingRequestBody, clientFinishedSendingRequestBody))
+            using (var host = StartWebHost(maxInputBufferLength, data, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
-                using (var socket = CreateSocketForHttpPost(host, sendContentLengthHeader ? _data.Length : -1))
+                using (var socket = CreateSocketForHttpPost(host, sendContentLengthHeader ? data.Length : -1))
                 {
                     var bytesWritten = 0;
-                    while (bytesWritten < _data.Length)
+
+                    var sendTask = Task.Run(() =>
                     {
-                        var size = Math.Min(_data.Length - bytesWritten, _packetSize);
-                        bytesWritten += socket.Send(_data, bytesWritten, size, SocketFlags.None);
-                    }
-                    socket.Shutdown(SocketShutdown.Send);
-                    clientFinishedSendingRequestBody.Set();
-
-                    Assert.Equal(_data.Length, bytesWritten);
-
-                    // Tell server to start reading request body
-                    startReadingRequestBody.Set();
-
-                    var buffer = new byte[_packetSize];
-                    var bytesRead = socket.Receive(buffer);
-                    Assert.Contains($"bytesRead: {_data.Length}", Encoding.ASCII.GetString(buffer, 0, bytesRead));
-                }
-            }
-        }
-
-        [Theory]
-        [InlineData(16 * 1024, true)]
-        [InlineData(16 * 1024, false)]
-        [InlineData(1024 * 1024, true)]
-        [InlineData(1024 * 1024, false)]
-        [InlineData(5 * 1024 * 1024, true)]
-        [InlineData(5 * 1024 * 1024, false)]
-        public void LargeUploadPausedWhenInputBufferFull(int maxInputBufferLength, bool sendContentLengthHeader)
-        {
-            var startReadingRequestBody = new ManualResetEvent(false);
-            var clientFinishedSendingRequestBody = new ManualResetEvent(false);
-        
-            using (var host = StartWebHost(maxInputBufferLength, startReadingRequestBody, clientFinishedSendingRequestBody))
-            {
-                using (var socket = CreateSocketForHttpPost(host, sendContentLengthHeader ? _data.Length : -1))
-                {
-                    var bytesWritten = 0;
-                    try
-                    {
-                        socket.SendTimeout = 100;
-                        while (bytesWritten < _data.Length)
+                        while (bytesWritten < data.Length)
                         {
-                            var size = Math.Min(_data.Length - bytesWritten, _packetSize);
-                            bytesWritten += socket.Send(_data, bytesWritten, size, SocketFlags.None);
+                            var size = Math.Min(data.Length - bytesWritten, maxSendSize);
+                            bytesWritten += socket.Send(data, bytesWritten, size, SocketFlags.None);
+                            bytesWrittenEvent.Set();
                         }
 
-                        Assert.Equal("SocketException", "No Exception");
-                    }
-                    catch (SocketException)
-                    {
-                        // When the input buffer is full (plus some amount of OS buffers), socket.Send() should
-                        // throw a SocketException, since the server called IConnectionControl.Pause().
+                        Assert.Equal(data.Length, bytesWritten);
+                        socket.Shutdown(SocketShutdown.Send);
+                        clientFinishedSendingRequestBody.Set();
+                    });
 
-                        bytesWritten += _packetSize;
+                    if (expectPause)
+                    {
+                        // Block until the send task has gone a while without writing bytes, which likely means
+                        // the server input buffer is full.
+                        while (bytesWrittenEvent.WaitOne(bytesWrittenTimeout)) { }
 
                         // Verify the number of bytes written is greater than or equal to the max input buffer size,
                         // but less than the total bytes.
-                        Assert.InRange(bytesWritten, maxInputBufferLength, _data.Length - 1);
+                        Assert.InRange(bytesWritten, maxInputBufferLength, data.Length - 1);
 
                         // Tell server to start reading request body
                         startReadingRequestBody.Set();
 
-                        socket.SendTimeout = 10 * 1000;
-                        while (bytesWritten < _data.Length)
-                        {
-                            var size = Math.Min(_data.Length - bytesWritten, _packetSize);
-                            bytesWritten += socket.Send(_data, bytesWritten, size, SocketFlags.None);
-                        }
-                        socket.Shutdown(SocketShutdown.Send);
-                        clientFinishedSendingRequestBody.Set();
+                        // Wait for sendTask to finish sending the remaining bytes
+                        await sendTask;
+                    }
+                    else
+                    {
+                        // Ensure all bytes can be sent before the server starts reading
+                        await sendTask;
+
+                        // Tell server to start reading request body
+                        startReadingRequestBody.Set();
                     }
 
-                    Assert.Equal(_data.Length, bytesWritten);
-
-                    var buffer = new byte[_packetSize];
+                    var buffer = new byte[maxSendSize];
                     var bytesRead = socket.Receive(buffer);
-                    Assert.Contains($"bytesRead: {_data.Length}", Encoding.ASCII.GetString(buffer, 0, bytesRead));
+                    Assert.Contains($"bytesRead: {data.Length}", Encoding.ASCII.GetString(buffer, 0, bytesRead));
                 }
             }
         }
 
-        private static IWebHost StartWebHost(int maxInputBufferLength, ManualResetEvent startReadingRequestBody,
+        private static IWebHost StartWebHost(int maxInputBufferLength, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
             ManualResetEvent clientFinishedSendingRequestBody)
         {
             var host = new WebHostBuilder()
@@ -132,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     startReadingRequestBody.WaitOne();
 
-                    var buffer = new byte[_data.Length];
+                    var buffer = new byte[expectedBody.Length];
                     var bytesRead = 0;
                     while (bytesRead < buffer.Length)
                     {
@@ -145,17 +118,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     if (context.Request.Body.ReadByte() != -1)
                     {
                         context.Response.StatusCode = 500;
-                        await context.Response.WriteAsync("Client sent more bytes than _data.Length");
+                        await context.Response.WriteAsync("Client sent more bytes than expectedBody.Length");
                         return;
                     }
 
-                    // Verify bytes received match _data
-                    for (int i=0; i < _data.Length; i++)
+                    // Verify bytes received match expectedBody
+                    for (int i = 0; i < expectedBody.Length; i++)
                     {
-                        if (buffer[i] != _data[i])
+                        if (buffer[i] != expectedBody[i])
                         {
                             context.Response.StatusCode = 500;
-                            await context.Response.WriteAsync($"Bytes received do not match _data at position {i}");
+                            await context.Response.WriteAsync($"Bytes received do not match expectedBody at position {i}");
                             return;
                         }
                     }
@@ -179,13 +152,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             socket.ReceiveTimeout = 10 * 1000;
 
             socket.Connect(IPAddress.Loopback, host.GetPort());
-            socket.Send(Encoding.ASCII.GetBytes($"POST / HTTP/1.0\r\n"));
+            socket.Send(Encoding.ASCII.GetBytes("POST / HTTP/1.0\r\n"));
             if (contentLength > -1)
             {
                 socket.Send(Encoding.ASCII.GetBytes($"Content-Length: {contentLength}\r\n"));
             }
             socket.Send(Encoding.ASCII.GetBytes("\r\n"));
-            
+
             return socket;
         }
     }
