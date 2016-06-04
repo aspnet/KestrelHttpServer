@@ -66,9 +66,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         // the server input buffer is full.
                         while (bytesWrittenEvent.WaitOne(bytesWrittenTimeout)) { }
 
-                        // Verify the number of bytes written is greater than or equal to the max input buffer size,
-                        // but less than the total bytes.
-                        Assert.InRange(bytesWritten, maxInputBufferLength, data.Length - 1);
+                        // Verify the number of bytes written before the client was paused.
+                        // 
+                        // The minimum is (maxInputBufferLength - maxSendSize + 1), since if bytesWritten is
+                        // (maxInputBufferLength - maxSendSize) or smaller, the client should be able to
+                        // complete another send.
+                        // 
+                        // The maximum is harder to determine, since there can be OS-level buffers in both the client
+                        // and server, which allow the client to send more than maxInputBufferLength before getting
+                        // paused.  We assume the combined buffers are smaller than the difference between
+                        // data.Length and maxInputBufferLength.                          
+                        Assert.InRange(bytesWritten, maxInputBufferLength - maxSendSize + 1, data.Length - 1);
 
                         // Tell server to start reading request body
                         startReadingRequestBody.Set();
