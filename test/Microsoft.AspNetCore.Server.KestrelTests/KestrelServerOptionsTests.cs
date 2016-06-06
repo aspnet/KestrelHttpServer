@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData(-2)]
+        [InlineData(-1)]
         [InlineData(0)]
         public void MaxInputBufferInvalid(int value)
         {
@@ -29,9 +29,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData(-1)]
+        [InlineData(null)]
         [InlineData(1)]
-        public void MaxInputBufferValid(int value)
+        public void MaxInputBufferValid(int? value)
         {
             var o = new KestrelServerOptions();
             o.MaxInputBufferLength = value;

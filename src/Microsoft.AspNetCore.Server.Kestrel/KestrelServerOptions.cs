@@ -17,8 +17,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IConnectionFilter ConnectionFilter { get; set; }
 
-        private int _maxInputBufferLength = 1024 * 1024;
-        public int MaxInputBufferLength
+        private int? _maxInputBufferLength = 1024 * 1024;
+        public int? MaxInputBufferLength
         {
             get
             {
@@ -26,9 +26,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
             set
             {
-                if (value < -1 || value == 0)
+                if (value.HasValue && value.Value <= 0)
                 {
-                    throw new ArgumentOutOfRangeException("value", "Value must be positive or -1.");
+                    throw new ArgumentOutOfRangeException("value", "Value must be null or a positive integer.");
                 }
                 _maxInputBufferLength = value;
             }
