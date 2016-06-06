@@ -24,9 +24,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData(10 * 1024 * 1024, false, false)]
         [InlineData(Int32.MaxValue, true, false)]
         [InlineData(Int32.MaxValue, false, false)]
-        [InlineData(-1, true, false)]
-        [InlineData(-1, false, false)]
-        public async Task LargeUpload(int maxInputBufferLength, bool sendContentLengthHeader, bool expectPause)
+        [InlineData(null, true, false)]
+        [InlineData(null, false, false)]
+        public async Task LargeUpload(int? maxInputBufferLength, bool sendContentLengthHeader, bool expectPause)
         {
             // Parameters
             var data = new byte[10 * 1024 * 1024];
@@ -76,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         // and server, which allow the client to send more than maxInputBufferLength before getting
                         // paused.  We assume the combined buffers are smaller than the difference between
                         // data.Length and maxInputBufferLength.                          
-                        Assert.InRange(bytesWritten, maxInputBufferLength - maxSendSize + 1, data.Length - 1);
+                        Assert.InRange(bytesWritten, maxInputBufferLength.Value - maxSendSize + 1, data.Length - 1);
 
                         // Tell server to start reading request body
                         startReadingRequestBody.Set();
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static IWebHost StartWebHost(int maxInputBufferLength, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
+        private static IWebHost StartWebHost(int? maxInputBufferLength, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
             ManualResetEvent clientFinishedSendingRequestBody)
         {
             var host = new WebHostBuilder()
