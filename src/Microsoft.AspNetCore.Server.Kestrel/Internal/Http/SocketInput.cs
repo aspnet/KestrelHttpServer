@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private bool _consuming;
         private bool _disposed;
 
-        public SocketInput(MemoryPool memory, IThreadPool threadPool, IBufferLengthControl bufferLengthControl)
+        public SocketInput(MemoryPool memory, IThreadPool threadPool, IBufferLengthControl bufferLengthControl = null)
         {
             _memory = memory;
             _threadPool = threadPool;
