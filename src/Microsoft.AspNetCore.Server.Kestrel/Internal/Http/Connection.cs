@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
@@ -41,6 +42,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private ConnectionState _connectionState;
         private TaskCompletionSource<object> _socketClosedTcs;
 
+        private BufferLengthControl _bufferLengthControl;
+
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
@@ -51,13 +54,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (ServerOptions.MaxInputBufferLength.HasValue)
             {
-                _rawSocketInput = new SocketInput(Memory, ThreadPool, ServerOptions.MaxInputBufferLength.Value, this, Thread);
-            }
-            else
-            {
-                _rawSocketInput = new SocketInput(Memory, ThreadPool);
+                _bufferLengthControl = new BufferLengthControl(ServerOptions.MaxInputBufferLength.Value, this, Thread);
             }
 
+            _rawSocketInput = new SocketInput(Memory, ThreadPool, _bufferLengthControl);
             _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
         }
 
@@ -225,7 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     if (_filterContext.Connection != _libuvStream)
                     {
-                        _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Memory, Log, ThreadPool);
+                        _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Memory, Log, ThreadPool, _bufferLengthControl);
 
                         SocketInput = _filteredStreamAdapter.SocketInput;
                         SocketOutput = _filteredStreamAdapter.SocketOutput;
@@ -392,5 +392,69 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Disconnecting,
             SocketClosed
         }
+
+        private class BufferLengthControl : IBufferLengthControl
+        {
+            private readonly int _maxLength;
+            private readonly IConnectionControl _connectionControl;
+            private readonly KestrelThread _connectionThread;
+
+            private readonly object _lock = new object();
+
+            private int _length;
+            private bool _connectionPaused;
+
+            public BufferLengthControl(int maxLength, IConnectionControl connectionControl, KestrelThread connectionThread)
+            {
+                _maxLength = maxLength;
+                _connectionControl = connectionControl;
+                _connectionThread = connectionThread;
+            }
+
+            private int Length
+            {
+                get
+                {
+                    return _length;
+                }
+                set
+                {
+                    // Caller should ensure that bytes are never consumed before the producer has called Add()
+                    Debug.Assert(value >= 0);
+                    _length = value;
+                }
+            }
+
+            public void Add(int count)
+            {
+                lock (_lock)
+                {
+                    Length += count;
+                    if (!_connectionPaused && Length >= _maxLength)
+                    {
+                        _connectionPaused = true;
+                        _connectionThread.Post(
+                            (connectionControl) => ((IConnectionControl)connectionControl).Pause(),
+                            _connectionControl);
+                    }
+                }
+            }
+
+            public void Subtract(int count)
+            {
+                lock (_lock)
+                {
+                    Length -= count;
+                    if (_connectionPaused && Length < _maxLength)
+                    {
+                        _connectionPaused = false;
+                        _connectionThread.Post(
+                            (connectionControl) => ((IConnectionControl)connectionControl).Resume(),
+                            _connectionControl);
+                    }
+                }
+            }
+        }
+
     }
 }
