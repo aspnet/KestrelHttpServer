@@ -2,89 +2,62 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
+using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     public class SocketInputTests
     {
-        [Fact]
-        public void ConnectionPausedWhenInputBufferFullUsingIncomingData()
+        public static readonly TheoryData<Mock<IBufferLengthControl>> MockBufferLengthControlData =
+            new TheoryData<Mock<IBufferLengthControl>>() { new Mock<IBufferLengthControl>(), null };
+
+        [Theory]
+        [MemberData("MockBufferLengthControlData")]
+        public void IncomingDataCallsBufferLengthControlAdd(Mock<IBufferLengthControl> mockBufferLengthControl)
         {
-            var connectionControl = new TestConnectionControl();
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, null, 10, connectionControl, null))
+            using (var socketInput = new SocketInput(memory, null, mockBufferLengthControl?.Object))
             {
-                Assert.Equal(false, connectionControl.Paused);
-
-                var data = new byte[5];
-                socketInput.IncomingData(data, 0, data.Length);
-                Assert.Equal(false, connectionControl.Paused);
-
-                socketInput.IncomingData(data, 0, data.Length);
-                Assert.Equal(true, connectionControl.Paused);
+                socketInput.IncomingData(new byte[5], 0, 5);
+                mockBufferLengthControl?.Verify(b => b.Add(5));
             }
         }
 
-        [Fact]
-        public void ConnectionPausedWhenInputBufferFullUsingIncomingComplete()
+        [Theory]
+        [MemberData("MockBufferLengthControlData")]
+        public void IncomingCompleteCallsBufferLengthControlAdd(Mock<IBufferLengthControl> mockBufferLengthControl)
         {
-            var connectionControl = new TestConnectionControl();
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, null, 10, connectionControl, null))
+            using (var socketInput = new SocketInput(memory, null, mockBufferLengthControl?.Object))
             {
-                Assert.Equal(false, connectionControl.Paused);
-
                 socketInput.IncomingComplete(5, null);
-                Assert.Equal(false, connectionControl.Paused);
-
-                socketInput.IncomingComplete(5, null);
-                Assert.Equal(true, connectionControl.Paused);
+                mockBufferLengthControl?.Verify(b => b.Add(5));
             }
         }
 
-        [Fact]
-        public void ConnectionResumedWhenInputBufferNotFull()
+        [Theory]
+        [MemberData("MockBufferLengthControlData")]
+        public void ConsumingCompleteCallsBufferLengthControlSubtract(Mock<IBufferLengthControl> mockBufferLengthControl)
         {
             using (var kestrelEngine = new KestrelEngine(new MockLibuv(), new TestServiceContext()))
             {
                 kestrelEngine.Start(1);
 
-                var connectionControl = new TestConnectionControl();
                 using (var memory = new MemoryPool())
-                using (var socketInput = new SocketInput(memory, null, 10, connectionControl, kestrelEngine.Threads[0]))
+                using (var socketInput = new SocketInput(memory, null, mockBufferLengthControl?.Object))
                 {
-                    var data = new byte[20];
-                    socketInput.IncomingData(data, 0, data.Length);
-                    Assert.Equal(true, connectionControl.Paused);
+                    socketInput.IncomingData(new byte[20], 0, 20);
 
                     var iterator = socketInput.ConsumingStart();
                     iterator.Skip(5);
                     socketInput.ConsumingComplete(iterator, iterator);
-                    Assert.Equal(true, connectionControl.Paused);
-
-                    iterator = socketInput.ConsumingStart();
-                    iterator.Skip(5);
-                    socketInput.ConsumingComplete(iterator, iterator);
-
-                    // TODO: Replace sleep with mock
-                    Thread.Sleep(100);
-                    Assert.Equal(true, connectionControl.Paused);
-
-                    iterator = socketInput.ConsumingStart();
-                    iterator.Skip(1);
-                    socketInput.ConsumingComplete(iterator, iterator);
-                    
-                    // TODO: Replace sleep with mock
-                    Thread.Sleep(100);
-                    Assert.Equal(false, connectionControl.Paused);
+                    mockBufferLengthControl?.Verify(b => b.Subtract(5));
                 }
             }
         }
@@ -190,40 +163,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         private async Task AwaitAsTaskAsync(SocketInput socketInput)
         {
             await socketInput;
-        }
-
-        private class TestConnectionControl : IConnectionControl
-        {
-            public bool Paused { get; set; }
-
-            public void End(ProduceEndType endType)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void Pause()
-            {
-                if (Paused)
-                {
-                    throw new InvalidOperationException("already paused");
-                }
-                else
-                {
-                    Paused = true;
-                }
-            }
-
-            public void Resume()
-            {
-                if (Paused)
-                {
-                    Paused = false;
-                }
-                else
-                {
-                    throw new InvalidOperationException("not paused");
-                }
-            }
         }
     }
 }
