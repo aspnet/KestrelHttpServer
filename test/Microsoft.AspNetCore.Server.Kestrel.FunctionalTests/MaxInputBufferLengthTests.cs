@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -13,19 +15,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class MaxInputBufferLengthTests
     {
+        private const int _dataLength = 10 * 1024 * 1024;
+
+        public static IEnumerable<object[]> LargeUploadData
+        {
+            get
+            {
+                var maxInputBufferLengthValues = new int?[] {
+                    16 * 1024,
+                    1024 * 1024,
+                    5 * 1024 * 1024,
+                    10 * 1024 * 1024,
+                    Int32.MaxValue,
+                    null
+                };
+
+                var sendContentLengthHeaderValues = new[] {
+                    true,
+                    false
+                };
+
+                return from b in maxInputBufferLengthValues
+                       from s in sendContentLengthHeaderValues
+                       select new object[] { b, s, b.HasValue && b.Value < _dataLength };
+            }
+        }
+
         [Theory]
-        [InlineData(16 * 1024, true, true)]
-        [InlineData(16 * 1024, false, true)]
-        [InlineData(1024 * 1024, true, true)]
-        [InlineData(1024 * 1024, false, true)]
-        [InlineData(5 * 1024 * 1024, true, true)]
-        [InlineData(5 * 1024 * 1024, false, true)]
-        [InlineData(10 * 1024 * 1024, true, false)]
-        [InlineData(10 * 1024 * 1024, false, false)]
-        [InlineData(Int32.MaxValue, true, false)]
-        [InlineData(Int32.MaxValue, false, false)]
-        [InlineData(null, true, false)]
-        [InlineData(null, false, false)]
+        [MemberData("LargeUploadData")]
         public async Task LargeUpload(int? maxInputBufferLength, bool sendContentLengthHeader, bool expectPause)
         {
             // Parameters
