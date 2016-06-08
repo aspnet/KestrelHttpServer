@@ -324,7 +324,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         void IConnectionControl.Resume()
         {
             Log.ConnectionResume(ConnectionId);
-            _socket.ReadStart(_allocCallback, _readCallback, this);
+            try
+            {
+                _socket.ReadStart(_allocCallback, _readCallback, this);
+            }
+            catch (UvException ex)
+            {
+                // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
+                // This should be treated the same as OnRead() seeing a "normalDone" condition.
+                _rawSocketInput.IncomingComplete(0, ex);
+            }
         }
 
         void IConnectionControl.End(ProduceEndType endType)
