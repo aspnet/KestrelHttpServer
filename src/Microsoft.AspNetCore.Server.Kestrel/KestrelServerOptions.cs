@@ -8,6 +8,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public class KestrelServerOptions
     {
+        private int? _maxInputBufferLength = 1024 * 1024;
+
         /// <summary>
         /// Gets or sets whether the <c>Server</c> header should be included in each response.
         /// </summary>
@@ -17,7 +19,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IConnectionFilter ConnectionFilter { get; set; }
 
-        private int? _maxInputBufferLength = 1024 * 1024;
+        /// <summary>
+        /// Maximum number of bytes used to buffer input for each connection.
+        /// </summary>
         public int? MaxInputBufferLength
         {
             get
