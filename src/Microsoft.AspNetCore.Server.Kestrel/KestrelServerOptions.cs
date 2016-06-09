@@ -21,6 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         /// <summary>
         /// Maximum number of bytes used to buffer input for each connection.
+        /// Default is 1,048,576 bytes (1 MB).
         /// </summary>
         public int? MaxInputBufferLength
         {
