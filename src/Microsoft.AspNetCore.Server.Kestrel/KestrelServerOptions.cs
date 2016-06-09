@@ -8,6 +8,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public class KestrelServerOptions
     {
+        // Matches the default client_max_body_size in nginx.  Also large enough that most requests
+        // should be under the limit.
         private int? _maxInputBufferLength = 1024 * 1024;
 
         /// <summary>
