@@ -24,13 +24,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             get
             {
-                var maxInputBufferLengthValues = new int?[] {
-                    16 * 1024,
-                    1024 * 1024,
-                    5 * 1024 * 1024,
-                    10 * 1024 * 1024,
-                    Int32.MaxValue,
-                    null
+                var maxInputBufferLengthValues = new Tuple<int?, bool>[] {
+                    Tuple.Create((int?)16 * 1024, true),
+                    Tuple.Create((int?)1024 * 1024, true),
+                    Tuple.Create((int?)5 * 1024 * 1024, true),
+                    
+                    // Even though maxInputBufferLength < _dataLength, client should not be paused since the
+                    // OS-level buffers in client and/or server will handle the overflow
+                    Tuple.Create((int?)10 * 1024 * 1024 - 1, false),
+
+                    Tuple.Create((int?)10 * 1024 * 1024, false),
+                    Tuple.Create((int?)Int32.MaxValue, false),
+                    Tuple.Create((int?)null, false)
                 };
                 var sendContentLengthHeaderValues = new[] { true, false };
                 var sslValues = new[] { true, false };
@@ -39,10 +44,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                        from sendContentLengthHeader in sendContentLengthHeaderValues
                        from ssl in sslValues
                        select new object[] {
-                           maxInputBufferLength,
+                           maxInputBufferLength.Item1,
                            sendContentLengthHeader,
                            ssl,
-                           maxInputBufferLength.HasValue && maxInputBufferLength.Value < _dataLength
+                           maxInputBufferLength.Item2
                        };
             }
         }
