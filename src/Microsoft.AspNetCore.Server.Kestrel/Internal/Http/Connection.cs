@@ -328,11 +328,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 _socket.ReadStart(_allocCallback, _readCallback, this);
             }
-            catch (UvException ex)
+            catch (UvException)
             {
                 // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
                 // This should be treated the same as OnRead() seeing a "normalDone" condition.
-                _rawSocketInput.IncomingComplete(0, ex);
+                Log.ConnectionReadFin(ConnectionId);
+                _rawSocketInput.IncomingComplete(0, null);
             }
         }
 
