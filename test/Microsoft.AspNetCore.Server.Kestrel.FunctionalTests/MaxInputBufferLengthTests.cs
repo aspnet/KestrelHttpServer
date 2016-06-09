@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,24 +32,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Int32.MaxValue,
                     null
                 };
+                var sendContentLengthHeaderValues = new[] { true, false };
+                var sslValues = new[] { true, false };
 
-                var sendContentLengthHeaderValues = new[] {
-                    true,
-                    false
-                };
-
-                return from b in maxInputBufferLengthValues
-                       from s in sendContentLengthHeaderValues
-                       select new object[] { b, s, b.HasValue && b.Value < _dataLength };
+                return from maxInputBufferLength in maxInputBufferLengthValues
+                       from sendContentLengthHeader in sendContentLengthHeaderValues
+                       from ssl in sslValues
+                       select new object[] {
+                           maxInputBufferLength,
+                           sendContentLengthHeader,
+                           ssl,
+                           maxInputBufferLength.HasValue && maxInputBufferLength.Value < _dataLength
+                       };
             }
         }
 
         [Theory]
         [MemberData("LargeUploadData")]
-        public async Task LargeUpload(int? maxInputBufferLength, bool sendContentLengthHeader, bool expectPause)
+        public async Task LargeUpload(int? maxInputBufferLength, bool sendContentLengthHeader, bool ssl, bool expectPause)
         {
             // Parameters
-            var data = new byte[10 * 1024 * 1024];
+            var data = new byte[_dataLength];
             var bytesWrittenTimeout = TimeSpan.FromMilliseconds(100);
             var maxSendSize = 4096;
 
@@ -59,8 +65,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var host = StartWebHost(maxInputBufferLength, data, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
-                using (var socket = CreateSocketForHttpPost(host, sendContentLengthHeader ? data.Length : -1))
+                var port = host.GetPort(ssl ? "https" : "http");
+                using (var socket = CreateSocket(port))
+                using (var stream = await CreateStreamAsync(socket, ssl, host.GetHost()))
                 {
+                    WritePostRequestHeaders(stream, sendContentLengthHeader ? (int?)data.Length : null);
+
                     var bytesWritten = 0;
 
                     var sendTask = Task.Run(() =>
@@ -68,7 +78,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         while (bytesWritten < data.Length)
                         {
                             var size = Math.Min(data.Length - bytesWritten, maxSendSize);
-                            bytesWritten += socket.Send(data, bytesWritten, size, SocketFlags.None);
+                            stream.Write(data, bytesWritten, size);
+                            bytesWritten += size;
                             bytesWrittenEvent.Set();
                         }
 
@@ -110,9 +121,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         startReadingRequestBody.Set();
                     }
 
-                    var buffer = new byte[maxSendSize];
-                    var bytesRead = socket.Receive(buffer);
-                    Assert.Contains($"bytesRead: {data.Length}", Encoding.ASCII.GetString(buffer, 0, bytesRead));
+                    using (var reader = new StreamReader(stream, Encoding.ASCII))
+                    {
+                        var response = reader.ReadToEnd();
+                        Assert.Contains($"bytesRead: {data.Length}", response);
+                    }
                 }
             }
         }
@@ -124,8 +137,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseKestrel(options =>
                 {
                     options.MaxInputBufferLength = maxInputBufferLength;
+                    options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
                 })
-                .UseUrls("http://127.0.0.1:0/")
+                .UseUrls("http://127.0.0.1:0/", "https://127.0.0.1:0/")
+                .UseContentRoot(Directory.GetCurrentDirectory())
                 .Configure(app => app.Run(async context =>
                 {
                     startReadingRequestBody.WaitOne();
@@ -159,8 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
 
                     await context.Response.WriteAsync($"bytesRead: {bytesRead.ToString()}");
-                }
-                ))
+                }))
                 .Build();
 
             host.Start();
@@ -168,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return host;
         }
 
-        private static Socket CreateSocketForHttpPost(IWebHost host, int contentLength)
+        private static Socket CreateSocket(int port)
         {
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -176,15 +190,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             socket.SendTimeout = 10 * 1000;
             socket.ReceiveTimeout = 10 * 1000;
 
-            socket.Connect(IPAddress.Loopback, host.GetPort());
-            socket.Send(Encoding.ASCII.GetBytes("POST / HTTP/1.0\r\n"));
-            if (contentLength > -1)
-            {
-                socket.Send(Encoding.ASCII.GetBytes($"Content-Length: {contentLength}\r\n"));
-            }
-            socket.Send(Encoding.ASCII.GetBytes("\r\n"));
+            socket.Connect(IPAddress.Loopback, port);
 
             return socket;
+        }
+
+        private static void WritePostRequestHeaders(Stream stream, int? contentLength)
+        {
+            using (var writer = new StreamWriter(stream, Encoding.ASCII, bufferSize: 1024, leaveOpen: true))
+            {
+                writer.WriteLine("POST / HTTP/1.0");
+                if (contentLength.HasValue)
+                {
+                    writer.WriteLine($"Content-Length: {contentLength.Value}");
+                }
+                writer.WriteLine();
+            }
+        }
+
+        private static async Task<Stream> CreateStreamAsync(Socket socket, bool ssl, string targetHost)
+        {
+            var networkStream = new NetworkStream(socket);
+            if (ssl)
+            {
+                var sslStream = new SslStream(networkStream, leaveInnerStreamOpen: false,
+                    userCertificateValidationCallback: (a, b, c, d) => true);
+                await sslStream.AuthenticateAsClientAsync(targetHost, clientCertificates: null,
+                    enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12, checkCertificateRevocation: false);
+                return sslStream;
+            }
+            else
+            {
+                return networkStream;
+            }
         }
     }
 }
