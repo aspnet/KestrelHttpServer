@@ -197,6 +197,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     if (!consumed.IsDefault)
                     {
+                        // Compute lengthConsumed before modifying _head or consumed
+                        var lengthConsumed = 0;
+                        if (_bufferLengthControl != null)
+                        {
+                            lengthConsumed = new MemoryPoolIterator(_head).GetLength(consumed);
+                        }
 
                         returnStart = _head;
                         returnEnd = consumed.Block;
@@ -205,7 +211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         // Must call Subtract() after _head has been advanced, to avoid producer starting too early and growing
                         // buffer beyond max length.
-                        _bufferLengthControl?.Subtract(new MemoryPoolIterator(returnStart).GetLength(consumed));
+                        _bufferLengthControl?.Subtract(lengthConsumed);
                     }
 
                     if (!examined.IsDefault &&
