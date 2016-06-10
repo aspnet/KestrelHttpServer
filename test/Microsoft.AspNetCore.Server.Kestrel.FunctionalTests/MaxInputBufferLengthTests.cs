@@ -89,16 +89,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var socket = CreateSocket(port))
                 using (var stream = await CreateStreamAsync(socket, ssl, host.GetHost()))
                 {
-                    WritePostRequestHeaders(stream, sendContentLengthHeader ? (int?)data.Length : null);
+                    await WritePostRequestHeaders(stream, sendContentLengthHeader ? (int?)data.Length : null);
 
                     var bytesWritten = 0;
 
-                    var sendTask = Task.Run(() =>
+                    Func<Task> sendFunc = async () =>
                     {
                         while (bytesWritten < data.Length)
                         {
                             var size = Math.Min(data.Length - bytesWritten, maxSendSize);
-                            stream.Write(data, bytesWritten, size);
+                            await stream.WriteAsync(data, bytesWritten, size);
                             bytesWritten += size;
                             bytesWrittenEvent.Set();
                         }
@@ -106,7 +106,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         Assert.Equal(data.Length, bytesWritten);
                         socket.Shutdown(SocketShutdown.Send);
                         clientFinishedSendingRequestBody.Set();
-                    });
+                    };
+
+                    var sendTask = sendFunc();
 
                     if (expectPause)
                     {
@@ -215,16 +217,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return socket;
         }
 
-        private static void WritePostRequestHeaders(Stream stream, int? contentLength)
+        private static async Task WritePostRequestHeaders(Stream stream, int? contentLength)
         {
             using (var writer = new StreamWriter(stream, Encoding.ASCII, bufferSize: 1024, leaveOpen: true))
             {
-                writer.Write("POST / HTTP/1.0\r\n");
+                await writer.WriteAsync("POST / HTTP/1.0\r\n");
                 if (contentLength.HasValue)
                 {
-                    writer.Write($"Content-Length: {contentLength.Value}\r\n");
+                    await writer.WriteAsync($"Content-Length: {contentLength.Value}\r\n");
                 }
-                writer.Write("\r\n");
+                await writer.WriteAsync("\r\n");
             }
         }
 
