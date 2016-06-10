@@ -219,12 +219,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var writer = new StreamWriter(stream, Encoding.ASCII, bufferSize: 1024, leaveOpen: true))
             {
-                writer.WriteLine("POST / HTTP/1.0");
+                writer.Write("POST / HTTP/1.0\r\n");
                 if (contentLength.HasValue)
                 {
-                    writer.WriteLine($"Content-Length: {contentLength.Value}");
+                    writer.Write($"Content-Length: {contentLength.Value}\r\n");
                 }
-                writer.WriteLine();
+                writer.Write("\r\n");
             }
         }
 
