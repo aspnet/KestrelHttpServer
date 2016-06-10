@@ -36,6 +36,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void Add(int count)
         {
+            Debug.Assert(count >= 0);
+
+            if (count == 0)
+            {
+                // No-op and avoid taking lock to reduce contention
+                return;
+            }
+
             lock (_lock)
             {
                 Length += count;
@@ -51,6 +59,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void Subtract(int count)
         {
+            Debug.Assert(count >= 0);
+
+            if (count == 0)
+            {
+                // No-op and avoid taking lock to reduce contention
+                return;
+            }
+
             lock (_lock)
             {
                 Length -= count;
