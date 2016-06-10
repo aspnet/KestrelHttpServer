@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class MaxInputBufferLengthTests
     {
-        private const int _dataLength = 10 * 1024 * 1024;
+        private const int _dataLength = 20 * 1024 * 1024;
 
         public static IEnumerable<object[]> LargeUploadData
         {
@@ -34,17 +34,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // Default buffer.
                     Tuple.Create((int?)1024 * 1024, true),
 
-                    // Larger than default, but still 5MB lower than data, so client should be paused.
-                    // On Windows, the client is usually paused at (MaxInputBufferSize + 700,000).
+                    // Larger than default, but still significantly lower than data, so client should be paused.
+                    // On Windows, the client is usually paused around (MaxInputBufferLength + 700,000).
+                    // On Linux, the client is usually paused around (MaxInputBufferLength + 10,000,000).
                     Tuple.Create((int?)5 * 1024 * 1024, true),
                     
                     // Even though maxInputBufferLength < _dataLength, client should not be paused since the
                     // OS-level buffers in client and/or server will handle the overflow.
-                    Tuple.Create((int?)10 * 1024 * 1024 - 1, false),
+                    Tuple.Create((int?)_dataLength - 1, false),
 
                     // Buffer is exactly the same size as data.  Exposed race condition where
                     // IConnectionControl.Resume() was called after socket was disconnected.
-                    Tuple.Create((int?)10 * 1024 * 1024, false),
+                    Tuple.Create((int?)_dataLength, false),
 
                     // Largest possible buffer, should never trigger backpressure.
                     Tuple.Create((int?)Int32.MaxValue, false),
