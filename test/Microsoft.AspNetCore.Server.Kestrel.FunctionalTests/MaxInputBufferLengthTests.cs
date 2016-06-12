@@ -26,8 +26,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 var maxInputBufferLengthValues = new Tuple<int?, bool>[] {
                     // Smallest allowed buffer.  Server should call pause/resume between each read.
-                    Tuple.Create((int?)1, true),                    
-                    
+                    Tuple.Create((int?)1, true),
+
                     // Small buffer, but large enough to hold all request headers.
                     Tuple.Create((int?)16 * 1024, true),
 
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // On Windows, the client is usually paused around (MaxInputBufferLength + 700,000).
                     // On Linux, the client is usually paused around (MaxInputBufferLength + 10,000,000).
                     Tuple.Create((int?)5 * 1024 * 1024, true),
-                    
+
                     // Even though maxInputBufferLength < _dataLength, client should not be paused since the
                     // OS-level buffers in client and/or server will handle the overflow.
                     Tuple.Create((int?)_dataLength - 1, false),
@@ -75,6 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             // Parameters
             var data = new byte[_dataLength];
             var bytesWrittenTimeout = TimeSpan.FromMilliseconds(100);
+            var bytesWrittenPollingInterval = TimeSpan.FromMilliseconds(bytesWrittenTimeout.TotalMilliseconds / 10);
             var maxSendSize = 4096;
 
             // Initialize data with random bytes
@@ -82,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var startReadingRequestBody = new ManualResetEvent(false);
             var clientFinishedSendingRequestBody = new ManualResetEvent(false);
-            var bytesWrittenEvent = new AutoResetEvent(false);
+            var lastBytesWritten = DateTime.MaxValue;
 
             using (var host = StartWebHost(maxInputBufferLength, data, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
@@ -101,7 +102,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             var size = Math.Min(data.Length - bytesWritten, maxSendSize);
                             await stream.WriteAsync(data, bytesWritten, size);
                             bytesWritten += size;
-                            bytesWrittenEvent.Set();
+                            lastBytesWritten = DateTime.Now;
                         }
 
                         Assert.Equal(data.Length, bytesWritten);
@@ -115,7 +116,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     {
                         // Block until the send task has gone a while without writing bytes, which likely means
                         // the server input buffer is full.
-                        while (bytesWrittenEvent.WaitOne(bytesWrittenTimeout)) { }
+                        while ((DateTime.Now - lastBytesWritten) < bytesWrittenTimeout)
+                        {
+                            await Task.Delay(bytesWrittenPollingInterval);
+                        }
 
                         // Verify the number of bytes written before the client was paused.
                         // 
