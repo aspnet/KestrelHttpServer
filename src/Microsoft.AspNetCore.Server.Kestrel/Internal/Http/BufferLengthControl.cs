@@ -4,23 +4,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class BufferLengthControl : IBufferLengthControl
     {
-        private readonly int _maxLength;
+        private readonly long _maxLength;
         private readonly IConnectionControl _connectionControl;
         private readonly KestrelThread _connectionThread;
 
         private readonly object _lock = new object();
 
-        private int _length;
+        private long _length;
         private bool _connectionPaused;
 
-        public BufferLengthControl(int maxLength, IConnectionControl connectionControl, KestrelThread connectionThread)
+        public BufferLengthControl(long maxLength, IConnectionControl connectionControl, KestrelThread connectionThread)
         {
             _maxLength = maxLength;
             _connectionControl = connectionControl;
             _connectionThread = connectionThread;
         }
 
-        private int Length
+        private long Length
         {
             get
             {

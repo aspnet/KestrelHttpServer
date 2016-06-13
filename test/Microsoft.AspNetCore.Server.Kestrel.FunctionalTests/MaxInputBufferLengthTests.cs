@@ -24,34 +24,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             get
             {
-                var maxInputBufferLengthValues = new Tuple<int?, bool>[] {
+                var maxInputBufferLengthValues = new Tuple<long?, bool>[] {
                     // Smallest allowed buffer.  Server should call pause/resume between each read.
-                    Tuple.Create((int?)1, true),
+                    Tuple.Create((long?)1, true),
 
                     // Small buffer, but large enough to hold all request headers.
-                    Tuple.Create((int?)16 * 1024, true),
+                    Tuple.Create((long?)16 * 1024, true),
 
                     // Default buffer.
-                    Tuple.Create((int?)1024 * 1024, true),
+                    Tuple.Create((long?)1024 * 1024, true),
 
                     // Larger than default, but still significantly lower than data, so client should be paused.
                     // On Windows, the client is usually paused around (MaxInputBufferLength + 700,000).
                     // On Linux, the client is usually paused around (MaxInputBufferLength + 10,000,000).
-                    Tuple.Create((int?)5 * 1024 * 1024, true),
+                    Tuple.Create((long?)5 * 1024 * 1024, true),
 
                     // Even though maxInputBufferLength < _dataLength, client should not be paused since the
                     // OS-level buffers in client and/or server will handle the overflow.
-                    Tuple.Create((int?)_dataLength - 1, false),
+                    Tuple.Create((long?)_dataLength - 1, false),
 
                     // Buffer is exactly the same size as data.  Exposed race condition where
                     // IConnectionControl.Resume() was called after socket was disconnected.
-                    Tuple.Create((int?)_dataLength, false),
+                    Tuple.Create((long?)_dataLength, false),
 
                     // Largest possible buffer, should never trigger backpressure.
-                    Tuple.Create((int?)Int32.MaxValue, false),
+                    Tuple.Create((long?)long.MaxValue, false),
 
                     // Disables all code related to computing and limiting the size of the input buffer.
-                    Tuple.Create((int?)null, false)
+                    Tuple.Create((long?)null, false)
                 };
                 var sendContentLengthHeaderValues = new[] { true, false };
                 var sslValues = new[] { true, false };
@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         [Theory]
         [MemberData("LargeUploadData")]
-        public async Task LargeUpload(int? maxInputBufferLength, bool sendContentLengthHeader, bool ssl, bool expectPause)
+        public async Task LargeUpload(long? maxInputBufferLength, bool sendContentLengthHeader, bool ssl, bool expectPause)
         {
             // Parameters
             var data = new byte[_dataLength];
@@ -157,7 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static IWebHost StartWebHost(int? maxInputBufferLength, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
+        private static IWebHost StartWebHost(long? maxInputBufferLength, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
             ManualResetEvent clientFinishedSendingRequestBody)
         {
             var host = new WebHostBuilder()
