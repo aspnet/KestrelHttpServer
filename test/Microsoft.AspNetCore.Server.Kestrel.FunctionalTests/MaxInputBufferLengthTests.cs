@@ -108,7 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             await stream.WriteAsync(data, bytesWritten, size);
                             bytesWritten += size;
                             lastBytesWritten = DateTime.Now;
-                            Log($"bytesWritten: {bytesWritten}, lastBytesWritten: {lastBytesWritten}");
+                            Log($"bytesWritten: {bytesWritten}, lastBytesWritten: {lastBytesWritten.ToString("hh:mm:ss.fff")}");
                         }
 
                         Assert.Equal(data.Length, bytesWritten);
