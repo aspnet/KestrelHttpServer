@@ -68,9 +68,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static void Log(string s)
+        private static void Log(StringBuilder builder, string s)
         {
-            Console.WriteLine($"[{DateTime.Now.ToString("hh:mm:ss.fff")}] {s}");
+            builder.AppendLine($"[{DateTime.Now.ToString("hh:mm:ss.fff")}] {s}");
         }
 
         [Theory]
@@ -99,6 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await WritePostRequestHeaders(stream, sendContentLengthHeader ? (int?)data.Length : null);
 
                     var bytesWritten = 0;
+                    var logBuilder = new StringBuilder();
 
                     Func<Task> sendFunc = async () =>
                     {
@@ -108,7 +109,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             await stream.WriteAsync(data, bytesWritten, size);
                             bytesWritten += size;
                             lastBytesWritten = DateTime.Now;
-                            Log($"bytesWritten: {bytesWritten}, lastBytesWritten: {lastBytesWritten.ToString("hh:mm:ss.fff")}");
+                            Log(logBuilder, $"bytesWritten: {bytesWritten}, lastBytesWritten: {lastBytesWritten.ToString("hh:mm:ss.fff")}");
                         }
 
                         Assert.Equal(data.Length, bytesWritten);
@@ -126,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         {
                             await Task.Delay(bytesWrittenPollingInterval);
                         }
-                        Log($"bytesWrittenTimeout: {bytesWrittenTimeout}, " +
+                        Log(logBuilder, $"bytesWrittenTimeout: {bytesWrittenTimeout}, " +
                             $"DateTime.Now - lastBytesWritten: {DateTime.Now - lastBytesWritten}");
 
                         // Verify the number of bytes written before the client was paused.
@@ -139,7 +140,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         // and server, which allow the client to send more than maxInputBufferLength before getting
                         // paused.  We assume the combined buffers are smaller than the difference between
                         // data.Length and maxInputBufferLength.                          
-                        Assert.InRange(bytesWritten, maxInputBufferLength.Value - maxSendSize + 1, data.Length - 1);
+                        try
+                        {
+                            Assert.InRange(bytesWritten, maxInputBufferLength.Value - maxSendSize + 1, data.Length - 1);
+                        }
+                        catch
+                        {
+                            Console.WriteLine(logBuilder.ToString());
+                            throw;
+                        }
 
                         // Tell server to start reading request body
                         startReadingRequestBody.Set();
