@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public interface IBufferLengthControl
+    public interface IBufferSizeControl
     {
         void Add(int count);
         void Subtract(int count);

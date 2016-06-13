@@ -14,50 +14,50 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     public class SocketInputTests
     {
-        public static readonly TheoryData<Mock<IBufferLengthControl>> MockBufferLengthControlData =
-            new TheoryData<Mock<IBufferLengthControl>>() { new Mock<IBufferLengthControl>(), null };
+        public static readonly TheoryData<Mock<IBufferSizeControl>> MockBufferSizeControlData =
+            new TheoryData<Mock<IBufferSizeControl>>() { new Mock<IBufferSizeControl>(), null };
 
         [Theory]
-        [MemberData("MockBufferLengthControlData")]
-        public void IncomingDataCallsBufferLengthControlAdd(Mock<IBufferLengthControl> mockBufferLengthControl)
+        [MemberData("MockBufferSizeControlData")]
+        public void IncomingDataCallsBufferSizeControlAdd(Mock<IBufferSizeControl> mockBufferSizeControl)
         {
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, null, mockBufferLengthControl?.Object))
+            using (var socketInput = new SocketInput(memory, null, mockBufferSizeControl?.Object))
             {
                 socketInput.IncomingData(new byte[5], 0, 5);
-                mockBufferLengthControl?.Verify(b => b.Add(5));
+                mockBufferSizeControl?.Verify(b => b.Add(5));
             }
         }
 
         [Theory]
-        [MemberData("MockBufferLengthControlData")]
-        public void IncomingCompleteCallsBufferLengthControlAdd(Mock<IBufferLengthControl> mockBufferLengthControl)
+        [MemberData("MockBufferSizeControlData")]
+        public void IncomingCompleteCallsBufferSizeControlAdd(Mock<IBufferSizeControl> mockBufferSizeControl)
         {
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, null, mockBufferLengthControl?.Object))
+            using (var socketInput = new SocketInput(memory, null, mockBufferSizeControl?.Object))
             {
                 socketInput.IncomingComplete(5, null);
-                mockBufferLengthControl?.Verify(b => b.Add(5));
+                mockBufferSizeControl?.Verify(b => b.Add(5));
             }
         }
 
         [Theory]
-        [MemberData("MockBufferLengthControlData")]
-        public void ConsumingCompleteCallsBufferLengthControlSubtract(Mock<IBufferLengthControl> mockBufferLengthControl)
+        [MemberData("MockBufferSizeControlData")]
+        public void ConsumingCompleteCallsBufferSizeControlSubtract(Mock<IBufferSizeControl> mockBufferSizeControl)
         {
             using (var kestrelEngine = new KestrelEngine(new MockLibuv(), new TestServiceContext()))
             {
                 kestrelEngine.Start(1);
 
                 using (var memory = new MemoryPool())
-                using (var socketInput = new SocketInput(memory, null, mockBufferLengthControl?.Object))
+                using (var socketInput = new SocketInput(memory, null, mockBufferSizeControl?.Object))
                 {
                     socketInput.IncomingData(new byte[20], 0, 20);
 
                     var iterator = socketInput.ConsumingStart();
                     iterator.Skip(5);
                     socketInput.ConsumingComplete(iterator, iterator);
-                    mockBufferLengthControl?.Verify(b => b.Subtract(5));
+                    mockBufferSizeControl?.Verify(b => b.Subtract(5));
                 }
             }
         }

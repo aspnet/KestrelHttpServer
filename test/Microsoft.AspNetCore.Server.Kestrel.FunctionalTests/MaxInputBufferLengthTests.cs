@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class MaxInputBufferLengthTests
+    public class MaxRequestBufferSizeTests
     {
         private const int _dataLength = 20 * 1024 * 1024;
 
@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             get
             {
-                var maxInputBufferLengthValues = new Tuple<long?, bool>[] {
+                var maxRequestBufferSizeValues = new Tuple<long?, bool>[] {
                     // Smallest allowed buffer.  Server should call pause/resume between each read.
                     Tuple.Create((long?)1, true),
 
@@ -35,11 +35,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Tuple.Create((long?)1024 * 1024, true),
 
                     // Larger than default, but still significantly lower than data, so client should be paused.
-                    // On Windows, the client is usually paused around (MaxInputBufferLength + 700,000).
-                    // On Linux, the client is usually paused around (MaxInputBufferLength + 10,000,000).
+                    // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
+                    // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
                     Tuple.Create((long?)5 * 1024 * 1024, true),
 
-                    // Even though maxInputBufferLength < _dataLength, client should not be paused since the
+                    // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
                     // OS-level buffers in client and/or server will handle the overflow.
                     Tuple.Create((long?)_dataLength - 1, false),
 
@@ -56,21 +56,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var sendContentLengthHeaderValues = new[] { true, false };
                 var sslValues = new[] { true, false };
 
-                return from maxInputBufferLength in maxInputBufferLengthValues
+                return from maxRequestBufferSize in maxRequestBufferSizeValues
                        from sendContentLengthHeader in sendContentLengthHeaderValues
                        from ssl in sslValues
                        select new object[] {
-                           maxInputBufferLength.Item1,
+                           maxRequestBufferSize.Item1,
                            sendContentLengthHeader,
                            ssl,
-                           maxInputBufferLength.Item2
+                           maxRequestBufferSize.Item2
                        };
             }
         }
 
         [Theory]
         [MemberData("LargeUploadData")]
-        public async Task LargeUpload(long? maxInputBufferLength, bool sendContentLengthHeader, bool ssl, bool expectPause)
+        public async Task LargeUpload(long? maxRequestBufferSize, bool sendContentLengthHeader, bool ssl, bool expectPause)
         {
             // Parameters
             var data = new byte[_dataLength];
@@ -85,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var clientFinishedSendingRequestBody = new ManualResetEvent(false);
             var lastBytesWritten = DateTime.MaxValue;
 
-            using (var host = StartWebHost(maxInputBufferLength, data, startReadingRequestBody, clientFinishedSendingRequestBody))
+            using (var host = StartWebHost(maxRequestBufferSize, data, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
                 var port = host.GetPort(ssl ? "https" : "http");
                 using (var socket = CreateSocket(port))
@@ -123,15 +123,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                         // Verify the number of bytes written before the client was paused.
                         // 
-                        // The minimum is (maxInputBufferLength - maxSendSize + 1), since if bytesWritten is
-                        // (maxInputBufferLength - maxSendSize) or smaller, the client should be able to
+                        // The minimum is (maxRequestBufferSize - maxSendSize + 1), since if bytesWritten is
+                        // (maxRequestBufferSize - maxSendSize) or smaller, the client should be able to
                         // complete another send.
                         // 
                         // The maximum is harder to determine, since there can be OS-level buffers in both the client
-                        // and server, which allow the client to send more than maxInputBufferLength before getting
+                        // and server, which allow the client to send more than maxRequestBufferSize before getting
                         // paused.  We assume the combined buffers are smaller than the difference between
-                        // data.Length and maxInputBufferLength.                          
-                        Assert.InRange(bytesWritten, maxInputBufferLength.Value - maxSendSize + 1, data.Length - 1);
+                        // data.Length and maxRequestBufferSize.                          
+                        Assert.InRange(bytesWritten, maxRequestBufferSize.Value - maxSendSize + 1, data.Length - 1);
 
                         // Tell server to start reading request body
                         startReadingRequestBody.Set();
@@ -157,13 +157,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static IWebHost StartWebHost(long? maxInputBufferLength, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
+        private static IWebHost StartWebHost(long? maxRequestBufferSize, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
             ManualResetEvent clientFinishedSendingRequestBody)
         {
             var host = new WebHostBuilder()
                 .UseKestrel(options =>
                 {
-                    options.MaxInputBufferLength = maxInputBufferLength;
+                    options.MaxRequestBufferSize = maxRequestBufferSize;
                     options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
                 })
                 .UseUrls("http://127.0.0.1:0/", "https://127.0.0.1:0/")

@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private ConnectionState _connectionState;
         private TaskCompletionSource<object> _socketClosedTcs;
 
-        private BufferLengthControl _bufferLengthControl;
+        private BufferSizeControl _bufferSizeControl;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -52,12 +52,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
-            if (ServerOptions.MaxInputBufferLength.HasValue)
+            if (ServerOptions.MaxRequestBufferSize.HasValue)
             {
-                _bufferLengthControl = new BufferLengthControl(ServerOptions.MaxInputBufferLength.Value, this, Thread);
+                _bufferSizeControl = new BufferSizeControl(ServerOptions.MaxRequestBufferSize.Value, this, Thread);
             }
 
-            _rawSocketInput = new SocketInput(Memory, ThreadPool, _bufferLengthControl);
+            _rawSocketInput = new SocketInput(Memory, ThreadPool, _bufferSizeControl);
             _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
         }
 
@@ -225,7 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     if (_filterContext.Connection != _libuvStream)
                     {
-                        _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Memory, Log, ThreadPool, _bufferLengthControl);
+                        _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Memory, Log, ThreadPool, _bufferSizeControl);
 
                         SocketInput = _filteredStreamAdapter.SocketInput;
                         SocketOutput = _filteredStreamAdapter.SocketOutput;

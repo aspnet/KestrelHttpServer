@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     {
         // Matches the default client_max_body_size in nginx.  Also large enough that most requests
         // should be under the limit.
-        private long? _maxInputBufferLength = 1024 * 1024;
+        private long? _maxRequestBufferSize = 1024 * 1024;
 
         /// <summary>
         /// Gets or sets whether the <c>Server</c> header should be included in each response.
@@ -22,14 +22,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public IConnectionFilter ConnectionFilter { get; set; }
 
         /// <summary>
-        /// Maximum number of bytes used to buffer input for each connection.
-        /// Default is 1,048,576 bytes (1 MB).  If value is null, the length of the input buffer is unlimited.
+        /// Maximum size of the request buffer.  Default is 1,048,576 bytes (1 MB).
+        /// If value is null, the size of the request buffer is unlimited.
         /// </summary>
-        public long? MaxInputBufferLength
+        public long? MaxRequestBufferSize
         {
             get
             {
-                return _maxInputBufferLength;
+                return _maxRequestBufferSize;
             }
             set
             {
@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     throw new ArgumentOutOfRangeException("value", "Value must be null or a positive integer.");
                 }
-                _maxInputBufferLength = value;
+                _maxRequestBufferSize = value;
             }
         }
 

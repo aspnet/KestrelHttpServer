@@ -12,30 +12,30 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     public class KestrelServerInformationTests
     {
         [Fact]
-        public void MaxInputBufferLengthDefault()
+        public void MaxRequestBufferSizeDefault()
         {
-            Assert.Equal(1024 * 1024, (new KestrelServerOptions()).MaxInputBufferLength);
+            Assert.Equal(1024 * 1024, (new KestrelServerOptions()).MaxRequestBufferSize);
         }
 
         [Theory]
         [InlineData(-1)]
         [InlineData(0)]
-        public void MaxInputBufferInvalid(int value)
+        public void MaxRequestBufferSizeInvalid(int value)
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>
             {
-                (new KestrelServerOptions()).MaxInputBufferLength = value;
+                (new KestrelServerOptions()).MaxRequestBufferSize = value;
             });
         }
 
         [Theory]
         [InlineData(null)]
         [InlineData(1)]
-        public void MaxInputBufferValid(int? value)
+        public void MaxRequestBufferSizeValid(int? value)
         {
             var o = new KestrelServerOptions();
-            o.MaxInputBufferLength = value;
-            Assert.Equal(value, o.MaxInputBufferLength);
+            o.MaxRequestBufferSize = value;
+            Assert.Equal(value, o.MaxRequestBufferSize);
         }
 
         [Fact]

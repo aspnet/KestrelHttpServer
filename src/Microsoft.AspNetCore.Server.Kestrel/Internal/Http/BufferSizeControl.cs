@@ -2,35 +2,35 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public class BufferLengthControl : IBufferLengthControl
+    public class BufferSizeControl : IBufferSizeControl
     {
-        private readonly long _maxLength;
+        private readonly long _maxSize;
         private readonly IConnectionControl _connectionControl;
         private readonly KestrelThread _connectionThread;
 
         private readonly object _lock = new object();
 
-        private long _length;
+        private long _size;
         private bool _connectionPaused;
 
-        public BufferLengthControl(long maxLength, IConnectionControl connectionControl, KestrelThread connectionThread)
+        public BufferSizeControl(long maxSize, IConnectionControl connectionControl, KestrelThread connectionThread)
         {
-            _maxLength = maxLength;
+            _maxSize = maxSize;
             _connectionControl = connectionControl;
             _connectionThread = connectionThread;
         }
 
-        private long Length
+        private long Size
         {
             get
             {
-                return _length;
+                return _size;
             }
             set
             {
                 // Caller should ensure that bytes are never consumed before the producer has called Add()
                 Debug.Assert(value >= 0);
-                _length = value;
+                _size = value;
             }
         }
 
@@ -46,8 +46,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             lock (_lock)
             {
-                Length += count;
-                if (!_connectionPaused && Length >= _maxLength)
+                Size += count;
+                if (!_connectionPaused && Size >= _maxSize)
                 {
                     _connectionPaused = true;
                     _connectionThread.Post(
@@ -69,8 +69,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             lock (_lock)
             {
-                Length -= count;
-                if (_connectionPaused && Length < _maxLength)
+                Size -= count;
+                if (_connectionPaused && Size < _maxSize)
                 {
                     _connectionPaused = false;
                     _connectionThread.Post(
