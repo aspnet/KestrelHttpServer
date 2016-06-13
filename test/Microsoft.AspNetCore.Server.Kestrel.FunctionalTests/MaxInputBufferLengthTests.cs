@@ -68,6 +68,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
+        private static void Log(string s)
+        {
+            Console.WriteLine($"[{DateTime.Now.ToString("hh:mm:ss.fff")}] {s}");
+        }
+
         [Theory]
         [MemberData("LargeUploadData")]
         public async Task LargeUpload(int? maxInputBufferLength, bool sendContentLengthHeader, bool ssl, bool expectPause)
@@ -103,6 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             await stream.WriteAsync(data, bytesWritten, size);
                             bytesWritten += size;
                             lastBytesWritten = DateTime.Now;
+                            Log($"bytesWritten: {bytesWritten}, lastBytesWritten: {lastBytesWritten}");
                         }
 
                         Assert.Equal(data.Length, bytesWritten);
@@ -120,6 +126,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         {
                             await Task.Delay(bytesWrittenPollingInterval);
                         }
+                        Log($"bytesWrittenTimeout: {bytesWrittenTimeout}, " +
+                            $"DateTime.Now - lastBytesWritten: {DateTime.Now - lastBytesWritten}");
 
                         // Verify the number of bytes written before the client was paused.
                         // 
