@@ -114,24 +114,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     if (expectPause)
                     {
-                        // Block until the send task has gone a while without writing bytes, which likely means
-                        // the server input buffer is full.
-                        while ((DateTime.Now - lastBytesWritten) < bytesWrittenTimeout)
+                        // The minimum is (maxRequestBufferSize - maxSendSize + 1), since if bytesWritten is
+                        // (maxRequestBufferSize - maxSendSize) or smaller, the client should be able to
+                        // complete another send.
+                        var minimumExpectedBytesWritten = maxRequestBufferSize.Value - maxSendSize + 1;
+
+                        // The maximum is harder to determine, since there can be OS-level buffers in both the client
+                        // and server, which allow the client to send more than maxRequestBufferSize before getting
+                        // paused.  We assume the combined buffers are smaller than the difference between
+                        // data.Length and maxRequestBufferSize.                          
+                        var maximumExpectedBytesWritten = data.Length - 1;
+
+                        // Block until the send task has gone a while without writing bytes AND
+                        // the bytes written exceeds the minimum expected.  This indicates the server buffer
+                        // is full.
+                        // 
+                        // If the send task is paused before the expected number of bytes have been
+                        // written, keep waiting since the pause may have been caused by something else
+                        // like a slow machine.
+                        while ((DateTime.Now - lastBytesWritten) < bytesWrittenTimeout ||
+                               bytesWritten < minimumExpectedBytesWritten)
                         {
                             await Task.Delay(bytesWrittenPollingInterval);
                         }
 
                         // Verify the number of bytes written before the client was paused.
-                        // 
-                        // The minimum is (maxRequestBufferSize - maxSendSize + 1), since if bytesWritten is
-                        // (maxRequestBufferSize - maxSendSize) or smaller, the client should be able to
-                        // complete another send.
-                        // 
-                        // The maximum is harder to determine, since there can be OS-level buffers in both the client
-                        // and server, which allow the client to send more than maxRequestBufferSize before getting
-                        // paused.  We assume the combined buffers are smaller than the difference between
-                        // data.Length and maxRequestBufferSize.                          
-                        Assert.InRange(bytesWritten, maxRequestBufferSize.Value - maxSendSize + 1, data.Length - 1);
+                        Assert.InRange(bytesWritten, minimumExpectedBytesWritten, maximumExpectedBytesWritten);
 
                         // Tell server to start reading request body
                         startReadingRequestBody.Set();
