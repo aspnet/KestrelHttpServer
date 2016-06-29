@@ -43,6 +43,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
 
+        private bool _workAdded;
+        private bool _closeHandleAdded;
+        private int _threadAlert;
+
         public KestrelThread(KestrelEngine engine)
         {
             _engine = engine;
@@ -157,8 +161,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     Callback = callback,
                     State = state
                 });
+                _workAdded = true;
             }
-            _post.Send();
+            AlertNewWork();
         }
 
         private void Post(Action<KestrelThread> callback)
@@ -178,8 +183,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     State = state,
                     Completion = tcs
                 });
+                _workAdded = true;
             }
-            _post.Send();
+            AlertNewWork();
             return tcs.Task;
         }
 
@@ -197,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
             EnqueueCloseHandle(callback, handle);
-            _post.Send();
+            AlertNewWork();
         }
 
         private void EnqueueCloseHandle(Action<IntPtr> callback, IntPtr handle)
@@ -205,6 +211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             lock (_workSync)
             {
                 _closeHandleAdding.Enqueue(new CloseHandle { Callback = callback, Handle = handle });
+                _closeHandleAdded = true;
             }
         }
 
@@ -256,27 +263,75 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private void OnPost()
         {
+            // Set KestrelThread state to Alert as it will be aware of any new work added
+            Volatile.Write(ref _threadAlert, ThreadAlertState.Alert);
+
             var loopsRemaining = _maxLoops;
-            bool wasWork;
+            bool isWork;
             do
             {
-                wasWork = DoPostWork();
-                wasWork = DoPostCloseHandle() || wasWork;
                 loopsRemaining--;
-            } while (wasWork && loopsRemaining > 0);
+
+                // Perform queued work
+                DoPostWork();
+                DoPostCloseHandle();
+
+                lock (_workSync)
+                {
+                    // Check if more work has been added since work done
+                    isWork = _workAdded || _closeHandleAdded;
+                    if (!isWork)
+                    {
+                        // No more work, set KestrelThread to NotAlert state as it will not be aware of any new work added
+                        Interlocked.CompareExchange(ref _threadAlert, ThreadAlertState.NotAlert, ThreadAlertState.Alert);
+                    }
+                }
+            } while (isWork && loopsRemaining > 0);
+
+            if (isWork)
+            {
+                // More work but reached _maxLoops, alert that work is remaining
+                AlertMoreWork();
+            }
         }
 
-        private bool DoPostWork()
+        private void AlertMoreWork()
+        {
+            // If KestrelThread does not have an Alert request pending, request one
+            if (Interlocked.CompareExchange(ref _threadAlert, ThreadAlertState.AlertRequested, ThreadAlertState.Alert) == ThreadAlertState.Alert)
+            {
+                // KestrelThread did't have an Alert request pending, tell libuv it has work
+                _post.Send();
+            }
+        }
+
+        private void AlertNewWork()
+        {
+            // If KestrelThread is NotAlert then Request an Alert
+            if (Interlocked.CompareExchange(ref _threadAlert, ThreadAlertState.AlertRequested, ThreadAlertState.NotAlert) == ThreadAlertState.NotAlert)
+            {
+                // KestrelThread wasn't Alert or had an Alert request pending, tell libuv it has work
+                _post.Send();
+            }
+        }
+
+        private void DoPostWork()
         {
             Queue<Work> queue;
             lock (_workSync)
             {
+                if (!_workAdded)
+                {
+                    // No new work, skip swaps
+                    return;
+                }
+
                 queue = _workAdding;
                 _workAdding = _workRunning;
                 _workRunning = queue;
+                // Mark as no work in current adding queue
+                _workAdded = false;
             }
-
-            bool wasWork = queue.Count > 0;
 
             while (queue.Count != 0)
             {
@@ -302,21 +357,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     }
                 }
             }
-
-            return wasWork;
         }
 
-        private bool DoPostCloseHandle()
+        private void DoPostCloseHandle()
         {
             Queue<CloseHandle> queue;
             lock (_workSync)
             {
+                if (!_closeHandleAdded)
+                {
+                    // No new work, skip swaps
+                    return;
+                }
+
                 queue = _closeHandleAdding;
                 _closeHandleAdding = _closeHandleRunning;
                 _closeHandleRunning = queue;
+                // Mark as no work in current adding queue
+                _closeHandleAdded = false;
             }
-
-            bool wasWork = queue.Count > 0;
 
             while (queue.Count != 0)
             {
@@ -331,8 +390,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     throw;
                 }
             }
+        }
 
-            return wasWork;
+        private static class ThreadAlertState
+        {
+            public const int NotAlert = 0;
+            public const int AlertRequested = 1;
+            public const int Alert = 2;
         }
 
         private struct Work

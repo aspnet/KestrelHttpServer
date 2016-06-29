@@ -76,6 +76,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
             _uv_strerror = errno => IntPtr.Zero;
             _uv_read_start = UvReadStart;
             _uv_read_stop = handle => 0;
+            _uv_unsafe_async_send = handle => 0;
         }
 
         public Func<UvStreamHandle, int, Action<int>, int> OnWrite { get; set; }
