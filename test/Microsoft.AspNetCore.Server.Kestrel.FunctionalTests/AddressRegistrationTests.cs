@@ -29,8 +29,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv4Port80))]
-        [Port80SupportedCondition]
+        [PortSupportedCondition(80)]
         public async Task RegisterAddresses_IPv4Port80_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
+        {
+            await RegisterAddresses_Success(addressInput, testUrls);
+        }
+
+        [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv4Port443))]
+        [PortSupportedCondition(443)]
+        public async Task RegisterAddresses_IPv4Port443_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
         {
             await RegisterAddresses_Success(addressInput, testUrls);
         }
@@ -44,8 +51,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv6Port80))]
         [IPv6SupportedCondition]
-        [Port80SupportedCondition]
+        [PortSupportedCondition(80)]
         public async Task RegisterAddresses_IPv6Port80_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
+        {
+            await RegisterAddresses_Success(addressInput, testUrls);
+        }
+
+        [ConditionalTheory, MemberData(nameof(AddressRegistrationDataIPv6Port443))]
+        [IPv6SupportedCondition]
+        [PortSupportedCondition(443)]
+        public async Task RegisterAddresses_IPv6Port443_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
         {
             await RegisterAddresses_Success(addressInput, testUrls);
         }
@@ -60,7 +75,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private async Task RegisterAddresses_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
         {
             var hostBuilder = new WebHostBuilder()
-                .UseKestrel()
+                .UseKestrel(options =>
+                {
+                    options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
+                })
                 .UseUrls(addressInput)
                 .Configure(ConfigureEchoAddress);
 
@@ -68,18 +86,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
+                var handler = new HttpClientHandler();
+
+#if NET451
+                System.Net.Security.RemoteCertificateValidationCallback validationCallback = (a, b, c, d) => true;
+#endif
+
+                try
                 {
-                    foreach (var testUrl in testUrls(host.ServerFeatures.Get<IServerAddressesFeature>()))
+#if NET451
+                    ServicePointManager.ServerCertificateValidationCallback += validationCallback;
+#else
+                    handler.ServerCertificateCustomValidationCallback += (a, b, c, d) => true;
+#endif
+
+                    using (var client = new HttpClient(handler))
                     {
-                        var response = await client.GetAsync(testUrl);
-                        
-                        // Compare the response with the RequestMessage.RequestUri, rather than testUrl directly.
-                        // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
-                        Assert.Equal(
-                            response.RequestMessage.RequestUri.ToString(),
-                            await response.Content.ReadAsStringAsync());
+                        foreach (var testUrl in testUrls(host.ServerFeatures.Get<IServerAddressesFeature>()))
+                        {
+                            var response = await client.GetAsync(testUrl);
+
+                            // Compare the response with the RequestMessage.RequestUri, rather than testUrl directly.
+                            // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
+                            Assert.Equal(
+                                response.RequestMessage.RequestUri.ToString(),
+                                await response.Content.ReadAsStringAsync());
+                        }
                     }
+                }
+                finally
+                {
+#if NET451
+                    ServicePointManager.ServerCertificateValidationCallback -= validationCallback;
+#endif
                 }
             }
         }
@@ -172,6 +211,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     dataset.Add($"http://{ip}:0/", GetTestUrls);
                 }
 
+                // Both HTTP and HTTPS on dynamic ports
+                dataset.Add("http://127.0.0.1:0/;https://127.0.0.1:0", GetTestUrls);
+
                 return dataset;
             }
         }
@@ -186,6 +228,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add("http://127.0.0.1", _ => new[] { "http://127.0.0.1/" });
                 dataset.Add("http://localhost", _ => new[] { "http://127.0.0.1/" });
                 dataset.Add("http://*", _ => new[] { "http://127.0.0.1/" });
+
+                return dataset;
+            }
+        }
+
+        public static TheoryData<string, Func<IServerAddressesFeature, string[]>> AddressRegistrationDataIPv4Port443
+        {
+            get
+            {
+                var dataset = new TheoryData<string, Func<IServerAddressesFeature, string[]>>();
+
+                // Default port for HTTPS (443)
+                dataset.Add("https://127.0.0.1", _ => new[] { "https://127.0.0.1/" });
+                dataset.Add("https://localhost", _ => new[] { "https://127.0.0.1/" });
+                dataset.Add("https://*", _ => new[] { "https://127.0.0.1/" });
 
                 return dataset;
             }
@@ -231,6 +288,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     dataset.Add($"http://[{ip}]:0/", GetTestUrls);
                 }
 
+                // Both HTTP and HTTPS on dynamic ports
+                dataset.Add("http://[::1]:0/;https://[::1]:0", GetTestUrls);
+
                 return dataset;
             }
         }
@@ -245,6 +305,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add("http://[::1]", _ => new[] { "http://[::1]/" });
                 dataset.Add("http://localhost", _ => new[] { "http://127.0.0.1/", "http://[::1]/" });
                 dataset.Add("http://*", _ => new[] { "http://[::1]/" });
+
+                return dataset;
+            }
+        }
+
+        public static TheoryData<string, Func<IServerAddressesFeature, string[]>> AddressRegistrationDataIPv6Port443
+        {
+            get
+            {
+                var dataset = new TheoryData<string, Func<IServerAddressesFeature, string[]>>();
+
+                // Default port for HTTPS (443)
+                dataset.Add("https://[::1]", _ => new[] { "https://[::1]/" });
+                dataset.Add("https://localhost", _ => new[] { "https://127.0.0.1/", "https://[::1]/" });
+                dataset.Add("https://*", _ => new[] { "https://[::1]/" });
 
                 return dataset;
             }
@@ -323,15 +398,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-        private class Port80SupportedConditionAttribute : Attribute, ITestCondition
+        private class PortSupportedConditionAttribute : Attribute, ITestCondition
         {
-            private static readonly Lazy<bool> _port80Supported = new Lazy<bool>(CanBindToPort80);
+            private readonly int _port;
+            private readonly Lazy<bool> _portSupported;
+
+            public PortSupportedConditionAttribute(int port)
+            {
+                _port = port;
+                _portSupported = new Lazy<bool>(CanBindToPort);
+            }
 
             public bool IsMet
             {
                 get
                 {
-                    return _port80Supported.Value;
+                    return _portSupported.Value;
                 }
             }
 
@@ -339,17 +421,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 get
                 {
-                    return "Cannot bind to port 80 on the host.";
+                    return $"Cannot bind to port {_port} on the host.";
                 }
             }
 
-            private static bool CanBindToPort80()
+            private bool CanBindToPort()
             {
                 try
                 {
                     using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
                     {
-                        socket.Bind(new IPEndPoint(IPAddress.Loopback, 80));
+                        socket.Bind(new IPEndPoint(IPAddress.Loopback, _port));
                         return true;
                     }
                 }
