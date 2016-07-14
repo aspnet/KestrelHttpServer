@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -86,39 +85,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                var handler = new HttpClientHandler();
-
-#if NET451
-                System.Net.Security.RemoteCertificateValidationCallback validationCallback = (a, b, c, d) => true;
-#endif
-
-                try
+                var client = new HttpClientSlim() { ValidateCertificate = false };
+                foreach (var testUrl in testUrls(host.ServerFeatures.Get<IServerAddressesFeature>()))
                 {
-#if NET451
-                    ServicePointManager.ServerCertificateValidationCallback += validationCallback;
-#else
-                    handler.ServerCertificateCustomValidationCallback += (a, b, c, d) => true;
-#endif
+                    var response = await client.GetStringAsync(testUrl);
 
-                    using (var client = new HttpClient(handler))
-                    {
-                        foreach (var testUrl in testUrls(host.ServerFeatures.Get<IServerAddressesFeature>()))
-                        {
-                            var response = await client.GetAsync(testUrl);
-
-                            // Compare the response with the RequestMessage.RequestUri, rather than testUrl directly.
-                            // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
-                            Assert.Equal(
-                                response.RequestMessage.RequestUri.ToString(),
-                                await response.Content.ReadAsStringAsync());
-                        }
-                    }
-                }
-                finally
-                {
-#if NET451
-                    ServicePointManager.ServerCertificateValidationCallback -= validationCallback;
-#endif
+                    // Compare the response with Uri.ToString(), rather than testUrl directly.
+                    // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
+                    Assert.Equal(new Uri(testUrl).ToString(), response);
                 }
             }
         }
