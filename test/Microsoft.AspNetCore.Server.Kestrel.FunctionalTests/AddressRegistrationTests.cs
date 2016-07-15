@@ -159,34 +159,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var port2 = GetNextPort();
 
                 // Loopback
-                dataset.Add($"http://127.0.0.1:{port1}", _ => new[] { $"http://127.0.0.1:{port1}/" });
+                dataset.Add($"http://127.0.0.1:{port1};https://127.0.0.1:{port2}",
+                    _ => new[] { $"http://127.0.0.1:{port1}/", $"https://127.0.0.1:{port2}/" });
 
                 // Localhost
-                dataset.Add($"http://localhost:{port1}", _ => new[] { $"http://localhost:{port1}/", $"http://127.0.0.1:{port1}/" });
+                dataset.Add($"http://localhost:{port1};https://localhost:{port2}",
+                    _ => new[] { $"http://localhost:{port1}/", $"http://127.0.0.1:{port1}/",
+                                 $"https://localhost:{port2}/", $"https://127.0.0.1:{port2}/" });
 
                 // Any
-                dataset.Add($"http://*:{port1}/", _ => new[] { $"http://127.0.0.1:{port1}/" });
-                dataset.Add($"http://+:{port1}/", _ => new[] { $"http://127.0.0.1:{port1}/" });
-
-                // Multiple addresses
-                dataset.Add($"http://127.0.0.1:{port1};http://127.0.0.1:{port2}", _ => new[] { $"http://127.0.0.1:{port1}/", $"http://127.0.0.1:{port2}/" });
+                dataset.Add($"http://*:{port1}/;https://*:{port2}/",
+                    _ => new[] { $"http://127.0.0.1:{port1}/", $"https://127.0.0.1:{port2}/" });
+                dataset.Add($"http://+:{port1}/;https://+:{port2}/",
+                    _ => new[] { $"http://127.0.0.1:{port1}/", $"https://127.0.0.1:{port2}/" });
 
                 // Path after port
-                dataset.Add($"http://127.0.0.1:{port1}/base/path", _ => new[] { $"http://127.0.0.1:{port1}/base/path" });
+                dataset.Add($"http://127.0.0.1:{port1}/base/path;https://127.0.0.1:{port2}/base/path",
+                    _ => new[] { $"http://127.0.0.1:{port1}/base/path", $"https://127.0.0.1:{port2}/base/path" });
 
                 // Dynamic port and non-loopback addresses
-                dataset.Add("http://127.0.0.1:0/", GetTestUrls);
-                dataset.Add($"http://{Dns.GetHostName()}:0/", GetTestUrls);
+                dataset.Add("http://127.0.0.1:0/;https://127.0.0.1:0/", GetTestUrls);
+                dataset.Add($"http://{Dns.GetHostName()}:0/;https://{Dns.GetHostName()}:0/", GetTestUrls);
 
                 var ipv4Addresses = GetIPAddresses()
                     .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork);
                 foreach (var ip in ipv4Addresses)
                 {
-                    dataset.Add($"http://{ip}:0/", GetTestUrls);
+                    dataset.Add($"http://{ip}:0/;https://{ip}:0/", GetTestUrls);
                 }
-
-                // Both HTTP and HTTPS on dynamic ports
-                dataset.Add("http://127.0.0.1:0/;https://127.0.0.1:0", GetTestUrls);
 
                 return dataset;
             }
@@ -237,21 +237,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var port2 = GetNextPort();
 
                 // Loopback
-                dataset.Add($"http://[::1]:{port1}/", _ => new[] { $"http://[::1]:{port1}/" });
+                dataset.Add($"http://[::1]:{port1}/;https://[::1]:{port2}/",
+                    _ => new[] { $"http://[::1]:{port1}/", $"https://[::1]:{port2}/" });
 
                 // Localhost
-                dataset.Add($"http://localhost:{port1}", _ => new[] { $"http://localhost:{port1}/", $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/" });
+                dataset.Add($"http://localhost:{port1};https://localhost:{port2}",
+                    _ => new[] { $"http://localhost:{port1}/", $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/",
+                                 $"https://localhost:{port2}/", $"https://127.0.0.1:{port2}/", $"https://[::1]:{port2}/" });
 
                 // Any
-                dataset.Add($"http://*:{port1}/", _ => new[] { $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/" });
-                dataset.Add($"http://+:{port1}/", _ => new[] { $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/" });
+                dataset.Add($"http://*:{port1}/;https://*:{port2}/",
+                    _ => new[] { $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/",
+                                 $"https://127.0.0.1:{port2}/", $"https://[::1]:{port2}/" });
+                dataset.Add($"http://+:{port1}/;https://+:{port2}/",
+                    _ => new[] { $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/",
+                                 $"https://127.0.0.1:{port2}/", $"https://[::1]:{port2}/" });
 
-                // Multiple addresses
-                dataset.Add($"http://127.0.0.1:{port1}/;http://[::1]:{port1}/", _ => new[] { $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/" });
-                dataset.Add($"http://[::1]:{port1};http://[::1]:{port2}", _ => new[] { $"http://[::1]:{port1}/", $"http://[::1]:{port2}/" });
+                // Explicit IPv4 and IPv6 on same port
+                dataset.Add($"http://127.0.0.1:{port1}/;http://[::1]:{port1}/;https://127.0.0.1:{port2}/;https://[::1]:{port2}/",
+                    _ => new[] { $"http://127.0.0.1:{port1}/", $"http://[::1]:{port1}/",
+                                 $"https://127.0.0.1:{port2}/", $"https://[::1]:{port2}/" });
 
                 // Path after port
-                dataset.Add($"http://[::1]:{port1}/base/path", _ => new[] { $"http://[::1]:{port1}/base/path" });
+                dataset.Add($"http://[::1]:{port1}/base/path;https://[::1]:{port2}/base/path",
+                    _ => new[] { $"http://[::1]:{port1}/base/path", $"https://[::1]:{port2}/base/path" });
 
                 // Dynamic port and non-loopback addresses
                 var ipv6Addresses = GetIPAddresses()
@@ -259,11 +268,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     .Where(ip => ip.ScopeId == 0);
                 foreach (var ip in ipv6Addresses)
                 {
-                    dataset.Add($"http://[{ip}]:0/", GetTestUrls);
+                    dataset.Add($"http://[{ip}]:0/;https://[{ip}]:0/", GetTestUrls);
                 }
-
-                // Both HTTP and HTTPS on dynamic ports
-                dataset.Add("http://[::1]:0/;https://[::1]:0", GetTestUrls);
 
                 return dataset;
             }
@@ -311,7 +317,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     .Where(ip => ip.ScopeId != 0);
                 foreach (var ip in ipv6Addresses)
                 {
-                    dataset.Add($"http://[{ip}]:0/", GetTestUrls);
+                    dataset.Add($"http://[{ip}]:0/;https://[{ip}]:0/", GetTestUrls);
                 }
 
                 return dataset;
