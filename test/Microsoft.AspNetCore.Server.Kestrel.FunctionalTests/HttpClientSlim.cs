@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var tcs = new TaskCompletionSource<Socket>();
 
             var socketArgs = new SocketAsyncEventArgs();
-            socketArgs.RemoteEndPoint = new DnsEndPoint(requestUri.Host, requestUri.Port);
+            socketArgs.RemoteEndPoint = new DnsEndPoint(requestUri.DnsSafeHost, requestUri.Port);
             socketArgs.Completed += (s, e) => tcs.TrySetResult(e.ConnectSocket);
 
             // Must use static ConnectAsync(), since instance Connect() does not support DNS names on OSX/Linux.
@@ -73,7 +73,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await tcs.Task;
             }
 
-            return socketArgs.ConnectSocket;
+            var socket = socketArgs.ConnectSocket;
+
+            if (socket == null)
+            {
+                throw new SocketException((int)socketArgs.SocketError);
+            }
+
+            return socket;
         }
     }
 }
