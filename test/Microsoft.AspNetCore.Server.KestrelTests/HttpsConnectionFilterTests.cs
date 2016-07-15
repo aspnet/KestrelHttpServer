@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Testing;
 using Microsoft.AspNetCore.Testing.xunit;
 using Xunit;
 
@@ -103,9 +104,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        [ConditionalFact]
-        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "WinHttpHandler not available on non-Windows.")]
-        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "WinHttpHandler not available on non-Windows.")]
+        [Fact]
         public async Task AllowCertificateContinuesWhenNoCertificate()
         {
             var serviceContext = new TestServiceContext(new HttpsConnectionFilter(
@@ -124,12 +123,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 },
                 serviceContext, _serverAddress))
             {
-                using (var client = new HttpClient(GetHandler()))
-                {
-                    var result = await client.GetAsync($"https://localhost:{server.Port}/");
-
-                    Assert.Equal("hello world", await result.Content.ReadAsStringAsync());
-                }
+                var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
+                Assert.Equal("hello world", result);
             }
         }
 
