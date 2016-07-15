@@ -198,9 +198,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        [ConditionalFact]
-        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "WinHttpHandler not available on non-Windows.")]
-        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "WinHttpHandler not available on non-Windows.")]
+        [Fact]
         public async Task HttpsSchemePassedToRequestFeature()
         {
             var serviceContext = new TestServiceContext(
@@ -214,12 +212,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             using (var server = new TestServer(context => context.Response.WriteAsync(context.Request.Scheme), serviceContext, _serverAddress))
             {
-                using (var client = new HttpClient(GetHandler()))
-                {
-                    var result = await client.GetAsync($"https://localhost:{server.Port}/");
-
-                    Assert.Equal("https", await result.Content.ReadAsStringAsync());
-                }
+                var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
+                Assert.Equal("https", result);
             }
         }
 
