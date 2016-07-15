@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -26,8 +26,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             // Arrange
             var mockLibuv = new MockLibuv();
-
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -36,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, new MockConnection(), "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 // I doubt _maxBytesPreCompleted will ever be over a MB. If it is, we should change this test.
                 var bufferSize = 1048576;
@@ -66,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
-            var completeQueue = new ConcurrentQueue<Action<int>>();
+            var completeQueue = new Queue<Action<int>>();
 
             // Arrange
             var mockLibuv = new MockLibuv
@@ -78,7 +76,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -87,8 +84,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var mockConnection = new MockConnection();
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, mockConnection, "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 var bufferSize = maxBytesPreCompleted;
                 var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
@@ -112,9 +108,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Too many bytes are already pre-completed for the second write to pre-complete.
                 Assert.False(completedWh.Wait(1000));
                 // Act
-                Action<int> triggerNextCompleted;
-                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                triggerNextCompleted(0);
+                completeQueue.Dequeue()(0);
                 // Assert
                 // Finishing the first write should allow the second write to pre-complete.
                 Assert.True(completedWh.Wait(1000));
@@ -122,9 +116,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Cleanup
                 var cleanupTask = socketOutput.WriteAsync(
                     default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-                // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-                Assert.True(mockConnection.SocketClosed.Wait(1000));
 
                 foreach (var triggerCompleted in completeQueue)
                 {
@@ -138,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
-            var completeQueue = new ConcurrentQueue<Action<int>>();
+            var completeQueue = new Queue<Action<int>>();
             var writeRequestedWh = new ManualResetEventSlim();
 
             // Arrange
@@ -152,7 +143,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -161,8 +151,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var mockConnection = new MockConnection();
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, mockConnection, "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 var bufferSize = maxBytesPreCompleted / 2;
                 var data = new byte[bufferSize];
@@ -192,9 +181,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.Equal(2, completeQueue.Count);
 
                 // Act
-                Action<int> triggerNextCompleted;
-                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                triggerNextCompleted(0);
+                completeQueue.Dequeue()(0);
 
                 // Assert
                 // Finishing the first write should allow the second write to pre-complete.
@@ -203,9 +190,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Cleanup
                 var cleanupTask = socketOutput.WriteAsync(
                     default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-                // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-                Assert.True(mockConnection.SocketClosed.Wait(1000));
 
                 foreach (var triggerCompleted in completeQueue)
                 {
@@ -219,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
-            var completeQueue = new ConcurrentQueue<Action<int>>();
+            var completeQueue = new Queue<Action<int>>();
 
             // Arrange
             var mockLibuv = new MockLibuv
@@ -231,7 +215,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -240,10 +223,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                
+
                 using (var mockConnection = new MockConnection())
                 {
-                    ISocketOutput socketOutput = new SocketOutput(kestrelThread, socket, memory, mockConnection, "0", trace, ltp, new Queue<UvWriteReq>());
+                    ISocketOutput socketOutput = new SocketOutput(kestrelThread, socket, mockConnection, "0", trace, ltp);
 
                     var bufferSize = maxBytesPreCompleted;
 
@@ -310,18 +293,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     Assert.False(task6Success.IsCanceled);
                     Assert.False(task6Success.IsFaulted);
 
+                    Assert.True(true);
+
                     // Cleanup
                     var cleanupTask = ((SocketOutput)socketOutput).WriteAsync(
                         default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-                    // Allow for the socketDisconnect command to get posted to the libuv thread.
-                    // Right now, the up to three pending writes are holding it up.
-                    Action<int> triggerNextCompleted;
-                    Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                    triggerNextCompleted(0);
-
-                    // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-                    Assert.True(mockConnection.SocketClosed.Wait(1000));
 
                     foreach (var triggerCompleted in completeQueue)
                     {
@@ -336,7 +312,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
-            var completeQueue = new ConcurrentQueue<Action<int>>();
+            var completeQueue = new Queue<Action<int>>();
 
             // Arrange
             var mockLibuv = new MockLibuv
@@ -348,7 +324,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -361,7 +336,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 using (var mockConnection = new MockConnection())
                 {
                     var abortedSource = mockConnection.RequestAbortedSource;
-                    ISocketOutput socketOutput = new SocketOutput(kestrelThread, socket, memory, mockConnection, "0", trace, ltp, new Queue<UvWriteReq>());
+                    ISocketOutput socketOutput = new SocketOutput(kestrelThread, socket, mockConnection, "0", trace, ltp);
 
                     var bufferSize = maxBytesPreCompleted;
 
@@ -395,9 +370,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     Assert.False(task3Canceled.IsFaulted);
 
                     // Cause the first write to fail.
-                    Action<int> triggerNextCompleted;
-                    Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                    triggerNextCompleted(-1);
+                    completeQueue.Dequeue()(-1);
 
                     // Second task is now completed
                     await task2Success;
@@ -409,9 +382,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     // Cleanup
                     var cleanupTask = ((SocketOutput)socketOutput).WriteAsync(
                         default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-                    // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-                    Assert.True(mockConnection.SocketClosed.Wait(1000));
 
                     foreach (var triggerCompleted in completeQueue)
                     {
@@ -426,7 +396,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
-            var completeQueue = new ConcurrentQueue<Action<int>>();
+            var completeQueue = new Queue<Action<int>>();
             var onWriteWh = new ManualResetEventSlim();
 
             // Arrange
@@ -441,7 +411,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -450,8 +419,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var mockConnection = new MockConnection();
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, mockConnection, "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 var bufferSize = maxBytesPreCompleted;
                 var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
@@ -485,9 +453,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 socketOutput.WriteAsync(buffer, default(CancellationToken)).ContinueWith(onCompleted2);
 
                 Assert.True(onWriteWh.Wait(1000));
-                Action<int> triggerNextCompleted;
-                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                triggerNextCompleted(0);
+                completeQueue.Dequeue()(0);
 
                 // Assert 
                 // Too many bytes are already pre-completed for the third but not the second write to pre-complete.
@@ -496,8 +462,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.False(completedWh2.Wait(1000));
 
                 // Act
-                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                triggerNextCompleted(0);
+                completeQueue.Dequeue()(0);
 
                 // Assert
                 // Finishing the first write should allow the second write to pre-complete.
@@ -506,9 +471,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Cleanup
                 var cleanupTask = ((SocketOutput)socketOutput).WriteAsync(
                     default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-                // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-                Assert.True(mockConnection.SocketClosed.Wait(1000));
 
                 foreach (var triggerCompleted in completeQueue)
                 {
@@ -534,7 +496,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -543,14 +504,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, new MockConnection(), "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 // block 1
                 var start = socketOutput.ProducingStart();
                 start.Block.End = start.Block.Data.Offset + start.Block.Data.Count;
 
                 // block 2
-                var block2 = memory.Lease();
+                var block2 = kestrelThread.Memory.Lease();
                 block2.End = block2.Data.Offset + block2.Data.Count;
                 start.Block.Next = block2;
 
@@ -574,7 +535,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void OnlyAllowsUpToThreeConcurrentWrites()
         {
             var writeWh = new ManualResetEventSlim();
-            var completeQueue = new ConcurrentQueue<Action<int>>();
+            var completeQueue = new Queue<Action<int>>();
 
             var mockLibuv = new MockLibuv
             {
@@ -586,7 +547,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -595,8 +555,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var mockConnection = new MockConnection();
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, mockConnection, "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 var buffer = new ArraySegment<byte>(new byte[1]);
 
@@ -616,21 +575,12 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.False(writeWh.Wait(1000));
 
                 // Complete 1st write allowing uv_write to be triggered again
-                Action<int> triggerNextCompleted;
-                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                triggerNextCompleted(0);
+                completeQueue.Dequeue()(0);
                 Assert.True(writeWh.Wait(1000));
 
                 // Cleanup
                 var cleanupTask = socketOutput.WriteAsync(
                     default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-                // Allow for the socketDisconnect command to get posted to the libuv thread.
-                // Right now, the three pending writes are holding it up.
-                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-                triggerNextCompleted(0);
-                // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-                Assert.True(mockConnection.SocketClosed.Wait(1000));
 
                 foreach (var triggerCompleted in completeQueue)
                 {
@@ -656,7 +606,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             };
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -665,7 +614,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, new MockConnection(), "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(), "0", trace, ltp);
 
                 var blockThreadWh = new ManualResetEventSlim();
                 kestrelThread.Post(_ =>
@@ -702,7 +651,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var mockLibuv = new MockLibuv();
 
-            using (var memory = new MemoryPool())
             using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
@@ -712,7 +660,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new LoggingThreadPool(trace);
                 var connection = new MockConnection();
-                var socketOutput = new SocketOutput(kestrelThread, socket, memory, connection, "0", trace, ltp, new Queue<UvWriteReq>());
+                var socketOutput = new SocketOutput(kestrelThread, socket, connection, "0", trace, ltp);
 
                 // Close SocketOutput
                 var cleanupTask = socketOutput.WriteAsync(
