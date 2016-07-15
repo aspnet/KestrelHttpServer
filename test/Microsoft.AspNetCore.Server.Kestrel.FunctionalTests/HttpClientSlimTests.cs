@@ -53,6 +53,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
+        [Fact]
+        public async Task PostAsyncHttps()
+        {
+            using (var host = StartHost(protocol: "https",
+                handler: (context) => context.Request.Body.CopyToAsync(context.Response.Body)))
+            {
+                Assert.Equal("test post", await HttpClientSlim.PostAsync(host.GetUri(),
+                    new StringContent("test post"), validateCertificate: false));
+            }
+        }
+
+        [Fact]
+        public async Task PostAsyncThrowsForErrorResponse()
+        {
+            using (var host = StartHost(statusCode: 500))
+            {
+                await Assert.ThrowsAnyAsync<HttpRequestException>(
+                    () => HttpClientSlim.PostAsync(host.GetUri(), new StringContent("")));
+            }
+        }
+
         private IWebHost StartHost(string protocol = "http", int statusCode = 200, Func<HttpContext, Task> handler = null)
         {
             var host = new WebHostBuilder()
