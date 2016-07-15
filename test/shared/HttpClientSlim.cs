@@ -64,9 +64,6 @@ namespace Microsoft.AspNetCore.Testing
                 var response = await reader.ReadToEndAsync();
 
                 var status = GetStatus(response);
-
-                Console.WriteLine(status);
-
                 new HttpResponseMessage(status).EnsureSuccessStatusCode();
 
                 var body = response.Substring(response.IndexOf("\r\n\r\n") + 4);
