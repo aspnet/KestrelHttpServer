@@ -1,8 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -41,7 +44,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private IWebHost StartHost(string protocol = "http", int statusCode = 200)
+        [Fact]
+        public async Task PostAsyncHttp()
+        {
+            using (var host = StartHost(handler: (context) => context.Request.Body.CopyToAsync(context.Response.Body)))
+            {
+                Assert.Equal("test post", await HttpClientSlim.PostAsync(host.GetUri(), new StringContent("test post")));
+            }
+        }
+
+        private IWebHost StartHost(string protocol = "http", int statusCode = 200, Func<HttpContext, Task> handler = null)
         {
             var host = new WebHostBuilder()
                 .UseUrls($"{protocol}://127.0.0.1:0")
@@ -54,7 +66,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     app.Run(context =>
                     {
                         context.Response.StatusCode = statusCode;
-                        return context.Response.WriteAsync("test");
+                        if (handler == null)
+                        {
+                            return context.Response.WriteAsync("test");
+                        }
+                        else
+                        {
+                            return handler(context);
+                        }
                     });
                 })
                 .Build();

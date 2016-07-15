@@ -56,9 +56,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         // https://github.com/aspnet/KestrelHttpServer/issues/240
         // This test currently fails on mono because of an issue with SslStream.
-        [ConditionalFact]
-        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "WinHttpHandler not available on non-Windows.")]
-        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "WinHttpHandler not available on non-Windows.")]
+        [Fact]
         public async Task CanReadAndWriteWithHttpsConnectionFilter()
         {
             var serviceContext = new TestServiceContext(new HttpsConnectionFilter(
@@ -69,14 +67,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             using (var server = new TestServer(App, serviceContext, _serverAddress))
             {
-                using (var client = new HttpClient(GetHandler()))
-                {
-                    var result = await client.PostAsync($"https://localhost:{server.Port}/", new FormUrlEncodedContent(new[] {
-                            new KeyValuePair<string, string>("content", "Hello World?")
-                        }));
+                var result = await HttpClientSlim.PostAsync($"https://localhost:{server.Port}/",
+                    new FormUrlEncodedContent(new[] {
+                        new KeyValuePair<string, string>("content", "Hello World?")
+                    }),
+                    validateCertificate: false);
 
-                    Assert.Equal("content=Hello+World%3F", await result.Content.ReadAsStringAsync());
-                }
+                Assert.Equal("content=Hello+World%3F", result);
             }
         }
 

@@ -30,20 +30,49 @@ namespace Microsoft.AspNetCore.Testing
                     await writer.WriteAsync("\r\n");
                 }
 
-                using (var reader = new StreamReader(stream, Encoding.ASCII))
-                {
-                    var response = await reader.ReadToEndAsync();
-
-                    var status = GetStatus(response);
-
-                    Console.WriteLine(status);
-
-                    new HttpResponseMessage(status).EnsureSuccessStatusCode();
-
-                    var body = response.Substring(response.IndexOf("\r\n\r\n") + 4);
-                    return body;
-                }
+                return await ReadResponse(stream);
             }
+        }
+
+        public static Task<string> PostAsync(string requestUri, HttpContent content, bool validateCertificate = true)
+            => PostAsync(new Uri(requestUri), content, validateCertificate);
+
+        public static async Task<string> PostAsync(Uri requestUri, HttpContent content, bool validateCertificate = true)
+        {
+            using (var stream = await GetStream(requestUri, validateCertificate))
+            {
+                using (var writer = new StreamWriter(stream, Encoding.ASCII, bufferSize: 1024, leaveOpen: true))
+                {
+                    await writer.WriteAsync($"POST {requestUri.PathAndQuery} HTTP/1.0\r\n");
+                    await writer.WriteAsync($"Host: {requestUri.Authority}\r\n");
+                    await writer.WriteAsync($"Content-Type: {content.Headers.ContentType}\r\n");
+                    await writer.WriteAsync($"Content-Length: {content.Headers.ContentLength}\r\n");
+                    await writer.WriteAsync("\r\n");
+                }
+
+                await content.CopyToAsync(stream);
+
+                return await ReadResponse(stream);
+            }
+        }
+
+        private static async Task<string> ReadResponse(Stream stream)
+        {
+            using (var reader = new StreamReader(stream, Encoding.ASCII, detectEncodingFromByteOrderMarks: true,
+                bufferSize: 1024, leaveOpen: true))
+            {
+                var response = await reader.ReadToEndAsync();
+
+                var status = GetStatus(response);
+
+                Console.WriteLine(status);
+
+                new HttpResponseMessage(status).EnsureSuccessStatusCode();
+
+                var body = response.Substring(response.IndexOf("\r\n\r\n") + 4);
+                return body;
+            }
+
         }
 
         private static HttpStatusCode GetStatus(string response)
