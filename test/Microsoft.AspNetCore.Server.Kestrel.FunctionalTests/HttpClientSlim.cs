@@ -79,8 +79,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 throw new SocketException((int)socketArgs.SocketError);
             }
-
-            return socket;
+            else
+            {
+                return socket;
+            }
         }
     }
 }
