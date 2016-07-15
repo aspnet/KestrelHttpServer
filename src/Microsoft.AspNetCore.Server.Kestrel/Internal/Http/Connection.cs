@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private FilteredStreamAdapter _filteredStreamAdapter;
         private Task _readInputTask;
 
-        private TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
+         private TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
         private BufferSizeControl _bufferSizeControl;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
