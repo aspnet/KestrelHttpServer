@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -18,41 +17,14 @@ using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
-using Microsoft.AspNetCore.Testing.xunit;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
-    public class HttpsConnectionFilterTests : IDisposable
+    public class HttpsConnectionFilterTests
     {
         private static string _serverAddress = "https://127.0.0.1:0/";
-        private static RemoteCertificateValidationCallback _alwaysValidCallback =
-                    (sender, cert, chain, sslPolicyErrors) => true;
         private static X509Certificate2 _x509Certificate2 = new X509Certificate2(@"TestResources/testCert.pfx", "testPassword");
-
-#if NET451
-        static HttpsConnectionFilterTests()
-        {
-            // SecurityProtocolType values below not available in Mono < 4.3
-            const int SecurityProtocolTypeTls11 = 768;
-            const int SecurityProtocolTypeTls12 = 3072;
-            ServicePointManager.SecurityProtocol |= (SecurityProtocolType)(SecurityProtocolTypeTls12 | SecurityProtocolTypeTls11);
-        }
-#endif
-
-        public HttpsConnectionFilterTests()
-        {
-#if NET451
-            ServicePointManager.ServerCertificateValidationCallback += _alwaysValidCallback;
-#endif
-        }
-
-        public void Dispose()
-        {
-#if NET451
-            ServicePointManager.ServerCertificateValidationCallback -= _alwaysValidCallback;
-#endif
-        }
 
         // https://github.com/aspnet/KestrelHttpServer/issues/240
         // This test currently fails on mono because of an issue with SslStream.
@@ -403,17 +375,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 catch (IOException) { }
                 Assert.Null(line);
             }
-        }
-
-        private HttpMessageHandler GetHandler()
-        {
-#if NET451
-            return new HttpClientHandler();
-#else
-            var handler = new WinHttpHandler();
-            handler.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
-            return handler;
-#endif
         }
     }
 }
