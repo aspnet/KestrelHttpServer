@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -32,10 +33,25 @@ namespace Microsoft.AspNetCore.Testing
                 using (var reader = new StreamReader(stream, Encoding.ASCII))
                 {
                     var response = await reader.ReadToEndAsync();
+
+                    var status = GetStatus(response);
+
+                    Console.WriteLine(status);
+
+                    new HttpResponseMessage(status).EnsureSuccessStatusCode();
+
                     var body = response.Substring(response.IndexOf("\r\n\r\n") + 4);
                     return body;
                 }
             }
+        }
+
+        private static HttpStatusCode GetStatus(string response)
+        {
+            var statusStart = response.IndexOf(' ') + 1;
+            var statusEnd = response.IndexOf(' ', statusStart) - 1;
+            var statusLength = statusEnd - statusStart + 1;
+            return (HttpStatusCode)int.Parse(response.Substring(statusStart, statusLength));
         }
 
         private static async Task<Stream> GetStream(Uri requestUri, bool validateCertificate)

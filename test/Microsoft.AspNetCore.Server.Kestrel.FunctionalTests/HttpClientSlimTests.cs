@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -18,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var host = StartHost())
             {
-                Assert.Equal("test", await HttpClientSlim.GetStringAsync(host.GetUris().First()));
+                Assert.Equal("test", await HttpClientSlim.GetStringAsync(host.GetUri()));
             }
         }
 
@@ -27,7 +28,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var host = StartHost(protocol: "https"))
             {
-                Assert.Equal("test", await HttpClientSlim.GetStringAsync(host.GetUris().First(), validateCertificate: false));
+                Assert.Equal("test", await HttpClientSlim.GetStringAsync(host.GetUri(), validateCertificate: false));
+            }
+        }
+
+        [Fact]
+        public async Task GetStringAsyncThrowsForErrorResponse()
+        {
+            using (var host = StartHost(statusCode: 500))
+            {
+                await Assert.ThrowsAnyAsync<HttpRequestException>(() => HttpClientSlim.GetStringAsync(host.GetUri()));
             }
         }
 
@@ -43,6 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     app.Run(context =>
                     {
+                        context.Response.StatusCode = statusCode;
                         return context.Response.WriteAsync("test");
                     });
                 })

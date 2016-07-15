@@ -80,9 +80,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        [ConditionalFact]
-        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "WinHttpHandler not available on non-Windows.")]
-        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "WinHttpHandler not available on non-Windows.")]
+        [Fact]
         public async Task RequireCertificateFailsWhenNoCertificate()
         {
             var serviceContext = new TestServiceContext(new HttpsConnectionFilter(
@@ -96,11 +94,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             using (var server = new TestServer(App, serviceContext, _serverAddress))
             {
-                using (var client = new HttpClient(GetHandler()))
-                {
-                    await Assert.ThrowsAnyAsync<Exception>(
-                        () => client.GetAsync($"https://localhost:{server.Port}/"));
-                }
+                await Assert.ThrowsAnyAsync<Exception>(
+                    () => HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/"));
             }
         }
 
