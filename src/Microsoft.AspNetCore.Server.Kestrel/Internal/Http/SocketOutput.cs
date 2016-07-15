@@ -14,8 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class SocketOutput : ISocketOutput
     {
-        public const int MaxPooledWriteReqs = 1024;
-
         private const int _maxPendingWrites = 3;
         private const int _maxBytesPreCompleted = 65536;
         private const int _initialTaskQueues = 64;
@@ -62,12 +60,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public SocketOutput(
             KestrelThread thread,
             UvStreamHandle socket,
-            MemoryPool memory,
             Connection connection,
             string connectionId,
             IKestrelTrace log,
-            IThreadPool threadPool,
-            Queue<UvWriteReq> writeReqPool)
+            IThreadPool threadPool)
         {
             _thread = thread;
             _socket = socket;
@@ -77,9 +73,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _threadPool = threadPool;
             _tasksPending = new Queue<WaitingTask>(_initialTaskQueues);
             _writeContextPool = new Queue<WriteContext>(_maxPooledWriteContexts);
-            _writeReqPool = writeReqPool;
+            _writeReqPool = thread.WriteReqPool;
 
-            _head = memory.Lease();
+            _head = thread.Memory.Lease();
             _tail = _head;
         }
 
@@ -690,7 +686,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             private void PoolWriteReq(UvWriteReq writeReq)
             {
-                if (Self._writeReqPool.Count < MaxPooledWriteReqs)
+                if (Self._writeReqPool.Count < KestrelThread.MaxPooledWriteReqs)
                 {
                     Self._writeReqPool.Enqueue(writeReq);
                 }

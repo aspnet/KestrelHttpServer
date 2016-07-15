@@ -7,6 +7,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     /// </summary>
     public class KestrelThread
     {
+        public const int MaxPooledWriteReqs = 1024;
+
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
         // otherwise it needs to wait till the next pass of the libuv loop
@@ -60,9 +63,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 #endif
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
+            Memory = new MemoryPool();
+            WriteReqPool = new Queue<UvWriteReq>(MaxPooledWriteReqs);
+            ConnectionManager = new ConnectionManager(this, _threadPool);
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
+
+        public MemoryPool Memory { get; }
+
+        public ConnectionManager ConnectionManager { get; }
+
+        public Queue<UvWriteReq> WriteReqPool { get; }
 
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
@@ -85,6 +97,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public void Stop(TimeSpan timeout)
         {
+            // Close and wait for all connections
+            ConnectionManager.WalkConnectionsAndClose();
+
+            // REVIEW: Should we use the timeout?
+            PostAsync(state =>
+            {
+                var listener = (KestrelThread)state;
+                var writeReqPool = listener.WriteReqPool;
+                while (writeReqPool.Count > 0)
+                {
+                    writeReqPool.Dequeue().Dispose();
+                }
+            }, this).Wait();
+
+            Memory.Dispose();
+
             lock (_startSync)
             {
                 if (!_initCompleted)
