@@ -10,18 +10,17 @@ using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace Microsoft.AspNetCore.Testing
 {
     // Lightweight version of HttpClient implemented using Socket and SslStream
-    public class HttpClientSlim
+    public static class HttpClientSlim
     {
-        public bool ValidateCertificate { get; set; } = true;
+        public static Task<string> GetStringAsync(string requestUri, bool validateCertificate = true)
+            => GetStringAsync(new Uri(requestUri), validateCertificate);
 
-        public Task<string> GetStringAsync(string requestUri) => GetStringAsync(new Uri(requestUri));
-
-        public async Task<string> GetStringAsync(Uri requestUri)
+        public static async Task<string> GetStringAsync(Uri requestUri, bool validateCertificate = true)
         {
-            using (var stream = await GetStream(requestUri))
+            using (var stream = await GetStream(requestUri, validateCertificate))
             {
                 using (var writer = new StreamWriter(stream, Encoding.ASCII, bufferSize: 1024, leaveOpen: true))
                 {
@@ -39,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task<Stream> GetStream(Uri requestUri)
+        private static async Task<Stream> GetStream(Uri requestUri, bool validateCertificate)
         {
             var socket = await GetSocket(requestUri);
             Stream stream = new NetworkStream(socket, ownsSocket: true);
@@ -47,10 +46,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             if (requestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
             {
                 var sslStream = new SslStream(stream, leaveInnerStreamOpen: false, userCertificateValidationCallback:
-                    ValidateCertificate ? null : (RemoteCertificateValidationCallback)((a, b, c, d) => true));
+                    validateCertificate ? null : (RemoteCertificateValidationCallback)((a, b, c, d) => true));
                 await sslStream.AuthenticateAsClientAsync(requestUri.Host, clientCertificates: null,
                     enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
-                    checkCertificateRevocation: ValidateCertificate);
+                    checkCertificateRevocation: validateCertificate);
                 return sslStream;
             }
             else
