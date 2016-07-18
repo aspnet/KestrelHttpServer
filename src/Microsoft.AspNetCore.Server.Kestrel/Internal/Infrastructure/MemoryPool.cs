@@ -15,8 +15,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private const int _blockStride = 4096;
 
         /// <summary>
-        /// The last 64 bytes of a block are unused to prevent CPU from pre-fetching the next 64 byte into it's memory cache. 
+        /// If the block size was not an exact page and page aligned we would want to leave the last 64 bytes 
+        /// of a block unused to prevent CPU from pre-fetching the next 64 bytes of the next block into it's 
+        /// memory cache and potentially causing cache false sharing. 
         /// See https://github.com/aspnet/KestrelHttpServer/issues/117 and https://www.youtube.com/watch?v=L7zSU9HI-6I
+        /// 
+        /// However, cpu will only pre-fetch within a page, so this doesn't apply, but since the blocks *are* 
+        /// all page aligned a secondary cache effect kicks where the 4096 alignment will cause each block to 
+        /// evict each other as they will share the same cache slot. 
+        /// 
+        /// To prevent this we still use a 64 byte buffer and then jitter the start offset of each block by
+        /// word multiples (4 bytes) to maintain memory alignment and avoid cache collisions.
         /// </summary>
         private const int _blockUnused = 64;
 
@@ -86,26 +95,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _slabs.Push(slab);
 
             var basePtr = slab.ArrayPtr;
+            
+            // Start on page boundary so each block is a natural page
             var firstOffset = (int)((_blockStride - 1) - ((ulong)(basePtr + _blockStride - 1) % _blockStride));
 
             var poolAllocationLength = _slabLength - _blockStride;
 
+            // Jitter the block start offset to reduce cpu cache set collisions
+            var cacheSetJitter = 0;
+
             var offset = firstOffset;
             for (;
-                offset + _blockLength < poolAllocationLength;
+                offset + _blockLength + cacheSetJitter < poolAllocationLength;
                 offset += _blockStride)
             {
                 var block = MemoryPoolBlock.Create(
-                    new ArraySegment<byte>(slab.Array, offset, _blockLength),
+                    new ArraySegment<byte>(slab.Array, offset + cacheSetJitter, _blockLength),
                     basePtr,
                     this,
                     slab);
+
+                // byte, int, long? Depends on cache tag:set:offset sizes
+                cacheSetJitter = (cacheSetJitter + sizeof(int)) % _blockUnused;
                 Return(block);
             }
 
             // return last block rather than adding to pool
             var newBlock = MemoryPoolBlock.Create(
-                    new ArraySegment<byte>(slab.Array, offset, _blockLength),
+                    new ArraySegment<byte>(slab.Array, offset + cacheSetJitter, _blockLength),
                     basePtr,
                     this,
                     slab);
