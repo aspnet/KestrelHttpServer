@@ -18,21 +18,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return new ArraySegment<byte>(bytes);
         }
 
-        public static ArraySegment<byte> BeginChunkBytes(int dataCount)
+        public static ArraySegment<byte> BeginChunkBytes(int dataCount, ref byte[] chunkArray)
         {
-            var bytes = new byte[10]
+            if (chunkArray == null)
             {
-                _hex[((dataCount >> 0x1c) & 0x0f)],
-                _hex[((dataCount >> 0x18) & 0x0f)],
-                _hex[((dataCount >> 0x14) & 0x0f)],
-                _hex[((dataCount >> 0x10) & 0x0f)],
-                _hex[((dataCount >> 0x0c) & 0x0f)],
-                _hex[((dataCount >> 0x08) & 0x0f)],
-                _hex[((dataCount >> 0x04) & 0x0f)],
-                _hex[((dataCount >> 0x00) & 0x0f)],
-                (byte)'\r',
-                (byte)'\n',
-            };
+                chunkArray = new byte[10];
+
+                chunkArray[8] = (byte)'\r';
+                chunkArray[9] = (byte)'\n';
+            }
+
+            var bytes = chunkArray;
+
+            bytes[0] = _hex[((dataCount >> 0x1c) & 0x0f)];
+            bytes[1] = _hex[((dataCount >> 0x18) & 0x0f)];
+            bytes[2] = _hex[((dataCount >> 0x14) & 0x0f)];
+            bytes[3] = _hex[((dataCount >> 0x10) & 0x0f)];
+            bytes[4] = _hex[((dataCount >> 0x0c) & 0x0f)];
+            bytes[5] = _hex[((dataCount >> 0x08) & 0x0f)];
+            bytes[6] = _hex[((dataCount >> 0x04) & 0x0f)];
+            bytes[7] = _hex[((dataCount >> 0x00) & 0x0f)];
 
             // Determine the most-significant non-zero nibble
             int total, shift;
@@ -47,9 +52,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return new ArraySegment<byte>(bytes, offset, 10 - offset);
         }
 
-        public static int WriteBeginChunkBytes(ref MemoryPoolIterator start, int dataCount)
+        public static int WriteBeginChunkBytes(ref MemoryPoolIterator start, int dataCount, ref byte[] chunkArray)
         {
-            var chunkSegment = BeginChunkBytes(dataCount);
+            var chunkSegment = BeginChunkBytes(dataCount, ref chunkArray);
             start.CopyFrom(chunkSegment);
             return chunkSegment.Count;
         }

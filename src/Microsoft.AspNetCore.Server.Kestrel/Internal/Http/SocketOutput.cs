@@ -57,6 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly Queue<WaitingTask> _tasksPending;
         private readonly Queue<WriteContext> _writeContextPool;
         private readonly WriteReqPool _writeReqPool;
+        private byte[] _chunkBytes;
 
         public SocketOutput(
             KestrelThread thread,
@@ -110,7 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     if (chunk)
                     {
-                        _numBytesPreCompleted += ChunkWriter.WriteBeginChunkBytes(ref tail, buffer.Count);
+                        _numBytesPreCompleted += ChunkWriter.WriteBeginChunkBytes(ref tail, buffer.Count, ref _chunkBytes);
                     }
 
                     tail.CopyFrom(buffer);

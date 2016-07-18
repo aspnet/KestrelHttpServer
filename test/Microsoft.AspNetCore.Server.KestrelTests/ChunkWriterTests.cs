@@ -30,7 +30,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData(0x7fffffffL, "7fffffff\r\n")]
         public void ChunkedPrefixMustBeHexCrLfWithoutLeadingZeros(int dataCount, string expected)
         {
-            var beginChunkBytes = ChunkWriter.BeginChunkBytes(dataCount);
+            byte[] chunkBytes = null;
+            var beginChunkBytes = ChunkWriter.BeginChunkBytes(dataCount, ref chunkBytes);
 
             Assert.Equal(Encoding.ASCII.GetBytes(expected), beginChunkBytes.ToArray());
         }
