@@ -688,7 +688,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Write isn't called twice after the thread is unblocked
                 Assert.False(writeWh.Wait(1000));
                 Assert.Equal(1, writeCount);
-                // One call to ScheduleWrite + One call to Post to block the thread
+
+                // One call to post which blocked thread
+                // So writes were posted while thread was active and don't trigger a repost
+                Assert.Equal(1, mockLibuv.PostCount);
+
+                kestrelThread.Post(_ => { }, state: null);
+
+                // Second call to Post triggers new post as thread not active
                 Assert.Equal(2, mockLibuv.PostCount);
 
                 // Cleanup
