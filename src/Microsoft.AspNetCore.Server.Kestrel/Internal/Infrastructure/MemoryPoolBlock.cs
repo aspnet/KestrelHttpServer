@@ -71,9 +71,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// </summary>
         public MemoryPoolBlock Next;
 
+        internal string StackTrace;
+        internal string Tag;
+
         ~MemoryPoolBlock()
         {
-            Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool");
+            Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool, tag:" + Tag + ", " + StackTrace);
 
             if (Slab != null && Slab.IsActive)
             {
