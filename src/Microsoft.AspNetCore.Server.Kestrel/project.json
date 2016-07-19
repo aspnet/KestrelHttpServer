@@ -35,6 +35,7 @@
       "dependencies": {
         "System.Collections": "4.0.11-*",
         "System.Diagnostics.Debug": "4.0.11-*",
+        "System.Diagnostics.StackTrace": "4.0.1-*",
         "System.Globalization": "4.0.11-*",
         "System.IO": "4.1.0-*",
         "System.Linq": "4.1.0-*",

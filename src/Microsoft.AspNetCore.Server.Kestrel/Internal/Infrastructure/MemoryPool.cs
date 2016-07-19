@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// 4096 - 64 gives you a blockLength of 4032 usable bytes per block.
         /// </summary>
         private const int _blockLength = _blockStride - _blockUnused;
-        
+
         /// <summary>
         /// Max allocation block size for pooled blocks, 
         /// larger values can be leased but they will be disposed after use rather than returned to the pool.
@@ -60,6 +60,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// </summary>
         private bool _disposedValue = false; // To detect redundant calls
 
+        public string Tag { get; set; }
+
         /// <summary>
         /// Called to take a block from the pool.
         /// </summary>
@@ -67,13 +69,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public MemoryPoolBlock Lease()
         {
             MemoryPoolBlock block;
-            if (_blocks.TryDequeue(out block))
+            if (!_blocks.TryDequeue(out block))
             {
                 // block successfully taken from the stack - return it
-                return block;
+                block = AllocateSlab();
             }
+
+            block.Tag = Tag;
+            block.StackTrace = new StackTrace().ToString();
             // no blocks available - grow the pool
-            return AllocateSlab();
+            return block;
         }
 
         /// <summary>
