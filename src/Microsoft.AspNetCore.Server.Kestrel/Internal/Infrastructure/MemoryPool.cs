@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
@@ -66,7 +67,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// Called to take a block from the pool.
         /// </summary>
         /// <returns>The block that is reserved for the called. It must be passed to Return when it is no longer being used.</returns>
-        public MemoryPoolBlock Lease()
+        public MemoryPoolBlock Lease([CallerMemberName] string memberName = "",
+                                     [CallerFilePath] string sourceFilePath = "",
+                                     [CallerLineNumber] int sourceLineNumber = 0)
         {
             MemoryPoolBlock block;
             if (!_blocks.TryDequeue(out block))
@@ -76,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
 
             block.Tag = Tag;
-            block.StackTrace = new StackTrace().ToString();
+            block.StackTrace = memberName + "," + sourceFilePath + ", " + sourceLineNumber;
             // no blocks available - grow the pool
             return block;
         }
