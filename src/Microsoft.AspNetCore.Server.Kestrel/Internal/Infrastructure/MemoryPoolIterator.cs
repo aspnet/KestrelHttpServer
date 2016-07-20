@@ -883,10 +883,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public MemoryPoolIterator CopyTo(byte[] array, int offset, int count, out int actual)
         {
-            if (IsDefault)
+            if (count == 0 || IsDefault)
             {
                 actual = 0;
                 return this;
+            }
+            if (array == null)
+            {
+                return Consume(count, out actual);
             }
 
             var block = _block;
@@ -903,28 +907,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 if (remaining <= following)
                 {
                     actual = count;
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, remaining);
-                    }
+                    Buffer.BlockCopy(block.Array, index, array, offset, remaining);
                     return new MemoryPoolIterator(block, index + remaining);
                 }
                 else if (wasLastBlock)
                 {
                     actual = count - remaining + following;
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    }
+                    Buffer.BlockCopy(block.Array, index, array, offset, following);
                     return new MemoryPoolIterator(block, index + following);
                 }
                 else
                 {
-                    if (array != null)
-                    {
-                        Buffer.BlockCopy(block.Array, index, array, offset, following);
-                    }
+                    Buffer.BlockCopy(block.Array, index, array, offset, following);
+
                     offset += following;
+                    remaining -= following;
+                    block = block.Next;
+                    index = block.Start;
+                }
+            }
+        }
+
+        private MemoryPoolIterator Consume(int count, out int actual)
+        {
+            var block = _block;
+            var index = _index;
+            var remaining = count;
+            while (true)
+            {
+                // Determine if we might attempt to copy data from block.Next before
+                // calculating "following" so we don't risk skipping data that could
+                // be added after block.End when we decide to copy from block.Next.
+                // block.End will always be advanced before block.Next is set.
+                var wasLastBlock = block.Next == null;
+                var following = block.End - index;
+                if (remaining <= following)
+                {
+                    actual = count;
+                    return new MemoryPoolIterator(block, index + remaining);
+                }
+                else if (wasLastBlock)
+                {
+                    actual = count - remaining + following;
+                    return new MemoryPoolIterator(block, index + following);
+                }
+                else
+                {
                     remaining -= following;
                     block = block.Next;
                     index = block.Start;
@@ -944,7 +972,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public void CopyFrom(byte[] data, int offset, int count)
         {
-            if (IsDefault)
+            if (count == 0 || IsDefault)
             {
                 return;
             }
