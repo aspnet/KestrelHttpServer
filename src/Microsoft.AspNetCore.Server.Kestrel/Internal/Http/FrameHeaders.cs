@@ -5,6 +5,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 
@@ -12,6 +14,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public abstract class FrameHeaders : IHeaderDictionary
     {
+        static readonly Vector<ushort> _minValidHeaderChar = new Vector<ushort>(0x20);
+        static readonly Vector<ushort> _maxValidHeaderChar = new Vector<ushort>(0x7e);
+        static readonly int _vectorUShortSpan = Vector<ushort>.Count;
+
         protected bool _isReadOnly;
         protected Dictionary<string, StringValues> MaybeUnknown;
 
@@ -222,12 +228,76 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             if (headerCharacters != null)
             {
-                foreach (var ch in headerCharacters)
+                if (Vector.IsHardwareAccelerated)
                 {
+                    var remaining = headerCharacters.Length;
+                    if (remaining < _vectorUShortSpan)
+                    {
+                        foreach (var ch in headerCharacters)
+                        {
+                            if (ch < 0x20 || ch > 0x7E)
+                            {
+                                throw new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        VectorValidateHeaderCharacters(headerCharacters, remaining);
+                    }
+                }
+                else
+                {
+                    foreach (var ch in headerCharacters)
+                    {
+                        if (ch < 0x20 || ch > 0x7E)
+                        {
+                            throw new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
+                        }
+                    }
+                }
+            }
+        }
+
+        private static unsafe void VectorValidateHeaderCharacters(string headerCharacters, int remaining)
+        {
+            fixed (char* header = headerCharacters)
+            {
+                var offset = 0;
+                while (remaining - _vectorUShortSpan >= 0)
+                {
+                    remaining -= _vectorUShortSpan;
+                    var stringVector = Unsafe.Read<Vector<ushort>>(header + offset);
+                    if (Vector.LessThanAny(stringVector, _minValidHeaderChar) || Vector.GreaterThanAny(stringVector,_maxValidHeaderChar))
+                    {
+                        ThrowSpecficInvalidCharForVector(header + offset);
+                    }
+
+                    offset += _vectorUShortSpan;
+                }
+
+                while (remaining > 0)
+                {
+                    remaining--;
+                    var ch = *(header + offset);
                     if (ch < 0x20 || ch > 0x7E)
                     {
                         ThrowInvalidHeaderCharacter(ch);
                     }
+
+                    offset++;
+                }
+            }
+        }
+
+        private unsafe static void ThrowSpecficInvalidCharForVector(char* header)
+        {
+            for (var i = 0; i < _vectorUShortSpan; i++)
+            {
+                var ch = *(header + i);
+                if (ch < 0x20 || ch > 0x7E)
+                {
+                    throw new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
                 }
             }
         }
