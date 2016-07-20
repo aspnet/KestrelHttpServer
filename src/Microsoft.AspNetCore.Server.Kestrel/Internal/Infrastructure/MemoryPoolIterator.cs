@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
@@ -256,7 +257,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             var index = _index;
             var wasLastBlock = block.Next == null;
             var following = block.End - index;
-            byte[] array;
             var byte0 = byte0Vector[0];
 
             while (true)
@@ -383,7 +383,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     wasLastBlock = block.Next == null;
                     following = block.End - index;
                 }
-                array = block.Array;
                 while (following > 0)
                 {
 // Need unit tests to test Vector path
@@ -394,7 +393,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
+                            var byte0Equals = Vector.Equals(Unsafe.Read<Vector<byte>>(block.DataFixedPtr + index), byte0Vector);
 
                             if (byte0Equals.Equals(Vector<byte>.Zero))
                             {
@@ -471,7 +470,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             var index = _index;
             var wasLastBlock = block.Next == null;
             var following = block.End - index;
-            byte[] array;
             int byte0Index = int.MaxValue;
             int byte1Index = int.MaxValue;
             var byte0 = byte0Vector[0];
@@ -494,7 +492,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     wasLastBlock = block.Next == null;
                     following = block.End - index;
                 }
-                array = block.Array;
                 while (following > 0)
                 {
 
@@ -506,7 +503,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            var data = new Vector<byte>(array, index);
+                            var data = Unsafe.Read<Vector<byte>>(block.DataFixedPtr + index);
                             var byte0Equals = Vector.Equals(data, byte0Vector);
                             var byte1Equals = Vector.Equals(data, byte1Vector);
 
@@ -613,7 +610,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             var index = _index;
             var wasLastBlock = block.Next == null;
             var following = block.End - index;
-            byte[] array;
             int byte0Index = int.MaxValue;
             int byte1Index = int.MaxValue;
             int byte2Index = int.MaxValue;
@@ -638,7 +634,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     wasLastBlock = block.Next == null;
                     following = block.End - index;
                 }
-                array = block.Array;
                 while (following > 0)
                 {
 // Need unit tests to test Vector path
@@ -649,7 +644,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            var data = new Vector<byte>(array, index);
+                            var data = Unsafe.Read<Vector<byte>>(block.DataFixedPtr + index);
                             var byte0Equals = Vector.Equals(data, byte0Vector);
                             var byte1Equals = Vector.Equals(data, byte1Vector);
                             var byte2Equals = Vector.Equals(data, byte2Vector);
