@@ -54,6 +54,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public MemoryPoolBlock IncomingStart()
         {
+            CheckDisposed();
+
             const int minimumSize = 2048;
 
             if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
@@ -72,6 +74,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             lock (_sync)
             {
+                CheckDisposed();
+
                 // Must call Add() before bytes are available to consumer, to ensure that Length is >= 0
                 _bufferSizeControl?.Add(count);
 
@@ -105,6 +109,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             lock (_sync)
             {
+                CheckDisposed();
+
                 // Must call Add() before bytes are available to consumer, to ensure that Length is >= 0
                 _bufferSizeControl?.Add(count);
 
@@ -144,6 +150,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void IncomingDeferred()
         {
+            CheckDisposed();
+
             Debug.Assert(_pinned != null);
 
             if (_pinned != null)
@@ -316,15 +324,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             lock (_sync)
             {
-                AbortAwaiting();
-
-                if (!_consuming)
+                if (!_disposed)
                 {
-                    ReturnBlocks(_head, null);
-                    _head = null;
-                    _tail = null;
+                    AbortAwaiting();
+
+                    if (!_consuming)
+                    {
+                        ReturnBlocks(_head, null);
+                        _head = null;
+                        _tail = null;
+                    }
+                    _disposed = true;
                 }
-                _disposed = true;
+            }
+        }
+
+        private void CheckDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(GetType().Name);
             }
         }
 
