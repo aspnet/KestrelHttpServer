@@ -174,14 +174,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 new
                 {
                     Headers = requestHeaders,
-                    HeadersByLength = requestHeaders.GroupBy(x => x.Name.Length),
+                    HeadersByLength = requestHeaders.OrderBy(x => x.Name.Length < 4 ? x.Name.Length + 19 : x.Name.Length).ThenByDescending(s => s.Name).GroupBy(x => x.Name.Length),
                     ClassName = "FrameRequestHeaders",
                     Bytes = default(byte[])
                 },
                 new
                 {
                     Headers = responseHeaders,
-                    HeadersByLength = responseHeaders.GroupBy(x => x.Name.Length),
+                    HeadersByLength = responseHeaders.OrderBy(x => x.Name.Length == 14 ? 0 : x.Name.Length).ThenByDescending(s => s.Name).GroupBy(x => x.Name.Length),
                     ClassName = "FrameResponseHeaders",
                     Bytes = responseHeaders.SelectMany(header => header.Bytes).ToArray()
                 }
