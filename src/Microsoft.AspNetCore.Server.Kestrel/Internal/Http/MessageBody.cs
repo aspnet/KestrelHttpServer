@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
 
-            var keepAlive = httpVersion != "HTTP/1.0";
+            var keepAlive = !ReferenceEquals(httpVersion, KnownStrings.Http10Version);
 
             var connection = headers.HeaderConnection.ToString();
             if (connection.Length > 0)

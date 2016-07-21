@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Http.Features;
 
 // ReSharper disable AccessToModifiedClosure
 
@@ -91,29 +92,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (_httpVersion == HttpVersionType.Http11)
                 {
-                    return "HTTP/1.1";
+                    return KnownStrings.Http11Version;
                 }
                 if (_httpVersion == HttpVersionType.Http10)
                 {
-                    return "HTTP/1.0";
+                    return KnownStrings.Http10Version;
                 }
 
                 return string.Empty;
             }
             set
             {
-                if (value == "HTTP/1.1")
+                // Fast-path test as will generally be a KnownStrings reference
+                if (ReferenceEquals(value, KnownStrings.Http11Version))
                 {
                     _httpVersion = HttpVersionType.Http11;
                 }
-                else if (value == "HTTP/1.0")
+                else if (ReferenceEquals(value, KnownStrings.Http10Version))
                 {
                     _httpVersion = HttpVersionType.Http10;
                 }
                 else
                 {
-                    _httpVersion = HttpVersionType.Unset;
+                    // Slow-path string compare fallback
+                    HttpVersionSlowSet(value);
                 }
+            }
+        }
+
+        private void HttpVersionSlowSet(string value)
+        {
+            if (value == KnownStrings.Http11Version)
+            {
+                _httpVersion = HttpVersionType.Http11;
+            }
+            else if (value == KnownStrings.Http10Version)
+            {
+                _httpVersion = HttpVersionType.Http10;
+            }
+            else
+            {
+                _httpVersion = HttpVersionType.Unset;
             }
         }
 
@@ -733,7 +752,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     // Don't set the Content-Length or Transfer-Encoding headers
                     // automatically for HEAD requests or 101, 204, 205, 304 responses.
-                    if (Method != "HEAD" && StatusCanHaveBody(StatusCode))
+                    if (StatusCanHaveBody(StatusCode) && !ReferenceEquals(Method, KnownStrings.HttpHeadMethod))
                     {
                         // Since the app has completed and we are only now generating
                         // the headers we can safely set the Content-Length to 0.
@@ -831,9 +850,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             RejectRequest("Invalid method.");
                         }
                     }
+
+                    // Set Method via interface method to alias to KnownStrings
+                    ((IHttpRequestFeature)this).Method = method;
                 }
                 else
                 {
+                    Method = method;
                     scan.Skip(method.Length);
                 }
 
@@ -897,7 +920,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         RejectRequest("Missing HTTP version.");
                     }
-                    else if (httpVersion != "HTTP/1.0" && httpVersion != "HTTP/1.1")
+                    else if (httpVersion == KnownStrings.Http11Version)
+                    {
+                        // assign to actual KnownString reference to fastpath equality
+                        httpVersion = KnownStrings.Http11Version;
+                    }
+                    else if (httpVersion == KnownStrings.Http10Version)
+                    {
+                        // assign to actual KnownString reference to fastpath equality
+                        httpVersion = KnownStrings.Http10Version;
+                    }
+                    else
                     {
                         RejectRequest("Unrecognized HTTP version.");
                     }
@@ -948,7 +981,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
 
                 consumed = scan;
-                Method = method;
                 QueryString = queryString;
                 RawTarget = rawTarget;
                 HttpVersion = httpVersion;

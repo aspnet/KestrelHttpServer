@@ -4,25 +4,13 @@
 using System;
 using System.Diagnostics;
 using System.Text;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
     public static class MemoryPoolIteratorExtensions
     {
         private static readonly Encoding _utf8 = Encoding.UTF8;
-
-        public const string HttpConnectMethod = "CONNECT";
-        public const string HttpDeleteMethod = "DELETE";
-        public const string HttpGetMethod = "GET";
-        public const string HttpHeadMethod = "HEAD";
-        public const string HttpPatchMethod = "PATCH";
-        public const string HttpPostMethod = "POST";
-        public const string HttpPutMethod = "PUT";
-        public const string HttpOptionsMethod = "OPTIONS";
-        public const string HttpTraceMethod = "TRACE";
-
-        public const string Http10Version = "HTTP/1.0";
-        public const string Http11Version = "HTTP/1.1";
 
         // readonly primitive statics can be Jit'd to consts https://github.com/dotnet/coreclr/issues/1079
         private readonly static long _httpConnectMethodLong = GetAsciiStringAsLong("CONNECT ");
@@ -35,8 +23,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private readonly static long _httpOptionsMethodLong = GetAsciiStringAsLong("OPTIONS ");
         private readonly static long _httpTraceMethodLong = GetAsciiStringAsLong("TRACE \0\0");
 
-        private readonly static long _http10VersionLong = GetAsciiStringAsLong("HTTP/1.0");
-        private readonly static long _http11VersionLong = GetAsciiStringAsLong("HTTP/1.1");
+        private readonly static long _http10VersionLong = GetAsciiStringAsLong(KnownStrings.Http10Version);
+        private readonly static long _http11VersionLong = GetAsciiStringAsLong(KnownStrings.Http11Version);
 
         private readonly static long _mask8Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
         private readonly static long _mask7Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 });
@@ -48,14 +36,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         static MemoryPoolIteratorExtensions()
         {
-            _knownMethods[0] = Tuple.Create(_mask4Chars, _httpPutMethodLong, HttpPutMethod);
-            _knownMethods[1] = Tuple.Create(_mask5Chars, _httpPostMethodLong, HttpPostMethod);
-            _knownMethods[2] = Tuple.Create(_mask5Chars, _httpHeadMethodLong, HttpHeadMethod);
-            _knownMethods[3] = Tuple.Create(_mask6Chars, _httpTraceMethodLong, HttpTraceMethod);
-            _knownMethods[4] = Tuple.Create(_mask6Chars, _httpPatchMethodLong, HttpPatchMethod);
-            _knownMethods[5] = Tuple.Create(_mask7Chars, _httpDeleteMethodLong, HttpDeleteMethod);
-            _knownMethods[6] = Tuple.Create(_mask8Chars, _httpConnectMethodLong, HttpConnectMethod);
-            _knownMethods[7] = Tuple.Create(_mask8Chars, _httpOptionsMethodLong, HttpOptionsMethod);
+            _knownMethods[0] = Tuple.Create(_mask4Chars, _httpPutMethodLong, KnownStrings.HttpPutMethod);
+            _knownMethods[1] = Tuple.Create(_mask5Chars, _httpPostMethodLong, KnownStrings.HttpPostMethod);
+            _knownMethods[2] = Tuple.Create(_mask5Chars, _httpHeadMethodLong, KnownStrings.HttpHeadMethod);
+            _knownMethods[3] = Tuple.Create(_mask6Chars, _httpTraceMethodLong, KnownStrings.HttpTraceMethod);
+            _knownMethods[4] = Tuple.Create(_mask6Chars, _httpPatchMethodLong, KnownStrings.HttpPatchMethod);
+            _knownMethods[5] = Tuple.Create(_mask7Chars, _httpDeleteMethodLong, KnownStrings.HttpDeleteMethod);
+            _knownMethods[6] = Tuple.Create(_mask8Chars, _httpConnectMethodLong, KnownStrings.HttpConnectMethod);
+            _knownMethods[7] = Tuple.Create(_mask8Chars, _httpOptionsMethodLong, KnownStrings.HttpOptionsMethod);
         }
 
         private unsafe static long GetAsciiStringAsLong(string str)
@@ -251,7 +239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
             if ((value & _mask4Chars) == _httpGetMethodLong)
             {
-                knownMethod = HttpGetMethod;
+                knownMethod = KnownStrings.HttpGetMethod;
                 return true;
             }
             foreach (var x in _knownMethods)
@@ -286,11 +274,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
             if (value == _http11VersionLong)
             {
-                knownVersion = Http11Version;
+                knownVersion = KnownStrings.Http11Version;
             }
             else if (value == _http10VersionLong)
             {
-                knownVersion = Http10Version;
+                knownVersion = KnownStrings.Http10Version;
             }
 
             if (knownVersion != null)
