@@ -62,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private bool _autoChunk;
         protected Exception _applicationException;
 
-        private HttpVersionType _httpVersion;
+        protected HttpVersionType _httpVersion;
 
         private readonly string _pathBase;
 
@@ -1265,13 +1265,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             Log.ApplicationError(ConnectionId, ex);
-        }
-
-        private enum HttpVersionType
-        {
-            Unset = -1,
-            Http10 = 0,
-            Http11 = 1
         }
 
         protected enum RequestLineStatus

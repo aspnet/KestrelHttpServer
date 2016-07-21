@@ -502,7 +502,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
 
-            var messageBody = MessageBody.For(KnownStrings.Http11Version, (FrameRequestHeaders)frame.RequestHeaders, frame);
+            var messageBody = MessageBody.For(HttpVersionType.Http11, (FrameRequestHeaders)frame.RequestHeaders, frame);
             frame.InitializeStreams(messageBody);
 
             var originalRequestBody = frame.RequestBody;
