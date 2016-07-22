@@ -97,13 +97,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public abstract ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken);
 
         public static MessageBody For(
-            string httpVersion,
+            HttpVersionType httpVersion,
             FrameRequestHeaders headers,
             Frame context)
         {
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
 
-            var keepAlive = httpVersion != "HTTP/1.0";
+            var keepAlive = httpVersion != HttpVersionType.Http10;
 
             var connection = headers.HeaderConnection.ToString();
             if (connection.Length > 0)

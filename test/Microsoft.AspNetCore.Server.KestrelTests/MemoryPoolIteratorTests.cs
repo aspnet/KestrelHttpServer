@@ -1,7 +1,8 @@
 using System;
 using System.Linq;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using System.Numerics;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -320,15 +321,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("CONNECT / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpConnectMethod)]
-        [InlineData("DELETE / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpDeleteMethod)]
-        [InlineData("GET / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpGetMethod)]
-        [InlineData("HEAD / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpHeadMethod)]
-        [InlineData("PATCH / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpPatchMethod)]
-        [InlineData("POST / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpPostMethod)]
-        [InlineData("PUT / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpPutMethod)]
-        [InlineData("OPTIONS / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpOptionsMethod)]
-        [InlineData("TRACE / HTTP/1.1", ' ', true, MemoryPoolIteratorExtensions.HttpTraceMethod)]
+        [InlineData("CONNECT / HTTP/1.1", ' ', true, "CONNECT")]
+        [InlineData("DELETE / HTTP/1.1", ' ', true, "DELETE")]
+        [InlineData("GET / HTTP/1.1", ' ', true, "GET")]
+        [InlineData("HEAD / HTTP/1.1", ' ', true, "HEAD")]
+        [InlineData("PATCH / HTTP/1.1", ' ', true, "PATCH")]
+        [InlineData("POST / HTTP/1.1", ' ', true, "POST")]
+        [InlineData("PUT / HTTP/1.1", ' ', true, "PUT")]
+        [InlineData("OPTIONS / HTTP/1.1", ' ', true, "OPTIONS")]
+        [InlineData("TRACE / HTTP/1.1", ' ', true, "TRACE")]
         [InlineData("GET/ HTTP/1.1", ' ', false, null)]
         [InlineData("get / HTTP/1.1", ' ', false, null)]
         [InlineData("GOT / HTTP/1.1", ' ', false, null)]
@@ -357,8 +358,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("HTTP/1.0\r", '\r', true, MemoryPoolIteratorExtensions.Http10Version)]
-        [InlineData("HTTP/1.1\r", '\r', true, MemoryPoolIteratorExtensions.Http11Version)]
+        [InlineData("HTTP/1.0\r", '\r', true, "HTTP/1.0")]
+        [InlineData("HTTP/1.1\r", '\r', true, "HTTP/1.1")]
         [InlineData("HTTP/3.0\r", '\r', false, null)]
         [InlineData("http/1.0\r", '\r', false, null)]
         [InlineData("http/1.1\r", '\r', false, null)]
@@ -380,6 +381,75 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(expectedKnownString, knownString);
 
             _pool.Return(block);
+        }
+
+        [Theory]
+        [InlineData("HTTP/1.0\r", '\r')]
+        [InlineData("HTTP/1.1\r", '\r')]
+        public void KnownVersionsAreReferenceEqual(string input, char endChar)
+        {
+            // Arrange
+            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
+            var block1 = _pool.Lease();
+            var block2 = _pool.Lease();
+            Buffer.BlockCopy(chars, 0, block1.Array, block1.Start, chars.Length);
+            Buffer.BlockCopy(chars, 0, block2.Array, block2.Start, chars.Length);
+            block1.End += chars.Length;
+            block2.End += chars.Length;
+            var begin1 = block1.GetIterator();
+            var begin2 = block2.GetIterator();
+            string knownString1;
+            string knownString2;
+
+            // Act
+            var result1 = begin1.GetKnownVersion(out knownString1);
+            var result2 = begin2.GetKnownVersion(out knownString2);
+            // Assert
+            Assert.True(result1);
+            Assert.True(result2);
+
+            Assert.Equal(knownString1, knownString2);
+            Assert.True(ReferenceEquals(knownString1, knownString2));
+
+            _pool.Return(block1);
+            _pool.Return(block2);
+        }
+
+        [Theory]
+        [InlineData("CONNECT / HTTP/1.1", ' ')]
+        [InlineData("DELETE / HTTP/1.1", ' ')]
+        [InlineData("GET / HTTP/1.1", ' ')]
+        [InlineData("HEAD / HTTP/1.1", ' ')]
+        [InlineData("PATCH / HTTP/1.1", ' ')]
+        [InlineData("POST / HTTP/1.1", ' ')]
+        [InlineData("PUT / HTTP/1.1", ' ')]
+        [InlineData("OPTIONS / HTTP/1.1", ' ')]
+        [InlineData("TRACE / HTTP/1.1", ' ')]
+        public void KnownMethodsAreReferenceEqual(string input, char endChar)
+        {
+            // Arrange
+            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
+            var block1 = _pool.Lease();
+            var block2 = _pool.Lease();
+            Buffer.BlockCopy(chars, 0, block1.Array, block1.Start, chars.Length);
+            Buffer.BlockCopy(chars, 0, block2.Array, block2.Start, chars.Length);
+            block1.End += chars.Length;
+            block2.End += chars.Length;
+            var begin1 = block1.GetIterator();
+            var begin2 = block2.GetIterator();
+            string knownString1;
+            string knownString2;
+
+            // Act
+            var result1 = begin1.GetKnownVersion(out knownString1);
+            var result2 = begin2.GetKnownVersion(out knownString2);
+
+            // Assert
+            Assert.Equal(knownString1, knownString2);
+            Assert.True(ReferenceEquals(knownString1, knownString2));
+
+            _pool.Return(block1);
+            _pool.Return(block2);
         }
     }
 }

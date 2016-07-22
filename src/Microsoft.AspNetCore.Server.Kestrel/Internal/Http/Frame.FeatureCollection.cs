@@ -109,7 +109,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             set
             {
-                Method = value;
+                if (value == KnownStrings.HttpGetMethod)
+                {
+                    Method = KnownStrings.HttpGetMethod;
+                }
+                else if (value == KnownStrings.HttpPostMethod)
+                {
+                    Method = KnownStrings.HttpPostMethod;
+                }
+                else if (value == KnownStrings.HttpHeadMethod)
+                {
+                    Method = KnownStrings.HttpHeadMethod;
+                }
+                else if (value == KnownStrings.HttpConnectMethod)
+                {
+                    Method = KnownStrings.HttpConnectMethod;
+                }
+                else if (value == KnownStrings.HttpDeleteMethod)
+                {
+                    Method = KnownStrings.HttpDeleteMethod;
+                }
+                else if (value == KnownStrings.HttpPatchMethod)
+                {
+                    Method = KnownStrings.HttpPatchMethod;
+                }
+                else if (value == KnownStrings.HttpPutMethod)
+                {
+                    Method = KnownStrings.HttpPutMethod;
+                }
+                else if (value == KnownStrings.HttpOptionsMethod)
+                {
+                    Method = KnownStrings.HttpOptionsMethod;
+                }
+                else if (value == KnownStrings.HttpTraceMethod)
+                {
+                    Method = KnownStrings.HttpTraceMethod;
+                }
+                else
+                {
+                    Method = value;
+                }
             }
         }
 
