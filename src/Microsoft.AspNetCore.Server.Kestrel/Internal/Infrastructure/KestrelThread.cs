@@ -7,6 +7,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.Extensions.Logging;
@@ -60,9 +61,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 #endif
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
+            Memory = new MemoryPool();
+            WriteReqPool = new WriteReqPool(this, _log);
+            ConnectionManager = new ConnectionManager(this, _threadPool);
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
+
+        public MemoryPool Memory { get; }
+
+        public ConnectionManager ConnectionManager { get; }
+
+        public WriteReqPool WriteReqPool { get; }
 
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
@@ -77,12 +87,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             return tcs.Task;
         }
 
-        // This must be called from the libuv event loop.
-        public void AllowStop()
-        {
-            _post.Unreference();
-        }
-
         public void Stop(TimeSpan timeout)
         {
             lock (_startSync)
@@ -95,6 +99,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
             if (_thread.IsAlive)
             {
+                // These operations need to run on the libuv thread so it only makes
+                // sense to attept execution if it's still running
+                DisposeConnections(timeout);
+
                 var stepTimeout = (int)(timeout.TotalMilliseconds / 2);
                 try
                 {
@@ -122,6 +130,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             if (_closeError != null)
             {
                 _closeError.Throw();
+            }
+        }
+
+        private void DisposeConnections(TimeSpan timeout)
+        {
+            try
+            {
+                // Close and wait for all connections
+                if (!ConnectionManager.WalkConnectionsAndClose(timeout))
+                {
+                    _log.LogError(0, null, "Waiting for connections timed out");
+                }
+
+                var result = PostAsync(state =>
+                {
+                    var listener = (KestrelThread)state;
+                    listener.WriteReqPool.Dispose();
+                },
+                this).Wait(timeout);
+
+                if (!result)
+                {
+                    _log.LogError(0, null, "Disposing write requests failed");
+                }
+            }
+            finally
+            {
+                Memory.Dispose();
             }
         }
 
