@@ -168,20 +168,54 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 Name = header,
                 Index = index,
                 EnhancedSetter = enhancedHeaders.Contains(header)
-            }).ToArray();
+            }).OrderBy(x => {
+                switch (x.Name)
+                {
+                    case "Connection":
+                        return -6;
+                    case "Date":
+                        return -5;
+                    case "Server":
+                        return -4;
+                    case "Content-Length":
+                        return -3;
+                    case "Transfer-Encoding":
+                        return -2;
+                    case "Content-Type":
+                        return -1;
+                    default:
+                        return x.Index;
+                }
+            }).Select((header, index) => new KnownHeader
+            {
+                Name = header.Name,
+                Index = index,
+                EnhancedSetter = enhancedHeaders.Contains(header.Name)
+            })
+            .ToArray();
             var loops = new[]
             {
                 new
                 {
                     Headers = requestHeaders,
-                    HeadersByLength = requestHeaders.GroupBy(x => x.Name.Length),
+                    HeadersByLength = requestHeaders.OrderBy(x => x.Name.Length < 4 ? x.Name.Length + 19 : x.Name.Length).ThenByDescending(s => s.Name).GroupBy(x => x.Name.Length),
                     ClassName = "FrameRequestHeaders",
                     Bytes = default(byte[])
                 },
                 new
                 {
                     Headers = responseHeaders,
-                    HeadersByLength = responseHeaders.GroupBy(x => x.Name.Length),
+                    HeadersByLength = responseHeaders.OrderBy(x => {
+                        switch (x.Name.Length)
+                        {
+                            case 14:
+                                return -2;
+                            case 12:
+                                return -1;
+                            default:
+                                return x.Name.Length;
+                        }
+                    }).ThenByDescending(s => s.Name).GroupBy(x => x.Name.Length),
                     ClassName = "FrameResponseHeaders",
                     Bytes = responseHeaders.SelectMany(header => header.Bytes).ToArray()
                 }
@@ -396,6 +430,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected void CopyToFast(ref MemoryPoolIterator output)
         {{
             {Each(loop.Headers, header => $@"
+            {(header.Index == 6 ? "if (_bits >= 64L) {" : "")}
                 if ({header.TestBit()})
                 {{ {(header.EnhancedSetter == false ? "" : $@"
                     if (_headers._raw{header.Identifier} != null)
@@ -413,6 +448,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }}
                 }}
             ")}
+            }}
         }}" : "")}
         {(loop.ClassName == "FrameRequestHeaders" ? $@"
         public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
@@ -482,6 +518,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }}
                 {Each(loop.Headers, header => $@"
                 state{header.Index}:
+                    {(header.Index == 6 ? "if (_bits < 64L) { _state = 99; goto state_default; }" : "")}
                     if ({header.TestBit()})
                     {{
                         _current = new KeyValuePair<string, StringValues>(""{header.Name}"", _collection._headers._{header.Identifier});
