@@ -1015,7 +1015,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public void CopyFrom(byte[] data, int offset, int count)
         {
-            if (IsDefault)
+            if (count == 0 || IsDefault)
             {
                 return;
             }
@@ -1024,6 +1024,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             Debug.Assert(_block.Next == null);
             Debug.Assert(_block.End == _index);
 
+            if (count + offset > data.Length)
+            {
+                ThrowInvalidOperation(InvalidBlockOperation.AccessingBeyondEndOfArray);
+            }
+
+#if NET451
+            BlockCopyFrom(data, offset, count);
+#else
+            MemoryCopyFrom(data, offset, count);
+#endif
+        }
+
+#if NET451
+        private void BlockCopyFrom(byte[] data, int offset, int count)
+        {
+            // Note: Ensure for any changes in this function MemoryCopyFrom is changed to match
             var pool = _block.Pool;
             var block = _block;
             var blockIndex = _index;
@@ -1059,6 +1075,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _block = block;
             _index = blockIndex;
         }
+#else
+        private unsafe void MemoryCopyFrom(byte[] data, int offset, int count)
+        {
+            // Note: Ensure for any changes in this function BlockCopyFrom is changed to match
+            var pool = _block.Pool;
+            var block = _block;
+            var blockIndex = _index;
+
+            var bufferIndex = offset;
+            var remaining = count;
+            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+
+            fixed (byte* pData = &data[0])
+            {
+                while (remaining > 0)
+                {
+                    if (bytesLeftInBlock == 0)
+                    {
+                        var nextBlock = pool.Lease();
+                        block.End = blockIndex;
+                        Volatile.Write(ref block.Next, nextBlock);
+                        block = nextBlock;
+
+                        blockIndex = block.Data.Offset;
+                        bytesLeftInBlock = block.Data.Count;
+                    }
+
+                    var bytesToCopy = remaining < bytesLeftInBlock ? remaining : bytesLeftInBlock;
+
+                    Buffer.MemoryCopy(pData + bufferIndex, block.DataFixedPtr + blockIndex, bytesLeftInBlock, bytesToCopy);
+
+                    blockIndex += bytesToCopy;
+                    bufferIndex += bytesToCopy;
+                    remaining -= bytesToCopy;
+                    bytesLeftInBlock -= bytesToCopy;
+                }
+            }
+
+            block.End = blockIndex;
+            _block = block;
+            _index = blockIndex;
+        }
+#endif
 
         public unsafe void CopyFromAscii(string data)
         {
