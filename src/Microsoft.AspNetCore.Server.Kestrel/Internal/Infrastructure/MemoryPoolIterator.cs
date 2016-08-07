@@ -122,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (wasLastBlock)
                 {
-                    throw new InvalidOperationException("Attempted to skip more bytes than available.");
+                    ThrowInvalidOperation(InvalidBlockOperation.SkipMoreBytesThanAvailable);
                 }
                 else
                 {
@@ -768,7 +768,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             ? (longValue & 0x000000ff00000000) > 0 ? 4 : 5
                             : (longValue & 0x00ff000000000000) > 0 ? 6 : 7);
             }
-            throw new InvalidOperationException();
+            ThrowInvalidOperation(InvalidBlockOperation.EqualByteNotFound);
+            return default(int);
         }
 
         // Internal for testing
@@ -796,7 +797,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 if (byteEquals[offset + 6] != 0) return offset + 6;
                 return offset + 7;
             }
-            throw new InvalidOperationException();
+            ThrowInvalidOperation(InvalidBlockOperation.EqualByteNotFound);
+            return default(int);
         }
 
         /// <summary>
@@ -856,7 +858,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     }
                     else if (block.Next == null)
                     {
-                        throw new InvalidOperationException("end did not follow iterator");
+                        ThrowInvalidOperation(InvalidBlockOperation.EndDidNotFollowIterator);
                     }
                     else
                     {
@@ -870,17 +872,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public MemoryPoolIterator CopyTo(byte[] array, int offset, int count, out int actual)
         {
-            // Note: Ensure for any changes in this function Consume is changed to match
             if (count == 0 || IsDefault)
             {
                 actual = 0;
                 return this;
             }
+
             if (array == null)
             {
                 return Consume(count, out actual);
             }
 
+            if (count + offset > array.Length)
+            {
+                ThrowInvalidOperation(InvalidBlockOperation.AccessingBeyondEndOfArray);
+            }
+
+#if NET451
+            return BlockCopyTo(array, ref offset, count, out actual);
+#else
+            return MemoryCopyTo(array, ref offset, count, out actual);
+#endif
+        }
+
+#if NET451
+        private MemoryPoolIterator BlockCopyTo(byte[] array, ref int offset, int count, out int actual)
+        {
+            // Note: Ensure for any changes in this function MemoryCopyTo & Consume are changed to match
             var block = _block;
             var index = _index;
             var remaining = count;
@@ -914,9 +932,51 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 }
             }
         }
+#else
+        private unsafe MemoryPoolIterator MemoryCopyTo(byte[] array, ref int offset, int count, out int actual)
+        {
+            // Note: Ensure for any changes in this function BlockCopyTo & Consume are changed to match
+            var block = _block;
+            var index = _index;
+            var remaining = count;
+            fixed (byte* pArray = &array[0])
+            {
+                while (true)
+                {
+                    // Determine if we might attempt to copy data from block.Next before
+                    // calculating "following" so we don't risk skipping data that could
+                    // be added after block.End when we decide to copy from block.Next.
+                    // block.End will always be advanced before block.Next is set.
+                    var wasLastBlock = block.Next == null;
+                    var following = block.End - index;
+                    if (remaining <= following)
+                    {
+                        actual = count;
+                        Buffer.MemoryCopy(block.DataFixedPtr + index, pArray + offset, remaining, remaining);
+                        return new MemoryPoolIterator(block, index + remaining);
+                    }
+                    else if (wasLastBlock)
+                    {
+                        actual = count - remaining + following;
+                        Buffer.MemoryCopy(block.DataFixedPtr + index, pArray + offset, following, following);
+                        return new MemoryPoolIterator(block, index + following);
+                    }
+                    else
+                    {
+                        Buffer.MemoryCopy(block.DataFixedPtr + index, pArray + offset, following, following);
+                        offset += following;
+                        remaining -= following;
+                        block = block.Next;
+                        index = block.Start;
+                    }
+                }
+            }
+        }
+#endif
 
         private MemoryPoolIterator Consume(int count, out int actual)
         {
+            // Note: Ensure for any changes in this function CopyToBlockCopy & CopyToMemoryCopy are changed to match
             var block = _block;
             var index = _index;
             var remaining = count;
@@ -1064,6 +1124,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             block.End = blockIndex;
             _block = block;
             _index = blockIndex;
+        }
+
+        private static void ThrowInvalidOperation(InvalidBlockOperation operation)
+        {
+            switch (operation)
+            {
+                case InvalidBlockOperation.AccessingBeyondEndOfArray:
+                    throw new InvalidOperationException("Attempting to access beyond end of array.");
+                case InvalidBlockOperation.SkipMoreBytesThanAvailable:
+                    throw new InvalidOperationException("Attempted to skip more bytes than available.");
+                case InvalidBlockOperation.EndDidNotFollowIterator:
+                    throw new InvalidOperationException("End did not follow iterator.");
+                case InvalidBlockOperation.EqualByteNotFound:
+                    throw new InvalidOperationException("Equal Byte Not Found.");
+
+            }
+        }
+
+        private enum InvalidBlockOperation
+        {
+            AccessingBeyondEndOfArray,
+            SkipMoreBytesThanAvailable,
+            EndDidNotFollowIterator,
+            EqualByteNotFound
         }
     }
 }
