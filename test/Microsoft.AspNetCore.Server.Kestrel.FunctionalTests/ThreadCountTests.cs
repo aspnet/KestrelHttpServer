@@ -37,20 +37,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
+                // Send 20 requests just to make sure we don't get any failures
+                var requestTasks = new List<Task<string>>();
+                for (int i = 0; i < 20; i++)
                 {
-                    // Send 20 requests just to make sure we don't get any failures
-                    var requestTasks = new List<Task<string>>();
-                    for (int i = 0; i < 20; i++)
+                    requestTasks.Add(Task.Run(async () =>
                     {
-                        var requestTask = client.GetStringAsync($"http://localhost:{host.GetPort()}/");
-                        requestTasks.Add(requestTask);
-                    }
-                    
-                    foreach (var result in await Task.WhenAll(requestTasks))
-                    {
-                        Assert.Equal("Hello World", result);
-                    }
+                        using (var client = new HttpClient())
+                        {
+                            return await client.GetStringAsync($"http://127.0.0.1:{host.GetPort()}/");
+                        }
+                    }));
+                }
+
+                foreach (var result in await Task.WhenAll(requestTasks))
+                {
+                    Assert.Equal("Hello World", result);
                 }
             }
         }
