@@ -13,7 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     /// </summary>
     public class DateHeaderValueManager : IDisposable
     {
-        private static readonly byte[] _datePreambleBytes = Encoding.ASCII.GetBytes("\r\nDate: ");
+        private const string DateHeaderPreamble = "\r\nDate: ";
+        private static readonly int _dateStringLength = DateTimeOffset.Now.ToString(Constants.RFC1123DateFormat).Length;
 
         private readonly ISystemClock _systemClock;
         private readonly TimeSpan _timeWithoutRequestsUntilIdle;
@@ -21,6 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly object _timerLocker = new object();
 
         private DateHeaderValues _dateValues;
+        private readonly byte[] _dateBytes;
 
         private volatile bool _isDisposed = false;
         private volatile bool _hadRequestsSinceLastTimerTick = false;
@@ -60,6 +62,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _timeWithoutRequestsUntilIdle = timeWithoutRequestsUntilIdle;
             _timerInterval = timerInterval;
             _dateValueTimer = new Timer(TimerLoop, state: null, dueTime: Timeout.Infinite, period: Timeout.Infinite);
+
+            _dateBytes = new byte[DateHeaderPreamble.Length + _dateStringLength];
+            Encoding.ASCII.GetBytes(DateHeaderPreamble, 0, DateHeaderPreamble.Length, _dateBytes, 0);
         }
 
         /// <summary>
@@ -172,13 +177,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.18 for required format of Date header
             var dateValue = value.ToString(Constants.RFC1123DateFormat);
-            var dateBytes = new byte[_datePreambleBytes.Length + dateValue.Length];
-            Buffer.BlockCopy(_datePreambleBytes, 0, dateBytes, 0, _datePreambleBytes.Length);
-            Encoding.ASCII.GetBytes(dateValue, 0, dateValue.Length, dateBytes, _datePreambleBytes.Length);
+            Encoding.ASCII.GetBytes(dateValue, 0, dateValue.Length, _dateBytes, DateHeaderPreamble.Length);
 
             var dateValues = new DateHeaderValues()
             {
-                Bytes = dateBytes,
+                Bytes = _dateBytes,
                 String = dateValue
             };
             Volatile.Write(ref _dateValues, dateValues);
