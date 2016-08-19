@@ -17,12 +17,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             loop.Init(new Libuv());
 
             var timer = new UvTimerHandle(trace);
-            timer.Init(loop, (callback, handle) => { });
+            timer.Init(loop, (a, b) => { });
 
             var callbackInvoked = false;
-            timer.Start(_ => callbackInvoked = true, 50, 0);
-
+            timer.Start(_ =>
+            {
+                callbackInvoked = true;
+                timer.Dispose();
+            }, 50, 0);
             loop.Run();
+            loop.Dispose();
 
             Assert.True(callbackInvoked);
         }
@@ -48,10 +52,12 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 else
                 {
                     timer.Stop();
+                    timer.Dispose();
                 }
             }, 50, 50);
 
             loop.Run();
+            loop.Dispose();
 
             Assert.Equal(2, callbackCount);
         }

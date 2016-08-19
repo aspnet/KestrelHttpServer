@@ -9,7 +9,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
     public class UvTimerHandle : UvHandle
     {
-        private readonly static Libuv.uv_timer_cb _uv_timer_cb = (handle) => UvTimerCb(handle);
+        private readonly static Libuv.uv_timer_cb _uv_timer_cb = UvTimerCb;
 
         private Action<UvTimerHandle> _callback;
 
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             }
             catch (Exception ex)
             {
-                timer._log.LogError(0, ex, "UvTimerCb");
+                timer._log.LogError(0, ex, nameof(UvTimerCb));
                 throw;
             }
         }
