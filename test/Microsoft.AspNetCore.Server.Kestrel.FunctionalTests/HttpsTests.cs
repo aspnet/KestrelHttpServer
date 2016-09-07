@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -32,9 +33,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (await HttpClientSlim.GetSocket(new Uri($"http://127.0.0.1:{host.GetPort()}/")))
+                using (await HttpClientSlim.GetSocket(new Uri($"http://localhost:{host.GetPort()}")))
                 {
-                    // Close socket immediately
+                    // Connect then close socket immediately
+                    await loggerFactory.ErrorLogger.ConnectionStartLogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
                 }
 
                 await loggerFactory.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
@@ -132,12 +134,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private class ApplicationErrorLogger : ILogger
         {
             public int TotalErrorsLogged { get; set; }
+            public TaskCompletionSource<object> ConnectionStartLogTcs = new TaskCompletionSource<object>();
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             {
                 if (logLevel == LogLevel.Error)
                 {
                     TotalErrorsLogged++;
+                }
+
+                if (logLevel == LogLevel.Debug && eventId.Id == 1)
+                {
+                    ConnectionStartLogTcs.SetResult(null);
                 }
             }
 
