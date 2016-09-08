@@ -115,6 +115,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             {
+                Console.WriteLine($"{nameof(HttpsConnectionFilterLogger)} {logLevel} {eventId} {formatter(state, exception)}");
+
                 LastLogLevel = logLevel;
                 LastEventId = eventId;
                 LogTcs.SetResult(null);
@@ -138,6 +140,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             {
+                Console.WriteLine($"{nameof(ApplicationErrorLogger)} {logLevel} {eventId} {formatter(state, exception)}");
+
                 if (logLevel == LogLevel.Error)
                 {
                     TotalErrorsLogged++;
