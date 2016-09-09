@@ -308,6 +308,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 // Ensure the Dispose operations complete in the event loop.
                 _loop.Run();
 
+                Walk(ptr =>
+                {
+                    var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
+                    if (handle == null)
+                    {
+                        Console.WriteLine("Walked ptr: {0}", ptr);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Walked handle: {0}", handle.GetType());
+                    }
+                });
+
+                _loop.Run();
+
                 _loop.Dispose();
             }
             catch (Exception ex)
