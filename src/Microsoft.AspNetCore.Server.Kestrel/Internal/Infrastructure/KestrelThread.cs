@@ -318,6 +318,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     else
                     {
                         Console.WriteLine("Walked handle: {0}", handle.GetType());
+                        handle.Dispose();
                     }
                 });
 
