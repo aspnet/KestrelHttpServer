@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
         private readonly UvStreamHandle _socket;
-        private readonly Frame _frame;
+        private Frame _frame;
         private ConnectionFilterContext _filterContext;
         private LibuvStream _libuvStream;
         private FilteredStreamAdapter _filteredStreamAdapter;
@@ -46,6 +46,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
+            var tcpHandle = _socket as UvTcpHandle;
+            if (tcpHandle != null)
+            {
+                RemoteEndPoint = tcpHandle.GetPeerIPEndPoint();
+                LocalEndPoint = tcpHandle.GetSockIPEndPoint();
+            }
+        }
+
+        // Internal for testing
+        internal Connection()
+        {
+        }
+
+        private void Initialize()
+        {
             if (ServerOptions.Limits.MaxRequestBufferSize.HasValue)
             {
                 _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
@@ -54,27 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             SocketInput = new SocketInput(Thread.Memory, ThreadPool, _bufferSizeControl);
             SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
-            var tcpHandle = _socket as UvTcpHandle;
-            if (tcpHandle != null)
-            {
-                RemoteEndPoint = tcpHandle.GetPeerIPEndPoint();
-                LocalEndPoint = tcpHandle.GetSockIPEndPoint();
-            }
-
             _frame = FrameFactory(this);
-        }
-
-        // Internal for testing
-        internal Connection()
-        {
-        }
-
-        public void Start()
-        {
-            Log.ConnectionStart(ConnectionId);
-
-            // Start socket prior to applying the ConnectionFilter
-            _socket.ReadStart(_allocCallback, _readCallback, this);
 
             if (ServerOptions.ConnectionFilter == null)
             {
@@ -120,10 +115,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
+        public void Start()
+        {
+            Log.ConnectionStart(ConnectionId);
+
+            // Start socket prior to applying the ConnectionFilter
+            _socket.ReadStart(_allocCallback, _readCallback, this);
+        }
+
         public Task StopAsync()
         {
-            _frame.Stop();
-            _frame.SocketInput.CompleteAwaiting();
+            _frame?.Stop();
+            _frame?.SocketInput.CompleteAwaiting();
 
             return _socketClosedTcs.Task;
         }
@@ -134,7 +137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // called from a libuv thread.
             ThreadPool.Run(() =>
             {
-                _frame.Abort(error);
+                _frame?.Abort(error);
             });
         }
 
@@ -151,7 +154,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }, this);
             }
 
-            SocketInput.Dispose();
+            SocketInput?.Dispose();
             _socketClosedTcs.TrySetResult(null);
         }
 
@@ -185,6 +188,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
+            if (SocketInput == null)
+            {
+                Initialize();
+            }
+
             var result = SocketInput.IncomingStart();
 
             return handle.Libuv.buf_init(
@@ -199,6 +207,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void OnRead(UvStreamHandle handle, int status)
         {
+            if (SocketInput == null)
+            {
+                Initialize();
+            }
+
             if (status == 0)
             {
                 // A zero status does not indicate an error or connection end. It indicates
