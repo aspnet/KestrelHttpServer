@@ -2,7 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -78,6 +83,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             Assert.Equal(0, loggerFactory.ErrorLogger.TotalErrorsLogged);
         }
 
+        [Theory]
+        [InlineData(SslProtocols.Tls)]
+        [InlineData(SslProtocols.Tls11)]
+        [InlineData(SslProtocols.Tls12)]
+        public async Task HttpsOnHttpAttemptIsLogged(SslProtocols protocol)
+        {
+            var loggerFactory = new HandshakeErrorLoggerFactory();
+
+            var hostBuilder = new WebHostBuilder()
+                .UseKestrel()
+                .UseUrls("http://127.0.0.1:0/")
+                .UseLoggerFactory(loggerFactory)
+                .Configure(app => { });
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                using (var socket = await HttpClientSlim.GetSocket(new Uri($"http://127.0.0.1:{host.GetPort()}/")))
+                using (var stream = new NetworkStream(socket))
+                using (var sslStream = new SslStream(stream, leaveInnerStreamOpen: false, userCertificateValidationCallback: (a, b, c, d) => true))
+                {
+                    await Assert.ThrowsAsync<IOException>(async () => await sslStream.AuthenticateAsClientAsync("127.0.0.1",
+                        clientCertificates: null,
+                        enabledSslProtocols: protocol,
+                        checkCertificateRevocation: false));
+                }
+
+                await loggerFactory.ErrorLogger.InvalidHandshakeLogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+            }
+        }
+
         private class HandshakeErrorLoggerFactory : ILoggerFactory
         {
             public HttpsConnectionFilterLogger FilterLogger { get; } = new HttpsConnectionFilterLogger();
@@ -133,11 +170,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             public int TotalErrorsLogged { get; set; }
 
+            public TaskCompletionSource<object> InvalidHandshakeLogTcs { get; } = new TaskCompletionSource<object>();
+
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             {
                 if (logLevel == LogLevel.Error)
                 {
                     TotalErrorsLogged++;
+                }
+
+                if (exception?.Message == "An SSL/TLS handshake might have been attempted at an HTTP endpoint.")
+                {
+                    Task.Run(() => InvalidHandshakeLogTcs.SetResult(null));
                 }
             }
 
@@ -150,6 +194,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 throw new NotImplementedException();
             }
+        }
+
+        private class LogEntry
+        {
+            public LogLevel LogLevel { get; set; }
+            public EventId EventId { get; set; }
+            public Exception Exception { get; set; }
         }
     }
 }

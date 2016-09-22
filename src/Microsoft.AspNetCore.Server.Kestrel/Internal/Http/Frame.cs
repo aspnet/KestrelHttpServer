@@ -803,6 +803,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 ConnectionControl.CancelTimeout();
 
+                if (scan.Peek() == 0x16)
+                {
+                    RejectRequest(RequestRejectionReason.HttpsOnHttp);
+                }
+
                 _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
 
                 int bytesScanned;

@@ -953,6 +953,33 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
+        public void TakeStartLineThrowsOnTlsHandshakeAttempt()
+        {
+            var trace = new KestrelTrace(new TestKestrelTrace());
+            var ltp = new LoggingThreadPool(trace);
+            using (var pool = new MemoryPool())
+            using (var socketInput = new SocketInput(pool, ltp))
+            {
+                var connectionContext = new ConnectionContext()
+                {
+                    ConnectionControl = new Mock<IConnectionControl>().Object,
+                    DateHeaderValueManager = new DateHeaderValueManager(),
+                    ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
+                    ServerOptions = new KestrelServerOptions(),
+                    Log = trace
+                };
+                var frame = new Frame<object>(application: null, context: connectionContext);
+                frame.Reset();
+
+                var requestLineBytes = new byte[] { 0x16 };
+                socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
+
+                var exception = Assert.Throws<BadHttpRequestException>(() => frame.TakeStartLine(socketInput));
+                Assert.Equal("An SSL/TLS handshake might have been attempted at an HTTP endpoint.", exception.Message);
+            }
+        }
+
+        [Fact]
         public void TakeMessageHeadersCallsConsumingCompleteWithFurthestExamined()
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
