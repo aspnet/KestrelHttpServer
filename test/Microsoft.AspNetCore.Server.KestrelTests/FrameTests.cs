@@ -975,7 +975,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
 
                 var exception = Assert.Throws<BadHttpRequestException>(() => frame.TakeStartLine(socketInput));
-                Assert.Equal("An SSL/TLS handshake might have been attempted at an HTTP endpoint.", exception.Message);
+                Assert.Equal("An SSL/TLS handshake might have been attempted on an HTTP endpoint.", exception.Message);
             }
         }
 

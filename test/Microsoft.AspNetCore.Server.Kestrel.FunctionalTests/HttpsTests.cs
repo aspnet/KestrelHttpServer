@@ -179,7 +179,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     TotalErrorsLogged++;
                 }
 
-                if (exception?.Message == "An SSL/TLS handshake might have been attempted at an HTTP endpoint.")
+                if (exception?.Message == "An SSL/TLS handshake might have been attempted on an HTTP endpoint.")
                 {
                     Task.Run(() => InvalidHandshakeLogTcs.SetResult(null));
                 }
