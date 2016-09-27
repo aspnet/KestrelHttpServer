@@ -102,6 +102,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 case RequestRejectionReason.TooManyHeaders:
                     ex = new BadHttpRequestException("Request contains too many headers.", 431);
                     break;
+                case RequestRejectionReason.HttpsOnHttp:
+                    ex = new BadHttpRequestException("An SSL/TLS handshake might have been attempted on an HTTP endpoint.", 400);
+                    break;
                 default:
                     ex = new BadHttpRequestException("Bad request.", 400);
                     break;
