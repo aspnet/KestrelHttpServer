@@ -432,7 +432,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("CONNECT / HTTP/1.1", ' ', true,"CONNECT")]
+        [InlineData("CONNECT / HTTP/1.1", ' ', true, "CONNECT")]
         [InlineData("DELETE / HTTP/1.1", ' ', true, "DELETE")]
         [InlineData("GET / HTTP/1.1", ' ', true, "GET")]
         [InlineData("HEAD / HTTP/1.1", ' ', true, "HEAD")]
