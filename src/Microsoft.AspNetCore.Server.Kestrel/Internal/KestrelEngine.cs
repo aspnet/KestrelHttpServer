@@ -38,6 +38,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public void Start(int count)
         {
+            JitReadonlyConsts();
+
             for (var index = 0; index < count; index++)
             {
                 Threads.Add(new KestrelThread(this));
@@ -47,6 +49,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             {
                 thread.StartAsync().Wait();
             }
+        }
+
+        public static void JitReadonlyConsts()
+        {
+            MemoryPoolIterator.StaticReadonlysJitted = true;
+            MemoryPoolIteratorExtensions.StaticReadonlysJitted = true;
         }
 
         public void Dispose()

@@ -16,6 +16,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public const string Http10Version = "HTTP/1.0";
         public const string Http11Version = "HTTP/1.1";
 
+        // When this variable is set in KestrelEngine.JitReadonlyConsts it will 
+        // deterministically convert the following readonly static values to jitted consts 
+        // and embed the init code in that start up called function.
+        //
+        // This means when they are next used the have been pre-evaluated and the jit can 
+        // either directly embed them or use them for branch elimiation.
+        internal static bool StaticReadonlysJitted;
+
         // readonly primitive statics can be Jit'd to consts https://github.com/dotnet/coreclr/issues/1079
         private readonly static long _httpConnectMethodLong = GetAsciiStringAsLong("CONNECT ");
         private readonly static long _httpDeleteMethodLong = GetAsciiStringAsLong("DELETE \0");
@@ -36,19 +44,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private readonly static long _mask5Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00 });
         private readonly static long _mask4Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 });
 
-        private readonly static Tuple<long, long, string>[] _knownMethods = new Tuple<long, long, string>[8];
-
-        static MemoryPoolIteratorExtensions()
-        {
-            _knownMethods[0] = Tuple.Create(_mask4Chars, _httpPutMethodLong, HttpMethods.Put);
-            _knownMethods[1] = Tuple.Create(_mask5Chars, _httpPostMethodLong, HttpMethods.Post);
-            _knownMethods[2] = Tuple.Create(_mask5Chars, _httpHeadMethodLong, HttpMethods.Head);
-            _knownMethods[3] = Tuple.Create(_mask6Chars, _httpTraceMethodLong, HttpMethods.Trace);
-            _knownMethods[4] = Tuple.Create(_mask6Chars, _httpPatchMethodLong, HttpMethods.Patch);
-            _knownMethods[5] = Tuple.Create(_mask7Chars, _httpDeleteMethodLong, HttpMethods.Delete);
-            _knownMethods[6] = Tuple.Create(_mask8Chars, _httpConnectMethodLong, HttpMethods.Connect);
-            _knownMethods[7] = Tuple.Create(_mask8Chars, _httpOptionsMethodLong, HttpMethods.Options);
-        }
+        private readonly static Tuple<long, long, string>[] _knownMethods = new Tuple<long, long, string>[]
+            {
+                Tuple.Create(_mask4Chars, _httpPutMethodLong, HttpMethods.Put),
+                Tuple.Create(_mask5Chars, _httpPostMethodLong, HttpMethods.Post),
+                Tuple.Create(_mask5Chars, _httpHeadMethodLong, HttpMethods.Head),
+                Tuple.Create(_mask6Chars, _httpTraceMethodLong, HttpMethods.Trace),
+                Tuple.Create(_mask6Chars, _httpPatchMethodLong, HttpMethods.Patch),
+                Tuple.Create(_mask7Chars, _httpDeleteMethodLong, HttpMethods.Delete),
+                Tuple.Create(_mask8Chars, _httpConnectMethodLong, HttpMethods.Connect),
+                Tuple.Create(_mask8Chars, _httpOptionsMethodLong, HttpMethods.Options)
+            };
 
         private unsafe static long GetAsciiStringAsLong(string str)
         {

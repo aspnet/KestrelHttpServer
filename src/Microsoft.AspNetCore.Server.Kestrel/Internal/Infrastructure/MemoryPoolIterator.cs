@@ -4,13 +4,42 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
     public struct MemoryPoolIterator
     {
+        // When this variable is set in KestrelEngine.JitReadonlyConsts it will 
+        // deterministically convert the following readonly static values to jitted consts 
+        // and embed the init code in that start up called function.
+        //
+        // This means when they are next used the have been pre-evaluated and the jit can 
+        // either directly embed them or use them for branch elimiation.
+        internal static bool StaticReadonlysJitted;
+
+        // De Bruijn sequence https://github.com/aspnet/KestrelHttpServer/issues/1129
+        const ulong DEBRUIJN_SEQ64 = 0x03f79d71b4cb0a89;
+
+        // De Bruijn sequence table used for verification
+        private static readonly byte[] _debruijn64Xor =
+        {
+            0, 5, 0, 7, 6, 3, 0, 7,
+            7, 6, 5, 4, 3, 2, 0, 7,
+            6, 7, 4, 6, 6, 5, 2, 5,
+            4, 4, 3, 2, 2, 1, 0, 7,
+            5, 6, 3, 7, 5, 4, 1, 6,
+            4, 6, 2, 5, 3, 2, 1, 5,
+            3, 4, 1, 4, 2, 3, 1, 3,
+            1, 2, 1, 1, 0, 0, 0, 7,
+        };
+
+        // Convert these returns to jitted consts
+        private static readonly bool IsHardwareAccelerated = Vector.IsHardwareAccelerated;
+        private static readonly bool IsLittleEndian = BitConverter.IsLittleEndian;
         private static readonly int _vectorSpan = Vector<byte>.Count;
+        private static readonly int _vectorUlongSpan = Vector<ulong>.Count;
 
         private MemoryPoolBlock _block;
         private int _index;
@@ -122,7 +151,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (wasLastBlock)
                 {
-                    throw new InvalidOperationException("Attempted to skip more bytes than available.");
+                    // Removed throw code to reduce inline size
+                    // https://github.com/dotnet/coreclr/pull/6103
+                    ThrowInvalidOperationException_SkippedMoreThanAvailable();
                 }
                 else
                 {
@@ -262,7 +293,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (IsHardwareAccelerated)
                     {
 #endif
                     if (following >= _vectorSpan)
@@ -370,7 +401,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (IsHardwareAccelerated)
                     {
 #endif
                         if (following >= _vectorSpan)
@@ -483,7 +514,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (IsHardwareAccelerated)
                     {
 #endif
                         if (following >= _vectorSpan)
@@ -626,7 +657,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (IsHardwareAccelerated)
                     {
 #endif
                         if (following >= _vectorSpan)
@@ -748,27 +779,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param  name="byteEquals"></param >
         /// <returns>The first index of the result vector</returns>
         /// <exception cref="InvalidOperationException">byteEquals = 0</exception>
+        // Force inlining (70 IL bytes, 113 bytes asm w/ inlines) Issue: https://github.com/dotnet/coreclr/issues/7386
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int FindFirstEqualByte(ref Vector<byte> byteEquals)
         {
-            if (!BitConverter.IsLittleEndian) return FindFirstEqualByteSlow(ref byteEquals);
-
-            // Quasi-tree search
-            var vector64 = Vector.AsVectorInt64(byteEquals);
-            for (var i = 0; i < Vector<long>.Count; i++)
+            // Jitted const eliminates branch
+            if (IsLittleEndian)
             {
-                var longValue = vector64[i];
-                if (longValue == 0) continue;
+                var vector64 = Vector.AsVectorUInt64(byteEquals);
+                ulong longValue = 0;
+                var i = 0;
+                // Should only be called when byte in Vector. Since range check 
+                // can't be elminated, make loop one larger to throw if not found
+                // rather than doing the throw ourselves
+                for (; i < _vectorUlongSpan + 1; i++)
+                {
+                    longValue = vector64[i];
+                    if (longValue != 0)
+                    {
+                        break;
+                    }
+                }
 
-                return (i << 3) +
-                    ((longValue & 0x00000000ffffffff) > 0
-                        ? (longValue & 0x000000000000ffff) > 0
-                            ? (longValue & 0x00000000000000ff) > 0 ? 0 : 1
-                            : (longValue & 0x0000000000ff0000) > 0 ? 2 : 3
-                        : (longValue & 0x0000ffff00000000) > 0
-                            ? (longValue & 0x000000ff00000000) > 0 ? 4 : 5
-                            : (longValue & 0x00ff000000000000) > 0 ? 6 : 7);
+                // Single LEA instruction with jitted const (using function result)
+                return i * 8 + DeBruijnFindByteXor(longValue);
             }
-            throw new InvalidOperationException();
+            else
+            {
+                return FindFirstEqualByteSlow(ref byteEquals);
+            }
+        }
+
+        // Force inlining (29 IL bytes) 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int DeBruijnFindByteXor(ulong v)
+        {
+            var index = (((v ^ (v - 1)) * DEBRUIJN_SEQ64) >> 58);
+            return _debruijn64Xor[(int)index];
         }
 
         // Internal for testing
@@ -856,7 +903,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     }
                     else if (block.Next == null)
                     {
-                        throw new InvalidOperationException("end did not follow iterator");
+                        // Removed throw code to reduce inline size
+                        // https://github.com/dotnet/coreclr/pull/6103
+                        ThrowInvalidOperationException_EndDidNotFollow();
                     }
                     else
                     {
@@ -1041,5 +1090,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _block = block;
             _index = blockIndex;
         }
+
+        private static void ThrowInvalidOperationException_EndDidNotFollow()
+        {
+            // Removed throw code to reduce inline size
+            // https://github.com/dotnet/coreclr/pull/6103
+            throw new InvalidOperationException("end did not follow iterator");
+        }
+
+        private static void ThrowInvalidOperationException_SkippedMoreThanAvailable()
+        {
+            // Removed throw code to reduce inline size
+            // https://github.com/dotnet/coreclr/pull/6103
+            throw new InvalidOperationException("Attempted to skip more bytes than available.");
+        }
+
     }
 }
