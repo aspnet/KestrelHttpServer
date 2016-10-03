@@ -19,21 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         // either directly embed them or use them for branch elimiation.
         internal static bool StaticReadonlysJitted;
 
-        // De Bruijn sequence https://github.com/aspnet/KestrelHttpServer/issues/1129
-        const ulong DEBRUIJN_SEQ64 = 0x03f79d71b4cb0a89;
-
-        // De Bruijn sequence table used for verification
-        private static readonly byte[] _debruijn64Xor =
-        {
-            0, 5, 0, 7, 6, 3, 0, 7,
-            7, 6, 5, 4, 3, 2, 0, 7,
-            6, 7, 4, 6, 6, 5, 2, 5,
-            4, 4, 3, 2, 2, 1, 0, 7,
-            5, 6, 3, 7, 5, 4, 1, 6,
-            4, 6, 2, 5, 3, 2, 1, 5,
-            3, 4, 1, 4, 2, 3, 1, 3,
-            1, 2, 1, 1, 0, 0, 0, 7,
-        };
+        // Ben Adam's Magic Number for finding set bytes
+        private const ulong BENS_MAGIC_NUMBER = 0x81018202830380;
 
         // Convert these returns to jitted consts
         private static readonly bool IsHardwareAccelerated = Vector.IsHardwareAccelerated;
@@ -339,7 +326,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #if !DEBUG
                     }
 #endif
-
                     var pCurrent = (block.DataFixedPtr + index);
                     var pEnd = pCurrent + Math.Min(following, limit - bytesScanned);
                     do
@@ -779,8 +765,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param  name="byteEquals"></param >
         /// <returns>The first index of the result vector</returns>
         /// <exception cref="InvalidOperationException">byteEquals = 0</exception>
-        // Force inlining (70 IL bytes, 113 bytes asm w/ inlines) Issue: https://github.com/dotnet/coreclr/issues/7386
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // Force inlining (70 IL bytes, 98 bytes asm w/ inlines) Issue: https://github.com/dotnet/coreclr/issues/7386
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int FindFirstEqualByte(ref Vector<byte> byteEquals)
         {
             // Jitted const eliminates branch
@@ -802,7 +788,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 }
 
                 // Single LEA instruction with jitted const (using function result)
-                return i * 8 + DeBruijnFindByteXor(longValue);
+                return i * 8 + BensMagicNumberFindByte(longValue);
             }
             else
             {
@@ -810,12 +796,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
-        // Force inlining (29 IL bytes) 
+        // Force inlining (23 IL bytes) 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int DeBruijnFindByteXor(ulong v)
+        private static int BensMagicNumberFindByte(ulong ulongValue)
         {
-            var index = (((v ^ (v - 1)) * DEBRUIJN_SEQ64) >> 58);
-            return _debruijn64Xor[(int)index];
+            var flag = (ulongValue & ((ulong)-(long)ulongValue)) >> 8;
+            return (int) ((flag * BENS_MAGIC_NUMBER) >> 55) & 7;
         }
 
         // Internal for testing
