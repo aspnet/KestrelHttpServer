@@ -90,39 +90,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             TaskCompletionSource<object> tcs = null;
             var scheduleWrite = false;
 
-            lock (_contextLock)
-            {
-                if (_socket.IsClosed)
-                {
-                    _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, _lastWriteError);
+            var chunkedBytesPreCompleted = 0;
 
+            if (_socket.IsClosed)
+            {
+                _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, _lastWriteError);
+
+                return TaskCache.CompletedTask;
+            }
+
+            if (buffer.Count > 0)
+            {
+                var tail = ProducingStart();
+                if (tail.IsDefault)
+                {
                     return TaskCache.CompletedTask;
                 }
 
-                if (buffer.Count > 0)
+                if (chunk)
                 {
-                    var tail = ProducingStart();
-                    if (tail.IsDefault)
-                    {
-                        return TaskCache.CompletedTask;
-                    }
-
-                    if (chunk)
-                    {
-                        _numBytesPreCompleted += ChunkWriter.WriteBeginChunkBytes(ref tail, buffer.Count);
-                    }
-
-                    tail.CopyFrom(buffer);
-
-                    if (chunk)
-                    {
-                        ChunkWriter.WriteEndChunkBytes(ref tail);
-                        _numBytesPreCompleted += 2;
-                    }
-
-                    // We do our own accounting below
-                    ProducingCompleteNoPreComplete(tail);
+                    chunkedBytesPreCompleted += ChunkWriter.WriteBeginChunkBytes(ref tail, buffer.Count);
                 }
+
+                tail.CopyFrom(buffer);
+
+                if (chunk)
+                {
+                    ChunkWriter.WriteEndChunkBytes(ref tail);
+                    chunkedBytesPreCompleted += 2;
+                }
+
+                // We do our own accounting below
+                ProducingCompleteNoPreComplete(tail);
+            }
+
+            lock (_contextLock)
+            {
+                _numBytesPreCompleted += chunkedBytesPreCompleted;
 
                 if (_nextWriteContext == null)
                 {
