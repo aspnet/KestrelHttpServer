@@ -269,40 +269,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     {
                         var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
 
-                        if (byte0Equals.Equals(Vector<byte>.Zero))
+                        if (!byte0Equals.Equals(Vector<byte>.Zero))
                         {
-                            if (bytesScanned + _vectorSpan >= limit)
+                            _block = block;
+
+                            // Make a copy and pass it by ref.
+                            // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
+                            // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
+                            Vector<byte> tmp = byte0Equals;
+                            var firstEqualByteIndex = FindFirstEqualByte(ref tmp);
+                            var vectorBytesScanned = firstEqualByteIndex + 1;
+
+                            if (bytesScanned + vectorBytesScanned > limit)
                             {
-                                _block = block;
                                 // Ensure iterator is left at limit position
                                 _index = index + (limit - bytesScanned);
                                 bytesScanned = limit;
                                 return -1;
                             }
 
-                            bytesScanned += _vectorSpan;
-                            following -= _vectorSpan;
-                            index += _vectorSpan;
-                            continue;
+                            _index = index + firstEqualByteIndex;
+                            bytesScanned += vectorBytesScanned;
+
+                            return byte0;
                         }
 
-                        _block = block;
-
-                        var firstEqualByteIndex = FindFirstEqualByte(ref byte0Equals);
-                        var vectorBytesScanned = firstEqualByteIndex + 1;
-
-                        if (bytesScanned + vectorBytesScanned > limit)
+                        if (bytesScanned + _vectorSpan >= limit)
                         {
+                            _block = block;
                             // Ensure iterator is left at limit position
                             _index = index + (limit - bytesScanned);
                             bytesScanned = limit;
                             return -1;
                         }
 
-                        _index = index + firstEqualByteIndex;
-                        bytesScanned += vectorBytesScanned;
-
-                        return byte0;
+                        bytesScanned += _vectorSpan;
+                        following -= _vectorSpan;
+                        index += _vectorSpan;
+                        continue;
                     }
                     // Need unit tests to test Vector path
 #if !DEBUG
@@ -377,35 +381,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                         {
                             var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
 
-                            if (byte0Equals.Equals(Vector<byte>.Zero))
+                            if (!byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                if (block == limit.Block && index + _vectorSpan > limit.Index)
+                                _block = block;
+
+                                // Make a copy and pass it by ref.
+                                // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
+                                // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
+                                Vector<byte> tmp = byte0Equals;
+                                var firstEqualByteIndex = FindFirstEqualByte(ref tmp);
+
+                                if (_block == limit.Block && index + firstEqualByteIndex > limit.Index)
                                 {
-                                    _block = block;
                                     // Ensure iterator is left at limit position
                                     _index = limit.Index;
                                     return -1;
                                 }
 
-                                following -= _vectorSpan;
-                                index += _vectorSpan;
-                                continue;
+                                _index = index + firstEqualByteIndex;
+
+                                return byte0;
                             }
 
-                            _block = block;
-
-                            var firstEqualByteIndex = FindFirstEqualByte(ref byte0Equals);
-
-                            if (_block == limit.Block && index + firstEqualByteIndex > limit.Index)
+                            if (block == limit.Block && index + _vectorSpan > limit.Index)
                             {
+                                _block = block;
                                 // Ensure iterator is left at limit position
                                 _index = limit.Index;
                                 return -1;
                             }
 
-                            _index = index + firstEqualByteIndex;
-
-                            return byte0;
+                            following -= _vectorSpan;
+                            index += _vectorSpan;
                         }
 // Need unit tests to test Vector path
 #if !DEBUG
@@ -487,17 +494,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
+                            Vector<byte> tmp;
                             var data = new Vector<byte>(array, index);
-                            var byte0Equals = Vector.Equals(data, byte0Vector);
-                            var byte1Equals = Vector.Equals(data, byte1Vector);
 
+                            var byte0Equals = Vector.Equals(data, byte0Vector);
                             if (!byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                byte0Index = FindFirstEqualByte(ref byte0Equals);
+                                // Make a copy and pass it by ref.
+                                // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
+                                // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
+                                tmp = byte0Equals;
+                                byte0Index = FindFirstEqualByte(ref tmp);
                             }
+
+                            var byte1Equals = Vector.Equals(data, byte1Vector);
                             if (!byte1Equals.Equals(Vector<byte>.Zero))
                             {
-                                byte1Index = FindFirstEqualByte(ref byte1Equals);
+                                tmp = byte1Equals;
+                                byte1Index = FindFirstEqualByte(ref tmp);
                             }
 
                             if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
@@ -630,22 +644,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
+                            Vector<byte> tmp;
                             var data = new Vector<byte>(array, index);
-                            var byte0Equals = Vector.Equals(data, byte0Vector);
-                            var byte1Equals = Vector.Equals(data, byte1Vector);
-                            var byte2Equals = Vector.Equals(data, byte2Vector);
 
+                            var byte0Equals = Vector.Equals(data, byte0Vector);
                             if (!byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                byte0Index = FindFirstEqualByte(ref byte0Equals);
+                                // Make a copy and pass it by ref.
+                                // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
+                                // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
+                                tmp = byte0Equals;
+                                byte0Index = FindFirstEqualByte(ref tmp);
                             }
+
+                            var byte1Equals = Vector.Equals(data, byte1Vector);
                             if (!byte1Equals.Equals(Vector<byte>.Zero))
                             {
-                                byte1Index = FindFirstEqualByte(ref byte1Equals);
+                                tmp = byte1Equals;
+                                byte1Index = FindFirstEqualByte(ref tmp);
                             }
+
+                            var byte2Equals = Vector.Equals(data, byte2Vector);
                             if (!byte2Equals.Equals(Vector<byte>.Zero))
                             {
-                                byte2Index = FindFirstEqualByte(ref byte2Equals);
+                                tmp = byte2Equals;
+                                byte2Index = FindFirstEqualByte(ref tmp);
                             }
 
                             if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
