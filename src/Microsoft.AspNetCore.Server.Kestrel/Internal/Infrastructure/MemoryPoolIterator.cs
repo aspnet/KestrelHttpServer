@@ -268,16 +268,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     if (following >= _vectorSpan)
                     {
                         var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
-
                         if (!byte0Equals.Equals(Vector<byte>.Zero))
                         {
                             _block = block;
 
-                            // Make a copy and pass it by ref.
-                            // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
-                            // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
-                            Vector<byte> tmp = byte0Equals;
-                            var firstEqualByteIndex = FindFirstEqualByte(ref tmp);
+                            var firstEqualByteIndex = FindFirstEqualByte(byte0Equals);
                             var vectorBytesScanned = firstEqualByteIndex + 1;
 
                             if (bytesScanned + vectorBytesScanned > limit)
@@ -385,11 +380,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             {
                                 _block = block;
 
-                                // Make a copy and pass it by ref.
-                                // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
-                                // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
-                                Vector<byte> tmp = byte0Equals;
-                                var firstEqualByteIndex = FindFirstEqualByte(ref tmp);
+                                var firstEqualByteIndex = FindFirstEqualByte(byte0Equals);
 
                                 if (_block == limit.Block && index + firstEqualByteIndex > limit.Index)
                                 {
@@ -494,24 +485,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            Vector<byte> tmp;
                             var data = new Vector<byte>(array, index);
 
                             var byte0Equals = Vector.Equals(data, byte0Vector);
                             if (!byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                // Make a copy and pass it by ref.
-                                // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
-                                // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
-                                tmp = byte0Equals;
-                                byte0Index = FindFirstEqualByte(ref tmp);
+                                byte0Index = FindFirstEqualByte(byte0Equals);
                             }
 
                             var byte1Equals = Vector.Equals(data, byte1Vector);
                             if (!byte1Equals.Equals(Vector<byte>.Zero))
                             {
-                                tmp = byte1Equals;
-                                byte1Index = FindFirstEqualByte(ref tmp);
+                                byte1Index = FindFirstEqualByte(byte1Equals);
                             }
 
                             if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
@@ -644,31 +629,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
                         if (following >= _vectorSpan)
                         {
-                            Vector<byte> tmp;
                             var data = new Vector<byte>(array, index);
 
                             var byte0Equals = Vector.Equals(data, byte0Vector);
                             if (!byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                // Make a copy and pass it by ref.
-                                // As a result byte0Equals will not be marked as addr-exposed and will be reg allocated
-                                // Note that making a copy under h/w acceleration is equal to a reg-to-reg or reg-to-mem move
-                                tmp = byte0Equals;
-                                byte0Index = FindFirstEqualByte(ref tmp);
+                                byte0Index = FindFirstEqualByte(byte0Equals);
                             }
 
                             var byte1Equals = Vector.Equals(data, byte1Vector);
                             if (!byte1Equals.Equals(Vector<byte>.Zero))
                             {
-                                tmp = byte1Equals;
-                                byte1Index = FindFirstEqualByte(ref tmp);
+                                byte1Index = FindFirstEqualByte(byte1Equals);
                             }
 
                             var byte2Equals = Vector.Equals(data, byte2Vector);
                             if (!byte2Equals.Equals(Vector<byte>.Zero))
                             {
-                                tmp = byte2Equals;
-                                byte2Index = FindFirstEqualByte(ref tmp);
+                                byte2Index = FindFirstEqualByte(byte2Equals);
                             }
 
                             if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
@@ -770,9 +748,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param  name="byteEquals"></param >
         /// <returns>The first index of the result vector</returns>
         /// <exception cref="InvalidOperationException">byteEquals = 0</exception>
-        internal static int FindFirstEqualByte(ref Vector<byte> byteEquals)
+        internal static int FindFirstEqualByte(Vector<byte> byteEquals)
         {
-            if (!BitConverter.IsLittleEndian) return FindFirstEqualByteSlow(ref byteEquals);
+            if (!BitConverter.IsLittleEndian) return FindFirstEqualByteSlow(byteEquals);
 
             // Quasi-tree search
             var vector64 = Vector.AsVectorInt64(byteEquals);
@@ -794,7 +772,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         }
 
         // Internal for testing
-        internal static int FindFirstEqualByteSlow(ref Vector<byte> byteEquals)
+        internal static int FindFirstEqualByteSlow(Vector<byte> byteEquals)
         {
             // Quasi-tree search
             var vector64 = Vector.AsVectorInt64(byteEquals);
