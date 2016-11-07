@@ -960,6 +960,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var queryRead = false;
 
                 var needDecode = false;
+                var limit = ServerOptions.Limits.MaxRequestLineSize;
 
                 var state = StartLineParsingState.MethodFast;
                 while (state != StartLineParsingState.Done)
@@ -976,9 +977,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 else
                                 {
                                     scan.Skip(method.Length);
+                                    limit -= method.Length;
                                 }
 
                                 var ch = scan.Take();
+                                limit--;
                                 if (ch == ' ')
                                 {
                                     pathStart = scan;
@@ -998,6 +1001,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             do
                             {
                                 var ch = scan.Take();
+                                limit--;
 
                                 if (ch >= 'A' && ch <= 'Z')
                                 {
@@ -1034,13 +1038,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     state = StartLineParsingState.Error;
                                     break;
                                 }
-                            } while (!scan.IsEnd);
+                            } while (limit > 0 && !scan.IsEnd);
                             break;
                         case StartLineParsingState.Path:
                             var pathRead = false;
                             do
                             {
                                 var ch = scan.Take();
+                                limit--;
                                 if (ch == '?')
                                 {
                                     queryStart = scan;
@@ -1067,12 +1072,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     pathEnd = scan;
                                     pathRead = true;
                                 }
-                            } while (!scan.IsEnd);
+                            } while (limit > 0 && !scan.IsEnd);
                             break;
                         case StartLineParsingState.Query:
                             do
                             {
                                 var ch = scan.Take();
+                                limit--;
                                 if (queryRead && ch == ' ')
                                 {
                                     versionStart = scan;
@@ -1089,7 +1095,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     queryEnd = scan;
                                     queryRead = true;
                                 }
-                            } while (!scan.IsEnd);
+                            } while (limit > 0 && !scan.IsEnd);
                             break;
                         case StartLineParsingState.VersionFast:
                             {
@@ -1099,8 +1105,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     break;
                                 }
                                 scan.Skip(httpVersion.Length);
+                                limit -= httpVersion.Length;
 
                                 var ch = scan.Take();
+                                limit--;
                                 if (ch == '\r')
                                 {
                                     state = StartLineParsingState.LineBreak;
@@ -1118,6 +1126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             do
                             {
                                 var ch = scan.Take();
+                                limit--;
                                 if ((ch >= 'A' && ch <= 'Z') ||
                                     (ch >= '0' && ch <= '9') ||
                                     ch == '.' ||
@@ -1148,11 +1157,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     state = StartLineParsingState.Error;
                                     break;
                                 }
-                            } while (!scan.IsEnd);
+                            } while (limit > 0 && !scan.IsEnd);
                             break;
                         case StartLineParsingState.LineBreak:
                             {
                                 var ch = scan.Take();
+                                limit--;
                                 if (ch == '\n')
                                 {
                                     state = StartLineParsingState.Done;
@@ -1182,8 +1192,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         end = scan;
                         return RequestLineStatus.Incomplete;
                     }
+                    if (limit < 0)
+                    {
+                        end = scan;
+                        RejectRequest(RequestRejectionReason.RequestLineTooLong);
+                    }
                 }
-                
+
                 var queryString = "";
                 if (queryRead)
                 {
