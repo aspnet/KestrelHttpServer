@@ -905,6 +905,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             SocketOutput.ProducingComplete(end);
         }
 
+        private enum StartLineParsingState
+        {
+            Verb,
+            Path,
+            Query,
+            Version,
+            LineBreak,
+            Error,
+            Done,
+            VersionFast,
+            VerbFast
+        }
+
         public RequestLineStatus TakeStartLine(SocketInput input)
         {
             const int MaxInvalidRequestLineChars = 32;
@@ -912,6 +925,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var scan = input.ConsumingStart();
             var start = scan;
             var consumed = scan;
+            var begin = scan;
             var end = scan;
 
             try
@@ -924,38 +938,222 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return RequestLineStatus.Empty;
                 }
 
+
                 if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
                 {
                     ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
                 }
-
                 _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
 
-                int bytesScanned;
-                if (end.Seek(ref _vectorLFs, out bytesScanned, ServerOptions.Limits.MaxRequestLineSize) == -1)
+                MemoryPoolIterator verbEnd = start;
+                MemoryPoolIterator pathStart = start;
+                MemoryPoolIterator pathEnd = start;
+                MemoryPoolIterator queryStart = start;
+                MemoryPoolIterator versionStart = start;
+                MemoryPoolIterator queryEnd = start;
+                MemoryPoolIterator versionEnd = start;
+
+                string httpVersion = null;
+                string method = null;
+
+
+                var queryRead = false;
+
+                var needDecode = false;
+
+                var state = StartLineParsingState.VerbFast;
+                while (state != StartLineParsingState.Done)
                 {
-                    if (bytesScanned >= ServerOptions.Limits.MaxRequestLineSize)
+                    switch (state)
                     {
-                        RejectRequest(RequestRejectionReason.RequestLineTooLong);
+                        case StartLineParsingState.VerbFast:
+                            {
+                                if (!start.GetKnownMethod(out method))
+                                {
+                                    state = StartLineParsingState.Verb;
+                                    break;
+                                }
+                                else
+                                {
+                                    scan.Skip(method.Length);
+                                }
+
+                                var ch = scan.Take();
+                                if (ch == ' ')
+                                {
+                                    pathStart = scan;
+                                    state = StartLineParsingState.Path;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+
+                            }
+                            break;
+
+                        case StartLineParsingState.Verb:
+                            var verbRead = false;
+                            do
+                            {
+                                var ch = scan.Take();
+
+                                if (ch > 'A' && ch < 'Z')
+                                {
+                                    verbEnd = scan;
+                                    verbRead = true;
+                                }
+                                else if (verbRead && ch == ' ')
+                                {
+                                    pathStart = scan;
+                                    state = StartLineParsingState.Path;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+                            } while (!scan.IsEnd);
+                            break;
+                        case StartLineParsingState.Path:
+                            var pathRead = false;
+                            do
+                            {
+                                var ch = scan.Take();
+                                if (ch == '?')
+                                {
+                                    queryStart = scan;
+                                    state = StartLineParsingState.Query;
+                                    break;
+                                }
+                                else if (pathRead && ch == ' ')
+                                {
+                                    versionStart = scan;
+                                    state = StartLineParsingState.VersionFast;
+                                    break;
+                                }
+                                else if (pathRead && (ch == '\r' || ch == '\n'))
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    if (ch == '%')
+                                    {
+                                        needDecode = true;
+                                    }
+                                    pathEnd = scan;
+                                    pathRead = true;
+                                }
+                            } while (!scan.IsEnd);
+                            break;
+                        case StartLineParsingState.Query:
+                            do
+                            {
+                                var ch = scan.Take();
+                                if (queryRead && ch == ' ')
+                                {
+                                    versionStart = scan;
+                                    state = StartLineParsingState.VersionFast;
+                                    break;
+                                }
+                                else if (ch == '\r' || ch == '\n')
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    queryEnd = scan;
+                                    queryRead = true;
+                                }
+                            } while (!scan.IsEnd);
+                            break;
+                        case StartLineParsingState.VersionFast:
+                            {
+                                if (!scan.GetKnownVersion(out httpVersion))
+                                {
+                                    state = StartLineParsingState.Version;
+
+                                    break;
+                                }
+                                else
+                                {
+                                    scan.Skip(httpVersion.Length);
+                                }
+                                var ch = scan.Take();
+                                if (ch == '\r')
+                                {
+                                    state = StartLineParsingState.LineBreak;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+                            }
+                            break;
+                        case StartLineParsingState.Version:
+                            var versionRead = false;
+                            do
+                            {
+                                var ch = scan.Take();
+                                if ((ch > 'A' && ch < 'Z') ||
+                                    ch == '1' ||
+                                    ch == '.' ||
+                                    ch == '/')
+                                {
+                                    versionEnd = scan;
+                                    versionRead = true;
+                                }
+                                else if (versionRead && ch == '\r')
+                                {
+                                    state = StartLineParsingState.LineBreak;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+                            } while (!scan.IsEnd);
+                            break;
+                        case StartLineParsingState.LineBreak:
+                            {
+                                var ch = scan.Take();
+                                if (ch == '\n')
+                                {
+                                    state = StartLineParsingState.Done;
+                                    break;
+                                }
+                                else if (ch != -1)
+                                {
+                                    state = StartLineParsingState.Error;
+                                    break;
+                                }
+                                break;
+                            }
+
+                        case StartLineParsingState.Error:
+                            RejectRequest(RequestRejectionReason.InvalidRequestLine);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
-                    else
+                    if (scan.IsEnd && (state != StartLineParsingState.Done && state != StartLineParsingState.Error))
                     {
                         return RequestLineStatus.Incomplete;
                     }
                 }
-                end.Take();
 
-                string method;
-                var begin = scan;
-                if (!begin.GetKnownMethod(out method))
+                if (method == null)
                 {
-                    if (scan.Seek(ref _vectorSpaces, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-
-                    method = begin.GetAsciiString(scan);
+                    method = begin.GetAsciiString(verbEnd);
 
                     if (method == null)
                     {
@@ -974,66 +1172,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                     }
                 }
-                else
-                {
-                    scan.Skip(method.Length);
-                }
 
-                scan.Take();
-                begin = scan;
-                var needDecode = false;
-                var chFound = scan.Seek(ref _vectorSpaces, ref _vectorQuestionMarks, ref _vectorPercentages, ref end);
-                if (chFound == -1)
+                if (httpVersion == null)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                }
-                else if (chFound == '%')
-                {
-                    needDecode = true;
-                    chFound = scan.Seek(ref _vectorSpaces, ref _vectorQuestionMarks, ref end);
-                    if (chFound == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-                }
-
-                var pathBegin = begin;
-                var pathEnd = scan;
-
-                var queryString = "";
-                if (chFound == '?')
-                {
-                    begin = scan;
-                    if (scan.Seek(ref _vectorSpaces, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-                    queryString = begin.GetAsciiString(scan);
-                }
-
-                var queryEnd = scan;
-
-                if (pathBegin.Peek() == ' ')
-                {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                }
-
-                scan.Take();
-                begin = scan;
-                if (scan.Seek(ref _vectorCRs, ref end) == -1)
-                {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                }
-
-                string httpVersion;
-                if (!begin.GetKnownVersion(out httpVersion))
-                {
-                    httpVersion = begin.GetAsciiStringEscaped(scan, 9);
+                    httpVersion = versionStart.GetAsciiStringEscaped(verbEnd, 9);
 
                     if (httpVersion == string.Empty)
                     {
@@ -1046,12 +1188,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
 
-                scan.Take(); // consume CR
-                if (scan.Take() != '\n')
+                var queryString = "";
+                if (queryRead)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    queryString = queryStart.GetAsciiString(queryEnd);
                 }
+
 
                 // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
                 // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
@@ -1061,16 +1203,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (needDecode)
                 {
                     // Read raw target before mutating memory.
-                    rawTarget = pathBegin.GetAsciiString(queryEnd);
+                    rawTarget = pathStart.GetAsciiString(queryEnd);
 
                     // URI was encoded, unescape and then parse as utf8
-                    pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
-                    requestUrlPath = pathBegin.GetUtf8String(pathEnd);
+                    pathEnd = UrlPathDecoder.Unescape(pathStart, pathEnd);
+                    requestUrlPath = pathStart.GetUtf8String(pathEnd);
                 }
                 else
                 {
                     // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(pathEnd);
+                    requestUrlPath = pathStart.GetAsciiString(pathEnd);
 
                     if (queryString.Length == 0)
                     {
@@ -1080,7 +1222,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else
                     {
-                        rawTarget = pathBegin.GetAsciiString(queryEnd);
+                        rawTarget = pathStart.GetAsciiString(queryEnd);
                     }
                 }
 
