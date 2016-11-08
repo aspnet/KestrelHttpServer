@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
@@ -60,6 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public int Index => _index;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Take()
         {
             var block = _block;
@@ -77,6 +79,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 return block.Array[index];
             }
 
+            return TakeSlow(wasLastBlock, block);
+        }
+
+        private int TakeSlow(bool wasLastBlock, MemoryPoolBlock block)
+        {
+            int index;
             do
             {
                 if (wasLastBlock)
@@ -96,6 +104,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     _block = block;
                     _index = index + 1;
                     return block.Array[index];
+                }
+            } while (true);
+        }
+
+        public bool TryTakeSegment(out ArraySegment<byte> bytes)
+        {
+            bytes = default(ArraySegment<byte>);
+            var block = _block;
+
+            if (block == null)
+            {
+                return false;
+            }
+
+            var start = _index;
+            var end = block.End;
+            var wasLastBlock = block.Next == null;
+
+            if (start < block.End)
+            {
+                bytes = new ArraySegment<byte>(block.Array, start, end - start);
+                _index = end;
+                return true;
+            }
+
+            do
+            {
+                if (wasLastBlock)
+                {
+                    return false;
+                }
+                else
+                {
+                    block = block.Next;
+                    start = block.Start;
+                    end = block.End;
+                }
+
+                wasLastBlock = block.Next == null;
+
+                if (end < block.End)
+                {
+                    _block = block;
+                    _index = end + 1;
+                    bytes =  new ArraySegment<byte>(block.Array, start, start - end);
+                    return true;
                 }
             } while (true);
         }
@@ -143,6 +197,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Peek()
         {
             var block = _block;
@@ -159,6 +214,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 return block.Array[index];
             }
 
+            return PeekSlow(wasLastBlock, block);
+        }
+
+        private static int PeekSlow(bool wasLastBlock, MemoryPoolBlock block)
+        {
+            int index;
             do
             {
                 if (wasLastBlock)

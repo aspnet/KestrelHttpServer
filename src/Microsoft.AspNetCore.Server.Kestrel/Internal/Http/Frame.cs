@@ -918,6 +918,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             MethodFast
         }
 
+        public int Peek(ArraySegment<byte> segment, ref int index)
+        {
+            if (index >= segment.Count)
+            {
+                return -1;
+            }
+            else
+            {
+                return segment.Array[segment.Offset + index];
+            }
+        }
+
         public RequestLineStatus TakeStartLine(SocketInput input)
         {
             const int MaxInvalidRequestLineChars = 32;
@@ -937,7 +949,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     return RequestLineStatus.Empty;
                 }
-
 
                 if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
                 {
