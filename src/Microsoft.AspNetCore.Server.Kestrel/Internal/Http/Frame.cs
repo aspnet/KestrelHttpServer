@@ -1014,7 +1014,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 var ch = scan.Take();
                                 limit--;
 
-                                if (ch >= 'A' && ch <= 'Z')
+                                if ((ch >= 'A' && ch <= 'Z') ||
+                                    (ch >= 'a' && ch <= 'z'))
                                 {
                                     verbEnd = scan;
                                     verbRead = true;
@@ -1055,6 +1056,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             var pathRead = false;
                             do
                             {
+                                var previous = scan;
                                 var ch = scan.Take();
                                 limit--;
                                 if (ch == '?')
@@ -1065,6 +1067,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 }
                                 else if (pathRead && ch == ' ')
                                 {
+                                    queryEnd = previous;
                                     versionStart = scan;
                                     state = StartLineParsingState.VersionFast;
                                     break;
@@ -1139,6 +1142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 var ch = scan.Take();
                                 limit--;
                                 if ((ch >= 'A' && ch <= 'Z') ||
+                                    (ch >= 'a' && ch <= 'z') ||
                                     (ch >= '0' && ch <= '9') ||
                                     ch == '.' ||
                                     ch == '/')
@@ -1424,6 +1428,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 do
                                 {
                                     var ch = scan.Take();
+                                    _remainingRequestHeadersBytesAllowed--;
                                     if (ch == ' ' || ch == '\t')
                                     {
                                         RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
@@ -1449,11 +1454,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     if (ch == ' ' || ch == '\t')
                                     {
                                         scan.Take();
+                                        valueStart = scan;
+                                        _remainingRequestHeadersBytesAllowed--;
                                     }
                                     else if (ch != -1)
                                     {
                                         state = HeaderParsingState.Value;
-                                        valueStart = scan;
                                         break;
                                     }
                                 } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
