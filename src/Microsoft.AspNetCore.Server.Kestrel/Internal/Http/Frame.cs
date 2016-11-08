@@ -1392,8 +1392,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             case HeaderParsingState.End:
                                 {
                                     scan.Take();
-
                                     var ch = scan.Take();
+                                    _remainingRequestHeadersBytesAllowed-=2;
 
                                     if (ch == -1)
                                     {
@@ -1438,7 +1438,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         nameRead = true;
                                         nameEnd = scan;
                                     }
-                                } while (!scan.IsEnd);
+                                } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
                                 break;
                             case HeaderParsingState.Seperator:
                                 break;
@@ -1456,7 +1456,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         valueStart = scan;
                                         break;
                                     }
-                                } while (!scan.IsEnd);
+                                } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
                                 break;
                             case HeaderParsingState.Value:
                                 var valueRead = false;
@@ -1464,6 +1464,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 do
                                 {
                                     var ch = scan.Take();
+                                    _remainingRequestHeadersBytesAllowed--;
                                     if (ch == '\r')
                                     {
                                         state = HeaderParsingState.Newline;
@@ -1482,11 +1483,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                             valueEnd = scan;
                                         }
                                     }
-                                } while (!scan.IsEnd);
+                                } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
                                 break;
                             case HeaderParsingState.Newline:
                                 {
                                     var ch = scan.Take();
+                                    _remainingRequestHeadersBytesAllowed--;
                                     if (ch == '\n')
                                     {
                                         ch = scan.Peek();
@@ -1537,6 +1539,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             return false;
                         }
+                        if (_remainingRequestHeadersBytesAllowed < 0)
+                        {
+                            RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
+                        }
                     }
 
                     var name = nameStart.GetArraySegment(nameEnd);
@@ -1544,8 +1550,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     consumed = scan;
                     requestHeaders.Append(name.Array, name.Offset, name.Count, value);
-
-                    _remainingRequestHeadersBytesAllowed -= bytesScanned;
                     _requestHeadersParsed++;
                 }
 
