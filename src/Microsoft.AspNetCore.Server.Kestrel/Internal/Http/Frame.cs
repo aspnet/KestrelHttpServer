@@ -1049,7 +1049,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     state = StartLineParsingState.Error;
                                     break;
                                 }
-                            } while (limit > 0 && !scan.IsEnd);
+                            } while (!scan.IsEnd && limit > 0);
                             break;
                         case StartLineParsingState.Path:
                             var pathRead = false;
@@ -1083,7 +1083,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     pathEnd = scan;
                                     pathRead = true;
                                 }
-                            } while (limit > 0 && !scan.IsEnd);
+                            } while (!scan.IsEnd && limit > 0);
                             break;
                         case StartLineParsingState.Query:
                             do
@@ -1106,7 +1106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     queryEnd = scan;
                                     queryRead = true;
                                 }
-                            } while (limit > 0 && !scan.IsEnd);
+                            } while (!scan.IsEnd && limit > 0);
                             break;
                         case StartLineParsingState.VersionFast:
                             {
@@ -1168,7 +1168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     state = StartLineParsingState.Error;
                                     break;
                                 }
-                            } while (limit > 0 && !scan.IsEnd);
+                            } while (!scan.IsEnd && limit > 0);
                             break;
                         case StartLineParsingState.LineBreak:
                             {
@@ -1383,9 +1383,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         break;
                                     }
                                     else if (ch == ' ' || ch == '\t')
-                                        {
-                                            RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
-                                        }
+                                    {
+                                        RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
+                                    }
                                     state = HeaderParsingState.Name;
                                 }
                                 break;
@@ -1545,7 +1545,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     consumed = scan;
                     requestHeaders.Append(name.Array, name.Offset, name.Count, value);
 
-                    //_remainingRequestHeadersBytesAllowed -= bytesScanned;
+                    _remainingRequestHeadersBytesAllowed -= bytesScanned;
                     _requestHeadersParsed++;
                 }
 
