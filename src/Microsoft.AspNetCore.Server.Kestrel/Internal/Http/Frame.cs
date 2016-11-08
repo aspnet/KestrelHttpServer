@@ -1327,6 +1327,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
+        public enum HeaderParsingState
+        {
+            Start,
+            Name,
+            Seperator,
+            Spaces,
+            Value,
+            End,
+            Newline,
+            Done
+        }
+
         public bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
         {
             var scan = input.ConsumingStart();
@@ -1334,152 +1346,195 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var end = scan;
             try
             {
-                while (!end.IsEnd)
+
+                while (!scan.IsEnd)
                 {
-                    var ch = end.Peek();
-                    if (ch == -1)
-                    {
-                        return false;
-                    }
-                    else if (ch == '\r')
-                    {
-                        // Check for final CRLF.
-                        end.Take();
-                        ch = end.Take();
+                    var nameStart = scan;
+                    var nameEnd = scan;
+                    var valueStart = scan;
+                    var valueEnd = scan;
 
-                        if (ch == -1)
+                    var state = HeaderParsingState.Start;
+                    while (state != HeaderParsingState.Done)
+                    {
+                        switch (state)
+                        {
+                            case HeaderParsingState.Start:
+                                {
+                                    var ch = scan.Peek();
+                                    if (ch == -1)
+                                    {
+                                        return false;
+                                    }
+                                    else if (ch == '\r')
+                                    {
+                                        state = HeaderParsingState.End;
+                                        break;
+                                    }
+                                    else if (ch == ' ' || ch == '\t')
+                                        {
+                                            RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
+                                        }
+                                    state = HeaderParsingState.Name;
+                                }
+                                break;
+                            case HeaderParsingState.End:
+                                {
+                                    scan.Take();
+
+                                    var ch = scan.Take();
+
+                                    if (ch == -1)
+                                    {
+                                        return false;
+                                    }
+                                    else if (ch == '\n')
+                                    {
+                                        ConnectionControl.CancelTimeout();
+                                        end = scan;
+                                        consumed = scan;
+                                        return true;
+                                    }
+
+                                    // Headers don't end in CRLF line.
+                                    RejectRequest(RequestRejectionReason.HeadersCorruptedInvalidHeaderSequence);
+                                }
+                                break;
+                            case HeaderParsingState.Name:
+                                bool nameRead = false;
+
+                                // If we've parsed the max allowed numbers of headers and we're starting a new
+                                // one, we've gone over the limit.
+                                if (_requestHeadersParsed == ServerOptions.Limits.MaxRequestHeaderCount)
+                                {
+                                    RejectRequest(RequestRejectionReason.TooManyHeaders);
+                                }
+
+                                do
+                                {
+                                    var ch = scan.Take();
+                                    if (ch == ' ' || ch == '\t')
+                                    {
+                                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
+                                    }
+                                    else if (nameRead && ch == ':')
+                                    {
+                                        state = HeaderParsingState.Spaces;
+                                        break;
+                                    }
+                                    else if (ch != -1)
+                                    {
+                                        nameRead = true;
+                                        nameEnd = scan;
+                                    }
+                                } while (!scan.IsEnd);
+                                break;
+                            case HeaderParsingState.Seperator:
+                                break;
+                            case HeaderParsingState.Spaces:
+                                do
+                                {
+                                    var ch = scan.Peek();
+                                    if (ch == ' ' || ch == '\t')
+                                    {
+                                        scan.Take();
+                                    }
+                                    else if (ch != -1)
+                                    {
+                                        state = HeaderParsingState.Value;
+                                        valueStart = scan;
+                                        break;
+                                    }
+                                } while (!scan.IsEnd);
+                                break;
+                            case HeaderParsingState.Value:
+                                var valueRead = false;
+                                valueEnd = scan;
+                                do
+                                {
+                                    var ch = scan.Take();
+                                    if (ch == '\r')
+                                    {
+                                        state = HeaderParsingState.Newline;
+                                        break;
+                                    }
+                                    else if (valueRead && ch == ':')
+                                    {
+                                        state = HeaderParsingState.Spaces;
+                                        break;
+                                    }
+                                    else if (ch != -1)
+                                    {
+                                        valueRead = true;
+                                        if (ch != ' ' && ch != '\t')
+                                        {
+                                            valueEnd = scan;
+                                        }
+                                    }
+                                } while (!scan.IsEnd);
+                                break;
+                            case HeaderParsingState.Newline:
+                                {
+                                    var ch = scan.Take();
+                                    if (ch == '\n')
+                                    {
+                                        ch = scan.Peek();
+                                        if (ch == -1)
+                                        {
+                                            end = scan;
+                                            return false;
+                                        }
+                                        else if (ch == ' ' || ch == '\t')
+                                        {
+                                            // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
+                                            //
+                                            // Historically, HTTP header field values could be extended over
+                                            // multiple lines by preceding each extra line with at least one space
+                                            // or horizontal tab (obs-fold).  This specification deprecates such
+                                            // line folding except within the message/http media type
+                                            // (Section 8.3.1).  A sender MUST NOT generate a message that includes
+                                            // line folding (i.e., that has any field-value that contains a match to
+                                            // the obs-fold rule) unless the message is intended for packaging
+                                            // within the message/http media type.
+                                            //
+                                            // A server that receives an obs-fold in a request message that is not
+                                            // within a message/http container MUST either reject the message by
+                                            // sending a 400 (Bad Request), preferably with a representation
+                                            // explaining that obsolete line folding is unacceptable, or replace
+                                            // each received obs-fold with one or more SP octets prior to
+                                            // interpreting the field value or forwarding the message downstream.
+                                            RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
+                                        }
+                                        state = HeaderParsingState.Done;
+                                    }
+                                    else if (ch != -1)
+                                    {
+                                        RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                                    }
+                                    else
+                                    {
+                                        return false;
+                                    }
+                                }
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException();
+                        }
+
+                        end = scan;
+                        if (scan.IsEnd && state != HeaderParsingState.Done)
                         {
                             return false;
                         }
-                        else if (ch == '\n')
-                        {
-                            ConnectionControl.CancelTimeout();
-                            consumed = end;
-                            return true;
-                        }
-
-                        // Headers don't end in CRLF line.
-                        RejectRequest(RequestRejectionReason.HeadersCorruptedInvalidHeaderSequence);
-                    }
-                    else if (ch == ' ' || ch == '\t')
-                    {
-                        RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
                     }
 
-                    // If we've parsed the max allowed numbers of headers and we're starting a new
-                    // one, we've gone over the limit.
-                    if (_requestHeadersParsed == ServerOptions.Limits.MaxRequestHeaderCount)
-                    {
-                        RejectRequest(RequestRejectionReason.TooManyHeaders);
-                    }
-
-                    int bytesScanned;
-                    if (end.Seek(ref _vectorLFs, out bytesScanned, _remainingRequestHeadersBytesAllowed) == -1)
-                    {
-                        if (bytesScanned >= _remainingRequestHeadersBytesAllowed)
-                        {
-                            RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
-
-                    var beginName = scan;
-                    if (scan.Seek(ref _vectorColons, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
-                    }
-                    var endName = scan;
-
-                    scan.Take();
-
-                    var validateName = beginName;
-                    if (validateName.Seek(ref _vectorSpaces, ref _vectorTabs, ref endName) != -1)
-                    {
-                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
-                    }
-
-                    var beginValue = scan;
-                    ch = scan.Take();
-
-                    while (ch == ' ' || ch == '\t')
-                    {
-                        beginValue = scan;
-                        ch = scan.Take();
-                    }
-
-                    scan = beginValue;
-                    if (scan.Seek(ref _vectorCRs, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
-                    }
-
-                    scan.Take(); // we know this is '\r'
-                    ch = scan.Take(); // expecting '\n'
-                    end = scan;
-
-                    if (ch != '\n')
-                    {
-                        RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
-                    }
-
-                    var next = scan.Peek();
-                    if (next == -1)
-                    {
-                        return false;
-                    }
-                    else if (next == ' ' || next == '\t')
-                    {
-                        // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
-                        //
-                        // Historically, HTTP header field values could be extended over
-                        // multiple lines by preceding each extra line with at least one space
-                        // or horizontal tab (obs-fold).  This specification deprecates such
-                        // line folding except within the message/http media type
-                        // (Section 8.3.1).  A sender MUST NOT generate a message that includes
-                        // line folding (i.e., that has any field-value that contains a match to
-                        // the obs-fold rule) unless the message is intended for packaging
-                        // within the message/http media type.
-                        //
-                        // A server that receives an obs-fold in a request message that is not
-                        // within a message/http container MUST either reject the message by
-                        // sending a 400 (Bad Request), preferably with a representation
-                        // explaining that obsolete line folding is unacceptable, or replace
-                        // each received obs-fold with one or more SP octets prior to
-                        // interpreting the field value or forwarding the message downstream.
-                        RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
-                    }
-
-                    // Trim trailing whitespace from header value by repeatedly advancing to next
-                    // whitespace or CR.
-                    //
-                    // - If CR is found, this is the end of the header value.
-                    // - If whitespace is found, this is the _tentative_ end of the header value.
-                    //   If non-whitespace is found after it and it's not CR, seek again to the next
-                    //   whitespace or CR for a new (possibly tentative) end of value.
-                    var ws = beginValue;
-                    var endValue = scan;
-                    do
-                    {
-                        ws.Seek(ref _vectorSpaces, ref _vectorTabs, ref _vectorCRs);
-                        endValue = ws;
-
-                        ch = ws.Take();
-                        while (ch == ' ' || ch == '\t')
-                        {
-                            ch = ws.Take();
-                        }
-                    } while (ch != '\r');
-
-                    var name = beginName.GetArraySegment(endName);
-                    var value = beginValue.GetAsciiString(endValue);
+                    var name = nameStart.GetArraySegment(nameEnd);
+                    var value = valueStart.GetAsciiString(valueEnd);
 
                     consumed = scan;
                     requestHeaders.Append(name.Array, name.Offset, name.Count, value);
 
-                    _remainingRequestHeadersBytesAllowed -= bytesScanned;
+                    //_remainingRequestHeadersBytesAllowed -= bytesScanned;
                     _requestHeadersParsed++;
                 }
 
