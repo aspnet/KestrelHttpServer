@@ -960,6 +960,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var needDecode = false;
                 var limit = ServerOptions.Limits.MaxRequestLineSize;
+                int ch;
 
                 var state = StartLineParsingState.MethodFast;
                 while (state != StartLineParsingState.Done)
@@ -967,39 +968,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     switch (state)
                     {
                         case StartLineParsingState.MethodFast:
+                            if (!scan.GetKnownMethod(out method))
                             {
-                                if (!scan.GetKnownMethod(out method))
-                                {
-                                    state = StartLineParsingState.Method;
-                                    break;
-                                }
-                                else
-                                {
-                                    scan.Skip(method.Length);
-                                    limit -= method.Length;
-                                }
-
-                                var ch = scan.Take();
-                                limit--;
-                                if (ch == ' ')
-                                {
-                                    pathStart = scan;
-                                    state = StartLineParsingState.Path;
-                                    break;
-                                }
-                                else if (ch != -1)
-                                {
-                                    state = StartLineParsingState.Error;
-                                    break;
-                                }
+                                state = StartLineParsingState.Method;
+                                break;
                             }
+                            else
+                            {
+                                scan.Skip(method.Length);
+                                limit -= method.Length;
+                            }
+
+                            ch = scan.Take();
+                            limit--;
+                            if (ch == ' ')
+                            {
+                                pathStart = scan;
+                                state = StartLineParsingState.Path;
+                            }
+                            else if (ch != -1)
+                            {
+                                state = StartLineParsingState.Error;
+                            }
+
                             break;
 
                         case StartLineParsingState.Method:
                             var verbRead = false;
                             do
                             {
-                                var ch = scan.Take();
+                                ch = scan.Take();
                                 limit--;
 
                                 if ((ch >= 'A' && ch <= 'Z') ||
@@ -1015,7 +1013,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     if (method == null)
                                     {
                                         RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                                            Log.IsEnabled(LogLevel.Information)
+                                                ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars)
+                                                : string.Empty);
                                     }
 
                                     // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
@@ -1025,7 +1025,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         if (!IsValidTokenChar(method[i]))
                                         {
                                             RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                                                Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                                                Log.IsEnabled(LogLevel.Information)
+                                                    ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars)
+                                                    : string.Empty);
                                         }
                                     }
 
@@ -1045,7 +1047,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             do
                             {
                                 var previous = scan;
-                                var ch = scan.Take();
+                                ch = scan.Take();
                                 limit--;
                                 if (ch == '?')
                                 {
@@ -1079,7 +1081,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         case StartLineParsingState.Query:
                             do
                             {
-                                var ch = scan.Take();
+                                ch = scan.Take();
                                 limit--;
                                 if (queryRead && ch == ' ')
                                 {
@@ -1100,34 +1102,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             } while (!scan.IsEnd && limit > 0);
                             break;
                         case StartLineParsingState.VersionFast:
+                        {
+                            if (!scan.GetKnownVersion(out httpVersion))
                             {
-                                if (!scan.GetKnownVersion(out httpVersion))
-                                {
-                                    state = StartLineParsingState.Version;
-                                    break;
-                                }
-                                scan.Skip(httpVersion.Length);
-                                limit -= httpVersion.Length;
-
-                                var ch = scan.Take();
-                                limit--;
-                                if (ch == '\r')
-                                {
-                                    state = StartLineParsingState.LineBreak;
-                                    break;
-                                }
-                                else if (ch != -1)
-                                {
-                                    state = StartLineParsingState.Error;
-                                    break;
-                                }
+                                state = StartLineParsingState.Version;
+                                break;
                             }
+                            scan.Skip(httpVersion.Length);
+                            limit -= httpVersion.Length;
+
+                            ch = scan.Take();
+                            limit--;
+                            if (ch == '\r')
+                            {
+                                state = StartLineParsingState.LineBreak;
+                            }
+                            else if (ch != -1)
+                            {
+                                state = StartLineParsingState.Error;
+                            }
+                        }
                             break;
                         case StartLineParsingState.Version:
                             var versionRead = false;
                             do
                             {
-                                var ch = scan.Take();
+                                ch = scan.Take();
                                 limit--;
                                 if ((ch >= 'A' && ch <= 'Z') ||
                                     (ch >= 'a' && ch <= 'z') ||
@@ -1145,7 +1145,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     if (httpVersion == string.Empty)
                                     {
                                         RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                                            Log.IsEnabled(LogLevel.Information)
+                                                ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars)
+                                                : string.Empty);
                                     }
                                     else
                                     {
@@ -1163,21 +1165,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             } while (!scan.IsEnd && limit > 0);
                             break;
                         case StartLineParsingState.LineBreak:
+                        {
+                            ch = scan.Take();
+                            limit--;
+                            if (ch == '\n')
                             {
-                                var ch = scan.Take();
-                                limit--;
-                                if (ch == '\n')
-                                {
-                                    state = StartLineParsingState.Done;
-                                    break;
-                                }
-                                else if (ch != -1)
-                                {
-                                    state = StartLineParsingState.Error;
-                                    break;
-                                }
-                                break;
+                                state = StartLineParsingState.Done;
                             }
+                            else if (ch != -1)
+                            {
+                                state = StartLineParsingState.Error;
+                            }
+                            break;
+                        }
 
                         case StartLineParsingState.Error:
                             var line = start;
@@ -1185,7 +1185,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                             line.Seek(ref _vectorLFs, out bytes, ServerOptions.Limits.MaxRequestLineSize);
                             line.Skip(1);
-                            RejectRequest(RequestRejectionReason.InvalidRequestLine, start.GetAsciiStringEscaped(line, MaxInvalidRequestLineChars));
+                            RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                                start.GetAsciiStringEscaped(line, MaxInvalidRequestLineChars));
                             break;
                         default:
                             throw new ArgumentOutOfRangeException();
@@ -1207,7 +1208,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     queryString = queryStart.GetAsciiString(queryEnd);
                 }
-
 
                 // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
                 // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
@@ -1385,7 +1385,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 {
                                     scan.Take();
                                     var ch = scan.Take();
-                                    limit-=2;
+                                    limit -= 2;
 
                                     if (ch == -1)
                                     {
