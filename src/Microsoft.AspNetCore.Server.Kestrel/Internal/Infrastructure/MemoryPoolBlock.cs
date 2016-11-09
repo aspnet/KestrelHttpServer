@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// the End is guaranteed to be equal to Array.Offset. The value of Start may be assigned anywhere between Data.Offset and
         /// Data.Offset + Data.Count, and must be equal to or less than End.
         /// </summary>
-        public volatile int End;
+        public int End;
 
         /// <summary>
         /// Reference to the next block of data when the overall "active" bytes spans multiple blocks. At the point when the block is
