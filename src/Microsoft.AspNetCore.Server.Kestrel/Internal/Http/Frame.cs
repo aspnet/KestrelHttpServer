@@ -1346,7 +1346,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             Start,
             Name,
-            Seperator,
             Spaces,
             Value,
             End,
@@ -1361,7 +1360,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var end = scan;
             try
             {
-
                 while (!scan.IsEnd)
                 {
                     var nameStart = scan;
@@ -1370,6 +1368,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     var valueEnd = scan;
 
                     var state = HeaderParsingState.Start;
+                    var limit = _remainingRequestHeadersBytesAllowed;
+
                     while (state != HeaderParsingState.Done)
                     {
                         switch (state)
@@ -1397,7 +1397,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 {
                                     scan.Take();
                                     var ch = scan.Take();
-                                    _remainingRequestHeadersBytesAllowed-=2;
+                                    limit-=2;
 
                                     if (ch == -1)
                                     {
@@ -1428,7 +1428,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 do
                                 {
                                     var ch = scan.Take();
-                                    _remainingRequestHeadersBytesAllowed--;
+                                    limit--;
                                     if (ch == ' ' || ch == '\t')
                                     {
                                         RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
@@ -1443,9 +1443,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         nameRead = true;
                                         nameEnd = scan;
                                     }
-                                } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
-                                break;
-                            case HeaderParsingState.Seperator:
+                                } while (!scan.IsEnd && limit > 0);
                                 break;
                             case HeaderParsingState.Spaces:
                                 do
@@ -1455,46 +1453,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     {
                                         scan.Take();
                                         valueStart = scan;
-                                        _remainingRequestHeadersBytesAllowed--;
+                                        limit--;
                                     }
                                     else if (ch != -1)
                                     {
+                                        valueStart = scan;
                                         state = HeaderParsingState.Value;
                                         break;
                                     }
-                                } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
+                                } while (!scan.IsEnd && limit > 0);
                                 break;
                             case HeaderParsingState.Value:
-                                var valueRead = false;
                                 valueEnd = scan;
                                 do
                                 {
                                     var ch = scan.Take();
-                                    _remainingRequestHeadersBytesAllowed--;
+                                    limit--;
                                     if (ch == '\r')
                                     {
                                         state = HeaderParsingState.Newline;
                                         break;
                                     }
-                                    else if (valueRead && ch == ':')
-                                    {
-                                        state = HeaderParsingState.Spaces;
-                                        break;
-                                    }
                                     else if (ch != -1)
                                     {
-                                        valueRead = true;
+                                        //valueRead = true;
                                         if (ch != ' ' && ch != '\t')
                                         {
                                             valueEnd = scan;
                                         }
                                     }
-                                } while (!scan.IsEnd && _remainingRequestHeadersBytesAllowed > 0);
+                                } while (!scan.IsEnd && limit > 0);
                                 break;
                             case HeaderParsingState.Newline:
                                 {
                                     var ch = scan.Take();
-                                    _remainingRequestHeadersBytesAllowed--;
+                                    limit--;
                                     if (ch == '\n')
                                     {
                                         ch = scan.Peek();
@@ -1545,7 +1538,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             return false;
                         }
-                        if (_remainingRequestHeadersBytesAllowed < 0)
+                        if (limit < 0)
                         {
                             RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
                         }
@@ -1556,6 +1549,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     consumed = scan;
                     requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                    _remainingRequestHeadersBytesAllowed = limit;
                     _requestHeadersParsed++;
                 }
 
