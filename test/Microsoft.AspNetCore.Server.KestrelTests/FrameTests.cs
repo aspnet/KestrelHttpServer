@@ -1162,11 +1162,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var frame = new Frame<object>(application: null, context: connectionContext);
                 frame.Reset();
 
-                var requestLineBytes = Encoding.ASCII.GetBytes("GET / HTTP/1.1AB\r\n");
+                var requestLineBytes = Encoding.ASCII.GetBytes("GET / HTTP/1.1ab\r\n");
                 socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
 
                 var exception = Assert.Throws<BadHttpRequestException>(() => frame.TakeStartLine(socketInput));
-                Assert.Equal("Unrecognized HTTP version: HTTP/1.1A...", exception.Message);
+                Assert.Equal("Unrecognized HTTP version: HTTP/1.1a...", exception.Message);
                 Assert.Equal(505, exception.StatusCode);
             }
         }
