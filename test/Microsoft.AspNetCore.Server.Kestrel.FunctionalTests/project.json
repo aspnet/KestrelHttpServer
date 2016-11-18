@@ -2,29 +2,29 @@
   "version": "1.1.0-*",
   "dependencies": {
     "dotnet-test-xunit": "2.2.0-*",
-    "Microsoft.AspNetCore.Http.Abstractions": "1.1.0-*",
-    "Microsoft.AspNetCore.Server.Kestrel": "1.1.0-*",
-    "Microsoft.AspNetCore.Server.Kestrel.Https": "1.1.0-*",
-    "Microsoft.AspNetCore.Testing": "1.1.0-*",
-    "Microsoft.Extensions.Logging.Testing": "1.1.0-*",
-    "Moq": "4.6.36-*",
-    "Newtonsoft.Json": "9.0.1",
-    "xunit": "2.2.0-*",
+    "Microsoft.AspNetCore.Http.Abstractions": "1.1.0",
+    "Microsoft.AspNetCore.Server.Kestrel": "1.1.0",
+    "Microsoft.AspNetCore.Server.Kestrel.Https": "1.1.0",
+    "Microsoft.AspNetCore.Testing": "1.1.0-rtm-22752",
     "Microsoft.CodeCoverage": {
       "type": "build",
       "version": "1.0.1"
-    }
+    },
+    "Microsoft.Extensions.Logging.Testing": "1.1.0-rtm-22752",
+    "Moq": "4.6.36-*",
+    "Newtonsoft.Json": "9.0.1",
+    "xunit": "2.2.0-*"
   },
   "frameworks": {
     "netcoreapp1.1": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.1.0-*",
+          "version": "1.1.0",
           "type": "platform"
         },
-        "System.Net.Http.WinHttpHandler": "4.3.0-*",
-        "System.Net.NetworkInformation": "4.3.0-*",
-        "System.Runtime.Serialization.Primitives": "4.3.0-*"
+        "System.Net.Http.WinHttpHandler": "4.3.0",
+        "System.Net.NetworkInformation": "4.3.0",
+        "System.Runtime.Serialization.Primitives": "4.3.0"
       },
       "imports": "dnxcore50"
     },
