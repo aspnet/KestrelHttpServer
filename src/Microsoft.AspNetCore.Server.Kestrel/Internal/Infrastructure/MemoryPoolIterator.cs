@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
@@ -60,6 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public int Index => _index;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Take()
         {
             var block = _block;
@@ -77,6 +79,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 return block.Array[index];
             }
 
+            return TakeSlow(wasLastBlock, block);
+        }
+
+        private int TakeSlow(bool wasLastBlock, MemoryPoolBlock block)
+        {
+            int index;
             do
             {
                 if (wasLastBlock)
@@ -143,6 +151,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Peek()
         {
             var block = _block;
@@ -159,6 +168,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 return block.Array[index];
             }
 
+            return PeekSlow(wasLastBlock, block);
+        }
+
+        private static int PeekSlow(bool wasLastBlock, MemoryPoolBlock block)
+        {
+            int index;
             do
             {
                 if (wasLastBlock)

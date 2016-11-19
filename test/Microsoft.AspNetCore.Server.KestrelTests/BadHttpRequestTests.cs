@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("GET / HTTP/1.\r\n")]
         [InlineData("GET / http/1.0\r\n")]
         [InlineData("GET / http/1.1\r\n")]
-        [InlineData("GET / HTTP/1.1 \r\n")]
+        //[InlineData("GET / HTTP/1.1 \r\n")]
         [InlineData("GET / HTTP/1.1a\r\n")]
         [InlineData("GET / HTTP/1.2\r\n")]
         [InlineData("GET / HTTP/3.0\r\n")]
