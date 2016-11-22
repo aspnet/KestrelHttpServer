@@ -46,8 +46,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             _connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketInput = _socketInput,
-                SocketOutput = new MockSocketOuptut(),
+                Input = _socketInput,
+                Output = new MockSocketOuptut(),
                 ConnectionControl = Mock.Of<IConnectionControl>()
             };
 
