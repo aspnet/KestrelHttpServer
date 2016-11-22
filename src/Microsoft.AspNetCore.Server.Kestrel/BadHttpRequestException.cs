@@ -78,6 +78,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 case RequestRejectionReason.RequestTimeout:
                     ex = new BadHttpRequestException("Request timed out.", 408);
                     break;
+                case RequestRejectionReason.MissingHostHeader:
+                    ex = new BadHttpRequestException("Missing Host header.", 400);
+                    break;
+                case RequestRejectionReason.MultipleHostHeaders:
+                    ex = new BadHttpRequestException("Request contains multiple Host headers.", 400);
+                    break;
                 default:
                     ex = new BadHttpRequestException("Bad request.", 400);
                     break;
