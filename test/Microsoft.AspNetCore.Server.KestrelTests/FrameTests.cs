@@ -833,7 +833,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var serviceContext = new ServiceContext
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
-                ServerOptions = new KestrelServerOptions()
+                ServerOptions = new KestrelServerOptions(),
+                Log = new TestKestrelTrace()
             };
             var listenerContext = new ListenerContext(serviceContext)
             {
@@ -846,6 +847,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
+
+            frame.RequestHeaders.Append("Host", "localhost");
 
             var messageBody = MessageBody.For(HttpVersion.Http11, (FrameRequestHeaders)frame.RequestHeaders, frame);
             frame.InitializeStreams(messageBody);

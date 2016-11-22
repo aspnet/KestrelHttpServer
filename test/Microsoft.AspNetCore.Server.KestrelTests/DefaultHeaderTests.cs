@@ -24,6 +24,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.0",
                         "",

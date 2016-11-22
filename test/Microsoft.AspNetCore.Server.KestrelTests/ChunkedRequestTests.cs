@@ -145,15 +145,18 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 5",
                         "",
                         "HelloPOST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked",
                         "",
                         "C", "HelloChunked",
                         "0",
                         "",
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 7",
                         "",
                         "Goodbye");
@@ -223,6 +226,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 IEnumerable<string> sendSequence = new string[] {
                     "POST / HTTP/1.1",
+                    "Host: localhost",
                     "Transfer-Encoding: chunked",
                     "",
                     "C",
@@ -234,6 +238,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     sendSequence = sendSequence.Concat(new string[] {
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked",
                         "",
                         "C",
@@ -245,6 +250,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 sendSequence = sendSequence.Concat(new string[] {
                     "POST / HTTP/1.1",
+                    "Host: localhost",
                     "Content-Length: 7",
                     "",
                     "Goodbye"
@@ -284,6 +290,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAllTryEnd(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         $"{transferEncodingHeaderLine}",
                         $"{headerLine}",
                         "",
@@ -324,6 +331,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAllTryEnd(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         $"{transferEncodingHeaderLine}",
                         $"{headerLine}",
                         "",
@@ -392,6 +400,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 IEnumerable<string> sendSequence = new string[] {
                     "POST / HTTP/1.1",
+                    "Host: localhost",
                     "Transfer-Encoding: chunked",
                     "",
                     "C;hello there",
@@ -403,6 +412,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     sendSequence = sendSequence.Concat(new string[] {
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked",
                         "",
                         "C;hello there",
@@ -414,6 +424,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 sendSequence = sendSequence.Concat(new string[] {
                     "POST / HTTP/1.1",
+                    "Host: localhost",
                     "Content-Length: 7",
                     "",
                     "Goodbye"
@@ -455,6 +466,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAll(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked",
                         "",
                         "Cii");
@@ -497,6 +509,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAll(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked",
                         "",
                         "C",
@@ -529,6 +542,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAll(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: not-chunked",
                         "",
                         "C",
@@ -551,6 +565,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAll(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: not-chunked",
                         "Content-Length: 22",
                         "",
@@ -573,6 +588,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAll(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked, not-chunked",
                         "",
                         "C",
@@ -595,6 +611,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAll(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Transfer-Encoding: chunked, not-chunked",
                         "Content-Length: 22",
                         "",
