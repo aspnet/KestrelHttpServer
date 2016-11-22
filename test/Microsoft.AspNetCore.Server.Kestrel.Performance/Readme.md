@@ -3,6 +3,7 @@
 To run a specific benchmark add it as parameter
 ```
 dotnet run RequestParsing
+dotnet run MultiThreadedRequestParsing
 ```
 To run all use `All` as parameter
 ```
