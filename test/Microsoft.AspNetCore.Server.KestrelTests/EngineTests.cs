@@ -154,8 +154,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: close",
                         "Content-Length: 7",
                         "",
@@ -220,8 +222,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 using (var connection = server.CreateConnection())
                 {
                     var requestData =
-                        Enumerable.Repeat("GET / HTTP/1.1\r\n", loopCount)
-                            .Concat(new[] { "GET / HTTP/1.1\r\nContent-Length: 7\r\nConnection: close\r\n\r\nGoodbye" });
+                        Enumerable.Repeat("GET / HTTP/1.1\r\nHost: localhost\r\n", loopCount)
+                            .Concat(new[] { "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 7\r\nConnection: close\r\n\r\nGoodbye" });
 
                     var response = string.Join("\r\n", new string[] {
                         "HTTP/1.1 200 OK",
@@ -388,6 +390,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.Send(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Expect: 100-continue",
                         "Connection: close",
                         "Content-Length: 11",
@@ -441,6 +444,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.0",
                         "Connection: keep-alive",
@@ -474,6 +478,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: close",
                         "",
                         "");
@@ -513,6 +518,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "HEAD / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -544,15 +550,19 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 3",
                         "",
                         "204POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 3",
                         "",
                         "205POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 3",
                         "",
                         "304POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 3",
                         "",
                         "200");
@@ -592,6 +602,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     // https://github.com/aspnet/KestrelHttpServer/issues/1104 is not regressing.
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: close",
                         "",
                         "");
@@ -637,6 +648,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -691,8 +703,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: close",
                         "",
                         "");
@@ -746,6 +760,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
@@ -788,6 +803,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
@@ -813,8 +829,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "Post / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 7",
                         "",
                         "Goodbye");
@@ -842,6 +860,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "POST / HTTP/1.1");
                     await connection.ReceiveForcedEnd(
@@ -861,6 +880,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "POST / HTTP/1.1",
                         "Content-Length: 7");
@@ -920,8 +940,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: close",
                         "",
                         "");
@@ -983,6 +1005,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
@@ -1049,9 +1072,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     // Never send the body so CopyToAsync always fails.
                     await connection.Send(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 5",
                         "",
                         "HelloPOST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 5",
                         "",
                         "");
@@ -1118,6 +1143,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.Send(
                         "POST / HTTP/1.1",
+                        "Host: localhost",
                         "Content-Length: 5",
                         "",
                         "Hello");
@@ -1217,8 +1243,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -1264,8 +1292,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -1298,6 +1328,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         $"GET {inputPath} HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -1339,6 +1370,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -1383,6 +1415,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -1423,6 +1456,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: Upgrade",
                         "",
                         "Hello World");

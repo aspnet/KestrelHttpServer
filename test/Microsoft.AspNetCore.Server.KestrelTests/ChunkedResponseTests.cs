@@ -45,6 +45,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -104,6 +105,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "Connection: close",
                         "",
                         "");
@@ -139,6 +141,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -174,6 +177,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -212,6 +216,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
 
@@ -248,6 +253,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(
@@ -279,6 +285,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     // client closing the connection.
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
@@ -309,6 +316,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     // SendEnd is not called, so it isn't the client closing the connection.
                     await connection.Send(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
 
@@ -344,6 +352,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.Receive(
@@ -385,6 +394,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "",
                         "");
                     await connection.ReceiveEnd(

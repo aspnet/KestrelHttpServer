@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.SendAllTryEnd($"GET / HTTP/1.1\r\n{rawHeaders}");
+                    await connection.SendAllTryEnd($"GET / HTTP/1.1\r\nHost: localhost\r\n{rawHeaders}");
                     await ReceiveBadRequestResponse(connection, "400 Bad Request", server.Context.DateHeaderValue);
                 }
             }
@@ -139,6 +139,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     await connection.SendAllTryEnd(
                         "GET / HTTP/1.1",
+                        "Host: localhost",
                         "H\u00eb\u00e4d\u00ebr: value",
                         "",
                         "");
@@ -168,7 +169,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.SendAllTryEnd($"GET {path} HTTP/1.1\r\n");
+                    await connection.SendAllTryEnd($"GET {path} HTTP/1.1\r\nHost: localhost\r\n");
                     await ReceiveBadRequestResponse(connection, "400 Bad Request", server.Context.DateHeaderValue);
                 }
             }
@@ -183,7 +184,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.SendEnd($"{method} / HTTP/1.1\r\n\r\n");
+                    await connection.SendEnd($"{method} / HTTP/1.1\r\nHost: localhost\r\n\r\n");
                     await ReceiveBadRequestResponse(connection, "411 Length Required", server.Context.DateHeaderValue);
                 }
             }

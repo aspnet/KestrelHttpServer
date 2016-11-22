@@ -231,6 +231,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             FrameRequestHeaders headers,
             Frame context)
         {
+            if (httpVersion == HttpVersion.Http11)
+            {
+                var hostHeaderCount = headers.HeaderHost.Count;
+
+                if (hostHeaderCount == 0)
+                {
+                    context.RejectRequest(RequestRejectionReason.MissingHostHeader);
+                }
+
+                if (hostHeaderCount > 1)
+                {
+                    context.RejectRequest(RequestRejectionReason.MultipleHostHeaders);
+                }
+            }
+
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
             var keepAlive = httpVersion != HttpVersion.Http10;
 

@@ -102,7 +102,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             using (var input = new TestInput())
             {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders(), input.FrameContext);
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderHost = "localhost" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
@@ -118,7 +118,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             using (var input = new TestInput())
             {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders(), input.FrameContext);
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderHost = "localhost" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             using (var input = new TestInput())
             {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "close" }, input.FrameContext);
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "close", HeaderHost = "localhost" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
@@ -150,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             using (var input = new TestInput())
             {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "close" }, input.FrameContext);
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "close", HeaderHost = "localhost" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
@@ -196,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             using (var input = new TestInput())
             {
                 var ex = Assert.Throws<BadHttpRequestException>(() =>
-                    MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked, not-chunked" }, input.FrameContext));
+                    MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked, not-chunked", HeaderHost = "localhost" }, input.FrameContext));
 
                 Assert.Equal(400, ex.StatusCode);
                 Assert.Equal("Final transfer coding is not \"chunked\": \"chunked, not-chunked\"", ex.Message);
@@ -212,7 +212,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 input.FrameContext.Method = method;
                 var ex = Assert.Throws<BadHttpRequestException>(() =>
-                    MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders(), input.FrameContext));
+                    MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderHost = "localhost" }, input.FrameContext));
 
                 Assert.Equal(411, ex.StatusCode);
                 Assert.Equal($"{method} request contains no Content-Length or Transfer-Encoding header", ex.Message);
@@ -244,9 +244,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public static IEnumerable<object[]> RequestData => new[]
         {
             // Content-Length
-            new object[] { new FrameRequestHeaders { HeaderContentLength = "12" }, new[] { "Hello ", "World!" } },
+            new object[] { new FrameRequestHeaders { HeaderContentLength = "12", HeaderHost = "localhost" }, new[] { "Hello ", "World!" } },
             // Chunked
-            new object[] { new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, new[] { "6\r\nHello \r\n", "6\r\nWorld!\r\n0\r\n\r\n" } },
+            new object[] { new FrameRequestHeaders { HeaderTransferEncoding = "chunked", HeaderHost = "localhost" }, new[] { "6\r\nHello \r\n", "6\r\nWorld!\r\n0\r\n\r\n" } },
         };
 
         public static IEnumerable<object[]> CombinedData => 
@@ -341,7 +341,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             using (var input = new TestInput())
             {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection }, input.FrameContext);
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection, HeaderHost = "localhost" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
