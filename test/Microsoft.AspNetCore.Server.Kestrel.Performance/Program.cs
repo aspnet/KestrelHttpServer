@@ -10,6 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     {
         public static void Main(string[] args)
         {
+            Console.WriteLine($"Kestrel.Performance Tests - ProcessorCount: {Environment.ProcessorCount.ToString()}");
             var options = (uint[])Enum.GetValues(typeof(BenchmarkType));
             BenchmarkType type;
             if (args.Length != 1 || !Enum.TryParse(args[0], out type))
