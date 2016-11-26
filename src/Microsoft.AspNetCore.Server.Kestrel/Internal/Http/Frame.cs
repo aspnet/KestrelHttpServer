@@ -392,6 +392,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     TaskCreationOptions.DenyChildAttach,
                     TaskScheduler.Default).Unwrap();
             _frameStartedTcs.SetResult(null);
+            ConnectionContext.RequestProcessingStarted = true;
         }
 
         /// <summary>
