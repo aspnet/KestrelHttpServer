@@ -24,7 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 typeof(IHttpRequestIdentifierFeature),
                 typeof(IServiceProvidersFeature),
                 typeof(IHttpRequestLifetimeFeature),
-                typeof(IHttpConnectionFeature)
+                typeof(IHttpConnectionFeature),
+                typeof(IHttpBufferingFeature)
             };
 
             var commonFeatures = new[]
@@ -59,7 +60,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 typeof(IHttpResponseFeature),
                 typeof(IHttpUpgradeFeature),
                 typeof(IHttpRequestLifetimeFeature),
-                typeof(IHttpConnectionFeature)
+                typeof(IHttpConnectionFeature),
+                typeof(IHttpBufferingFeature)
             };
 
             return $@"

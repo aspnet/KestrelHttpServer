@@ -15,7 +15,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class SocketOutput : ISocketOutput
     {
-        private const int _nagelishThreshold = 2 * (1500 - (20 + 20));// 2 * (MTU - (IPv4 Header + TCP Header))
         private const int _maxPendingWrites = 3;
         // There should be never be more WriteContexts than the max ongoing writes +  1 for the next write to be scheduled.
         private const int _maxPooledWriteContexts = _maxPendingWrites + 1;
@@ -193,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
 
-                if ((bytesToWrite == 0 || _numBytesSinceLastSend > _nagelishThreshold || !_connection.RequestProcessingStarted) &&
+                if ((bytesToWrite == 0 || _numBytesSinceLastSend > _connection.ApplicationNagleThreshold || !_connection.RequestProcessingStarted) &&
                     !_postingWrite && _ongoingWrites < _maxPendingWrites)
                 {
                     _postingWrite = true;

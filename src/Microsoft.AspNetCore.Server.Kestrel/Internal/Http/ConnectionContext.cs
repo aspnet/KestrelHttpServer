@@ -35,5 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public bool RequestProcessingStarted { get; set; }
 
         public Action<IFeatureCollection> PrepareRequest { get; set; }
+
+        public uint ApplicationNagleThreshold { get; internal set; }
     }
 }

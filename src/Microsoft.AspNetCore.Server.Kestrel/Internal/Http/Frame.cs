@@ -351,6 +351,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ResetFeatureCollection();
 
+            ConnectionContext.ApplicationNagleThreshold = ServerOptions.ApplicationNagleThreshold;
+
             Scheme = null;
             Method = null;
             PathBase = null;

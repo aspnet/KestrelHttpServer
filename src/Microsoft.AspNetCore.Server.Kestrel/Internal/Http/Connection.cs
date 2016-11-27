@@ -51,6 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
+            ApplicationNagleThreshold = ServerOptions.ApplicationNagleThreshold;
             if (ServerOptions.Limits.MaxRequestBufferSize.HasValue)
             {
                 _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
