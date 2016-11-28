@@ -128,18 +128,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         {
                             _disposables.Push(engine.CreateServer(ipv4Address));
                         }
-                        catch (AggregateException ex)
+                        catch (AggregateException ex) when (ex.InnerException is UvException)
                         {
-                            var uvException = ex.InnerException as UvException;
-
-                            if (uvException != null && uvException.StatusCode != Constants.EADDRINUSE)
+                            var uvEx = (UvException)ex.InnerException;
+                            if (uvEx.StatusCode == Constants.EADDRINUSE)
                             {
-                                _logger.LogWarning(0, ex, $"Unable to bind to {parsedAddress.ToString()} on the IPv4 loopback interface.");
-                                exceptions.Add(uvException);
+                                throw;
                             }
                             else
                             {
-                                throw;
+                                _logger.LogWarning(0, $"Unable to bind to {parsedAddress.ToString()} on the IPv4 loopback interface: ({uvEx.Message})");
+                                exceptions.Add(uvEx);
                             }
                         }
 
@@ -149,18 +148,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         {
                             _disposables.Push(engine.CreateServer(ipv6Address));
                         }
-                        catch (AggregateException ex)
+                        catch (AggregateException ex) when (ex.InnerException is UvException)
                         {
-                            var uvException = ex.InnerException as UvException;
-
-                            if (uvException != null && uvException.StatusCode != Constants.EADDRINUSE)
+                            var uvEx = (UvException)ex.InnerException;
+                            if (uvEx.StatusCode == Constants.EADDRINUSE)
                             {
-                                _logger.LogWarning(0, ex, $"Unable to bind to {parsedAddress.ToString()} on the IPv6 loopback interface.");
-                                exceptions.Add(uvException);
+                                throw;
                             }
                             else
                             {
-                                throw;
+                                _logger.LogWarning(0, $"Unable to bind to {parsedAddress.ToString()} on the IPv6 loopback interface: ({uvEx.Message})");
+                                exceptions.Add(uvEx);
                             }
                         }
 
