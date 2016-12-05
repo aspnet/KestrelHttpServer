@@ -606,6 +606,78 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
+        [InlineData("         ", false, null)]
+        [InlineData("h        ", false, null)]
+        [InlineData("ht       ", false, null)]
+        [InlineData("htt      ", false, null)]
+        [InlineData("http     ", false, null)]
+        [InlineData("http:    ", false, null)]
+        [InlineData("http:/   ", false, null)]
+        [InlineData("http://  ", true, MemoryPoolIteratorExtensions.HttpScheme)]
+        [InlineData("http://a ", true, MemoryPoolIteratorExtensions.HttpScheme)]
+        [InlineData("HtTp://  ", false, null)]
+        [InlineData("https    ", false, null)]
+        [InlineData("https:   ", false, null)]
+        [InlineData("https:/  ", false, null)]
+        [InlineData("https:// ", true, MemoryPoolIteratorExtensions.HttpsScheme)]
+        [InlineData("https://a", true, MemoryPoolIteratorExtensions.HttpsScheme)]
+        [InlineData("hTtPs:// ", false, null)]
+        public void GetsKnownHttpSchema(string input, bool expectedResult, string expectedString)
+        {
+            // Test within one block
+            var block = _pool.Lease();
+            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
+            block.End += chars.Length;
+            var begin = block.GetIterator();
+            string scheme;
+
+            var found = begin.GetKnownHttpSchema(out scheme);
+
+            Assert.Equal(expectedResult, found);
+            Assert.Equal(expectedString, scheme);
+
+            // Test at boundary
+            var maxSplit = Math.Min(input.Length, 9);
+            var nextBlock = _pool.Lease();
+
+            for (var split = 0; split <= maxSplit; split++)
+            {
+                // Arrange
+                block.Reset();
+                nextBlock.Reset();
+
+                Buffer.BlockCopy(chars, 0, block.Array, block.Start, split);
+                Buffer.BlockCopy(chars, split, nextBlock.Array, nextBlock.Start, chars.Length - split);
+
+                block.End += split;
+                nextBlock.End += chars.Length - split;
+                block.Next = nextBlock;
+
+                var boundaryBegin = block.GetIterator();
+                string boundaryScheme;
+
+                // Act
+                var boundaryResult = boundaryBegin.GetKnownHttpSchema(out boundaryScheme);
+
+                // Assert
+                Assert.Equal(expectedResult, boundaryResult);
+                Assert.Equal(expectedString, boundaryScheme);
+            }
+
+            _pool.Return(block);
+            _pool.Return(nextBlock);
+        }
+
+        [Theory]
+        [InlineData("http://abc/123 HTTP/1.1", "http://")]
+        [InlineData("https://abc/123 HTTP/1.1", "https://")]
+        public void KnownHttpSchemasAreInterned(string input, string expected)
+        {
+            TestKnownStringsInterning(input, expected, MemoryPoolIteratorExtensions.GetKnownHttpSchema);
+        }
+
+        [Theory]
         [InlineData("HTTP/1.0\r", true, MemoryPoolIteratorExtensions.Http10Version)]
         [InlineData("HTTP/1.1\r", true, MemoryPoolIteratorExtensions.Http11Version)]
         [InlineData("HTTP/3.0\r", false, null)]

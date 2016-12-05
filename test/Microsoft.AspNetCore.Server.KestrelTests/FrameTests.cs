@@ -476,6 +476,35 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
+        [InlineData("http://host/abs/path", "/abs/path")]
+        [InlineData("https://host/abs/path", "/abs/path")]
+        [InlineData("https://host:22/abs/path", "/abs/path")]
+        [InlineData("https://user@host:9080/abs/path", "/abs/path")]
+        [InlineData("http://host/", "/")]
+        [InlineData("https://host/", "/")]
+        [InlineData("http://host", "/")]
+        [InlineData("http://user@host/", "/")]
+        [InlineData("http://127.0.0.1/", "/")]
+        [InlineData("http://user@127.0.0.1/", "/")]
+        [InlineData("http://user@127.0.0.1:8080/", "/")]
+        [InlineData("http://127.0.0.1:8080/", "/")]
+        [InlineData("http://[::1]", "/")]
+        [InlineData("http://[::1]/path", "/path")]
+        [InlineData("http://[::1]:8080/", "/")]
+        [InlineData("http://user@[::1]:8080/", "/")]
+        public void TakeStartLineHandlesRequestTarget(string rawTarget, string expectedPath)
+        {
+            var firstLine = Encoding.ASCII.GetBytes($"GET {rawTarget} HTTP/1.1\r\n");
+            _socketInput.IncomingData(firstLine, 0, firstLine.Length);
+
+            var status = _frame.TakeStartLine(_socketInput);
+
+            Assert.Equal(Frame.RequestLineStatus.Done, status);
+            Assert.Equal(expectedPath, _frame.Path);
+            Assert.Equal(rawTarget, _frame.RawTarget);
+        }
+
+        [Theory]
         [InlineData("", Frame.RequestLineStatus.Empty)]
         [InlineData("G", Frame.RequestLineStatus.Incomplete)]
         [InlineData("GE", Frame.RequestLineStatus.Incomplete)]

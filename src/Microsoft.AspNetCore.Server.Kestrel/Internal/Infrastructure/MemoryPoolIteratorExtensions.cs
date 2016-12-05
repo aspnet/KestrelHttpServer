@@ -14,6 +14,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public const string Http10Version = "HTTP/1.0";
         public const string Http11Version = "HTTP/1.1";
 
+        public const string HttpScheme = "http://";
+        public const string HttpsScheme = "https://";
+
         // readonly primitive statics can be Jit'd to consts https://github.com/dotnet/coreclr/issues/1079
         private readonly static ulong _httpConnectMethodLong = GetAsciiStringAsLong("CONNECT ");
         private readonly static ulong _httpDeleteMethodLong = GetAsciiStringAsLong("DELETE \0");
@@ -27,6 +30,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         private readonly static ulong _http10VersionLong = GetAsciiStringAsLong("HTTP/1.0");
         private readonly static ulong _http11VersionLong = GetAsciiStringAsLong("HTTP/1.1");
+
+        private readonly static ulong _httpSchemeLong = GetAsciiStringAsLong("http://\0");
+        private readonly static ulong _httpsSchemeLong = GetAsciiStringAsLong("https://");
 
         private readonly static ulong _mask8Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
         private readonly static ulong _mask7Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 });
@@ -152,6 +158,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     knownMethod = x.Item3;
                     return true;
                 }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks 8 bytes from <paramref name="begin"/> that correspond to 'http://' or 'https://'
+        /// </summary>
+        /// <param name="begin">The iterator</param>
+        /// <param name="knownScheme">A reference to the known scheme, if the input matches any</param>
+        /// <returns>True when memory starts with known http or https schema</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool GetKnownHttpSchema(this MemoryPoolIterator begin, out string knownScheme)
+        {
+            knownScheme = null;
+            ulong value;
+            if (!begin.TryPeekLong(out value))
+            {
+                return false;
+            }
+
+            if ((value & _mask7Chars) == _httpSchemeLong)
+            {
+                knownScheme = HttpScheme;
+                return true;
+            }
+
+            if (value == _httpsSchemeLong)
+            {
+                knownScheme = HttpsScheme;
+                return true;
             }
 
             return false;

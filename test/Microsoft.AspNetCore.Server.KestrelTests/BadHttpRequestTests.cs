@@ -52,6 +52,29 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("} / HTTP/1.0\r\n")]
         [InlineData("get@ / HTTP/1.0\r\n")]
         [InlineData("post= / HTTP/1.0\r\n")]
+        [InlineData("GET http:// HTTP/1.1\r\n")]
+        [InlineData("GET http:/// HTTP/1.1\r\n")]
+        [InlineData("GET https:// HTTP/1.1\r\n")]
+        [InlineData("GET http://// HTTP/1.1\r\n")]
+        [InlineData("GET http://:80 HTTP/1.1\r\n")]
+        [InlineData("GET http://:80/abc HTTP/1.1\r\n")]
+        [InlineData("GET http://user@ HTTP/1.1\r\n")]
+        [InlineData("GET http://user@/abc HTTP/1.1\r\n")]
+        [InlineData("GET http://abc%20xyz/abc HTTP/1.1\r\n")]
+        [InlineData("GET http://%20/abc?query=%0A HTTP/1.1\r\n")]
+        // TODO invalidate requests that don't meet the HTTP spec. See https://github.com/aspnet/KestrelHttpServer/issues/1279
+        //[InlineData("GET otherscheme://host/ HTTP/1.1\r\n")]
+        //[InlineData("GET ws://host/ HTTP/1.1\r\n")]
+        //[InlineData("GET wss://host/ HTTP/1.1\r\n")]
+        //[InlineData("GET http HTTP/1.1\r\n")]
+        //[InlineData("GET http: HTTP/1.1\r\n")]
+        //[InlineData("GET http:/ HTTP/1.1\r\n")]
+        //[InlineData("GET https HTTP/1.1\r\n")]
+        //[InlineData("GET https: HTTP/1.1\r\n")]
+        //[InlineData("GET https:/ HTTP/1.1\r\n")]
+        //[InlineData("GET www.contoso.com HTTP/1.1\r\n")]
+        //[InlineData("GET * HTTP/1.1\r\n")] // asterisk form only supported in OPTIONS requests
+        //[InlineData("GET ../../ HTTP/1.1\r\n")] // relative form is invalid
         public async Task TestInvalidRequestLines(string request)
         {
             using (var server = new TestServer(context => TaskCache.CompletedTask))
@@ -63,6 +86,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             }
         }
+
+
 
         [Theory]
         [InlineData("GET / H\r\n")]
@@ -82,6 +107,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("GET / HTTP/1.\r\n")]
         [InlineData("GET / hello\r\n")]
         [InlineData("GET / 8charact\r\n")]
+        [InlineData("GET /  HTTP/1.1\r\n")]
+        [InlineData("GET / / HTTP/1.1\r\n")]
+        [InlineData("GET http://  HTTP/1.1\r\n")]
+        [InlineData("GET https://  HTTP/1.1\r\n")]
+        [InlineData("GET https:// / HTTP/1.1\r\n")]
         public async Task TestInvalidRequestLinesWithUnsupportedVersion(string request)
         {
             using (var server = new TestServer(context => TaskCache.CompletedTask))
