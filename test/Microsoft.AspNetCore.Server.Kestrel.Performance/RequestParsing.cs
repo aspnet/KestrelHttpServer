@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                InsertData(Requests.LiveaspnentRequest);
+                InsertData(Requests.LiveAspNetRequest);
 
                 ParseData();
             }
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                InsertData(Requests.LiveaspnentPipelinedRequests);
+                InsertData(Requests.LiveAspNetPipelinedRequests);
 
                 ParseData();
             }

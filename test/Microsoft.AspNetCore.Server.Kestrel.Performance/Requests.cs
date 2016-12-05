@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private const string plaintextRequest = "GET /plaintext HTTP/1.1\r\nHost: www.example.com\r\n\r\n";
 
-        private const string liveaspnetRequest = "GET https://live.asp.net/ HTTP/1.1\r\n" +
+        private const string liveAspNetRequest = "GET https://live.asp.net/ HTTP/1.1\r\n" +
             "Host: live.asp.net\r\n" +
             "Connection: keep-alive\r\n" +
             "Upgrade-Insecure-Requests: 1\r\n" +
@@ -45,8 +45,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public static readonly byte[] PlaintextPipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(plaintextRequest, Pipelining)));
         public static readonly byte[] PlaintextRequest = Encoding.ASCII.GetBytes(plaintextRequest);
 
-        public static readonly byte[] LiveaspnentPipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(liveaspnetRequest, Pipelining)));
-        public static readonly byte[] LiveaspnentRequest = Encoding.ASCII.GetBytes(liveaspnetRequest);
+        public static readonly byte[] LiveAspNetPipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(liveAspNetRequest, Pipelining)));
+        public static readonly byte[] LiveAspNetRequest = Encoding.ASCII.GetBytes(liveAspNetRequest);
 
         public static readonly byte[] UnicodePipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(unicodeRequest, Pipelining)));
         public static readonly byte[] UnicodeRequest = Encoding.ASCII.GetBytes(unicodeRequest);
