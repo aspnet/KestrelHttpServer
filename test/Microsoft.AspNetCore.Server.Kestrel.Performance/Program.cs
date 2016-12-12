@@ -2,11 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using BenchmarkDotNet.Environments;
-using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Properties;
 using BenchmarkDotNet.Running;
-using BenchmarkDotNet.Toolchains;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
@@ -14,6 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     {
         public static void Main(string[] args)
         {
+            Console.WriteLine($"Kestrel.Performance Tests - ProcessorCount: {Environment.ProcessorCount.ToString()}");
             var options = (uint[])Enum.GetValues(typeof(BenchmarkType));
             BenchmarkType type;
             if (args.Length != 1 || !Enum.TryParse(args[0], out type))
@@ -36,6 +33,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 BenchmarkRunner.Run<RequestParsing>();
             }
+            if (type.HasFlag(BenchmarkType.MultiThreadedRequestParsing))
+            {
+                BenchmarkRunner.Run<MultiThreadedRequestParsing>();
+            }
         }
     }
 
@@ -43,6 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     public enum BenchmarkType : uint
     {
         RequestParsing = 1,
+        MultiThreadedRequestParsing = 2,
         // add new ones in powers of two - e.g. 2,4,8,16...
 
         All = uint.MaxValue
