@@ -36,6 +36,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 BenchmarkRunner.Run<RequestParsing>();
             }
+
+            if (type.HasFlag(BenchmarkType.ResponseHeaders))
+            {
+                BenchmarkRunner.Run<ResponseHeaders>();
+            }
         }
     }
 
@@ -43,8 +48,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     public enum BenchmarkType : uint
     {
         RequestParsing = 1,
-        // add new ones in powers of two - e.g. 2,4,8,16...
 
+        ResponseHeaders = 4,
+        // add new ones in powers of two - e.g. 2,4,8,16...
         All = uint.MaxValue
     }
 }
