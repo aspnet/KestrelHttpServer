@@ -3,6 +3,8 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
+    using System.IO.Pipelines;
+
     public class ListenerContext
     {
         public ListenerContext(ServiceContext serviceContext)
@@ -15,6 +17,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public ServerAddress ServerAddress { get; set; }
 
         public KestrelThread Thread { get; set; }
+
+        public PipelineFactory PipelineFactory { get; set; }
 
         public KestrelServerOptions ServerOptions => ServiceContext.ServerOptions;
     }

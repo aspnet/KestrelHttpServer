@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
+    using System.IO.Pipelines;
+
     public class Connection : ConnectionContext, IConnectionControl
     {
         // Base32 encoding - in ascii sort order for easy text based sorting
@@ -42,6 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
         private TimeoutAction _timeoutAction;
+        private WritableBuffer? _currentWritableBuffer;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -56,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
             }
 
-            Input = new SocketInput(Thread.Memory, ThreadPool, _bufferSizeControl);
+            Input = context.PipelineFactory.Create();
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
@@ -169,7 +172,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }, this);
 
-            Input.Dispose();
+            Input.CompleteReader();
+            Input.CompleteWriter();
             _socketClosedTcs.TrySetResult(null);
         }
 
@@ -184,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     _frame.SetBadRequestState(RequestRejectionReason.RequestTimeout);
                 }
-                
+
                 StopAsync();
             }
 
@@ -212,13 +216,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return ((Connection)state).OnAlloc(handle, suggestedSize);
         }
 
-        private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
+        private unsafe Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            var result = Input.IncomingStart();
+            var currentWritableBuffer = Input.Alloc();
+            Debug.Assert(_currentWritableBuffer != null);
+            _currentWritableBuffer = currentWritableBuffer;
+
+            void* dataPtr;
+            Debug.Assert(currentWritableBuffer.Memory.TryGetPointer(out dataPtr));
 
             return handle.Libuv.buf_init(
-                result.DataArrayPtr + result.End,
-                result.Data.Offset + result.Data.Count - result.End);
+                (IntPtr)dataPtr,
+                currentWritableBuffer.Memory.Length);
         }
 
         private static void ReadCallback(UvStreamHandle handle, int status, object state)
@@ -228,13 +237,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void OnRead(UvStreamHandle handle, int status)
         {
+            var currentWritableBuffer = _currentWritableBuffer.Value;
             if (status == 0)
             {
                 // A zero status does not indicate an error or connection end. It indicates
                 // there is no data to be read right now.
                 // See the note at http://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb.
                 // We need to clean up whatever was allocated by OnAlloc.
-                Input.IncomingDeferred();
+                currentWritableBuffer.FlushAsync();
                 return;
             }
 
@@ -276,7 +286,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 error = new IOException(uvError.Message, uvError);
             }
 
-            Input.IncomingComplete(readCount, error);
+            currentWritableBuffer.Advance(readCount);
 
             if (errorDone)
             {
@@ -302,7 +312,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
                 // This should be treated the same as OnRead() seeing a "normalDone" condition.
                 Log.ConnectionReadFin(ConnectionId);
-                Input.IncomingComplete(0, null);
+                Input.CompleteWriter();
             }
         }
 

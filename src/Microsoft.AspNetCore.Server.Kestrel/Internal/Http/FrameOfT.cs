@@ -41,14 +41,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        requestLineStatus = TakeStartLine(Input);
+                        var result = await Input.ReadAsync();
+                        object examined;
+                        object consumed;
+                        requestLineStatus = TakeStartLine(result.Buffer, ref examined, ref consumed);
 
                         if (requestLineStatus == RequestLineStatus.Done)
                         {
                             break;
                         }
 
-                        if (Input.CheckFinOrThrow())
+                        if (result.IsCompleted || result.IsCancelled)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a

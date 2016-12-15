@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
+    using System.IO.Pipelines;
+
     /// <summary>
     /// Base class for listeners in Kestrel. Listens for incoming connections
     /// </summary>
@@ -31,6 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             ServerAddress = address;
             Thread = thread;
+            PipelineFactory = new PipelineFactory();
 
             var tcs = new TaskCompletionSource<int>(this);
 
@@ -102,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 }, this).ConfigureAwait(false);
             }
-
+            PipelineFactory.Dispose();
             ListenSocket = null;
         }
     }

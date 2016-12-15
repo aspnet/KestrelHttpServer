@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
+    using System.IO.Pipelines;
+
     public class ConnectionContext
     {
         public ConnectionContext()
@@ -20,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public ListenerContext ListenerContext { get; set; }
 
-        public SocketInput Input { get; set; }
+        public PipelineReaderWriter Input { get; set; }
 
         public ISocketOutput Output { get; set; }
 

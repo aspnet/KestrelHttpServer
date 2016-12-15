@@ -22,6 +22,9 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
+    using System.IO.Pipelines;
+    using System.IO.Pipelines.Text.Primitives;
+
     public abstract partial class Frame : IFrameControl
     {
         // byte types don't have a data type annotation so we pre-cast them; to avoid in-place casts
@@ -95,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         public ConnectionContext ConnectionContext { get; }
-        public SocketInput Input { get; set; }
+        public PipelineReaderWriter Input { get; set; }
         public ISocketOutput Output { get; set; }
         public Action<IFeatureCollection> PrepareRequest
         {
@@ -947,216 +950,204 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.ProducingComplete(end);
         }
 
-        public RequestLineStatus TakeStartLine(SocketInput input)
+        public RequestLineStatus TakeStartLine(ReadableBuffer buffer, ref ReadCursor examined, ref ReadCursor consumed)
         {
             const int MaxInvalidRequestLineChars = 32;
 
-            var scan = input.ConsumingStart();
-            var start = scan;
-            var consumed = scan;
-            var end = scan;
+            var start = buffer.Start;
+            var end = buffer.Start;
 
-            try
+            // We may hit this when the client has stopped sending data but
+            // the connection hasn't closed yet, and therefore Frame.Stop()
+            // hasn't been called yet.
+            if (buffer.IsEmpty)
             {
-                // We may hit this when the client has stopped sending data but
-                // the connection hasn't closed yet, and therefore Frame.Stop()
-                // hasn't been called yet.
-                if (scan.Peek() == -1)
+                return RequestLineStatus.Empty;
+            }
+
+            if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
+            {
+                ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
+            }
+
+            _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
+
+            int bytesScanned;
+
+            ReadCursor lineEnd;
+            if (SeekExtensions.Seek(buffer.Start, buffer.End, out lineEnd, ByteLF, out bytesScanned, ServerOptions.Limits.MaxRequestLineSize) == -1)
+            {
+                if (bytesScanned >= ServerOptions.Limits.MaxRequestLineSize)
                 {
-                    return RequestLineStatus.Empty;
-                }
-
-                if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
-                {
-                    ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
-                }
-
-                _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
-
-                int bytesScanned;
-                if (end.Seek(ByteLF, out bytesScanned, ServerOptions.Limits.MaxRequestLineSize) == -1)
-                {
-                    if (bytesScanned >= ServerOptions.Limits.MaxRequestLineSize)
-                    {
-                        RejectRequest(RequestRejectionReason.RequestLineTooLong);
-                    }
-                    else
-                    {
-                        return RequestLineStatus.Incomplete;
-                    }
-                }
-                end.Take();
-
-                string method;
-                var begin = scan;
-                if (!begin.GetKnownMethod(out method))
-                {
-                    if (scan.Seek(ByteSpace, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-
-                    method = begin.GetAsciiString(ref scan);
-
-                    if (method == null)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-
-                    // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
-                    // So we can be a tiny bit slower and more careful here.
-                    for (int i = 0; i < method.Length; i++)
-                    {
-                        if (!IsValidTokenChar(method[i]))
-                        {
-                            RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                                Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                        }
-                    }
+                    RejectRequest(RequestRejectionReason.RequestLineTooLong);
                 }
                 else
                 {
-                    scan.Skip(method.Length);
+                    return RequestLineStatus.Incomplete;
+                }
+            }
+
+            ReadCursor methodEnd;
+            string method;
+            if (!buffer.GetKnownMethod(out method))
+            {
+                if (SeekExtensions.Seek(buffer.Start, lineEnd, out methodEnd, ByteSpace) == -1)
+                {
+                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
                 }
 
-                scan.Take();
-                begin = scan;
-                var needDecode = false;
-                var chFound = scan.Seek(ByteSpace, ByteQuestionMark, BytePercentage, ref end);
+                method = buffer.Slice(buffer.Start, methodEnd).GetAsciiString();
+
+                if (method == null)
+                {
+                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                }
+
+                // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
+                // So we can be a tiny bit slower and more careful here.
+                for (int i = 0; i < method.Length; i++)
+                {
+                    if (!IsValidTokenChar(method[i]))
+                    {
+                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    }
+                }
+            }
+            else
+            {
+                methodEnd = buffer.Start.Skip(method.Length);
+            }
+
+            var needDecode = false;
+            ReadCursor pathEnd;
+
+
+            var chFound = SeekExtensions.Seek(methodEnd, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
+            if (chFound == -1)
+            {
+                RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+            }
+            else if (chFound == BytePercentage)
+            {
+                needDecode = true;
+                chFound = SeekExtensions.Seek(methodEnd, end, out pathEnd, ByteSpace, ByteQuestionMark);
                 if (chFound == -1)
                 {
                     RejectRequest(RequestRejectionReason.InvalidRequestLine,
                         Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
                 }
-                else if (chFound == BytePercentage)
-                {
-                    needDecode = true;
-                    chFound = scan.Seek(ByteSpace, ByteQuestionMark, ref end);
-                    if (chFound == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-                }
+            };
 
-                var pathBegin = begin;
-                var pathEnd = scan;
-
-                var queryString = "";
-                if (chFound == ByteQuestionMark)
-                {
-                    begin = scan;
-                    if (scan.Seek(ByteSpace, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-                    queryString = begin.GetAsciiString(ref scan);
-                }
-
-                var queryEnd = scan;
-
-                if (pathBegin.Peek() == ByteSpace)
-                {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                }
-
-                scan.Take();
-                begin = scan;
-                if (scan.Seek(ByteCR, ref end) == -1)
-                {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                }
-
-                string httpVersion;
-                if (!begin.GetKnownVersion(out httpVersion))
-                {
-                    httpVersion = begin.GetAsciiStringEscaped(scan, 9);
-
-                    if (httpVersion == string.Empty)
-                    {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                    }
-                    else
-                    {
-                        RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
-                    }
-                }
-
-                scan.Take(); // consume CR
-                if (scan.Take() != ByteLF)
-                {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-                }
-
-                // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
-                // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
-                // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-                string requestUrlPath;
-                string rawTarget;
-                if (needDecode)
-                {
-                    // Read raw target before mutating memory.
-                    rawTarget = pathBegin.GetAsciiString(ref queryEnd);
-
-                    // URI was encoded, unescape and then parse as utf8
-                    pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
-                    requestUrlPath = pathBegin.GetUtf8String(ref pathEnd);
-                }
-                else
-                {
-                    // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
-
-                    if (queryString.Length == 0)
-                    {
-                        // No need to allocate an extra string if the path didn't need
-                        // decoding and there's no query string following it.
-                        rawTarget = requestUrlPath;
-                    }
-                    else
-                    {
-                        rawTarget = pathBegin.GetAsciiString(ref queryEnd);
-                    }
-                }
-
-                var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
-
-                consumed = scan;
-                Method = method;
-                QueryString = queryString;
-                RawTarget = rawTarget;
-                HttpVersion = httpVersion;
-
-                bool caseMatches;
-                if (RequestUrlStartsWithPathBase(normalizedTarget, out caseMatches))
-                {
-                    PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
-                    Path = normalizedTarget.Substring(_pathBase.Length);
-                }
-                else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
-                {
-                    Path = normalizedTarget;
-                }
-                else
-                {
-                    Path = string.Empty;
-                    PathBase = string.Empty;
-                    QueryString = string.Empty;
-                }
-
-                return RequestLineStatus.Done;
-            }
-            finally
+            var queryString = "";
+            ReadCursor queryEnd;
+            if (chFound == ByteQuestionMark)
             {
-                input.ConsumingComplete(consumed, end);
+                if (SeekExtensions.Seek(pathEnd, end, out queryEnd, ByteSpace) == -1)
+                {
+                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                }
+                queryString = buffer.Slice(pathEnd, queryEnd).GetAsciiString();
             }
+
+            //if (pathBegin.Peek() == ByteSpace)
+            //{
+            //    RejectRequest(RequestRejectionReason.InvalidRequestLine,
+            //        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+            ////}
+
+            //scan.Take();
+            //begin = scan;
+            //if (scan.Seek(ByteCR, ref end) == -1)
+            //{
+            //    RejectRequest(RequestRejectionReason.InvalidRequestLine,
+            //        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+            //}
+
+            string httpVersion;
+            if (!begin.GetKnownVersion(out httpVersion))
+            {
+                httpVersion = begin.GetAsciiStringEscaped(scan, 9);
+
+                if (httpVersion == string.Empty)
+                {
+                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                }
+                else
+                {
+                    RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
+                }
+            }
+
+            scan.Take(); // consume CR
+            if (scan.Take() != ByteLF)
+            {
+                RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+            }
+
+            // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
+            // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
+            // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
+            string requestUrlPath;
+            string rawTarget;
+            if (needDecode)
+            {
+                // Read raw target before mutating memory.
+                rawTarget = pathBegin.GetAsciiString(ref pathEnd);
+
+                // URI was encoded, unescape and then parse as utf8
+                pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
+                requestUrlPath = pathBegin.GetUtf8String(ref pathEnd);
+            }
+            else
+            {
+                // URI wasn't encoded, parse as ASCII
+                requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
+
+                if (queryString.Length == 0)
+                {
+                    // No need to allocate an extra string if the path didn't need
+                    // decoding and there's no query string following it.
+                    rawTarget = requestUrlPath;
+                }
+                else
+                {
+                    rawTarget = pathBegin.GetAsciiString(ref pathEnd);
+                }
+            }
+
+            var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
+
+            consumed = scan;
+            Method = method;
+            QueryString = queryString;
+            RawTarget = rawTarget;
+            HttpVersion = httpVersion;
+
+            bool caseMatches;
+            if (RequestUrlStartsWithPathBase(normalizedTarget, out caseMatches))
+            {
+                PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
+                Path = normalizedTarget.Substring(_pathBase.Length);
+            }
+            else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
+            {
+                Path = normalizedTarget;
+            }
+            else
+            {
+                Path = string.Empty;
+                PathBase = string.Empty;
+                QueryString = string.Empty;
+            }
+
+            return RequestLineStatus.Done;
         }
 
         private static bool IsValidTokenChar(char c)
