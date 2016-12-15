@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private static readonly Action<object, object> _postCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private static readonly Action<object, object> _postAsyncCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
-        private static readonly Libuv.uv_walk_cb _heartbeatWalkCallback = (ptr, arg) =>
+        private static readonly Libuv.uv_walk_cb _heartbeatWalkCallbackAdapter = (ptr, arg) =>
         {
             var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
             (handle as UvStreamHandle)?.Connection?.Tick((long)arg);
@@ -344,7 +344,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private void OnHeartbeat(UvTimerHandle timer)
         {
-            Walk(_heartbeatWalkCallback, (IntPtr)Loop.Now());
+            Walk(_heartbeatWalkCallbackAdapter, (IntPtr)Loop.Now());
         }
 
         private bool DoPostWork()
