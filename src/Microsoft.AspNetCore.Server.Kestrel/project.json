@@ -35,6 +35,11 @@
         }
       }
     },
+    "dnx451": {
+      "frameworkAssemblies": {
+        "System.Threading.Tasks": ""
+      }
+    },
     "netstandard1.3": {
       "dependencies": {
         "System.Threading.Thread": "4.3.0-*",
