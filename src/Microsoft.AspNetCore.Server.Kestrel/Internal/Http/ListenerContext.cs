@@ -18,8 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public KestrelThread Thread { get; set; }
 
-        public PipelineFactory PipelineFactory { get; set; }
-
         public KestrelServerOptions ServerOptions => ServiceContext.ServerOptions;
     }
 }

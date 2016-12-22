@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -42,9 +43,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     while (!_requestProcessingStopping)
                     {
                         var result = await Input.ReadAsync();
-                        object examined;
-                        object consumed;
-                        requestLineStatus = TakeStartLine(result.Buffer, ref examined, ref consumed);
+                        ReadCursor examined;
+                        ReadCursor consumed;
+                        requestLineStatus = TakeStartLine(result.Buffer, out examined, out consumed);
+                        Input.AdvanceReader(consumed, examined);
 
                         if (requestLineStatus == RequestLineStatus.Done)
                         {
@@ -53,11 +55,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         if (result.IsCompleted || result.IsCancelled)
                         {
+                            result = await Input.ReadAsync();
                             // We need to attempt to consume start lines and headers even after
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            requestLineStatus = TakeStartLine(Input);
+                            requestLineStatus = TakeStartLine(result.Buffer, out examined, out consumed);
 
                             if (requestLineStatus == RequestLineStatus.Empty)
                             {
@@ -71,29 +74,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                             break;
                         }
-
-                        await Input;
                     }
 
                     InitializeHeaders();
 
-                    while (!_requestProcessingStopping && !TakeMessageHeaders(Input, FrameRequestHeaders))
+                    while (!_requestProcessingStopping)
                     {
-                        if (Input.CheckFinOrThrow())
-                        {
-                            // We need to attempt to consume start lines and headers even after
-                            // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
-                            // connection without giving the application a chance to respond to a request
-                            // sent immediately before the a FIN from the client.
-                            if (!TakeMessageHeaders(Input, FrameRequestHeaders))
-                            {
-                                RejectRequest(RequestRejectionReason.MalformedRequestInvalidHeaders);
-                            }
 
+                        var result = await Input.ReadAsync();
+                        ReadCursor examined;
+                        ReadCursor consumed;
+
+                        var takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out examined, out consumed);
+                        Input.AdvanceReader(consumed, examined);
+
+                        if (takeMessageHeaders)
+                        {
                             break;
                         }
-
-                        await Input;
+                    //{
+                    //    if (Input.CheckFinOrThrow())
+                    //    {
+                    //        // We need to attempt to consume start lines and headers even after
+                    //        // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
+                    //        // connection without giving the application a chance to respond to a request
+                    //        // sent immediately before the a FIN from the client.
+                    //        if (!TakeMessageHeaders(Input, FrameRequestHeaders))
+                    //        {
+                    //            RejectRequest(RequestRejectionReason.MalformedRequestInvalidHeaders);
+                    //        }
                     }
 
                     if (!_requestProcessingStopping)

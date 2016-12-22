@@ -134,12 +134,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public static bool GetKnownMethod(this ReadableBuffer begin, out string knownMethod)
         {
             knownMethod = null;
-            if (begin.Length > sizeof(ulong))
+            if (begin.Length < sizeof(ulong))
             {
                 return false;
             }
 
-            ulong value = begin.ReadBigEndian<ulong>();
+            ulong value = begin.ReadLittleEndian<ulong>();
 
 
             if ((value & _mask4Chars) == _httpGetMethodLong)
@@ -173,16 +173,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param name="knownVersion">A reference to a pre-allocated known string, if the input matches any.</param>
         /// <returns><c>true</c> if the input matches a known string, <c>false</c> otherwise.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool GetKnownVersion(this MemoryPoolIterator begin, out string knownVersion)
+        public static bool GetKnownVersion(this ReadableBuffer begin, out string knownVersion)
         {
             knownVersion = null;
 
-            ulong value;
-            if (!begin.TryPeekLong(out value))
+            if (begin.Length < sizeof(ulong))
             {
                 return false;
             }
 
+            var value = begin.ReadLittleEndian<ulong>();
             if (value == _http11VersionLong)
             {
                 knownVersion = Http11Version;
@@ -194,9 +194,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
             if (knownVersion != null)
             {
-                begin.Skip(knownVersion.Length);
-
-                if (begin.Peek() != '\r')
+                if (begin.Slice(sizeof(ulong)).Peek() != '\r')
                 {
                     knownVersion = null;
                 }

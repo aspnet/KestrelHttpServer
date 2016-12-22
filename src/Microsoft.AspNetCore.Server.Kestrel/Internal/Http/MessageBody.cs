@@ -213,9 +213,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void ConsumedBytes(int count)
         {
-            var scan = _context.Input.ConsumingStart();
-            scan.Skip(count);
-            _context.Input.ConsumingComplete(scan, scan);
+            var scan = _context.Input.ReadAsync().GetResult().Buffer;
+            scan = scan.Slice(0, count);
+            _context.Input.AdvanceReader(scan.End, scan.End);
 
             OnConsumedBytes(count);
         }
@@ -324,39 +324,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
             {
-                var limit = (int)Math.Min(_inputLength, int.MaxValue);
-                if (limit == 0)
-                {
-                    return new ValueTask<ArraySegment<byte>>();
-                }
+                return default(ValueTask<ArraySegment<byte>>);
 
-                var task = _context.Input.PeekAsync();
+                //var limit = (int)Math.Min(_inputLength, int.MaxValue);
+                //if (limit == 0)
+                //{
+                //    return new ValueTask<ArraySegment<byte>>();
+                //}
 
-                if (task.IsCompleted)
-                {
-                    // .GetAwaiter().GetResult() done by ValueTask if needed
-                    var actual = Math.Min(task.Result.Count, limit);
+                //var task = _context.Input.PeekAsync();
 
-                    if (task.Result.Count == 0)
-                    {
-                        _context.RejectRequest(RequestRejectionReason.UnexpectedEndOfRequestContent);
-                    }
+                //if (task.IsCompleted)
+                //{
+                //    // .GetAwaiter().GetResult() done by ValueTask if needed
+                //    var actual = Math.Min(task.Result.Count, limit);
 
-                    if (task.Result.Count < _inputLength)
-                    {
-                        return task;
-                    }
-                    else
-                    {
-                        var result = task.Result;
-                        var part = new ArraySegment<byte>(result.Array, result.Offset, (int)_inputLength);
-                        return new ValueTask<ArraySegment<byte>>(part);
-                    }
-                }
-                else
-                {
-                    return new ValueTask<ArraySegment<byte>>(PeekAsyncAwaited(task));
-                }
+                //    if (task.Result.Count == 0)
+                //    {
+                //        _context.RejectRequest(RequestRejectionReason.UnexpectedEndOfRequestContent);
+                //    }
+
+                //    if (task.Result.Count < _inputLength)
+                //    {
+                //        return task;
+                //    }
+                //    else
+                //    {
+                //        var result = task.Result;
+                //        var part = new ArraySegment<byte>(result.Array, result.Offset, (int)_inputLength);
+                //        return new ValueTask<ArraySegment<byte>>(part);
+                //    }
+                //}
+                //else
+                //{
+                //    return new ValueTask<ArraySegment<byte>>(PeekAsyncAwaited(task));
+                //}
             }
 
             private async Task<ArraySegment<byte>> PeekAsyncAwaited(ValueTask<ArraySegment<byte>> task)
@@ -392,7 +394,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // byte consts don't have a data type annotation so we pre-cast it
             private const byte ByteCR = (byte)'\r';
 
-            private readonly SocketInput _input;
+            private readonly SocketInput _input = null;
             private readonly FrameRequestHeaders _requestHeaders;
             private int _inputLength;
 
@@ -402,7 +404,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
-                _input = _context.Input;
+                //_input = _context.Input;
                 _requestHeaders = headers;
             }
 
@@ -518,22 +520,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 if (_mode == Mode.TrailerHeaders)
                 {
-                    while (!_context.TakeMessageHeaders(_input, _requestHeaders))
-                    {
-                        if (_input.CheckFinOrThrow())
-                        {
-                            if (_context.TakeMessageHeaders(_input, _requestHeaders))
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                            }
-                        }
+                    //while (!_context.TakeMessageHeaders(_input, _requestHeaders))
+                    //{
+                    //    if (_input.CheckFinOrThrow())
+                    //    {
+                    //        if (_context.TakeMessageHeaders(_input, _requestHeaders))
+                    //        {
+                    //            break;
+                    //        }
+                    //        else
+                    //        {
+                    //            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                    //        }
+                    //    }
 
-                        await _input;
-                    }
+                    //    await _input;
+                    //}
 
                     _mode = Mode.Complete;
                 }

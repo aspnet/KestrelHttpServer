@@ -27,16 +27,7 @@
     "System.IO.Pipelines.Text.Primitives": "0.1.0-*"
   },
   "frameworks": {
-    "net451": {
-      "frameworkAssemblies": {
-        "System.Runtime": {
-          "type": "build"
-        },
-        "System.Threading.Tasks": {
-          "type": "build"
-        }
-      }
-    },
+    "net451": { },
     "netstandard1.3": {
       "dependencies": {
         "System.Threading.Thread": "4.3.0-*",

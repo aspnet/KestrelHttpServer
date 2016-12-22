@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             if (type.HasFlag(BenchmarkType.RequestParsing))
             {
-                BenchmarkRunner.Run<RequestParsing>();
+                //BenchmarkRunner.Run<RequestParsing>();
             }
         }
     }

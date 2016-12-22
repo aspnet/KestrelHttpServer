@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
@@ -75,6 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
+                var pipelineFactory = new PipelineFactory();
                 var engine = new KestrelEngine(new ServiceContext
                 {
                     FrameFactory = context =>
@@ -85,11 +87,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Log = trace,
                     ThreadPool = new LoggingThreadPool(trace),
                     DateHeaderValueManager = dateHeaderValueManager,
-                    ServerOptions = Options
+                    ServerOptions = Options,
+                    PipelineFactory = pipelineFactory
                 });
 
                 _disposables.Push(engine);
                 _disposables.Push(dateHeaderValueManager);
+                _disposables.Push(pipelineFactory);
 
                 var threadCount = Options.ThreadCount;
 

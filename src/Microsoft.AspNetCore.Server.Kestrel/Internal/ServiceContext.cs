@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Pipelines;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -21,5 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public KestrelServerOptions ServerOptions { get; set; }
+
+        public PipelineFactory PipelineFactory { get; set; }
     }
 }

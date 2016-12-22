@@ -33,7 +33,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             ServerAddress = address;
             Thread = thread;
-            PipelineFactory = new PipelineFactory();
 
             var tcs = new TaskCompletionSource<int>(this);
 
@@ -105,7 +104,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 }, this).ConfigureAwait(false);
             }
-            PipelineFactory.Dispose();
             ListenSocket = null;
         }
     }
