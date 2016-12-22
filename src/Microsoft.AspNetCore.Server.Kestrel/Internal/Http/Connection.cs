@@ -218,12 +218,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private unsafe Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
+            Console.WriteLine(nameof(OnAlloc));
             var currentWritableBuffer = Input.Alloc(2048);
             Debug.Assert(_currentWritableBuffer == null);
             _currentWritableBuffer = currentWritableBuffer;
 
             void* dataPtr;
-            Debug.Assert(currentWritableBuffer.Memory.TryGetPointer(out dataPtr));
+            var tryGetPointer = currentWritableBuffer.Memory.TryGetPointer(out dataPtr);
+            Debug.Assert(tryGetPointer);
 
             return handle.Libuv.buf_init(
                 (IntPtr)dataPtr,
@@ -238,6 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private void OnRead(UvStreamHandle handle, int status)
         {
             var currentWritableBuffer = _currentWritableBuffer.Value;
+            _currentWritableBuffer = null;
             if (status == 0)
             {
                 // A zero status does not indicate an error or connection end. It indicates
@@ -285,7 +288,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 error = new IOException(uvError.Message, uvError);
             }
-
+            Console.WriteLine(nameof(currentWritableBuffer.Advance));
             currentWritableBuffer.Advance(readCount);
             currentWritableBuffer.FlushAsync().GetAwaiter().GetResult();
             if (errorDone)
