@@ -1211,7 +1211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor consumed, out ReadCursor examined)
+        public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor examined, out ReadCursor consumed)
         {
             consumed = buffer.Start;
             examined = buffer.Start;
