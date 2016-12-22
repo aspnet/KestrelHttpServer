@@ -239,14 +239,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void OnRead(UvStreamHandle handle, int status)
         {
-            var currentWritableBuffer = _currentWritableBuffer.Value;
-            _currentWritableBuffer = null;
+            WritableBuffer currentWritableBuffer;
             if (status == 0)
             {
                 // A zero status does not indicate an error or connection end. It indicates
                 // there is no data to be read right now.
                 // See the note at http://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb.
                 // We need to clean up whatever was allocated by OnAlloc.
+                currentWritableBuffer = _currentWritableBuffer.Value;
+                _currentWritableBuffer = null;
                 currentWritableBuffer.FlushAsync();
                 return;
             }
@@ -288,9 +289,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 error = new IOException(uvError.Message, uvError);
             }
-            Console.WriteLine(nameof(currentWritableBuffer.Advance));
-            currentWritableBuffer.Advance(readCount);
-            currentWritableBuffer.FlushAsync().GetAwaiter().GetResult();
+            if (readCount != 0)
+            {
+                currentWritableBuffer = _currentWritableBuffer.Value;
+                _currentWritableBuffer = null;
+
+                Console.WriteLine(nameof(currentWritableBuffer.Advance));
+                currentWritableBuffer.Advance(readCount);
+                currentWritableBuffer.FlushAsync().GetAwaiter().GetResult();
+            }
             if (errorDone)
             {
                 Abort(error);
