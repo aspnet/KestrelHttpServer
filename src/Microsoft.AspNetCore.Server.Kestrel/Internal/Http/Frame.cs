@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         public ConnectionContext ConnectionContext { get; }
-        public PipelineReaderWriter Input { get; set; }
+        public Pipe Input { get; set; }
         public ISocketOutput Output { get; set; }
         public Action<IFeatureCollection> PrepareRequest
         {
@@ -1020,7 +1020,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else
             {
-                methodEnd = buffer.Start.Skip(method.Length);
+                methodEnd = buffer.Slice(method.Length).Start;
             }
 
             var needDecode = false;

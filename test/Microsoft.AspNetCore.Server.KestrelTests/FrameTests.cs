@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     public class FrameTests : IDisposable
     {
-        private readonly PipelineReaderWriter _socketInput;
+        private readonly Pipe _socketInput;
         private readonly MemoryPool _pool;
         private readonly Frame<object> _frame;
         private readonly ServiceContext _serviceContext;

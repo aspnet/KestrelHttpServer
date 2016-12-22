@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -12,6 +14,50 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
+    public static class ReadableBufferExtensions
+    {
+        public static ValueTask<ArraySegment<byte>> PeekAsync(this IPipelineReader channel)
+        {
+            var input = channel.ReadAsync();
+            if (input.IsCompleted)
+            {
+                var result = input.GetResult();
+
+                var segment = result.Buffer.First;
+                var x = result.Buffer.Slice(0, segment.Length);
+                channel.Advance(x.Start);
+
+                ArraySegment<byte> data;
+                var arrayResult = segment.TryGetArray(out data);
+                Debug.Assert(arrayResult);
+
+                return new ValueTask<ArraySegment<byte>>(data);
+            }
+
+            return new ValueTask<ArraySegment<byte>>(channel.PeekAsyncAwaited());
+        }
+
+        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IPipelineReader pipelineReader)
+        {
+            ReadResult result;
+            Memory<byte> segment;
+            do
+            {
+                result = await pipelineReader.ReadAsync();
+
+                segment = result.Buffer.First;
+                var x = result.Buffer.Slice(0, segment.Length);
+                pipelineReader.Advance(x.Start);
+            }
+            while (segment.Length != 0 || result.IsCompleted || result.IsCancelled);
+
+            ArraySegment<byte> data;
+            var arrayResult = segment.TryGetArray(out data);
+            Debug.Assert(arrayResult);
+            return data;
+        }
+    }
+
     public abstract class MessageBody
     {
         private readonly Frame _context;
@@ -214,8 +260,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private void ConsumedBytes(int count)
         {
             var scan = _context.Input.ReadAsync().GetResult().Buffer;
-            scan = scan.Slice(0, count);
-            _context.Input.AdvanceReader(scan.End, scan.End);
+            scan = scan.Slice(count);
+            _context.Input.AdvanceReader(scan.Start, scan.Start);
 
             OnConsumedBytes(count);
         }
@@ -324,41 +370,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
             {
-                return default(ValueTask<ArraySegment<byte>>);
+                var limit = (int)Math.Min(_inputLength, int.MaxValue);
+                if (limit == 0)
+                {
+                    return new ValueTask<ArraySegment<byte>>();
+                }
 
-                //var limit = (int)Math.Min(_inputLength, int.MaxValue);
-                //if (limit == 0)
-                //{
-                //    return new ValueTask<ArraySegment<byte>>();
-                //}
+                var task = _context.Input.PeekAsync();
 
-                //var task = _context.Input.PeekAsync();
+                if (task.IsCompleted)
+                {
+                    // .GetAwaiter().GetResult() done by ValueTask if needed
+                    var actual = Math.Min(task.Result.Count, limit);
 
-                //if (task.IsCompleted)
-                //{
-                //    // .GetAwaiter().GetResult() done by ValueTask if needed
-                //    var actual = Math.Min(task.Result.Count, limit);
+                    if (task.Result.Count == 0)
+                    {
+                        _context.RejectRequest(RequestRejectionReason.UnexpectedEndOfRequestContent);
+                    }
 
-                //    if (task.Result.Count == 0)
-                //    {
-                //        _context.RejectRequest(RequestRejectionReason.UnexpectedEndOfRequestContent);
-                //    }
-
-                //    if (task.Result.Count < _inputLength)
-                //    {
-                //        return task;
-                //    }
-                //    else
-                //    {
-                //        var result = task.Result;
-                //        var part = new ArraySegment<byte>(result.Array, result.Offset, (int)_inputLength);
-                //        return new ValueTask<ArraySegment<byte>>(part);
-                //    }
-                //}
-                //else
-                //{
-                //    return new ValueTask<ArraySegment<byte>>(PeekAsyncAwaited(task));
-                //}
+                    if (task.Result.Count < _inputLength)
+                    {
+                        return task;
+                    }
+                    else
+                    {
+                        var result = task.Result;
+                        var part = new ArraySegment<byte>(result.Array, result.Offset, (int)_inputLength);
+                        return new ValueTask<ArraySegment<byte>>(part);
+                    }
+                }
+                else
+                {
+                    return new ValueTask<ArraySegment<byte>>(PeekAsyncAwaited(task));
+                }
             }
 
             private async Task<ArraySegment<byte>> PeekAsyncAwaited(ValueTask<ArraySegment<byte>> task)
@@ -394,7 +438,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // byte consts don't have a data type annotation so we pre-cast it
             private const byte ByteCR = (byte)'\r';
 
-            private readonly SocketInput _input = null;
+            private readonly Pipe _input = null;
             private readonly FrameRequestHeaders _requestHeaders;
             private int _inputLength;
 
@@ -404,7 +448,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
-                //_input = _context.Input;
+                _input = _context.Input;
                 _requestHeaders = headers;
             }
 
