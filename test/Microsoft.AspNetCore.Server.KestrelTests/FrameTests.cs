@@ -33,7 +33,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public FrameTests()
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
-            var ltp = new LoggingThreadPool(trace);
             _pool = new MemoryPool();
             _pipelineFactory = new PipelineFactory();
             _socketInput = _pipelineFactory.Create();

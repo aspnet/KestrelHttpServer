@@ -40,7 +40,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{0EF2AC
 		test\shared\MockConnection.cs = test\shared\MockConnection.cs
 		test\shared\MockFrameControl.cs = test\shared\MockFrameControl.cs
 		test\shared\MockSystemClock.cs = test\shared\MockSystemClock.cs
-		test\shared\SocketInputExtensions.cs = test\shared\SocketInputExtensions.cs
 		test\shared\TestApplicationErrorLogger.cs = test\shared\TestApplicationErrorLogger.cs
 		test\shared\TestConnection.cs = test\shared\TestConnection.cs
 		test\shared\TestKestrelTrace.cs = test\shared\TestKestrelTrace.cs
