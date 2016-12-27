@@ -746,7 +746,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         //    await requestProcessingTask.TimeoutAfter(TimeSpan.FromSeconds(10));
         //    _socketInput.IncomingFin();
         //}
-        }
 
         [Fact]
         public void RequestAbortedTokenIsResetBeforeLastWriteWithContentLength()
