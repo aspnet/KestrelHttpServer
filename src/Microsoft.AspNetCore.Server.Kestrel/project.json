@@ -23,15 +23,15 @@
     "System.Buffers": "4.4.0-*",
     "System.Numerics.Vectors": "4.4.0-*",
     "System.Threading.Tasks.Extensions": "4.4.0-*",
-    "System.IO.Pipelines": "0.1.0-*",
+    //"System.IO.Pipelines": "0.1.0-*",
     "System.IO.Pipelines.Text.Primitives": "0.1.0-*"
   },
   "frameworks": {
     "net451": { },
     "netstandard1.3": {
       "dependencies": {
-        "System.Threading.Thread": "4.3.0-*",
-        "System.Threading.ThreadPool": "4.3.0-*"
+        "System.Threading.Thread": "4.4.0-*",
+        "System.Threading.ThreadPool": "4.4.0-*"
       }
     }
   },

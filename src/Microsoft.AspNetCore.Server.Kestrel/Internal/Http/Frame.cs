@@ -1127,7 +1127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (needDecode)
             {
                 // Read raw target before mutating memory.
-                rawTarget = buffer.Slice(pathBegin, pathEnd).GetAsciiString();
+                rawTarget = buffer.Slice(pathBegin, pathEnd).GetAsciiString() ?? string.Empty;
 
                 //// URI was encoded, unescape and then parse as utf8
               //  pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
@@ -1136,7 +1136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else
             {
                // URI wasn't encoded, parse as ASCII
-                requestUrlPath = buffer.Slice(pathBegin, pathEnd).GetAsciiString();
+                requestUrlPath = buffer.Slice(pathBegin, pathEnd).GetAsciiString() ?? string.Empty;
 
                 if (queryString.Length == 0)
                 {

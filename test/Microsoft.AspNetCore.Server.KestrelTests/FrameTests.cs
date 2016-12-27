@@ -2,29 +2,23 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.IO.Pipelines;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
-using Microsoft.Extensions.Internal;
 using Moq;
 using Xunit;
-using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     public class FrameTests : IDisposable
     {
         private readonly Pipe _socketInput;
-        private readonly MemoryPool _pool;
         private readonly TestFrame<object> _frame;
         private readonly ServiceContext _serviceContext;
         private readonly ConnectionContext _connectionContext;
@@ -46,7 +40,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public FrameTests()
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
-            _pool = new MemoryPool();
             _pipelineFactory = new PipelineFactory();
             _socketInput = _pipelineFactory.Create();
 
@@ -74,7 +67,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public void Dispose()
         {
-            _pool.Dispose();
             _socketInput.CompleteReader();
             _socketInput.CompleteWriter();
             _pipelineFactory.Dispose();
