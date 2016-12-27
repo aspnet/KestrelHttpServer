@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -232,33 +233,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static unsafe long ParseContentLength(StringValues value)
+        public static long ParseContentLength(StringValues value)
         {
-            var input = value.ToString();
-            var parsed = 0L;
-
-            fixed (char* ptr = input)
+            long parsed;
+            if (!HeaderUtilities.TryParseInt64(value.ToString(), out parsed))
             {
-                var ch = (ushort*)ptr;
-                var end = ch + input.Length;
-
-                if (ch == end)
-                {
-                    ThrowInvalidContentLengthException(value);
-                }
-
-                ushort digit = 0;
-                while (ch < end && (digit = (ushort)(*ch - 0x30)) <= 9)
-                {
-                    parsed *= 10;
-                    parsed += digit;
-                    ch++;
-                }
-
-                if (ch != end)
-                {
-                    ThrowInvalidContentLengthException(value);
-                }
+                ThrowInvalidContentLengthException(value);
             }
 
             return parsed;

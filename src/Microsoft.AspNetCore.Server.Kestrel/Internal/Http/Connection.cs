@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Filter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -144,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return _socketClosedTcs.Task;
         }
 
-        public virtual void Abort(Exception error = null)
+        public virtual Task AbortAsync(Exception error = null)
         {
             // Frame.Abort calls user code while this method is always
             // called from a libuv thread.
@@ -152,6 +153,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 _frame.Abort(error);
             });
+
+            return _socketClosedTcs.Task;
         }
 
         // Called on Libuv thread
@@ -204,7 +207,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             //    _frame.Input = _filteredStreamAdapter.SocketInput;
             //    _frame.Output = _filteredStreamAdapter.SocketOutput;
 
-            //    _readInputTask = _filteredStreamAdapter.ReadInputAsync();
+                // Don't attempt to read input if connection has already closed.
+                // This can happen if a client opens a connection and immediately closes it.
+               // _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation ?
+               //     _filteredStreamAdapter.ReadInputAsync() :
+               //     TaskCache.CompletedTask;
             //}
 
             //_frame.PrepareRequest = _filterContext.PrepareRequest;
@@ -298,9 +305,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 currentWritableBuffer.Advance(readCount);
                 currentWritableBuffer.FlushAsync().GetAwaiter().GetResult();
             }
-            if (errorDone)
+            if (!normalRead)
             {
-                Abort(error);
+                AbortAsync(error);
             }
         }
 

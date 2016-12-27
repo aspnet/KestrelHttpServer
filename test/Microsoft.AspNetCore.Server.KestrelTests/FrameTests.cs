@@ -7,12 +7,12 @@ using System.IO.Pipelines;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 using Moq;
@@ -25,10 +25,23 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     {
         private readonly Pipe _socketInput;
         private readonly MemoryPool _pool;
-        private readonly Frame<object> _frame;
+        private readonly TestFrame<object> _frame;
         private readonly ServiceContext _serviceContext;
         private readonly ConnectionContext _connectionContext;
         private PipelineFactory _pipelineFactory;
+
+        private class TestFrame<TContext> : Frame<TContext>
+        {
+            public TestFrame(IHttpApplication<TContext> application, ConnectionContext context)
+            : base(application, context)
+            {
+            }
+
+            public Task ProduceEndAsync()
+            {
+                return ProduceEnd();
+            }
+        }
 
         public FrameTests()
         {
@@ -50,11 +63,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             _connectionContext = new ConnectionContext(listenerContext)
             {
                 Input = _socketInput,
-                Output = new MockSocketOuptut(),
+                Output = new MockSocketOutput(),
                 ConnectionControl = Mock.Of<IConnectionControl>()
             };
 
-            _frame = new Frame<object>(application: null, context: _connectionContext);
+            _frame = new TestFrame<object>(application: null, context: _connectionContext);
             _frame.Reset();
             _frame.InitializeHeaders();
         }
@@ -733,5 +746,74 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         //    await requestProcessingTask.TimeoutAfter(TimeSpan.FromSeconds(10));
         //    _socketInput.IncomingFin();
         //}
+        }
+
+        [Fact]
+        public void RequestAbortedTokenIsResetBeforeLastWriteWithContentLength()
+        {
+            _frame.ResponseHeaders["Content-Length"] = "12";
+
+            // Need to compare WaitHandle ref since CancellationToken is struct
+            var original = _frame.RequestAborted.WaitHandle;
+
+            foreach (var ch in "hello, worl")
+            {
+                _frame.Write(new ArraySegment<byte>(new[] { (byte)ch }));
+                Assert.Same(original, _frame.RequestAborted.WaitHandle);
+            }
+
+            _frame.Write(new ArraySegment<byte>(new[] { (byte)'d' }));
+            Assert.NotSame(original, _frame.RequestAborted.WaitHandle);
+        }
+
+        [Fact]
+        public async Task RequestAbortedTokenIsResetBeforeLastWriteAsyncWithContentLength()
+        {
+            _frame.ResponseHeaders["Content-Length"] = "12";
+
+            // Need to compare WaitHandle ref since CancellationToken is struct
+            var original = _frame.RequestAborted.WaitHandle;
+
+            foreach (var ch in "hello, worl")
+            {
+                await _frame.WriteAsync(new ArraySegment<byte>(new[] { (byte)ch }), default(CancellationToken));
+                Assert.Same(original, _frame.RequestAborted.WaitHandle);
+            }
+
+            await _frame.WriteAsync(new ArraySegment<byte>(new[] { (byte)'d' }), default(CancellationToken));
+            Assert.NotSame(original, _frame.RequestAborted.WaitHandle);
+        }
+
+        [Fact]
+        public async Task RequestAbortedTokenIsResetBeforeLastWriteAsyncAwaitedWithContentLength()
+        {
+            _frame.ResponseHeaders["Content-Length"] = "12";
+
+            // Need to compare WaitHandle ref since CancellationToken is struct
+            var original = _frame.RequestAborted.WaitHandle;
+
+            foreach (var ch in "hello, worl")
+            {
+                await _frame.WriteAsyncAwaited(new ArraySegment<byte>(new[] { (byte)ch }), default(CancellationToken));
+                Assert.Same(original, _frame.RequestAborted.WaitHandle);
+            }
+
+            await _frame.WriteAsyncAwaited(new ArraySegment<byte>(new[] { (byte)'d' }), default(CancellationToken));
+            Assert.NotSame(original, _frame.RequestAborted.WaitHandle);
+        }
+
+        [Fact]
+        public async Task RequestAbortedTokenIsResetBeforeLastWriteWithChunkedEncoding()
+        {
+            // Need to compare WaitHandle ref since CancellationToken is struct
+            var original = _frame.RequestAborted.WaitHandle;
+
+            _frame.HttpVersion = "HTTP/1.1";
+            await _frame.WriteAsync(new ArraySegment<byte>(Encoding.ASCII.GetBytes("hello, world")), default(CancellationToken));
+            Assert.Same(original, _frame.RequestAborted.WaitHandle);
+
+            await _frame.ProduceEndAsync();
+            Assert.NotSame(original, _frame.RequestAborted.WaitHandle);
+        }
     }
 }
