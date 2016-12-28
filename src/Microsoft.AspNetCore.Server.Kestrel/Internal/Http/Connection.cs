@@ -225,11 +225,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private unsafe Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            Console.WriteLine(nameof(OnAlloc));
-            var currentWritableBuffer = Input.Alloc(2048);
             Debug.Assert(_currentWritableBuffer == null);
+            var currentWritableBuffer = Input.Alloc(2048);
             _currentWritableBuffer = currentWritableBuffer;
-
             void* dataPtr;
             var tryGetPointer = currentWritableBuffer.Memory.TryGetPointer(out dataPtr);
             Debug.Assert(tryGetPointer);
@@ -247,6 +245,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private void OnRead(UvStreamHandle handle, int status)
         {
             WritableBuffer currentWritableBuffer;
+
             if (status == 0)
             {
                 // A zero status does not indicate an error or connection end. It indicates
@@ -255,7 +254,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // We need to clean up whatever was allocated by OnAlloc.
                 currentWritableBuffer = _currentWritableBuffer.Value;
                 _currentWritableBuffer = null;
-                currentWritableBuffer.FlushAsync();
+                currentWritableBuffer.Commit();
                 return;
             }
 
@@ -296,13 +295,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 error = new IOException(uvError.Message, uvError);
             }
-            if (readCount != 0)
+            else
             {
                 currentWritableBuffer = _currentWritableBuffer.Value;
                 _currentWritableBuffer = null;
                 currentWritableBuffer.Advance(readCount);
-                Task.Run(() => currentWritableBuffer.FlushAsync());
+                currentWritableBuffer.Commit();
+                if (readCount != 0)
+                {
+                    currentWritableBuffer.FlushAsync();
+                }
             }
+
             if (!normalRead)
             {
                 AbortAsync(error);
