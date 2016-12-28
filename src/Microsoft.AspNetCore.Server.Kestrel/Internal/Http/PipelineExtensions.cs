@@ -26,23 +26,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 return new ValueTask<ArraySegment<byte>>(data);
             }
 
-            return new ValueTask<ArraySegment<byte>>(pipelineReader.PeekAsyncAwaited());
+            return new ValueTask<ArraySegment<byte>>(pipelineReader.PeekAsyncAwaited(input));
         }
 
-        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IPipelineReader pipelineReader)
+        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IPipelineReader pipelineReader, ReadableBufferAwaitable readingTask)
         {
-            ReadResult result;
-            Memory<byte> segment;
-            do
-            {
-                result = await pipelineReader.ReadAsync();
-
-                segment = result.Buffer.First;
-                var x = result.Buffer.Slice(0, segment.Length);
-                pipelineReader.Advance(x.Start);
-            }
-            while (segment.Length != 0 || result.IsCompleted || result.IsCancelled);
-
+            var result = await readingTask;
+            var segment = result.Buffer.First;
+            pipelineReader.Advance(result.Buffer.Start);
             ArraySegment<byte> data;
             var arrayResult = segment.TryGetArray(out data);
             Debug.Assert(arrayResult);

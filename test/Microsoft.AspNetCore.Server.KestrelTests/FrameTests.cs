@@ -183,20 +183,22 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(400, exception.StatusCode);
         }
 
-        //[Fact]
-        //public void TakeMessageHeadersThrowsOnHeaderValueWithLineFolding_CharacterNotAvailableOnFirstAttempt()
-        //{
-        //    var headerArray = Encoding.ASCII.GetBytes("Header-1: value1\r\n");
-        //    _socketInput.IncomingData(headerArray, 0, headerArray.Length);
+        [Fact]
+        public async Task TakeMessageHeadersThrowsOnHeaderValueWithLineFolding_CharacterNotAvailableOnFirstAttempt()
+        {
+            await _socketInput.WriteAsync(Encoding.ASCII.GetBytes("Header-1: value1\r\n"));
 
-        //    Assert.False(_frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
+            var readableBuffer = (await _socketInput.ReadAsync()).Buffer;
+            Assert.False(_frame.TakeMessageHeaders(readableBuffer, (FrameRequestHeaders)_frame.RequestHeaders, out examined, out consumed));
+            _socketInput.AdvanceReader(consumed, examined);
 
-        //    _socketInput.IncomingData(Encoding.ASCII.GetBytes(" "), 0, 1);
+            await _socketInput.WriteAsync(Encoding.ASCII.GetBytes(" "));
 
-        //    var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-        //    Assert.Equal("Header value line folding not supported.", exception.Message);
-        //    Assert.Equal(400, exception.StatusCode);
-        //}
+            readableBuffer = (await _socketInput.ReadAsync()).Buffer;
+            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(readableBuffer, (FrameRequestHeaders)_frame.RequestHeaders, out examined, out consumed));
+            Assert.Equal("Header value line folding not supported.", exception.Message);
+            Assert.Equal(400, exception.StatusCode);
+        }
 
         [Theory]
         [InlineData("Header-1: value1\r\r\n")]
@@ -305,27 +307,24 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         //    Assert.Equal(431, exception.StatusCode);
         //}
 
-        //[Theory]
-        //[InlineData("Cookie: \r\n\r\n", 1)]
-        //[InlineData("Cookie:\r\n\r\n", 1)]
-        //[InlineData("Cookie: \r\nConnection: close\r\n\r\n", 2)]
-        //[InlineData("Cookie:\r\nConnection: close\r\n\r\n", 2)]
-        //[InlineData("Connection: close\r\nCookie: \r\n\r\n", 2)]
-        //[InlineData("Connection: close\r\nCookie:\r\n\r\n", 2)]
-        //public void EmptyHeaderValuesCanBeParsed(string rawHeaders, int numHeaders)
-        //{
-        //    var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-        //    _socketInput.IncomingData(headerArray, 0, headerArray.Length);
+        [Theory]
+        [InlineData("Cookie: \r\n\r\n", 1)]
+        [InlineData("Cookie:\r\n\r\n", 1)]
+        [InlineData("Cookie: \r\nConnection: close\r\n\r\n", 2)]
+        [InlineData("Cookie:\r\nConnection: close\r\n\r\n", 2)]
+        [InlineData("Connection: close\r\nCookie: \r\n\r\n", 2)]
+        [InlineData("Connection: close\r\nCookie:\r\n\r\n", 2)]
+        public async Task EmptyHeaderValuesCanBeParsed(string rawHeaders, int numHeaders)
+        {
+            await _socketInput.WriteAsync(Encoding.ASCII.GetBytes(rawHeaders));
+            var readableBuffer = (await _socketInput.ReadAsync()).Buffer;
 
-        //    var success = _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders);
+            var success = _frame.TakeMessageHeaders(readableBuffer, (FrameRequestHeaders)_frame.RequestHeaders, out examined, out consumed);
 
-        //    Assert.True(success);
-        //    Assert.Equal(numHeaders, _frame.RequestHeaders.Count);
-
-        //    // Assert TakeMessageHeaders consumed all the input
-        //    var scan = _socketInput.ConsumingStart();
-        //    Assert.True(scan.IsEnd);
-        //}
+            Assert.True(success);
+            Assert.Equal(numHeaders, _frame.RequestHeaders.Count);
+            Assert.Equal(readableBuffer.End, consumed);
+        }
 
         //[Fact]
         //public void ResetResetsScheme()

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
@@ -17,6 +18,7 @@ namespace Microsoft.AspNetCore.Testing
         private KestrelEngine _engine;
         private IDisposable _server;
         private ServerAddress _address;
+        private PipelineFactory _pipelineFactory;
 
         public TestServer(RequestDelegate app)
             : this(app, new TestServiceContext())
@@ -41,7 +43,8 @@ namespace Microsoft.AspNetCore.Testing
             {
                 return new Frame<HttpContext>(new DummyApplication(app, httpContextFactory), connectionContext);
             };
-
+            _pipelineFactory = new PipelineFactory();
+            context.PipelineFactory = _pipelineFactory;
             try
             {
                 _engine = new KestrelEngine(context);
@@ -68,6 +71,7 @@ namespace Microsoft.AspNetCore.Testing
 
         public void Dispose()
         {
+            _pipelineFactory.Dispose();
             _server.Dispose();
             _engine.Dispose();
         }

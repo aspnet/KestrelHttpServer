@@ -980,7 +980,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var start = buffer.Start;
             var end = buffer.Start;
-            examined = buffer.Start;
+            examined = buffer.End;
             consumed = buffer.Start;
 
             // We may hit this when the client has stopped sending data but
@@ -1153,6 +1153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
 
             consumed = end;
+            examined = end;
             Method = method;
             QueryString = queryString;
             RawTarget = rawTarget;
@@ -1260,8 +1261,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         else if (first[1] == ByteLF)
                         {
+                            consumed = buffer.Slice(2).Start;
+                            examined = consumed;
                             ConnectionControl.CancelTimeout();
-                            consumed = buffer.End;
                             return true;
                         }
 
