@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public override async Task RequestProcessingAsync()
         {
             var requestLineStatus = RequestLineStatus.Empty;
-
+            var dataWaiting = false;
             try
             {
                 while (!_requestProcessingStopping)
@@ -46,6 +46,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         if (requestLineStatus == RequestLineStatus.Done)
                         {
                             break;
+                        }
+
+                        if (dataWaiting)
+                        {
+                            dataWaiting = false;
+                            await Output.FlushAsync();
                         }
 
                         if (Input.CheckFinOrThrow())
@@ -76,6 +82,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (!_requestProcessingStopping && !TakeMessageHeaders(Input, FrameRequestHeaders))
                     {
+                        if (dataWaiting)
+                        {
+                            dataWaiting = false;
+                            await Output.FlushAsync();
+                        }
+
                         if (Input.CheckFinOrThrow())
                         {
                             // We need to attempt to consume start lines and headers even after
@@ -175,6 +187,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             // to ensure InitializeStreams has been called.
                             StopStreams();
                         }
+                    }
+
+                    dataWaiting = Input.IsCompleted;
+                    if (!dataWaiting)
+                    {
+                        await Output.FlushAsync();
                     }
 
                     if (!_keepAlive)

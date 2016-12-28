@@ -1,4 +1,5 @@
 using System;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
@@ -65,12 +66,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public KestrelServerLimits Limits { get; } = new KestrelServerLimits();
 
         /// <summary>
-        /// Set to false to enable Nagle's algorithm for all connections.
+        /// Set to false to enable Nagle's algorithm at the socket layer for all connections.
         /// </summary>
         /// <remarks>
         /// Defaults to true.
         /// </remarks>
         public bool NoDelay { get; set; } = true;
+
+        /// <summary>
+        /// The byte threashold below which small writes will be coalesced per request or request pipeline.
+        /// This can be set to zero to disable for server or switched off per request using the feature <see cref="IHttpBufferingFeature.DisableResponseBuffering" />
+        /// </summary>
+        /// <remarks>
+        /// Defaults to 2920 bytes; or 2 * (MTU - (IPv4 Header + TCP Header)).
+        /// This reduces the number of packets sent over the network; however the data will still be flushed at the end of the requests unless <see cref="NoDelay" /> is set to false.
+        /// </remarks>
+        public uint ApplicationNagleThreshold { get; set; } = 2 * (1500 - (20 + 20));// 2 * (MTU - (IPv4 Header + TCP Header));
 
         /// <summary>
         /// The amount of time after the server begins shutting down before connections will be forcefully closed.

@@ -5,7 +5,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                  IHttpResponseFeature,
                                  IHttpUpgradeFeature,
                                  IHttpConnectionFeature,
-                                 IHttpRequestLifetimeFeature
+                                 IHttpRequestLifetimeFeature,
+                                 IHttpBufferingFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -347,6 +347,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         void IHttpRequestLifetimeFeature.Abort()
         {
             Abort();
+        }
+
+        void IHttpBufferingFeature.DisableRequestBuffering()
+        {
+        }
+
+        void IHttpBufferingFeature.DisableResponseBuffering()
+        {
+            ConnectionContext.ApplicationNagleThreshold = 0;
         }
     }
 }

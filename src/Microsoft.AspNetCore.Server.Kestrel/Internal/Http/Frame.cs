@@ -351,6 +351,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ResetFeatureCollection();
 
+            ConnectionContext.ApplicationNagleThreshold = ServerOptions.ApplicationNagleThreshold;
+
             Scheme = null;
             Method = null;
             PathBase = null;
@@ -392,6 +394,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     TaskCreationOptions.DenyChildAttach,
                     TaskScheduler.Default).Unwrap();
             _frameStartedTcs.SetResult(null);
+            ConnectionContext.RequestProcessingStarted = true;
         }
 
         /// <summary>

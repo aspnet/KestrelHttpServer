@@ -14,6 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private static readonly Type IServiceProvidersFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IServiceProvidersFeature);
         private static readonly Type IHttpRequestLifetimeFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpRequestLifetimeFeature);
         private static readonly Type IHttpConnectionFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpConnectionFeature);
+        private static readonly Type IHttpBufferingFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpBufferingFeature);
         private static readonly Type IHttpAuthenticationFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.Authentication.IHttpAuthenticationFeature);
         private static readonly Type IQueryFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IQueryFeature);
         private static readonly Type IFormFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IFormFeature);
@@ -31,6 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private object _currentIServiceProvidersFeature;
         private object _currentIHttpRequestLifetimeFeature;
         private object _currentIHttpConnectionFeature;
+        private object _currentIHttpBufferingFeature;
         private object _currentIHttpAuthenticationFeature;
         private object _currentIQueryFeature;
         private object _currentIFormFeature;
@@ -49,6 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _currentIHttpUpgradeFeature = this;
             _currentIHttpRequestLifetimeFeature = this;
             _currentIHttpConnectionFeature = this;
+            _currentIHttpBufferingFeature = this;
             
             _currentIHttpRequestIdentifierFeature = null;
             _currentIServiceProvidersFeature = null;
@@ -88,6 +91,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (key == IHttpConnectionFeatureType)
             {
                 return _currentIHttpConnectionFeature;
+            }
+            if (key == IHttpBufferingFeatureType)
+            {
+                return _currentIHttpBufferingFeature;
             }
             if (key == IHttpAuthenticationFeatureType)
             {
@@ -164,6 +171,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (key == IHttpConnectionFeatureType)
             {
                 _currentIHttpConnectionFeature = feature;
+                return;
+            }
+            if (key == IHttpBufferingFeatureType)
+            {
+                _currentIHttpBufferingFeature = feature;
                 return;
             }
             if (key == IHttpAuthenticationFeatureType)
@@ -244,6 +256,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (_currentIHttpConnectionFeature != null)
             {
                 yield return new KeyValuePair<Type, object>(IHttpConnectionFeatureType, _currentIHttpConnectionFeature as global::Microsoft.AspNetCore.Http.Features.IHttpConnectionFeature);
+            }
+            if (_currentIHttpBufferingFeature != null)
+            {
+                yield return new KeyValuePair<Type, object>(IHttpBufferingFeatureType, _currentIHttpBufferingFeature as global::Microsoft.AspNetCore.Http.Features.IHttpBufferingFeature);
             }
             if (_currentIHttpAuthenticationFeature != null)
             {

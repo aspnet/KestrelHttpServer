@@ -114,7 +114,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new SynchronousThreadPool();
                 var options = new KestrelServerOptions { Limits = { MaxResponseBufferSize = null } };
-                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(options), "0", trace, ltp);
+                var connection = new MockConnection(options);
+                connection.Input = new SocketInput(kestrelThread.Memory, ltp);
+                var socketOutput = new SocketOutput(kestrelThread, socket, connection, "0", trace, ltp);
 
                 // Don't want to allocate anything too huge for perf. This is at least larger than the default buffer.
                 var bufferSize = 1024 * 1024;
@@ -672,7 +674,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
                 var trace = new KestrelTrace(new TestKestrelTrace());
                 var ltp = new SynchronousThreadPool();
-                var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(options), "0", trace, ltp);
+                var connection = new MockConnection(options);
+                connection.Input = new SocketInput(kestrelThread.Memory, ltp);
+                var socketOutput = new SocketOutput(kestrelThread, socket, connection, "0", trace, ltp);
 
                 // block 1
                 var start = socketOutput.ProducingStart();
