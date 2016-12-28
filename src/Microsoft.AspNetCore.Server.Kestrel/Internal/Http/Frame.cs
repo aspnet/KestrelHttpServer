@@ -1238,8 +1238,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor examined, out ReadCursor consumed)
         {
             consumed = buffer.Start;
-            examined = buffer.Start;
-            var end = buffer.Start;
+            examined = buffer.End;
 
             while (true)
             {
@@ -1329,7 +1328,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
                 }
 
-                var next = endlineSpan[1];
+                var next = endlineSpan[2];
                 if (next == ByteSpace || next == ByteTab)
                 {
                     // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
