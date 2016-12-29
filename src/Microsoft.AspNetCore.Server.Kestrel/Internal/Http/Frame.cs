@@ -1112,12 +1112,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
+            var lineEnd = buffer.Slice(versionEnd, 2).ToSpan();
             //scan.Take(); // consume CR
-            //if (scan.Take() != ByteLF)
-            //{
-            //    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-            //}
+            if (lineEnd[1] != ByteLF)
+            {
+                RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+            }
 
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;

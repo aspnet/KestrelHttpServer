@@ -300,11 +300,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 currentWritableBuffer = _currentWritableBuffer.Value;
                 _currentWritableBuffer = null;
                 currentWritableBuffer.Advance(readCount);
-                currentWritableBuffer.Commit();
-                if (readCount != 0)
-                {
-                    currentWritableBuffer.FlushAsync();
-                }
+                currentWritableBuffer.FlushAsync();
             }
 
             if (!normalRead)
