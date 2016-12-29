@@ -469,8 +469,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         ReadCursor consumed;
 
                         var segment = PeekChunkedData(buffer, out consumed);
-
-                        _input.AdvanceReader(consumed, consumed);
+                        _input.AdvanceReader(buffer.Start, buffer.Start);
 
                         if (segment.Count != 0)
                         {
@@ -496,7 +495,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         ParseChunkedSuffix(buffer, out consumed);
 
-                        _input.AdvanceReader(consumed, buffer.End);
+                        _input.AdvanceReader(consumed, consumed);
 
                         if (_mode != Mode.Suffix)
                         {
@@ -520,7 +519,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     ParseChunkedTrailer(buffer, out consumed);
 
-                    _input.AdvanceReader(consumed, buffer.End);
+                    _input.AdvanceReader(consumed, consumed);
 
                     if (_mode != Mode.Trailer)
                     {
@@ -547,14 +546,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         ReadCursor consumed;
                         ReadCursor examined;
-                        if (_context.TakeMessageHeaders(buffer, _requestHeaders, out consumed, out examined))
+                        var takeMessageHeaders = _context.TakeMessageHeaders(buffer, _requestHeaders, out examined, out  consumed);
+                        _input.AdvanceReader(consumed, examined);
+                        if (takeMessageHeaders)
                         {
-                            _input.AdvanceReader(consumed, consumed);
                             break;
-                        }
-                        else
-                        {
-                            _input.AdvanceReader(buffer.Start, buffer.End);
                         }
                     }
                     _mode = Mode.Complete;
@@ -632,26 +628,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (SeekExtensions.Seek(buffer.Start, buffer.End, out extensionCursor, ByteCR) == -1)
                     {
                         // End marker not found yet
-                        consumed = buffer.Slice(extensionCursor).Slice(1).Start;
+                        consumed = buffer.End;
                         return;
                     };
 
 
-                    var sufixBuffer = buffer.Slice(0, 2);
+                    var sufixBuffer = buffer.Slice(extensionCursor, 2);
                     var sufixSpan = sufixBuffer.ToSpan();
 
                     if (sufixBuffer.Length < 2)
                     {
                         return;
                     }
-                    else if (sufixSpan[0] == '\r' && sufixSpan[1] == '\n')
-                    {
-                        consumed = sufixBuffer.End;
-                    }
 
                     if (sufixSpan[1] == '\n')
                     {
-                        consumed = buffer.Start;
+                        consumed = sufixBuffer.End;
                         if (_inputLength > 0)
                         {
                             _mode = Mode.Data;
@@ -678,7 +670,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 int actual = Math.Min(segment.Count, _inputLength);
                 // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.
-
+                consumed = buffer.Slice(actual).Start;
                 if (actual == segment.Count)
                 {
                     return segment;

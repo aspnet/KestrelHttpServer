@@ -24,7 +24,8 @@
     "System.Numerics.Vectors": "4.4.0-*",
     "System.Threading.Tasks.Extensions": "4.4.0-*",
     //"System.IO.Pipelines": "0.1.0-*",
-    "System.IO.Pipelines.Text.Primitives": "0.1.0-*"
+    "System.IO.Pipelines.Text.Primitives": "0.1.0-*",
+    "System.Text.Encodings.Web.Utf8": "0.1.0-*"
   },
   "frameworks": {
     "net451": { },

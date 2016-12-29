@@ -45,7 +45,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var result = await Input.ReadAsync();
                         ReadCursor examined;
                         ReadCursor consumed;
-                        requestLineStatus = TakeStartLine(result.Buffer, out examined, out consumed);
+                        try
+                        {
+                            requestLineStatus = TakeStartLine(result.Buffer, out examined, out consumed);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            throw BadHttpRequestException.GetException(RequestRejectionReason.BadRequest);
+                        }
+
                         Input.AdvanceReader(consumed, examined);
 
                         if (requestLineStatus == RequestLineStatus.Done)
@@ -85,7 +93,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         ReadCursor examined;
                         ReadCursor consumed;
 
-                        var takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out examined, out consumed);
+                        bool takeMessageHeaders;
+
+                        try
+                        {
+                            takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out examined, out consumed);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            throw BadHttpRequestException.GetException(RequestRejectionReason.BadRequest);
+                        }
+
                         Input.AdvanceReader(consumed, examined);
 
                         if (takeMessageHeaders)

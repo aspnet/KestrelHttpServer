@@ -9,6 +9,8 @@ using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Encodings.Web.Utf8;
+using System.Text.Utf8;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -1125,19 +1127,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
             string requestUrlPath = string.Empty;
             string rawTarget;
+            var pathBuffer = buffer.Slice(pathBegin, pathEnd);
             if (needDecode)
             {
                 // Read raw target before mutating memory.
-                rawTarget = buffer.Slice(pathBegin, pathEnd).GetAsciiString() ?? string.Empty;
+                rawTarget = pathBuffer.GetAsciiString() ?? string.Empty;
 
                 //// URI was encoded, unescape and then parse as utf8
-              //  pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
-                requestUrlPath = rawTarget;
+
+                var pathSpan = pathBuffer.ToSpan();
+                int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
+                requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();
             }
             else
             {
                // URI wasn't encoded, parse as ASCII
-                requestUrlPath = buffer.Slice(pathBegin, pathEnd).GetAsciiString() ?? string.Empty;
+                requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
 
                 if (queryString.Length == 0)
                 {
@@ -1244,25 +1249,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             while (true)
             {
-                var first = buffer.First.Span;
+                var firstBuffer = buffer.Slice(0,2);
+                var firstSpan = firstBuffer.ToSpan();
 
-                if (first.Length == 0)
+                if (firstSpan.Length == 0)
                 {
                     return false;
                 }
                 else
                 {
-                    var ch = first[0];
+                    var ch = firstSpan[0];
                     if (ch == ByteCR)
                     {
                         // Check for final CRLF.
-                        if (first.Length < 2)
+                        if (firstSpan.Length < 2)
                         {
                             return false;
                         }
-                        else if (first[1] == ByteLF)
+                        else if (firstSpan[1] == ByteLF)
                         {
-                            consumed = buffer.Slice(2).Start;
+                            consumed = firstBuffer.End;
                             examined = consumed;
                             ConnectionControl.CancelTimeout();
                             return true;
@@ -1305,7 +1311,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
                 }
                 ReadCursor whitspace;
-                if (SeekExtensions.Seek(beginName, endName, out whitspace, ByteTab) != -1)
+                if (SeekExtensions.Seek(beginName, endName, out whitspace, ByteTab, ByteSpace) != -1)
                 {
                     RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                 }
@@ -1367,9 +1373,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var name = nameBuffer.ToArray();
                 var value = valueBuffer.GetAsciiString();
 
-                consumed = lineEnd;
                 requestHeaders.Append(name, 0, name.Length, value);
                 buffer = buffer.Slice(lineEnd).Slice(1);
+                consumed = buffer.Start;
 
                 _remainingRequestHeadersBytesAllowed -= bytesScanned;
                 _requestHeadersParsed++;

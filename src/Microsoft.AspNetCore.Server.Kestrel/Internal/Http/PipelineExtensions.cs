@@ -11,19 +11,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public static ValueTask<ArraySegment<byte>> PeekAsync(this IPipelineReader pipelineReader)
         {
             var input = pipelineReader.ReadAsync();
-            if (input.IsCompleted)
+            while (input.IsCompleted)
             {
                 var result = input.GetResult();
+                pipelineReader.Advance(result.Buffer.Start, result.Buffer.Start);
 
-                var segment = result.Buffer.First;
-                var x = result.Buffer.Slice(0, segment.Length);
-                pipelineReader.Advance(x.Start);
+                if (!result.Buffer.IsEmpty)
+                {
+                    ArraySegment<byte> data;
+                    var segment = result.Buffer.First;
+                    var arrayResult = segment.TryGetArray(out data);
+                    Debug.Assert(arrayResult);
 
-                ArraySegment<byte> data;
-                var arrayResult = segment.TryGetArray(out data);
-                Debug.Assert(arrayResult);
-
-                return new ValueTask<ArraySegment<byte>>(data);
+                    return new ValueTask<ArraySegment<byte>>(data);
+                }
+                input = pipelineReader.ReadAsync();
             }
 
             return new ValueTask<ArraySegment<byte>>(pipelineReader.PeekAsyncAwaited(input));
@@ -31,13 +33,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IPipelineReader pipelineReader, ReadableBufferAwaitable readingTask)
         {
-            var result = await readingTask;
-            var segment = result.Buffer.First;
-            pipelineReader.Advance(result.Buffer.Start);
-            ArraySegment<byte> data;
-            var arrayResult = segment.TryGetArray(out data);
-            Debug.Assert(arrayResult);
-            return data;
+            while (true)
+            {
+                var result = await readingTask;
+                pipelineReader.Advance(result.Buffer.Start);
+
+                if (!result.Buffer.IsEmpty)
+                {
+                    ArraySegment<byte> data;
+                    var segment = result.Buffer.First;
+                    var arrayResult = segment.TryGetArray(out data);
+                    Debug.Assert(arrayResult);
+
+                    return data;
+                }
+                readingTask = pipelineReader.ReadAsync();
+            }
         }
 
         public static Span<byte> ToSpan(this ReadableBuffer buffer)

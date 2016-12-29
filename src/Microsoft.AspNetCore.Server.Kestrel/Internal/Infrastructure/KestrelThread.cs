@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.Extensions.Logging;
+using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
@@ -74,10 +76,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             Memory = new MemoryPool();
+            PipelineFactory = new PipelineFactory();
             WriteReqPool = new WriteReqPool(this, _log);
             ConnectionManager = new ConnectionManager(this, _threadPool);
         }
-
         // For testing
         internal KestrelThread(KestrelEngine engine, int maxLoops)
             : this(engine)
@@ -88,6 +90,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public UvLoopHandle Loop { get { return _loop; } }
 
         public MemoryPool Memory { get; }
+
+        public PipelineFactory PipelineFactory { get; }
 
         public ConnectionManager ConnectionManager { get; }
 
@@ -187,6 +191,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             finally
             {
                 Memory.Dispose();
+                PipelineFactory.Dispose();
             }
         }
 

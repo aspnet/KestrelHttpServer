@@ -76,7 +76,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
-                var pipelineFactory = new PipelineFactory();
                 var engine = new KestrelEngine(new ServiceContext
                 {
                     FrameFactory = context =>
@@ -87,13 +86,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Log = trace,
                     ThreadPool = new LoggingThreadPool(trace),
                     DateHeaderValueManager = dateHeaderValueManager,
-                    ServerOptions = Options,
-                    PipelineFactory = pipelineFactory
+                    ServerOptions = Options
                 });
 
                 _disposables.Push(engine);
                 _disposables.Push(dateHeaderValueManager);
-                _disposables.Push(pipelineFactory);
 
                 var threadCount = Options.ThreadCount;
 

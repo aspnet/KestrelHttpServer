@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
             }
 
-            Input = context.ServiceContext.PipelineFactory.Create();
+            Input = Thread.PipelineFactory.Create();
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
@@ -140,6 +140,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task StopAsync()
         {
             _frame.StopAsync();
+            _frame.Input.CompleteWriter();
             _frame.Input.CompleteReader();
 
             return _socketClosedTcs.Task;
