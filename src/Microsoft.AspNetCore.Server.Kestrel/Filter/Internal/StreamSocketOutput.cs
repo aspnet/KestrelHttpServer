@@ -22,6 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
         private readonly MemoryPool _memory;
         private readonly IKestrelTrace _logger;
         private MemoryPoolBlock _producingBlock;
+        private byte[] _chunkBytes;
 
         private bool _canWrite = true;
 
@@ -37,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
         {
             if (chunk && buffer.Array != null)
             {
-                var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count);
+                var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count, ref _chunkBytes);
                 _outputStream.Write(beginChunkBytes.Array, beginChunkBytes.Offset, beginChunkBytes.Count);
             }
 
@@ -61,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
         private async Task WriteAsyncChunked(ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
-            var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count);
+            var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count, ref _chunkBytes);
 
             await _outputStream.WriteAsync(beginChunkBytes.Array, beginChunkBytes.Offset, beginChunkBytes.Count, cancellationToken);
             await _outputStream.WriteAsync(buffer.Array, buffer.Offset, buffer.Count, cancellationToken);
