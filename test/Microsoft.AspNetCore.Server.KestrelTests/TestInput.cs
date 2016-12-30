@@ -53,9 +53,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public void Add(string text, bool fin = false)
         {
-            var data = System.Text.Encoding.ASCII.GetBytes(text);
-            var buffer = FrameContext.Input.Alloc(text.Length);
-            buffer.Write(data);
+            var data = Encoding.ASCII.GetBytes(text);
+            FrameContext.Input.WriteAsync(data).Wait();
             if (fin)
             {
                 FrameContext.Input.CompleteWriter();

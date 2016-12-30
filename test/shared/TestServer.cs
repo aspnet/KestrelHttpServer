@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
@@ -42,6 +41,7 @@ namespace Microsoft.AspNetCore.Testing
             {
                 return new Frame<HttpContext>(new DummyApplication(app, httpContextFactory), connectionContext);
             };
+
             try
             {
                 _engine = new KestrelEngine(context);
