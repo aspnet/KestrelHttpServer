@@ -205,8 +205,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Thread.PipelineFactory, Thread.Memory, Log);
 
-                _frame.Input = _filteredStreamAdapter.SocketInput;
-                _frame.Output = _filteredStreamAdapter.SocketOutput;
+                _frame.Input = _filteredStreamAdapter.Input;
+                _frame.Output = _filteredStreamAdapter.Output;
 
                 //Don't attempt to read input if connection has already closed.
                 // This can happen if a client opens a connection and immediately closes it.
@@ -216,6 +216,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             _frame.PrepareRequest = _filterContext.PrepareRequest;
+            _frame.Start();
         }
 
         private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)

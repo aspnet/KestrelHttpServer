@@ -22,18 +22,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
             MemoryPool memory,
             IKestrelTrace logger)
         {
-            SocketInput = pipelineFactory.Create();
-            SocketOutput = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
+            Input = pipelineFactory.Create();
+            Output = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
 
             _filteredStream = filteredStream;
         }
 
-        public Pipe SocketInput { get; }
+        public Pipe Input { get; }
 
-        public ISocketOutput SocketOutput { get; }
+        public ISocketOutput Output { get; }
 
         public void Dispose()
         {
+            Input.CompleteWriter();
+            Input.CompleteReader();
         }
 
         public async Task ReadInputAsync()
@@ -42,21 +44,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
             do
             {
-                var block = SocketInput.Alloc();
+                var block = Input.Alloc(2048);
 
                 try
                 {
                     ArraySegment<byte> array;
                     block.Memory.TryGetArray(out array);
                     bytesRead = await _filteredStream.ReadAsync(array.Array, array.Offset, array.Count);
+                    block.Advance(bytesRead);
+                    await block.FlushAsync();
                 }
                 catch (Exception ex)
                 {
-                    SocketInput.CompleteWriter(ex);
+                    Input.CompleteWriter(ex);
                     throw;
                 }
 
-                SocketInput.AdvanceWriter(bytesRead);
             } while (bytesRead != 0);
         }
     }
