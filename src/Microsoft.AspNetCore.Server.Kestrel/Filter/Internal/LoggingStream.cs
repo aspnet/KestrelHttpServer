@@ -127,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
             _logger.LogDebug(builder.ToString());
         }
 
-#if NET451
+#if (NET451 || NETSTANDARD1_7)
         // The below APM methods call the underlying Read/WriteAsync methods which will still be logged.
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
