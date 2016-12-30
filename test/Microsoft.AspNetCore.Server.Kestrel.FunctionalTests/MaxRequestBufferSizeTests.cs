@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [Theory(Skip = "SslStream hanging on write after update to CoreFx 4.4 (https://github.com/dotnet/corefx/issues/14698)")]
+        [Theory]
         [MemberData("LargeUploadData")]
         public async Task LargeUpload(long? maxRequestBufferSize, bool ssl, bool expectPause)
         {
@@ -118,13 +118,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         // The maximum is harder to determine, since there can be OS-level buffers in both the client
                         // and server, which allow the client to send more than maxRequestBufferSize before getting
                         // paused.  We assume the combined buffers are smaller than the difference between
-                        // data.Length and maxRequestBufferSize.                          
+                        // data.Length and maxRequestBufferSize.
                         var maximumExpectedBytesWritten = data.Length - 1;
 
                         // Block until the send task has gone a while without writing bytes AND
                         // the bytes written exceeds the minimum expected.  This indicates the server buffer
                         // is full.
-                        // 
+                        //
                         // If the send task is paused before the expected number of bytes have been
                         // written, keep waiting since the pause may have been caused by something else
                         // like a slow machine.
