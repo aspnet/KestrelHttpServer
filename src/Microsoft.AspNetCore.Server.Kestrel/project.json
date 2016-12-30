@@ -40,6 +40,12 @@
         "System.Threading.Thread": "4.4.0-*",
         "System.Threading.ThreadPool": "4.4.0-*"
       }
+    },
+    "netstandard1.7": {
+      "dependencies": {
+        "System.Threading.Thread": "4.4.0-*",
+        "System.Threading.ThreadPool": "4.4.0-*"
+      }
     }
   },
   "buildOptions": {

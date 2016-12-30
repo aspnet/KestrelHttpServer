@@ -131,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
             return _input.ReadAsync(buffer.Array, buffer.Offset, buffer.Count);
         }
 
-#if NET451
+#if (NET451 || NETSTANDARD1_7)
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
             var task = ReadAsync(buffer, offset, count, default(CancellationToken), state);
