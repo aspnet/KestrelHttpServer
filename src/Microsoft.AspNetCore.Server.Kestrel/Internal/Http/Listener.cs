@@ -102,6 +102,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 }, this).ConfigureAwait(false);
             }
+
             ListenSocket = null;
         }
     }
