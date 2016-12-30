@@ -63,24 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         if (result.IsCompleted || result.IsCancelled)
                         {
-                            result = await Input.ReadAsync();
-                            // We need to attempt to consume start lines and headers even after
-                            // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
-                            // connection without giving the application a chance to respond to a request
-                            // sent immediately before the a FIN from the client.
-                            requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined);
-
-                            if (requestLineStatus == RequestLineStatus.Empty)
-                            {
-                                return;
-                            }
-
-                            if (requestLineStatus != RequestLineStatus.Done)
-                            {
-                                RejectRequest(RequestRejectionReason.InvalidRequestLine, requestLineStatus.ToString());
-                            }
-
-                            break;
+                            RejectRequest(RequestRejectionReason.InvalidRequestLine, requestLineStatus.ToString());
                         }
                     }
 
@@ -110,17 +93,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             break;
                         }
-                    //{
-                    //    if (Input.CheckFinOrThrow())
-                    //    {
-                    //        // We need to attempt to consume start lines and headers even after
-                    //        // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
-                    //        // connection without giving the application a chance to respond to a request
-                    //        // sent immediately before the a FIN from the client.
-                    //        if (!TakeMessageHeaders(Input, FrameRequestHeaders))
-                    //        {
-                    //            RejectRequest(RequestRejectionReason.MalformedRequestInvalidHeaders);
-                    //        }
+
+                        if (result.IsCompleted || result.IsCancelled)
+                        {
+                            RejectRequest(RequestRejectionReason.MalformedRequestInvalidHeaders);
+                        }
                     }
 
                     if (!_requestProcessingStopping)
