@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         ReadCursor consumed;
                         try
                         {
-                            requestLineStatus = TakeStartLine(result.Buffer, out examined, out consumed);
+                            requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined);
                         }
                         catch (InvalidOperationException)
                         {
@@ -68,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            requestLineStatus = TakeStartLine(result.Buffer, out examined, out consumed);
+                            requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined);
 
                             if (requestLineStatus == RequestLineStatus.Empty)
                             {
@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         try
                         {
-                            takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out examined, out consumed);
+                            takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out consumed, out examined);
                         }
                         catch (InvalidOperationException)
                         {

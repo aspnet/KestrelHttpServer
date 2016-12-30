@@ -546,7 +546,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         ReadCursor consumed;
                         ReadCursor examined;
-                        var takeMessageHeaders = _context.TakeMessageHeaders(buffer, _requestHeaders, out examined, out  consumed);
+                        var takeMessageHeaders = _context.TakeMessageHeaders(buffer, _requestHeaders, out  consumed, out examined);
                         _input.AdvanceReader(consumed, examined);
                         if (takeMessageHeaders)
                         {

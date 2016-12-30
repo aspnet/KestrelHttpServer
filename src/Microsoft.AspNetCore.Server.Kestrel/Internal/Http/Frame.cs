@@ -976,12 +976,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.ProducingComplete(end);
         }
 
-        public RequestLineStatus TakeStartLine(ReadableBuffer buffer, out ReadCursor examined, out ReadCursor consumed)
+        public RequestLineStatus TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
-            const int MaxInvalidRequestLineChars = 32;
-
             var start = buffer.Start;
             var end = buffer.Start;
+
             examined = buffer.End;
             consumed = buffer.Start;
 
@@ -1021,16 +1020,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (SeekExtensions.Seek(buffer.Start, end, out methodEnd, ByteSpace) == -1)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectRequestLine(start, end);
                 }
 
                 method = buffer.Slice(buffer.Start, methodEnd).GetAsciiString();
 
                 if (method == null)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectRequestLine(start, end);
                 }
 
                 // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
@@ -1039,8 +1036,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     if (!IsValidTokenChar(method[i]))
                     {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        RejectRequestLine(start, end);
                     }
                 }
             }
@@ -1052,14 +1048,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var needDecode = false;
             ReadCursor pathEnd;
             // TODO: Bad
-
-            var pathBegin = buffer.Slice(methodEnd).Slice(1).Start;
+            var pathBegin = buffer.Slice(methodEnd, 1).End;
 
             var chFound = SeekExtensions.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
             if (chFound == -1)
             {
-                RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                RejectRequestLine(start, end);
             }
             else if (chFound == BytePercentage)
             {
@@ -1067,8 +1061,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 chFound = SeekExtensions.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark);
                 if (chFound == -1)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectRequestLine(start, end);
                 }
             };
 
@@ -1078,23 +1071,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (SeekExtensions.Seek(pathEnd, end, out queryEnd, ByteSpace) == -1)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectRequestLine(start, end);
                 }
                 queryString = buffer.Slice(pathEnd, queryEnd).GetAsciiString();
             }
 
-            //if (pathBegin.Peek() == ByteSpace)
-            //{
-            //    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
-            ////}
+            // No path
+            if (pathBegin == pathEnd)
+            {
+                RejectRequestLine(start, end);
+            }
 
             ReadCursor versionEnd;
             if (SeekExtensions.Seek(queryEnd, end, out versionEnd, ByteCR) == -1)
             {
-                RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                RejectRequestLine(start, end);
             }
 
             string httpVersion;
@@ -1105,8 +1096,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 if (httpVersion == string.Empty)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectRequestLine(start, end);
                 }
                 else
                 {
@@ -1115,25 +1105,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             var lineEnd = buffer.Slice(versionEnd, 2).ToSpan();
-            //scan.Take(); // consume CR
             if (lineEnd[1] != ByteLF)
             {
-                RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                RejectRequestLine(start, end);
             }
+
+            var pathBuffer = buffer.Slice(pathBegin, pathEnd);
 
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
             string requestUrlPath = string.Empty;
             string rawTarget;
-            var pathBuffer = buffer.Slice(pathBegin, pathEnd);
             if (needDecode)
             {
                 // Read raw target before mutating memory.
                 rawTarget = pathBuffer.GetAsciiString() ?? string.Empty;
 
-                //// URI was encoded, unescape and then parse as utf8
+                // URI was encoded, unescape and then parse as utf8
 
                 var pathSpan = pathBuffer.ToSpan();
                 int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
@@ -1141,7 +1130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else
             {
-               // URI wasn't encoded, parse as ASCII
+                // URI wasn't encoded, parse as ASCII
                 requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
 
                 if (queryString.Length == 0)
@@ -1183,6 +1172,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             return RequestLineStatus.Done;
+        }
+
+        private void RejectRequestLine(ReadCursor start, ReadCursor end)
+        {
+            const int MaxRequestLineError = 32;
+            RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                           Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxRequestLineError) : string.Empty);
         }
 
         private static bool IsValidTokenChar(char c)
@@ -1242,33 +1238,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor examined, out ReadCursor consumed)
+        public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor consumed, out ReadCursor examined)
         {
             consumed = buffer.Start;
             examined = buffer.End;
 
             while (true)
             {
-                var firstBuffer = buffer.Slice(0,2);
-                var firstSpan = firstBuffer.ToSpan();
+                var headersEnd = buffer.Slice(0,2);
+                var headersEndSpan = headersEnd.ToSpan();
 
-                if (firstSpan.Length == 0)
+                if (headersEndSpan.Length == 0)
                 {
                     return false;
                 }
                 else
                 {
-                    var ch = firstSpan[0];
+                    var ch = headersEndSpan[0];
                     if (ch == ByteCR)
                     {
                         // Check for final CRLF.
-                        if (firstSpan.Length < 2)
+                        if (headersEndSpan.Length < 2)
                         {
                             return false;
                         }
-                        else if (firstSpan[1] == ByteLF)
+                        else if (headersEndSpan[1] == ByteLF)
                         {
-                            consumed = firstBuffer.End;
+                            consumed = headersEnd.End;
                             examined = consumed;
                             ConnectionControl.CancelTimeout();
                             return true;
@@ -1310,34 +1306,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
                 }
+
                 ReadCursor whitspace;
                 if (SeekExtensions.Seek(beginName, endName, out whitspace, ByteTab, ByteSpace) != -1)
                 {
                     RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                 }
 
-                var nameBuffer = buffer.Slice(beginName, endName);
-
                 ReadCursor endValue;
-                if (SeekExtensions.Seek(nameBuffer.End, lineEnd, out endValue, ByteCR) == -1)
+                if (SeekExtensions.Seek(beginName, lineEnd, out endValue, ByteCR) == -1)
                 {
                     RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
                 }
-                var valueBuffer = buffer.Slice(endName, endValue).Slice(1).TrimStart();
 
-                var lineSufix = buffer.Slice(endValue, 3);
-                var endlineSpan = lineSufix.First.Span;
-                if (endlineSpan.Length != 3)
+                var lineSufix = buffer.Slice(endValue, 3); // \r\n\r
+                var lineSufixSpan = lineSufix.ToSpan();
+                if (lineSufixSpan.Length != 3)
                 {
                     return false;
                 }
-
-                if (endlineSpan[1] != ByteLF)
+                // This check and MissingCRInHeaderLine is a bit backwards, we should do it at once instead of having another seek
+                if (lineSufixSpan[1] != ByteLF)
                 {
                     RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
                 }
 
-                var next = endlineSpan[2];
+                var next = lineSufixSpan[2];
                 if (next == ByteSpace || next == ByteTab)
                 {
                     // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
@@ -1367,7 +1361,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // - If whitespace is found, this is the _tentative_ end of the header value.
                 //   If non-whitespace is found after it and it's not CR, seek again to the next
                 //   whitespace or CR for a new (possibly tentative) end of value.
-                valueBuffer = valueBuffer.TrimEnd();
+
+                var nameBuffer = buffer.Slice(beginName, endName);
+                var valueBuffer = buffer.Slice(endName, endValue).Slice(1).TrimStart().TrimEnd();
 
                 // GetArraySegment
                 var name = nameBuffer.ToArray();
