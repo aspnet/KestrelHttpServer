@@ -3,11 +3,11 @@
 
 using System;
 using System.Net;
+using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    using System.IO.Pipelines;
 
     public class ConnectionContext
     {

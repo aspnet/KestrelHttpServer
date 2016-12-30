@@ -36,8 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         // Never change to a lower value, otherwise regression testing for
         // https://github.com/aspnet/KestrelHttpServer/issues/520#issuecomment-188591242
         // will be lost.
-        // TODO: Too slow
-       // [InlineData((long)int.MaxValue + 1, false)]
+        [InlineData((long)int.MaxValue + 1, false)]
         public void LargeUpload(long contentLength, bool checkBytes)
         {
             const int bufferLength = 1024 * 1024;

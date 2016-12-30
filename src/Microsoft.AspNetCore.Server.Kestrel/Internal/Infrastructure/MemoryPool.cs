@@ -1,8 +1,6 @@
 using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure

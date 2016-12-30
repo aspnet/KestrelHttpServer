@@ -827,7 +827,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        //[Fact]
+        [Fact]
         public async Task HeadResponseBodyNotWrittenWithSyncWrite()
         {
             var flushed = new SemaphoreSlim(0, 1);

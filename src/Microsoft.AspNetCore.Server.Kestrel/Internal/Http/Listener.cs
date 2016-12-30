@@ -9,8 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    using System.IO.Pipelines;
-
     /// <summary>
     /// Base class for listeners in Kestrel. Listens for incoming connections
     /// </summary>

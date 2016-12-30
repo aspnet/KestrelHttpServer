@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipelines;
+using System.IO.Pipelines.Text.Primitives;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -24,9 +26,6 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    using System.IO.Pipelines;
-    using System.IO.Pipelines.Text.Primitives;
-
     public abstract partial class Frame : IFrameControl
     {
         // byte types don't have a data type annotation so we pre-cast them; to avoid in-place casts

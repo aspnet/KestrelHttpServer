@@ -3,8 +3,6 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    using System.IO.Pipelines;
-
     public class ListenerContext
     {
         public ListenerContext(ServiceContext serviceContext)
