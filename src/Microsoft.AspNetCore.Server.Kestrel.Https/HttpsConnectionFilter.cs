@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
@@ -127,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
                     features.Get<IHttpRequestFeature>().Scheme = "https";
                 };
 
-                context.Connection = sslStream;
+                context.Connection = new HttpsConnectionFilterStream(sslStream);
             }
         }
 
@@ -151,6 +152,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
 #else
             return new X509Certificate2(certificate);
 #endif
+        }
+
+        private class HttpsConnectionFilterStream : Stream
+        {
+            private readonly Stream _inner;
+
+            public HttpsConnectionFilterStream(Stream inner)
+            {
+                _inner = inner;
+            }
+
+            public override bool CanRead => _inner.CanRead;
+
+            public override bool CanSeek => _inner.CanSeek;
+
+            public override bool CanWrite => _inner.CanWrite;
+
+            public override long Length => _inner.Length;
+
+            public override long Position
+            {
+                get
+                {
+                    return _inner.Position;
+                }
+                set
+                {
+                    _inner.Position = value;
+                }
+            }
+
+            public override void Flush() => _inner.Flush();
+
+            public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+
+            public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+
+            public override void SetLength(long value) => _inner.SetLength(value);
+
+            public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+                => _inner.WriteAsync(buffer, offset, count, cancellationToken);
         }
     }
 }
