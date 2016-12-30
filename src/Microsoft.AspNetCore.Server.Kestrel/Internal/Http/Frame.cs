@@ -1111,6 +1111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             var pathBuffer = buffer.Slice(pathBegin, pathEnd);
+            var targetBuffer = buffer.Slice(pathBegin, queryEnd);
 
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
@@ -1120,7 +1121,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (needDecode)
             {
                 // Read raw target before mutating memory.
-                rawTarget = pathBuffer.GetAsciiString() ?? string.Empty;
+                rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
 
                 // URI was encoded, unescape and then parse as utf8
                 var pathSpan = pathBuffer.ToSpan();
@@ -1140,7 +1141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else
                 {
-                    rawTarget = requestUrlPath;
+                    rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
                 }
             }
 

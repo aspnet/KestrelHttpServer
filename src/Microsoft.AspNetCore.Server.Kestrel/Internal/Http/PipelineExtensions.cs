@@ -25,6 +25,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     return new ValueTask<ArraySegment<byte>>(data);
                 }
+                else if (result.IsCancelled || result.IsCompleted)
+                {
+                    return default(ValueTask<ArraySegment<byte>>);
+                }
                 input = pipelineReader.ReadAsync();
             }
 
@@ -46,6 +50,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     Debug.Assert(arrayResult);
 
                     return data;
+                }
+                else if (result.IsCancelled || result.IsCompleted)
+                {
+                    return default(ArraySegment<byte>);
                 }
                 readingTask = pipelineReader.ReadAsync();
             }
