@@ -1012,6 +1012,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return RequestLineStatus.Incomplete;
                 }
             }
+
             // TODO: Bad
             end = buffer.Slice(end, 1).End;
             ReadCursor methodEnd;
@@ -1115,7 +1116,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-            string requestUrlPath = string.Empty;
+            string requestUrlPath;
             string rawTarget;
             if (needDecode)
             {
@@ -1123,7 +1124,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 rawTarget = pathBuffer.GetAsciiString() ?? string.Empty;
 
                 // URI was encoded, unescape and then parse as utf8
-
                 var pathSpan = pathBuffer.ToSpan();
                 int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
                 requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();

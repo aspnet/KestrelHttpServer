@@ -7,9 +7,7 @@ using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Internal;
-using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -562,12 +560,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             private void ParseChunkedPrefix(ReadableBuffer buffer, out ReadCursor consumed)
             {
                 consumed = buffer.Start;
-
-                var ch1 = buffer.Peek();
-                buffer = buffer.Slice(1);
-
-                var ch2 = buffer.Peek();
-                buffer = buffer.Slice(1);
+                var reader = new ReadableBufferReader(buffer);
+                var ch1 = reader.Take();
+                var ch2 = reader.Take();
 
                 if (ch1 == -1 || ch2 == -1)
                 {
@@ -581,15 +576,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     if (ch1 == ';')
                     {
-                        consumed = buffer.Start;
+                        consumed = reader.Cursor;
 
                         _inputLength = chunkSize;
                         _mode = Mode.Extension;
                         return;
                     }
 
-                    ch2 = buffer.Peek();
-                    buffer = buffer.Slice(1);
+                    ch2 = reader.Take();
                     if (ch2 == -1)
                     {
                         return;
@@ -597,7 +591,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     if (ch1 == '\r' && ch2 == '\n')
                     {
-                        consumed = buffer.Start;
+                        consumed = reader.Cursor;
                         _inputLength = chunkSize;
 
                         if (chunkSize > 0)
