@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
@@ -15,8 +16,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    using System.IO.Pipelines;
-
     public class Connection : ConnectionContext, IConnectionControl
     {
         // Base32 encoding - in ascii sort order for easy text based sorting
@@ -140,8 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task StopAsync()
         {
             _frame.StopAsync();
-            _frame.Input.CompleteWriter();
-            _frame.Input.CompleteReader();
+            _frame.Input.CancelPendingRead();
 
             return _socketClosedTcs.Task;
         }
@@ -208,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _frame.Input = _filteredStreamAdapter.Input;
                 _frame.Output = _filteredStreamAdapter.Output;
 
-                //Don't attempt to read input if connection has already closed.
+                // Don't attempt to read input if connection has already closed.
                 // This can happen if a client opens a connection and immediately closes it.
                 _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation ?
                     _filteredStreamAdapter.ReadInputAsync() :

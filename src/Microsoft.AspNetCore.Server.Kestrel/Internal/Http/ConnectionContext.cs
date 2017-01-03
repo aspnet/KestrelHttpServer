@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-
     public class ConnectionContext
     {
         public ConnectionContext()
