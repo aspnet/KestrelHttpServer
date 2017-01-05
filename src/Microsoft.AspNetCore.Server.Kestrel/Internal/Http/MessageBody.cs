@@ -619,7 +619,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 do
                 {
                     ReadCursor extensionCursor;
-                    if (SeekExtensions.Seek(buffer.Start, buffer.End, out extensionCursor, ByteCR) == -1)
+                    if (ReadCursorOperations.Seek(buffer.Start, buffer.End, out extensionCursor, ByteCR) == -1)
                     {
                         // End marker not found yet
                         consumed = buffer.End;
@@ -680,13 +680,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 consumed = buffer.Start;
 
                 var sufixBuffer = buffer.Slice(0, 2);
-                var sufixSpan = sufixBuffer.ToSpan();
-
                 if (sufixBuffer.Length < 2)
                 {
                     return;
                 }
-                else if (sufixSpan[0] == '\r' && sufixSpan[1] == '\n')
+                var sufixSpan = sufixBuffer.ToSpan();
+                if (sufixSpan[0] == '\r' && sufixSpan[1] == '\n')
                 {
                     consumed = sufixBuffer.End;
                     _mode = Mode.Prefix;

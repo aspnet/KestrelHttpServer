@@ -998,11 +998,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
 
-            int bytesScanned;
-
-            if (SeekExtensions.Seek(buffer.Start, buffer.End, out end, ByteLF, out bytesScanned, ServerOptions.Limits.MaxRequestLineSize) == -1)
+            var limitedBuffer = buffer;
+            if (buffer.Length >= ServerOptions.Limits.MaxRequestLineSize)
             {
-                if (bytesScanned >= ServerOptions.Limits.MaxRequestLineSize)
+                limitedBuffer = buffer.Slice(0, ServerOptions.Limits.MaxRequestLineSize);
+            }
+            if (ReadCursorOperations.Seek(limitedBuffer.Start, limitedBuffer.End, out end, ByteLF) == -1)
+            {
+                if (limitedBuffer.Length == ServerOptions.Limits.MaxRequestLineSize)
                 {
                     RejectRequest(RequestRejectionReason.RequestLineTooLong);
                 }
@@ -1018,7 +1021,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             string method;
             if (!buffer.GetKnownMethod(out method))
             {
-                if (SeekExtensions.Seek(buffer.Start, end, out methodEnd, ByteSpace) == -1)
+                if (ReadCursorOperations.Seek(buffer.Start, end, out methodEnd, ByteSpace) == -1)
                 {
                     RejectRequestLine(start, end);
                 }
@@ -1050,7 +1053,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // TODO: Bad
             var pathBegin = buffer.Slice(methodEnd, 1).End;
 
-            var chFound = SeekExtensions.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
+            var chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
             if (chFound == -1)
             {
                 RejectRequestLine(start, end);
@@ -1058,7 +1061,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else if (chFound == BytePercentage)
             {
                 needDecode = true;
-                chFound = SeekExtensions.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark);
+                chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark);
                 if (chFound == -1)
                 {
                     RejectRequestLine(start, end);
@@ -1069,7 +1072,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ReadCursor queryEnd = pathEnd;
             if (chFound == ByteQuestionMark)
             {
-                if (SeekExtensions.Seek(pathEnd, end, out queryEnd, ByteSpace) == -1)
+                if (ReadCursorOperations.Seek(pathEnd, end, out queryEnd, ByteSpace) == -1)
                 {
                     RejectRequestLine(start, end);
                 }
@@ -1083,7 +1086,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             ReadCursor versionEnd;
-            if (SeekExtensions.Seek(queryEnd, end, out versionEnd, ByteCR) == -1)
+            if (ReadCursorOperations.Seek(queryEnd, end, out versionEnd, ByteCR) == -1)
             {
                 RejectRequestLine(start, end);
             }
@@ -1245,7 +1248,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             while (true)
             {
-                var headersEnd = buffer.Slice(0,2);
+                var headersEnd = buffer.Slice(0, Math.Min(buffer.Length, 2));
                 var headersEndSpan = headersEnd.ToSpan();
 
                 if (headersEndSpan.Length == 0)
@@ -1286,11 +1289,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequest(RequestRejectionReason.TooManyHeaders);
                 }
 
-                int bytesScanned;
                 ReadCursor lineEnd;
-                if (SeekExtensions.Seek(buffer.Start, buffer.End, out lineEnd, ByteLF, out bytesScanned, _remainingRequestHeadersBytesAllowed) == -1)
+                var limitedBuffer = buffer;
+                if (buffer.Length >= _remainingRequestHeadersBytesAllowed)
                 {
-                    if (bytesScanned >= _remainingRequestHeadersBytesAllowed)
+                    limitedBuffer = buffer.Slice(0, _remainingRequestHeadersBytesAllowed);
+                }
+                if (ReadCursorOperations.Seek(limitedBuffer.Start, limitedBuffer.End, out lineEnd, ByteLF) == -1)
+                {
+                    if (limitedBuffer.Length == _remainingRequestHeadersBytesAllowed)
                     {
                         RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
                     }
@@ -1302,29 +1309,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var beginName = buffer.Start;
                 ReadCursor endName;
-                if (SeekExtensions.Seek(buffer.Start, lineEnd, out endName, ByteColon) == -1)
+                if (ReadCursorOperations.Seek(buffer.Start, lineEnd, out endName, ByteColon) == -1)
                 {
                     RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
                 }
 
                 ReadCursor whitspace;
-                if (SeekExtensions.Seek(beginName, endName, out whitspace, ByteTab, ByteSpace) != -1)
+                if (ReadCursorOperations.Seek(beginName, endName, out whitspace, ByteTab, ByteSpace) != -1)
                 {
                     RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                 }
 
                 ReadCursor endValue;
-                if (SeekExtensions.Seek(beginName, lineEnd, out endValue, ByteCR) == -1)
+                if (ReadCursorOperations.Seek(beginName, lineEnd, out endValue, ByteCR) == -1)
                 {
                     RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
                 }
 
-                var lineSufix = buffer.Slice(endValue, 3); // \r\n\r
-                var lineSufixSpan = lineSufix.ToSpan();
-                if (lineSufixSpan.Length != 3)
+                var lineSufix = buffer.Slice(endValue);
+                if (lineSufix.Length < 3)
                 {
                     return false;
                 }
+                lineSufix = lineSufix.Slice(0, 3); // \r\n\r
+                var lineSufixSpan = lineSufix.ToSpan();
                 // This check and MissingCRInHeaderLine is a bit backwards, we should do it at once instead of having another seek
                 if (lineSufixSpan[1] != ByteLF)
                 {
@@ -1373,7 +1381,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 buffer = buffer.Slice(lineEnd).Slice(1);
                 consumed = buffer.Start;
 
-                _remainingRequestHeadersBytesAllowed -= bytesScanned;
+                _remainingRequestHeadersBytesAllowed -= limitedBuffer.Length;
                 _requestHeadersParsed++;
             }
         }

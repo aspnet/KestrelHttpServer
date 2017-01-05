@@ -1,6 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-/*
+
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     Libuv.uv_buf_t ignored;
                     mockLibuv.AllocCallback(socket.InternalGetHandle(), 2048, out ignored);
                     mockLibuv.ReadCallback(socket.InternalGetHandle(), 0, ref ignored);
-                    Assert.False(connection.Input.CheckFinOrThrow());
+                    Assert.False(connection.Input.Writing.IsCompleted);
                 }, null);
 
                 connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
@@ -56,4 +56,3 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
     }
 }
-*/
