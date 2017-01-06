@@ -724,2974 +724,3099 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             return BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
         }
-        protected override StringValues GetValueFast(string key)
+        protected unsafe override StringValues GetValueFast(string key)
         {
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                return _headers._CacheControl;
+                                if (((_bits & 1L) != 0))
+                                {
+                                    return _headers._CacheControl;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    return _headers._ContentRange;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    return _headers._LastModified;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[1] & 18437736737013759967uL) == 25333061441945679uL) && ((pUL[2] & 18437736737013759967uL) == 22236836698259521uL) && ((pUS[12] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    return _headers._Authorization;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21955241461547081uL) && ((pUL[1] & 18446743936268500959uL) == 12666670309834831uL) && ((pUL[2] & 18437736737013759967uL) == 18859184221126733uL) && ((pUS[12] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    return _headers._IfNoneMatch;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                return _headers._ContentRange;
+                                if (((_bits & 2L) != 0))
+                                {
+                                    return _headers._Connection;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 8L) != 0))
+                                {
+                                    return _headers._KeepAlive;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081244448456789uL) && ((pUL[1] & 18437736737013759999uL) == 19422078339973165uL) && ((pUS[8] & 65503u) == 78u) && ((pUS[9] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 1099511627776L) != 0))
+                                {
+                                    return _headers._UserAgent;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                return _headers._LastModified;
+                                if (((_bits & 4L) != 0))
+                                {
+                                    return _headers._Date;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21673912514510918uL)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    return _headers._From;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254531158088uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    return _headers._Host;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 16777216L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                return _headers._Authorization;
+                                if (((_bits & 16L) != 0))
+                                {
+                                    return _headers._Pragma;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUS[4] & 65503u) == 80u) && ((pUS[5] & 65503u) == 84u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    return _headers._Accept;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    return _headers._Cookie;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422116996186181uL) && ((pUS[4] & 65503u) == 67u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    return _headers._Expect;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985036884443215uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 2199023255552L) != 0))
+                                {
+                                    return _headers._Origin;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            if (((_bits & 2147483648L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
                             {
-                                return _headers._IfNoneMatch;
+                                if (((_bits & 32L) != 0))
+                                {
+                                    return _headers._Trailer;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 128L) != 0))
+                                {
+                                    return _headers._Upgrade;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    return _headers._Warning;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    return _headers._Expires;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422074045268050uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 68719476736L) != 0))
+                                {
+                                    return _headers._Referer;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    }
-                    break;
+                        break;
+                
+                    case 17:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 64L) != 0))
+                                {
+                                    return _headers._TransferEncoding;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 19703561906815055uL) && ((pUL[2] & 18446743936268500959uL) == 12666666014277705uL) && ((pUL[3] & 18437736737013759967uL) == 18859158451847251uL) && ((pUS[16] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    return _headers._IfModifiedSince;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 3:
+                        {
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
+                            {
+                                if (((_bits & 256L) != 0))
+                                {
+                                    return _headers._Via;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 5:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
+                            {
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    return _headers._Allow;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[4] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 137438953472L) != 0))
+                                {
+                                    return _headers._Range;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 14:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    return _headers._ContentLength;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718647376uL) && ((pUL[2] & 18437736737013759967uL) == 23362775258562632uL) && ((pUS[12] & 65503u) == 69u) && ((pUS[13] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    return _headers._AcceptCharset;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 12:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
+                            {
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    return _headers._ContentType;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666751913361485uL) && ((pUL[1] & 18437736737013759967uL) == 24488675166322758uL) && ((pUL[2] & 18437736737013759967uL) == 23362715130134593uL)))
+                            {
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    return _headers._MaxForwards;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 16:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
+                            {
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    return _headers._ContentEncoding;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    return _headers._ContentLanguage;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    return _headers._ContentLocation;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 11:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
+                            {
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    return _headers._ContentMD5;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 15:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 19421966672068688uL) && ((pUL[2] & 18437736737013759967uL) == 19140637723131982uL) && ((pUS[12] & 65503u) == 73u) && ((pUS[13] & 65503u) == 78u) && ((pUS[14] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    return _headers._AcceptEncoding;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 21392291509043280uL) && ((pUL[2] & 18437736737013759967uL) == 23925677968195649uL) && ((pUS[12] & 65503u) == 65u) && ((pUS[13] & 65503u) == 71u) && ((pUS[14] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    return _headers._AcceptLanguage;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 8:
+                        {
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 20266486091481153uL)))
+                            {
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    return _headers._IfMatch;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 23081141368389705uL) && ((pUL[1] & 18437736737013759967uL) == 19422078340825153uL)))
+                            {
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    return _headers._IfRange;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 19:
+                        {
+                            if ((((pUL[0] & 18437736874452713439uL) == 23925566298521673uL) && ((pUL[1] & 18437736737013759967uL) == 19140637723787342uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUL[3] & 18437736737015857119uL) == 20548029785112644uL) && ((pUS[16] & 65503u) == 78u) && ((pUS[17] & 65503u) == 67u) && ((pUS[18] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    return _headers._IfUnmodifiedSince;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 23081287397408852uL) && ((pUL[3] & 18437736737013759967uL) == 23644177222467657uL) && ((pUS[16] & 65503u) == 73u) && ((pUS[17] & 65503u) == 79u) && ((pUS[18] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    return _headers._ProxyAuthorization;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 2:
+                        {
+                            if ((((pUS[0] & 65503u) == 84u) && ((pUS[1] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 274877906944L) != 0))
+                                {
+                                    return _headers._TE;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 9:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23644177221550163uL) && ((pUS[8] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 549755813888L) != 0))
+                                {
+                                    return _headers._Translate;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 29:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 21673766485753939uL) && ((pUL[6] & 18437736737013759967uL) == 22236832403292229uL) && ((pUS[28] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 4398046511104L) != 0))
+                                {
+                                    return _headers._AccessControlRequestMethod;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 30:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 20266391602200659uL) && ((pUL[6] & 18437736737013759967uL) == 19422065455071301uL) && ((pUS[28] & 65503u) == 82u) && ((pUS[29] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 8796093022208L) != 0))
+                                {
+                                    return _headers._AccessControlRequestHeaders;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
 
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                return _headers._Connection;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                return _headers._KeepAlive;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                return _headers._UserAgent;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4L) != 0))
-                            {
-                                return _headers._Date;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 134217728L) != 0))
-                            {
-                                return _headers._From;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 268435456L) != 0))
-                            {
-                                return _headers._Host;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16L) != 0))
-                            {
-                                return _headers._Pragma;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1048576L) != 0))
-                            {
-                                return _headers._Accept;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 33554432L) != 0))
-                            {
-                                return _headers._Cookie;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 67108864L) != 0))
-                            {
-                                return _headers._Expect;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2199023255552L) != 0))
-                            {
-                                return _headers._Origin;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32L) != 0))
-                            {
-                                return _headers._Trailer;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 128L) != 0))
-                            {
-                                return _headers._Upgrade;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 512L) != 0))
-                            {
-                                return _headers._Warning;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                return _headers._Expires;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 68719476736L) != 0))
-                            {
-                                return _headers._Referer;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 64L) != 0))
-                            {
-                                return _headers._TransferEncoding;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                return _headers._IfModifiedSince;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 256L) != 0))
-                            {
-                                return _headers._Via;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                return _headers._Allow;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 137438953472L) != 0))
-                            {
-                                return _headers._Range;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                return _headers._ContentLength;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2097152L) != 0))
-                            {
-                                return _headers._AcceptCharset;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                return _headers._ContentType;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                return _headers._MaxForwards;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                return _headers._ContentEncoding;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                return _headers._ContentLanguage;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                return _headers._ContentLocation;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                return _headers._ContentMD5;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                return _headers._AcceptEncoding;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                return _headers._AcceptLanguage;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                return _headers._IfMatch;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                return _headers._IfRange;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 19:
-                    {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                return _headers._IfUnmodifiedSince;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                return _headers._ProxyAuthorization;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 2:
-                    {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 274877906944L) != 0))
-                            {
-                                return _headers._TE;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 9:
-                    {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 549755813888L) != 0))
-                            {
-                                return _headers._Translate;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 29:
-                    {
-                        if ("Access-Control-Request-Method".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4398046511104L) != 0))
-                            {
-                                return _headers._AccessControlRequestMethod;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 30:
-                    {
-                        if ("Access-Control-Request-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8796093022208L) != 0))
-                            {
-                                return _headers._AccessControlRequestHeaders;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-}
             if (MaybeUnknown == null)
             {
                 ThrowKeyNotFoundException();
             }
             return MaybeUnknown[key];
         }
-        protected override bool TryGetValueFast(string key, out StringValues value)
+        protected unsafe override bool TryGetValueFast(string key, out StringValues value)
         {
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                value = _headers._CacheControl;
-                                return true;
+                                if (((_bits & 1L) != 0))
+                                {
+                                    value = _headers._CacheControl;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    value = _headers._ContentRange;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    value = _headers._LastModified;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[1] & 18437736737013759967uL) == 25333061441945679uL) && ((pUL[2] & 18437736737013759967uL) == 22236836698259521uL) && ((pUS[12] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    value = _headers._Authorization;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21955241461547081uL) && ((pUL[1] & 18446743936268500959uL) == 12666670309834831uL) && ((pUL[2] & 18437736737013759967uL) == 18859184221126733uL) && ((pUS[12] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    value = _headers._IfNoneMatch;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                value = _headers._ContentRange;
-                                return true;
+                                if (((_bits & 2L) != 0))
+                                {
+                                    value = _headers._Connection;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 8L) != 0))
+                                {
+                                    value = _headers._KeepAlive;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081244448456789uL) && ((pUL[1] & 18437736737013759999uL) == 19422078339973165uL) && ((pUS[8] & 65503u) == 78u) && ((pUS[9] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 1099511627776L) != 0))
+                                {
+                                    value = _headers._UserAgent;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                value = _headers._LastModified;
-                                return true;
+                                if (((_bits & 4L) != 0))
+                                {
+                                    value = _headers._Date;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21673912514510918uL)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    value = _headers._From;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254531158088uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    value = _headers._Host;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 16777216L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                value = _headers._Authorization;
-                                return true;
+                                if (((_bits & 16L) != 0))
+                                {
+                                    value = _headers._Pragma;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUS[4] & 65503u) == 80u) && ((pUS[5] & 65503u) == 84u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    value = _headers._Accept;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    value = _headers._Cookie;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422116996186181uL) && ((pUS[4] & 65503u) == 67u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    value = _headers._Expect;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985036884443215uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 2199023255552L) != 0))
+                                {
+                                    value = _headers._Origin;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            if (((_bits & 2147483648L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
                             {
-                                value = _headers._IfNoneMatch;
-                                return true;
+                                if (((_bits & 32L) != 0))
+                                {
+                                    value = _headers._Trailer;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 128L) != 0))
+                                {
+                                    value = _headers._Upgrade;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    value = _headers._Warning;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    value = _headers._Expires;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422074045268050uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 68719476736L) != 0))
+                                {
+                                    value = _headers._Referer;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
+                        break;
+                
+                    case 17:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 64L) != 0))
+                                {
+                                    value = _headers._TransferEncoding;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 19703561906815055uL) && ((pUL[2] & 18446743936268500959uL) == 12666666014277705uL) && ((pUL[3] & 18437736737013759967uL) == 18859158451847251uL) && ((pUS[16] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    value = _headers._IfModifiedSince;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 3:
+                        {
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
+                            {
+                                if (((_bits & 256L) != 0))
+                                {
+                                    value = _headers._Via;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 5:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
+                            {
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    value = _headers._Allow;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[4] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 137438953472L) != 0))
+                                {
+                                    value = _headers._Range;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 14:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    value = _headers._ContentLength;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718647376uL) && ((pUL[2] & 18437736737013759967uL) == 23362775258562632uL) && ((pUS[12] & 65503u) == 69u) && ((pUS[13] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    value = _headers._AcceptCharset;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 12:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
+                            {
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    value = _headers._ContentType;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666751913361485uL) && ((pUL[1] & 18437736737013759967uL) == 24488675166322758uL) && ((pUL[2] & 18437736737013759967uL) == 23362715130134593uL)))
+                            {
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    value = _headers._MaxForwards;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 16:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
+                            {
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    value = _headers._ContentEncoding;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    value = _headers._ContentLanguage;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    value = _headers._ContentLocation;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 11:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
+                            {
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    value = _headers._ContentMD5;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 15:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 19421966672068688uL) && ((pUL[2] & 18437736737013759967uL) == 19140637723131982uL) && ((pUS[12] & 65503u) == 73u) && ((pUS[13] & 65503u) == 78u) && ((pUS[14] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    value = _headers._AcceptEncoding;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 21392291509043280uL) && ((pUL[2] & 18437736737013759967uL) == 23925677968195649uL) && ((pUS[12] & 65503u) == 65u) && ((pUS[13] & 65503u) == 71u) && ((pUS[14] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    value = _headers._AcceptLanguage;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 8:
+                        {
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 20266486091481153uL)))
+                            {
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    value = _headers._IfMatch;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 23081141368389705uL) && ((pUL[1] & 18437736737013759967uL) == 19422078340825153uL)))
+                            {
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    value = _headers._IfRange;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 19:
+                        {
+                            if ((((pUL[0] & 18437736874452713439uL) == 23925566298521673uL) && ((pUL[1] & 18437736737013759967uL) == 19140637723787342uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUL[3] & 18437736737015857119uL) == 20548029785112644uL) && ((pUS[16] & 65503u) == 78u) && ((pUS[17] & 65503u) == 67u) && ((pUS[18] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    value = _headers._IfUnmodifiedSince;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 23081287397408852uL) && ((pUL[3] & 18437736737013759967uL) == 23644177222467657uL) && ((pUS[16] & 65503u) == 73u) && ((pUS[17] & 65503u) == 79u) && ((pUS[18] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    value = _headers._ProxyAuthorization;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 2:
+                        {
+                            if ((((pUS[0] & 65503u) == 84u) && ((pUS[1] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 274877906944L) != 0))
+                                {
+                                    value = _headers._TE;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 9:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23644177221550163uL) && ((pUS[8] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 549755813888L) != 0))
+                                {
+                                    value = _headers._Translate;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 29:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 21673766485753939uL) && ((pUL[6] & 18437736737013759967uL) == 22236832403292229uL) && ((pUS[28] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 4398046511104L) != 0))
+                                {
+                                    value = _headers._AccessControlRequestMethod;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 30:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 20266391602200659uL) && ((pUL[6] & 18437736737013759967uL) == 19422065455071301uL) && ((pUS[28] & 65503u) == 82u) && ((pUS[29] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 8796093022208L) != 0))
+                                {
+                                    value = _headers._AccessControlRequestHeaders;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
 
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                value = _headers._Connection;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                value = _headers._KeepAlive;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1099511627776L) != 0))
-                            {
-                                value = _headers._UserAgent;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4L) != 0))
-                            {
-                                value = _headers._Date;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 134217728L) != 0))
-                            {
-                                value = _headers._From;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 268435456L) != 0))
-                            {
-                                value = _headers._Host;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16L) != 0))
-                            {
-                                value = _headers._Pragma;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1048576L) != 0))
-                            {
-                                value = _headers._Accept;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 33554432L) != 0))
-                            {
-                                value = _headers._Cookie;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 67108864L) != 0))
-                            {
-                                value = _headers._Expect;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2199023255552L) != 0))
-                            {
-                                value = _headers._Origin;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32L) != 0))
-                            {
-                                value = _headers._Trailer;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 128L) != 0))
-                            {
-                                value = _headers._Upgrade;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 512L) != 0))
-                            {
-                                value = _headers._Warning;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                value = _headers._Expires;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 68719476736L) != 0))
-                            {
-                                value = _headers._Referer;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 64L) != 0))
-                            {
-                                value = _headers._TransferEncoding;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                value = _headers._IfModifiedSince;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 256L) != 0))
-                            {
-                                value = _headers._Via;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                value = _headers._Allow;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 137438953472L) != 0))
-                            {
-                                value = _headers._Range;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                value = _headers._ContentLength;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2097152L) != 0))
-                            {
-                                value = _headers._AcceptCharset;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                value = _headers._ContentType;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                value = _headers._MaxForwards;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                value = _headers._ContentEncoding;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                value = _headers._ContentLanguage;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                value = _headers._ContentLocation;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                value = _headers._ContentMD5;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                value = _headers._AcceptEncoding;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                value = _headers._AcceptLanguage;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                value = _headers._IfMatch;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                value = _headers._IfRange;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 19:
-                    {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                value = _headers._IfUnmodifiedSince;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                value = _headers._ProxyAuthorization;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 2:
-                    {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 274877906944L) != 0))
-                            {
-                                value = _headers._TE;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 9:
-                    {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 549755813888L) != 0))
-                            {
-                                value = _headers._Translate;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 29:
-                    {
-                        if ("Access-Control-Request-Method".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4398046511104L) != 0))
-                            {
-                                value = _headers._AccessControlRequestMethod;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 30:
-                    {
-                        if ("Access-Control-Request-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8796093022208L) != 0))
-                            {
-                                value = _headers._AccessControlRequestHeaders;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-}
             value = StringValues.Empty;
             return MaybeUnknown?.TryGetValue(key, out value) ?? false;
         }
-        protected override void SetValueFast(string key, StringValues value)
+        protected unsafe override void SetValueFast(string key, StringValues value)
         {
             
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            _bits |= 1L;
-                            _headers._CacheControl = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
+                            {
+                                {
+                                    _bits |= 1L;
+                                    _headers._CacheControl = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 131072L;
+                                    _headers._ContentRange = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                {
+                                    _bits |= 524288L;
+                                    _headers._LastModified = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[1] & 18437736737013759967uL) == 25333061441945679uL) && ((pUL[2] & 18437736737013759967uL) == 22236836698259521uL) && ((pUS[12] & 65503u) == 78u)))
+                            {
+                                {
+                                    _bits |= 16777216L;
+                                    _headers._Authorization = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21955241461547081uL) && ((pUL[1] & 18446743936268500959uL) == 12666670309834831uL) && ((pUL[2] & 18437736737013759967uL) == 18859184221126733uL) && ((pUS[12] & 65503u) == 72u)))
+                            {
+                                {
+                                    _bits |= 2147483648L;
+                                    _headers._IfNoneMatch = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            _bits |= 131072L;
-                            _headers._ContentRange = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
+                            {
+                                {
+                                    _bits |= 2L;
+                                    _headers._Connection = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 8L;
+                                    _headers._KeepAlive = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081244448456789uL) && ((pUL[1] & 18437736737013759999uL) == 19422078339973165uL) && ((pUS[8] & 65503u) == 78u) && ((pUS[9] & 65503u) == 84u)))
+                            {
+                                {
+                                    _bits |= 1099511627776L;
+                                    _headers._UserAgent = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            _bits |= 524288L;
-                            _headers._LastModified = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
+                            {
+                                {
+                                    _bits |= 4L;
+                                    _headers._Date = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21673912514510918uL)))
+                            {
+                                {
+                                    _bits |= 134217728L;
+                                    _headers._From = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254531158088uL)))
+                            {
+                                {
+                                    _bits |= 268435456L;
+                                    _headers._Host = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            _bits |= 16777216L;
-                            _headers._Authorization = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
+                            {
+                                {
+                                    _bits |= 16L;
+                                    _headers._Pragma = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUS[4] & 65503u) == 80u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                {
+                                    _bits |= 1048576L;
+                                    _headers._Accept = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 33554432L;
+                                    _headers._Cookie = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422116996186181uL) && ((pUS[4] & 65503u) == 67u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                {
+                                    _bits |= 67108864L;
+                                    _headers._Expect = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985036884443215uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u)))
+                            {
+                                {
+                                    _bits |= 2199023255552L;
+                                    _headers._Origin = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            _bits |= 2147483648L;
-                            _headers._IfNoneMatch = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                {
+                                    _bits |= 32L;
+                                    _headers._Trailer = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 128L;
+                                    _headers._Upgrade = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                {
+                                    _bits |= 512L;
+                                    _headers._Warning = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                {
+                                    _bits |= 262144L;
+                                    _headers._Expires = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422074045268050uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                {
+                                    _bits |= 68719476736L;
+                                    _headers._Referer = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 17:
                         {
-                            _bits |= 2L;
-                            _headers._Connection = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
+                            {
+                                {
+                                    _bits |= 64L;
+                                    _headers._TransferEncoding = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 19703561906815055uL) && ((pUL[2] & 18446743936268500959uL) == 12666666014277705uL) && ((pUL[3] & 18437736737013759967uL) == 18859158451847251uL) && ((pUS[16] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 1073741824L;
+                                    _headers._IfModifiedSince = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 3:
                         {
-                            _bits |= 8L;
-                            _headers._KeepAlive = value;
-                            return;
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
+                            {
+                                {
+                                    _bits |= 256L;
+                                    _headers._Via = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 5:
                         {
-                            _bits |= 1099511627776L;
-                            _headers._UserAgent = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
+                            {
+                                {
+                                    _bits |= 1024L;
+                                    _headers._Allow = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[4] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 137438953472L;
+                                    _headers._Range = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 14:
                         {
-                            _bits |= 4L;
-                            _headers._Date = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
+                            {
+                                {
+                                    _bits |= 2048L;
+                                    _headers._ContentLength = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718647376uL) && ((pUL[2] & 18437736737013759967uL) == 23362775258562632uL) && ((pUS[12] & 65503u) == 69u) && ((pUS[13] & 65503u) == 84u)))
+                            {
+                                {
+                                    _bits |= 2097152L;
+                                    _headers._AcceptCharset = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 12:
                         {
-                            _bits |= 134217728L;
-                            _headers._From = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
+                            {
+                                {
+                                    _bits |= 4096L;
+                                    _headers._ContentType = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666751913361485uL) && ((pUL[1] & 18437736737013759967uL) == 24488675166322758uL) && ((pUL[2] & 18437736737013759967uL) == 23362715130134593uL)))
+                            {
+                                {
+                                    _bits |= 17179869184L;
+                                    _headers._MaxForwards = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 16:
                         {
-                            _bits |= 268435456L;
-                            _headers._Host = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
+                            {
+                                {
+                                    _bits |= 8192L;
+                                    _headers._ContentEncoding = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                {
+                                    _bits |= 16384L;
+                                    _headers._ContentLanguage = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                {
+                                    _bits |= 32768L;
+                                    _headers._ContentLocation = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 11:
                         {
-                            _bits |= 16L;
-                            _headers._Pragma = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
+                            {
+                                {
+                                    _bits |= 65536L;
+                                    _headers._ContentMD5 = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 15:
                         {
-                            _bits |= 1048576L;
-                            _headers._Accept = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 19421966672068688uL) && ((pUL[2] & 18437736737013759967uL) == 19140637723131982uL) && ((pUS[12] & 65503u) == 73u) && ((pUS[13] & 65503u) == 78u) && ((pUS[14] & 65503u) == 71u)))
+                            {
+                                {
+                                    _bits |= 4194304L;
+                                    _headers._AcceptEncoding = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 21392291509043280uL) && ((pUL[2] & 18437736737013759967uL) == 23925677968195649uL) && ((pUS[12] & 65503u) == 65u) && ((pUS[13] & 65503u) == 71u) && ((pUS[14] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 8388608L;
+                                    _headers._AcceptLanguage = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 8:
                         {
-                            _bits |= 33554432L;
-                            _headers._Cookie = value;
-                            return;
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 20266486091481153uL)))
+                            {
+                                {
+                                    _bits |= 536870912L;
+                                    _headers._IfMatch = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 23081141368389705uL) && ((pUL[1] & 18437736737013759967uL) == 19422078340825153uL)))
+                            {
+                                {
+                                    _bits |= 4294967296L;
+                                    _headers._IfRange = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 19:
                         {
-                            _bits |= 67108864L;
-                            _headers._Expect = value;
-                            return;
+                            if ((((pUL[0] & 18437736874452713439uL) == 23925566298521673uL) && ((pUL[1] & 18437736737013759967uL) == 19140637723787342uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUL[3] & 18437736737015857119uL) == 20548029785112644uL) && ((pUS[16] & 65503u) == 78u) && ((pUS[17] & 65503u) == 67u) && ((pUS[18] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 8589934592L;
+                                    _headers._IfUnmodifiedSince = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 23081287397408852uL) && ((pUL[3] & 18437736737013759967uL) == 23644177222467657uL) && ((pUS[16] & 65503u) == 73u) && ((pUS[17] & 65503u) == 79u) && ((pUS[18] & 65503u) == 78u)))
+                            {
+                                {
+                                    _bits |= 34359738368L;
+                                    _headers._ProxyAuthorization = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 2:
                         {
-                            _bits |= 2199023255552L;
-                            _headers._Origin = value;
-                            return;
+                            if ((((pUS[0] & 65503u) == 84u) && ((pUS[1] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 274877906944L;
+                                    _headers._TE = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 9:
                         {
-                            _bits |= 32L;
-                            _headers._Trailer = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23644177221550163uL) && ((pUS[8] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 549755813888L;
+                                    _headers._Translate = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 29:
                         {
-                            _bits |= 128L;
-                            _headers._Upgrade = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 21673766485753939uL) && ((pUL[6] & 18437736737013759967uL) == 22236832403292229uL) && ((pUS[28] & 65503u) == 68u)))
+                            {
+                                {
+                                    _bits |= 4398046511104L;
+                                    _headers._AccessControlRequestMethod = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 30:
                         {
-                            _bits |= 512L;
-                            _headers._Warning = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 20266391602200659uL) && ((pUL[6] & 18437736737013759967uL) == 19422065455071301uL) && ((pUS[28] & 65503u) == 82u) && ((pUS[29] & 65503u) == 83u)))
+                            {
+                                {
+                                    _bits |= 8796093022208L;
+                                    _headers._AccessControlRequestHeaders = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 262144L;
-                            _headers._Expires = value;
-                            return;
-                        }
-                    
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 68719476736L;
-                            _headers._Referer = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 64L;
-                            _headers._TransferEncoding = value;
-                            return;
-                        }
-                    
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 1073741824L;
-                            _headers._IfModifiedSince = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 256L;
-                            _headers._Via = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 1024L;
-                            _headers._Allow = value;
-                            return;
-                        }
-                    
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 137438953472L;
-                            _headers._Range = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 2048L;
-                            _headers._ContentLength = value;
-                            return;
-                        }
-                    
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 2097152L;
-                            _headers._AcceptCharset = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 4096L;
-                            _headers._ContentType = value;
-                            return;
-                        }
-                    
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 17179869184L;
-                            _headers._MaxForwards = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8192L;
-                            _headers._ContentEncoding = value;
-                            return;
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 16384L;
-                            _headers._ContentLanguage = value;
-                            return;
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 32768L;
-                            _headers._ContentLocation = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 65536L;
-                            _headers._ContentMD5 = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 4194304L;
-                            _headers._AcceptEncoding = value;
-                            return;
-                        }
-                    
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8388608L;
-                            _headers._AcceptLanguage = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 536870912L;
-                            _headers._IfMatch = value;
-                            return;
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 4294967296L;
-                            _headers._IfRange = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 19:
-                    {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8589934592L;
-                            _headers._IfUnmodifiedSince = value;
-                            return;
-                        }
-                    
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 34359738368L;
-                            _headers._ProxyAuthorization = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 2:
-                    {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 274877906944L;
-                            _headers._TE = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 9:
-                    {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 549755813888L;
-                            _headers._Translate = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 29:
-                    {
-                        if ("Access-Control-Request-Method".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 4398046511104L;
-                            _headers._AccessControlRequestMethod = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 30:
-                    {
-                        if ("Access-Control-Request-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8796093022208L;
-                            _headers._AccessControlRequestHeaders = value;
-                            return;
-                        }
-                    }
-                    break;
-}
+                        break;
+                }
+            }
             
             Unknown[key] = value;
         }
-        protected override void AddValueFast(string key, StringValues value)
+        protected unsafe override void AddValueFast(string key, StringValues value)
         {
             
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 1L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1L;
+                                _headers._CacheControl = value;
+                                return;
                             }
-                            _bits |= 1L;
-                            _headers._CacheControl = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 131072L;
+                                _headers._ContentRange = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 524288L;
+                                _headers._LastModified = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[1] & 18437736737013759967uL) == 25333061441945679uL) && ((pUL[2] & 18437736737013759967uL) == 22236836698259521uL) && ((pUS[12] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 16777216L;
+                                _headers._Authorization = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21955241461547081uL) && ((pUL[1] & 18446743936268500959uL) == 12666670309834831uL) && ((pUL[2] & 18437736737013759967uL) == 18859184221126733uL) && ((pUS[12] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2147483648L;
+                                _headers._IfNoneMatch = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 2L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2L;
+                                _headers._Connection = value;
+                                return;
                             }
-                            _bits |= 131072L;
-                            _headers._ContentRange = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8L;
+                                _headers._KeepAlive = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081244448456789uL) && ((pUL[1] & 18437736737013759999uL) == 19422078339973165uL) && ((pUS[8] & 65503u) == 78u) && ((pUS[9] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 1099511627776L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1099511627776L;
+                                _headers._UserAgent = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 4L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4L;
+                                _headers._Date = value;
+                                return;
                             }
-                            _bits |= 524288L;
-                            _headers._LastModified = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21673912514510918uL)))
+                            {
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 134217728L;
+                                _headers._From = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254531158088uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 268435456L;
+                                _headers._Host = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 16777216L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 16L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 16L;
+                                _headers._Pragma = value;
+                                return;
                             }
-                            _bits |= 16777216L;
-                            _headers._Authorization = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUS[4] & 65503u) == 80u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1048576L;
+                                _headers._Accept = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 33554432L;
+                                _headers._Cookie = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422116996186181uL) && ((pUS[4] & 65503u) == 67u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 67108864L;
+                                _headers._Expect = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985036884443215uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 2199023255552L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2199023255552L;
+                                _headers._Origin = value;
+                                return;
+                            }
                         }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            if (((_bits & 2147483648L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 32L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 32L;
+                                _headers._Trailer = value;
+                                return;
                             }
-                            _bits |= 2147483648L;
-                            _headers._IfNoneMatch = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 128L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 128L;
+                                _headers._Upgrade = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 512L;
+                                _headers._Warning = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 262144L;
+                                _headers._Expires = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422074045268050uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 68719476736L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 68719476736L;
+                                _headers._Referer = value;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 17:
                         {
-                            if (((_bits & 2L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 64L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 64L;
+                                _headers._TransferEncoding = value;
+                                return;
                             }
-                            _bits |= 2L;
-                            _headers._Connection = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 19703561906815055uL) && ((pUL[2] & 18446743936268500959uL) == 12666666014277705uL) && ((pUL[3] & 18437736737013759967uL) == 18859158451847251uL) && ((pUS[16] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1073741824L;
+                                _headers._IfModifiedSince = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 3:
                         {
-                            if (((_bits & 8L) != 0))
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 256L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 256L;
+                                _headers._Via = value;
+                                return;
                             }
-                            _bits |= 8L;
-                            _headers._KeepAlive = value;
-                            return;
                         }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 5:
                         {
-                            if (((_bits & 1099511627776L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1024L;
+                                _headers._Allow = value;
+                                return;
                             }
-                            _bits |= 1099511627776L;
-                            _headers._UserAgent = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[4] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 137438953472L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 137438953472L;
+                                _headers._Range = value;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 14:
                         {
-                            if (((_bits & 4L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2048L;
+                                _headers._ContentLength = value;
+                                return;
                             }
-                            _bits |= 4L;
-                            _headers._Date = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718647376uL) && ((pUL[2] & 18437736737013759967uL) == 23362775258562632uL) && ((pUS[12] & 65503u) == 69u) && ((pUS[13] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2097152L;
+                                _headers._AcceptCharset = value;
+                                return;
+                            }
                         }
-                    
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 12:
                         {
-                            if (((_bits & 134217728L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4096L;
+                                _headers._ContentType = value;
+                                return;
                             }
-                            _bits |= 134217728L;
-                            _headers._From = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666751913361485uL) && ((pUL[1] & 18437736737013759967uL) == 24488675166322758uL) && ((pUL[2] & 18437736737013759967uL) == 23362715130134593uL)))
+                            {
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 17179869184L;
+                                _headers._MaxForwards = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 16:
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8192L;
+                                _headers._ContentEncoding = value;
+                                return;
                             }
-                            _bits |= 268435456L;
-                            _headers._Host = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 16384L;
+                                _headers._ContentLanguage = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 32768L;
+                                _headers._ContentLocation = value;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 11:
                         {
-                            if (((_bits & 16L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 65536L;
+                                _headers._ContentMD5 = value;
+                                return;
                             }
-                            _bits |= 16L;
-                            _headers._Pragma = value;
-                            return;
                         }
-                    
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 15:
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 19421966672068688uL) && ((pUL[2] & 18437736737013759967uL) == 19140637723131982uL) && ((pUS[12] & 65503u) == 73u) && ((pUS[13] & 65503u) == 78u) && ((pUS[14] & 65503u) == 71u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4194304L;
+                                _headers._AcceptEncoding = value;
+                                return;
                             }
-                            _bits |= 1048576L;
-                            _headers._Accept = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 21392291509043280uL) && ((pUL[2] & 18437736737013759967uL) == 23925677968195649uL) && ((pUS[12] & 65503u) == 65u) && ((pUS[13] & 65503u) == 71u) && ((pUS[14] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8388608L;
+                                _headers._AcceptLanguage = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 8:
                         {
-                            if (((_bits & 33554432L) != 0))
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 20266486091481153uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 536870912L;
+                                _headers._IfMatch = value;
+                                return;
                             }
-                            _bits |= 33554432L;
-                            _headers._Cookie = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 23081141368389705uL) && ((pUL[1] & 18437736737013759967uL) == 19422078340825153uL)))
+                            {
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4294967296L;
+                                _headers._IfRange = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 19:
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if ((((pUL[0] & 18437736874452713439uL) == 23925566298521673uL) && ((pUL[1] & 18437736737013759967uL) == 19140637723787342uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUL[3] & 18437736737015857119uL) == 20548029785112644uL) && ((pUS[16] & 65503u) == 78u) && ((pUS[17] & 65503u) == 67u) && ((pUS[18] & 65503u) == 69u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8589934592L;
+                                _headers._IfUnmodifiedSince = value;
+                                return;
                             }
-                            _bits |= 67108864L;
-                            _headers._Expect = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 23081287397408852uL) && ((pUL[3] & 18437736737013759967uL) == 23644177222467657uL) && ((pUS[16] & 65503u) == 73u) && ((pUS[17] & 65503u) == 79u) && ((pUS[18] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 34359738368L;
+                                _headers._ProxyAuthorization = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 2:
                         {
-                            if (((_bits & 2199023255552L) != 0))
+                            if ((((pUS[0] & 65503u) == 84u) && ((pUS[1] & 65503u) == 69u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 274877906944L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 274877906944L;
+                                _headers._TE = value;
+                                return;
                             }
-                            _bits |= 2199023255552L;
-                            _headers._Origin = value;
-                            return;
                         }
-                    }
-                    break;
-            
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 9:
                         {
-                            if (((_bits & 32L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23644177221550163uL) && ((pUS[8] & 65503u) == 69u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 549755813888L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 549755813888L;
+                                _headers._Translate = value;
+                                return;
                             }
-                            _bits |= 32L;
-                            _headers._Trailer = value;
-                            return;
                         }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 29:
                         {
-                            if (((_bits & 128L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 21673766485753939uL) && ((pUL[6] & 18437736737013759967uL) == 22236832403292229uL) && ((pUS[28] & 65503u) == 68u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 4398046511104L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4398046511104L;
+                                _headers._AccessControlRequestMethod = value;
+                                return;
                             }
-                            _bits |= 128L;
-                            _headers._Upgrade = value;
-                            return;
                         }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 30:
                         {
-                            if (((_bits & 512L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 20266391602200659uL) && ((pUL[6] & 18437736737013759967uL) == 19422065455071301uL) && ((pUS[28] & 65503u) == 82u) && ((pUS[29] & 65503u) == 83u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 8796093022208L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8796093022208L;
+                                _headers._AccessControlRequestHeaders = value;
+                                return;
                             }
-                            _bits |= 512L;
-                            _headers._Warning = value;
-                            return;
                         }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 262144L;
-                            _headers._Expires = value;
-                            return;
-                        }
-                    
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 68719476736L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 68719476736L;
-                            _headers._Referer = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 64L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 64L;
-                            _headers._TransferEncoding = value;
-                            return;
-                        }
-                    
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 1073741824L;
-                            _headers._IfModifiedSince = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 256L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 256L;
-                            _headers._Via = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 1024L;
-                            _headers._Allow = value;
-                            return;
-                        }
-                    
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 137438953472L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 137438953472L;
-                            _headers._Range = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 2048L;
-                            _headers._ContentLength = value;
-                            return;
-                        }
-                    
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2097152L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 2097152L;
-                            _headers._AcceptCharset = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 4096L;
-                            _headers._ContentType = value;
-                            return;
-                        }
-                    
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 17179869184L;
-                            _headers._MaxForwards = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8192L;
-                            _headers._ContentEncoding = value;
-                            return;
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 16384L;
-                            _headers._ContentLanguage = value;
-                            return;
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 32768L;
-                            _headers._ContentLocation = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 65536L;
-                            _headers._ContentMD5 = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 4194304L;
-                            _headers._AcceptEncoding = value;
-                            return;
-                        }
-                    
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8388608L;
-                            _headers._AcceptLanguage = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 536870912L;
-                            _headers._IfMatch = value;
-                            return;
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 4294967296L;
-                            _headers._IfRange = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 19:
-                    {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8589934592L;
-                            _headers._IfUnmodifiedSince = value;
-                            return;
-                        }
-                    
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 34359738368L;
-                            _headers._ProxyAuthorization = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 2:
-                    {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 274877906944L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 274877906944L;
-                            _headers._TE = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 9:
-                    {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 549755813888L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 549755813888L;
-                            _headers._Translate = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 29:
-                    {
-                        if ("Access-Control-Request-Method".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4398046511104L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 4398046511104L;
-                            _headers._AccessControlRequestMethod = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 30:
-                    {
-                        if ("Access-Control-Request-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8796093022208L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8796093022208L;
-                            _headers._AccessControlRequestHeaders = value;
-                            return;
-                        }
-                    }
-                    break;
+                        break;
+                }
             }
             
             Unknown.Add(key, value);
         }
-        protected override bool RemoveFast(string key)
+        protected unsafe override bool RemoveFast(string key)
         {
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                _bits &= ~1L;
-                                _headers._CacheControl = StringValues.Empty;
-                                return true;
+                                if (((_bits & 1L) != 0))
+                                {
+                                    _bits &= ~1L;
+                                    _headers._CacheControl = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    _bits &= ~131072L;
+                                    _headers._ContentRange = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    _bits &= ~524288L;
+                                    _headers._LastModified = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[1] & 18437736737013759967uL) == 25333061441945679uL) && ((pUL[2] & 18437736737013759967uL) == 22236836698259521uL) && ((pUS[12] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    _bits &= ~16777216L;
+                                    _headers._Authorization = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21955241461547081uL) && ((pUL[1] & 18446743936268500959uL) == 12666670309834831uL) && ((pUL[2] & 18437736737013759967uL) == 18859184221126733uL) && ((pUS[12] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    _bits &= ~2147483648L;
+                                    _headers._IfNoneMatch = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                _bits &= ~131072L;
-                                _headers._ContentRange = StringValues.Empty;
-                                return true;
+                                if (((_bits & 2L) != 0))
+                                {
+                                    _bits &= ~2L;
+                                    _headers._Connection = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 8L) != 0))
+                                {
+                                    _bits &= ~8L;
+                                    _headers._KeepAlive = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081244448456789uL) && ((pUL[1] & 18437736737013759999uL) == 19422078339973165uL) && ((pUS[8] & 65503u) == 78u) && ((pUS[9] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 1099511627776L) != 0))
+                                {
+                                    _bits &= ~1099511627776L;
+                                    _headers._UserAgent = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                _bits &= ~524288L;
-                                _headers._LastModified = StringValues.Empty;
-                                return true;
+                                if (((_bits & 4L) != 0))
+                                {
+                                    _bits &= ~4L;
+                                    _headers._Date = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21673912514510918uL)))
                             {
-                                return false;
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    _bits &= ~134217728L;
+                                    _headers._From = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254531158088uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    _bits &= ~268435456L;
+                                    _headers._Host = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 16777216L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                _bits &= ~16777216L;
-                                _headers._Authorization = StringValues.Empty;
-                                return true;
+                                if (((_bits & 16L) != 0))
+                                {
+                                    _bits &= ~16L;
+                                    _headers._Pragma = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUS[4] & 65503u) == 80u) && ((pUS[5] & 65503u) == 84u)))
                             {
-                                return false;
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    _bits &= ~1048576L;
+                                    _headers._Accept = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    _bits &= ~33554432L;
+                                    _headers._Cookie = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422116996186181uL) && ((pUS[4] & 65503u) == 67u) && ((pUS[5] & 65503u) == 84u)))
+                            {
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    _bits &= ~67108864L;
+                                    _headers._Expect = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985036884443215uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 2199023255552L) != 0))
+                                {
+                                    _bits &= ~2199023255552L;
+                                    _headers._Origin = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("If-None-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            if (((_bits & 2147483648L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
                             {
-                                _bits &= ~2147483648L;
-                                _headers._IfNoneMatch = StringValues.Empty;
-                                return true;
+                                if (((_bits & 32L) != 0))
+                                {
+                                    _bits &= ~32L;
+                                    _headers._Trailer = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 128L) != 0))
+                                {
+                                    _bits &= ~128L;
+                                    _headers._Upgrade = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    _bits &= ~512L;
+                                    _headers._Warning = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    _bits &= ~262144L;
+                                    _headers._Expires = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422074045268050uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 68719476736L) != 0))
+                                {
+                                    _bits &= ~68719476736L;
+                                    _headers._Referer = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 17:
                         {
-                            if (((_bits & 2L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
                             {
-                                _bits &= ~2L;
-                                _headers._Connection = StringValues.Empty;
-                                return true;
+                                if (((_bits & 64L) != 0))
+                                {
+                                    _bits &= ~64L;
+                                    _headers._TransferEncoding = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 19703561906815055uL) && ((pUL[2] & 18446743936268500959uL) == 12666666014277705uL) && ((pUL[3] & 18437736737013759967uL) == 18859158451847251uL) && ((pUS[16] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    _bits &= ~1073741824L;
+                                    _headers._IfModifiedSince = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 3:
                         {
-                            if (((_bits & 8L) != 0))
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
                             {
-                                _bits &= ~8L;
-                                _headers._KeepAlive = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 256L) != 0))
+                                {
+                                    _bits &= ~256L;
+                                    _headers._Via = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("User-Agent".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 5:
                         {
-                            if (((_bits & 1099511627776L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
                             {
-                                _bits &= ~1099511627776L;
-                                _headers._UserAgent = StringValues.Empty;
-                                return true;
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    _bits &= ~1024L;
+                                    _headers._Allow = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[4] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 137438953472L) != 0))
+                                {
+                                    _bits &= ~137438953472L;
+                                    _headers._Range = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 14:
                         {
-                            if (((_bits & 4L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
                             {
-                                _bits &= ~4L;
-                                _headers._Date = StringValues.Empty;
-                                return true;
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    _bits &= ~2048L;
+                                    _headers._ContentLength = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718647376uL) && ((pUL[2] & 18437736737013759967uL) == 23362775258562632uL) && ((pUS[12] & 65503u) == 69u) && ((pUS[13] & 65503u) == 84u)))
                             {
-                                return false;
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    _bits &= ~2097152L;
+                                    _headers._AcceptCharset = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("From".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 12:
                         {
-                            if (((_bits & 134217728L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
                             {
-                                _bits &= ~134217728L;
-                                _headers._From = StringValues.Empty;
-                                return true;
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    _bits &= ~4096L;
+                                    _headers._ContentType = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666751913361485uL) && ((pUL[1] & 18437736737013759967uL) == 24488675166322758uL) && ((pUL[2] & 18437736737013759967uL) == 23362715130134593uL)))
                             {
-                                return false;
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    _bits &= ~17179869184L;
+                                    _headers._MaxForwards = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Host".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 16:
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
                             {
-                                _bits &= ~268435456L;
-                                _headers._Host = StringValues.Empty;
-                                return true;
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    _bits &= ~8192L;
+                                    _headers._ContentEncoding = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
                             {
-                                return false;
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    _bits &= ~16384L;
+                                    _headers._ContentLanguage = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    _bits &= ~32768L;
+                                    _headers._ContentLocation = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 11:
                         {
-                            if (((_bits & 16L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
                             {
-                                _bits &= ~16L;
-                                _headers._Pragma = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    _bits &= ~65536L;
+                                    _headers._ContentMD5 = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Accept".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 15:
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 19421966672068688uL) && ((pUL[2] & 18437736737013759967uL) == 19140637723131982uL) && ((pUS[12] & 65503u) == 73u) && ((pUS[13] & 65503u) == 78u) && ((pUS[14] & 65503u) == 71u)))
                             {
-                                _bits &= ~1048576L;
-                                _headers._Accept = StringValues.Empty;
-                                return true;
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    _bits &= ~4194304L;
+                                    _headers._AcceptEncoding = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 21392291509043280uL) && ((pUL[2] & 18437736737013759967uL) == 23925677968195649uL) && ((pUS[12] & 65503u) == 65u) && ((pUS[13] & 65503u) == 71u) && ((pUS[14] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    _bits &= ~8388608L;
+                                    _headers._AcceptLanguage = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 8:
                         {
-                            if (((_bits & 33554432L) != 0))
+                            if ((((pUL[0] & 18437736874452713439uL) == 21673766484836425uL) && ((pUL[1] & 18437736737013759967uL) == 20266486091481153uL)))
                             {
-                                _bits &= ~33554432L;
-                                _headers._Cookie = StringValues.Empty;
-                                return true;
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    _bits &= ~536870912L;
+                                    _headers._IfMatch = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736874452713439uL) == 23081141368389705uL) && ((pUL[1] & 18437736737013759967uL) == 19422078340825153uL)))
                             {
-                                return false;
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    _bits &= ~4294967296L;
+                                    _headers._IfRange = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Expect".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 19:
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if ((((pUL[0] & 18437736874452713439uL) == 23925566298521673uL) && ((pUL[1] & 18437736737013759967uL) == 19140637723787342uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUL[3] & 18437736737015857119uL) == 20548029785112644uL) && ((pUS[16] & 65503u) == 78u) && ((pUS[17] & 65503u) == 67u) && ((pUS[18] & 65503u) == 69u)))
                             {
-                                _bits &= ~67108864L;
-                                _headers._Expect = StringValues.Empty;
-                                return true;
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    _bits &= ~8589934592L;
+                                    _headers._IfUnmodifiedSince = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 23081287397408852uL) && ((pUL[3] & 18437736737013759967uL) == 23644177222467657uL) && ((pUS[16] & 65503u) == 73u) && ((pUS[17] & 65503u) == 79u) && ((pUS[18] & 65503u) == 78u)))
                             {
-                                return false;
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    _bits &= ~34359738368L;
+                                    _headers._ProxyAuthorization = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 2:
                         {
-                            if (((_bits & 2199023255552L) != 0))
+                            if ((((pUS[0] & 65503u) == 84u) && ((pUS[1] & 65503u) == 69u)))
                             {
-                                _bits &= ~2199023255552L;
-                                _headers._Origin = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 274877906944L) != 0))
+                                {
+                                    _bits &= ~274877906944L;
+                                    _headers._TE = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 9:
                         {
-                            if (((_bits & 32L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23644177221550163uL) && ((pUS[8] & 65503u) == 69u)))
                             {
-                                _bits &= ~32L;
-                                _headers._Trailer = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 549755813888L) != 0))
+                                {
+                                    _bits &= ~549755813888L;
+                                    _headers._Translate = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 29:
                         {
-                            if (((_bits & 128L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 21673766485753939uL) && ((pUL[6] & 18437736737013759967uL) == 22236832403292229uL) && ((pUS[28] & 65503u) == 68u)))
                             {
-                                _bits &= ~128L;
-                                _headers._Upgrade = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 4398046511104L) != 0))
+                                {
+                                    _bits &= ~4398046511104L;
+                                    _headers._AccessControlRequestMethod = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 30:
                         {
-                            if (((_bits & 512L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 23081141368782927uL) && ((pUL[4] & 18437736737013759967uL) == 19422138470563909uL) && ((pUL[5] & 18437736874452713439uL) == 20266391602200659uL) && ((pUL[6] & 18437736737013759967uL) == 19422065455071301uL) && ((pUS[28] & 65503u) == 82u) && ((pUS[29] & 65503u) == 83u)))
                             {
-                                _bits &= ~512L;
-                                _headers._Warning = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 8796093022208L) != 0))
+                                {
+                                    _bits &= ~8796093022208L;
+                                    _headers._AccessControlRequestHeaders = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                _bits &= ~262144L;
-                                _headers._Expires = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Referer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 68719476736L) != 0))
-                            {
-                                _bits &= ~68719476736L;
-                                _headers._Referer = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 64L) != 0))
-                            {
-                                _bits &= ~64L;
-                                _headers._TransferEncoding = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-Modified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                _bits &= ~1073741824L;
-                                _headers._IfModifiedSince = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 256L) != 0))
-                            {
-                                _bits &= ~256L;
-                                _headers._Via = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                _bits &= ~1024L;
-                                _headers._Allow = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 137438953472L) != 0))
-                            {
-                                _bits &= ~137438953472L;
-                                _headers._Range = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                _bits &= ~2048L;
-                                _headers._ContentLength = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Accept-Charset".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2097152L) != 0))
-                            {
-                                _bits &= ~2097152L;
-                                _headers._AcceptCharset = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                _bits &= ~4096L;
-                                _headers._ContentType = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Max-Forwards".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                _bits &= ~17179869184L;
-                                _headers._MaxForwards = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                _bits &= ~8192L;
-                                _headers._ContentEncoding = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                _bits &= ~16384L;
-                                _headers._ContentLanguage = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                _bits &= ~32768L;
-                                _headers._ContentLocation = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                _bits &= ~65536L;
-                                _headers._ContentMD5 = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 15:
-                    {
-                        if ("Accept-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                _bits &= ~4194304L;
-                                _headers._AcceptEncoding = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Accept-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                _bits &= ~8388608L;
-                                _headers._AcceptLanguage = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ("If-Match".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                _bits &= ~536870912L;
-                                _headers._IfMatch = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("If-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                _bits &= ~4294967296L;
-                                _headers._IfRange = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 19:
-                    {
-                        if ("If-Unmodified-Since".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                _bits &= ~8589934592L;
-                                _headers._IfUnmodifiedSince = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Proxy-Authorization".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                _bits &= ~34359738368L;
-                                _headers._ProxyAuthorization = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 2:
-                    {
-                        if ("TE".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 274877906944L) != 0))
-                            {
-                                _bits &= ~274877906944L;
-                                _headers._TE = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 9:
-                    {
-                        if ("Translate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 549755813888L) != 0))
-                            {
-                                _bits &= ~549755813888L;
-                                _headers._Translate = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 29:
-                    {
-                        if ("Access-Control-Request-Method".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4398046511104L) != 0))
-                            {
-                                _bits &= ~4398046511104L;
-                                _headers._AccessControlRequestMethod = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 30:
-                    {
-                        if ("Access-Control-Request-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8796093022208L) != 0))
-                            {
-                                _bits &= ~8796093022208L;
-                                _headers._AccessControlRequestHeaders = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
+                        break;
+                }
             }
             return MaybeUnknown?.Remove(key) ?? false;
         }
@@ -6576,2528 +6701,2637 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             return BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
         }
-        protected override StringValues GetValueFast(string key)
+        protected unsafe override StringValues GetValueFast(string key)
         {
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                return _headers._CacheControl;
+                                if (((_bits & 1L) != 0))
+                                {
+                                    return _headers._CacheControl;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    return _headers._ContentRange;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    return _headers._LastModified;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 23081141369307216uL) && ((pUL[2] & 18437736737013759967uL) == 19422078340825153uL) && ((pUS[12] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    return _headers._AcceptRanges;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                return _headers._ContentRange;
+                                if (((_bits & 2L) != 0))
+                                {
+                                    return _headers._Connection;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 8L) != 0))
+                                {
+                                    return _headers._KeepAlive;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666734733754451uL) && ((pUL[1] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[8] & 65503u) == 73u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    return _headers._SetCookie;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                return _headers._LastModified;
+                                if (((_bits & 4L) != 0))
+                                {
+                                    return _headers._Date;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524835909uL)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    return _headers._ETag;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 25051625118826582uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    return _headers._Vary;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                return _headers._AcceptRanges;
+                                if (((_bits & 16L) != 0))
+                                {
+                                    return _headers._Pragma;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24207200188956755uL) && ((pUS[4] & 65503u) == 69u) && ((pUS[5] & 65503u) == 82u)))
                             {
-                                ThrowKeyNotFoundException();
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    return _headers._Server;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
                             }
                         }
-                    }
-                    break;
+                        break;
+                
+                    case 7:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 32L) != 0))
+                                {
+                                    return _headers._Trailer;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 128L) != 0))
+                                {
+                                    return _headers._Upgrade;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    return _headers._Warning;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    return _headers._Expires;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 17:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 64L) != 0))
+                                {
+                                    return _headers._TransferEncoding;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 3:
+                        {
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
+                            {
+                                if (((_bits & 256L) != 0))
+                                {
+                                    return _headers._Via;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUS[0] & 65503u) == 65u) && ((pUS[1] & 65503u) == 71u) && ((pUS[2] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    return _headers._Age;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 5:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
+                            {
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    return _headers._Allow;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 14:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    return _headers._ContentLength;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 12:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
+                            {
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    return _headers._ContentType;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 16:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
+                            {
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    return _headers._ContentEncoding;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    return _headers._ContentLanguage;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    return _headers._ContentLocation;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666747619835991uL) && ((pUL[1] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[2] & 18437736737013759967uL) == 20548034082242629uL) && ((pUL[3] & 18437736737013759967uL) == 19422134174548035uL)))
+                            {
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    return _headers._WWWAuthenticate;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 11:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
+                            {
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    return _headers._ContentMD5;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081308872048722uL) && ((pUL[1] & 18437736737015857119uL) == 19703527545569369uL) && ((pUS[8] & 65503u) == 84u) && ((pUS[9] & 65503u) == 69u) && ((pUS[10] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    return _headers._RetryAfter;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 8:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[1] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    return _headers._Location;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 18:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 21955344540893268uL) && ((pUL[3] & 18437736737013759967uL) == 18296161253785684uL) && ((pUS[16] & 65503u) == 84u) && ((pUS[17] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    return _headers._ProxyAuthenticate;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 32:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 19422125584744493uL) && ((pUL[6] & 18437736737013759967uL) == 23644233055666244uL) && ((pUL[7] & 18437736737013759967uL) == 23362749488758857uL)))
+                            {
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    return _headers._AccessControlAllowCredentials;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 28:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 18296169843654701uL) && ((pUL[6] & 18437736737013759967uL) == 23362775258824772uL)))
+                            {
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    return _headers._AccessControlAllowHeaders;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 23644194401484845uL) && ((pUL[6] & 18437736737013759967uL) == 23362715129937992uL)))
+                            {
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    return _headers._AccessControlAllowMethods;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 27:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 20548025492373549uL) && ((pUS[24] & 65503u) == 71u) && ((pUS[25] & 65503u) == 73u) && ((pUS[26] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    return _headers._AccessControlAllowOrigin;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 29:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 19421966671544399uL) && ((pUL[4] & 18437736737013759967uL) == 23362762374643800uL) && ((pUL[5] & 18437736737015857119uL) == 19422082633629765uL) && ((pUL[6] & 18437736737013759967uL) == 23081244447473729uL) && ((pUS[28] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    return _headers._AccessControlExposeHeaders;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 22:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 21673766485229647uL) && ((pUL[4] & 18437736874452713439uL) == 18296066765488193uL) && ((pUS[20] & 65503u) == 71u) && ((pUS[21] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    return _headers._AccessControlMaxAge;
+                                }
+                                else
+                                {
+                                    ThrowKeyNotFoundException();
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
 
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                return _headers._Connection;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                return _headers._KeepAlive;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 134217728L) != 0))
-                            {
-                                return _headers._SetCookie;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4L) != 0))
-                            {
-                                return _headers._Date;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                return _headers._ETag;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 268435456L) != 0))
-                            {
-                                return _headers._Vary;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16L) != 0))
-                            {
-                                return _headers._Pragma;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 67108864L) != 0))
-                            {
-                                return _headers._Server;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32L) != 0))
-                            {
-                                return _headers._Trailer;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 128L) != 0))
-                            {
-                                return _headers._Upgrade;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 512L) != 0))
-                            {
-                                return _headers._Warning;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                return _headers._Expires;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 64L) != 0))
-                            {
-                                return _headers._TransferEncoding;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 256L) != 0))
-                            {
-                                return _headers._Via;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2097152L) != 0))
-                            {
-                                return _headers._Age;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                return _headers._Allow;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                return _headers._ContentLength;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                return _headers._ContentType;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                return _headers._ContentEncoding;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                return _headers._ContentLanguage;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                return _headers._ContentLocation;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                return _headers._WWWAuthenticate;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                return _headers._ContentMD5;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 33554432L) != 0))
-                            {
-                                return _headers._RetryAfter;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                return _headers._Location;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 18:
-                    {
-                        if ("Proxy-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                return _headers._ProxyAuthenticate;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 32:
-                    {
-                        if ("Access-Control-Allow-Credentials".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                return _headers._AccessControlAllowCredentials;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 28:
-                    {
-                        if ("Access-Control-Allow-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                return _headers._AccessControlAllowHeaders;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    
-                        if ("Access-Control-Allow-Methods".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                return _headers._AccessControlAllowMethods;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 27:
-                    {
-                        if ("Access-Control-Allow-Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                return _headers._AccessControlAllowOrigin;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 29:
-                    {
-                        if ("Access-Control-Expose-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                return _headers._AccessControlExposeHeaders;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-
-                case 22:
-                    {
-                        if ("Access-Control-Max-Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                return _headers._AccessControlMaxAge;
-                            }
-                            else
-                            {
-                                ThrowKeyNotFoundException();
-                            }
-                        }
-                    }
-                    break;
-}
             if (MaybeUnknown == null)
             {
                 ThrowKeyNotFoundException();
             }
             return MaybeUnknown[key];
         }
-        protected override bool TryGetValueFast(string key, out StringValues value)
+        protected unsafe override bool TryGetValueFast(string key, out StringValues value)
         {
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                value = _headers._CacheControl;
-                                return true;
+                                if (((_bits & 1L) != 0))
+                                {
+                                    value = _headers._CacheControl;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    value = _headers._ContentRange;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    value = _headers._LastModified;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 23081141369307216uL) && ((pUL[2] & 18437736737013759967uL) == 19422078340825153uL) && ((pUS[12] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    value = _headers._AcceptRanges;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                value = _headers._ContentRange;
-                                return true;
+                                if (((_bits & 2L) != 0))
+                                {
+                                    value = _headers._Connection;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 8L) != 0))
+                                {
+                                    value = _headers._KeepAlive;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666734733754451uL) && ((pUL[1] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[8] & 65503u) == 73u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    value = _headers._SetCookie;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                value = _headers._LastModified;
-                                return true;
+                                if (((_bits & 4L) != 0))
+                                {
+                                    value = _headers._Date;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524835909uL)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    value = _headers._ETag;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 25051625118826582uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    value = _headers._Vary;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                value = _headers._AcceptRanges;
-                                return true;
+                                if (((_bits & 16L) != 0))
+                                {
+                                    value = _headers._Pragma;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24207200188956755uL) && ((pUS[4] & 65503u) == 69u) && ((pUS[5] & 65503u) == 82u)))
                             {
-                                value = StringValues.Empty;
-                                return false;
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    value = _headers._Server;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
+                        break;
+                
+                    case 7:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 32L) != 0))
+                                {
+                                    value = _headers._Trailer;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 128L) != 0))
+                                {
+                                    value = _headers._Upgrade;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    value = _headers._Warning;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    value = _headers._Expires;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 17:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 64L) != 0))
+                                {
+                                    value = _headers._TransferEncoding;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 3:
+                        {
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
+                            {
+                                if (((_bits & 256L) != 0))
+                                {
+                                    value = _headers._Via;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUS[0] & 65503u) == 65u) && ((pUS[1] & 65503u) == 71u) && ((pUS[2] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    value = _headers._Age;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 5:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
+                            {
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    value = _headers._Allow;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 14:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
+                            {
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    value = _headers._ContentLength;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 12:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
+                            {
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    value = _headers._ContentType;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 16:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
+                            {
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    value = _headers._ContentEncoding;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    value = _headers._ContentLanguage;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    value = _headers._ContentLocation;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666747619835991uL) && ((pUL[1] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[2] & 18437736737013759967uL) == 20548034082242629uL) && ((pUL[3] & 18437736737013759967uL) == 19422134174548035uL)))
+                            {
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    value = _headers._WWWAuthenticate;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 11:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
+                            {
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    value = _headers._ContentMD5;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081308872048722uL) && ((pUL[1] & 18437736737015857119uL) == 19703527545569369uL) && ((pUS[8] & 65503u) == 84u) && ((pUS[9] & 65503u) == 69u) && ((pUS[10] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    value = _headers._RetryAfter;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 8:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[1] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    value = _headers._Location;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 18:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 21955344540893268uL) && ((pUL[3] & 18437736737013759967uL) == 18296161253785684uL) && ((pUS[16] & 65503u) == 84u) && ((pUS[17] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    value = _headers._ProxyAuthenticate;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 32:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 19422125584744493uL) && ((pUL[6] & 18437736737013759967uL) == 23644233055666244uL) && ((pUL[7] & 18437736737013759967uL) == 23362749488758857uL)))
+                            {
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    value = _headers._AccessControlAllowCredentials;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 28:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 18296169843654701uL) && ((pUL[6] & 18437736737013759967uL) == 23362775258824772uL)))
+                            {
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    value = _headers._AccessControlAllowHeaders;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 23644194401484845uL) && ((pUL[6] & 18437736737013759967uL) == 23362715129937992uL)))
+                            {
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    value = _headers._AccessControlAllowMethods;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 27:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 20548025492373549uL) && ((pUS[24] & 65503u) == 71u) && ((pUS[25] & 65503u) == 73u) && ((pUS[26] & 65503u) == 78u)))
+                            {
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    value = _headers._AccessControlAllowOrigin;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 29:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 19421966671544399uL) && ((pUL[4] & 18437736737013759967uL) == 23362762374643800uL) && ((pUL[5] & 18437736737015857119uL) == 19422082633629765uL) && ((pUL[6] & 18437736737013759967uL) == 23081244447473729uL) && ((pUS[28] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    value = _headers._AccessControlExposeHeaders;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                
+                    case 22:
+                        {
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 21673766485229647uL) && ((pUL[4] & 18437736874452713439uL) == 18296066765488193uL) && ((pUS[20] & 65503u) == 71u) && ((pUS[21] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    value = _headers._AccessControlMaxAge;
+                                    return true;
+                                }
+                                else
+                                {
+                                    value = StringValues.Empty;
+                                    return false;
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
 
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2L) != 0))
-                            {
-                                value = _headers._Connection;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8L) != 0))
-                            {
-                                value = _headers._KeepAlive;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 134217728L) != 0))
-                            {
-                                value = _headers._SetCookie;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4L) != 0))
-                            {
-                                value = _headers._Date;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4194304L) != 0))
-                            {
-                                value = _headers._ETag;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 268435456L) != 0))
-                            {
-                                value = _headers._Vary;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16L) != 0))
-                            {
-                                value = _headers._Pragma;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 67108864L) != 0))
-                            {
-                                value = _headers._Server;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32L) != 0))
-                            {
-                                value = _headers._Trailer;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 128L) != 0))
-                            {
-                                value = _headers._Upgrade;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 512L) != 0))
-                            {
-                                value = _headers._Warning;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 262144L) != 0))
-                            {
-                                value = _headers._Expires;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 64L) != 0))
-                            {
-                                value = _headers._TransferEncoding;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 256L) != 0))
-                            {
-                                value = _headers._Via;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2097152L) != 0))
-                            {
-                                value = _headers._Age;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                value = _headers._Allow;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                value = _headers._ContentLength;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                value = _headers._ContentType;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                value = _headers._ContentEncoding;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                value = _headers._ContentLanguage;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                value = _headers._ContentLocation;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                value = _headers._WWWAuthenticate;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                value = _headers._ContentMD5;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 33554432L) != 0))
-                            {
-                                value = _headers._RetryAfter;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                value = _headers._Location;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 18:
-                    {
-                        if ("Proxy-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                value = _headers._ProxyAuthenticate;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 32:
-                    {
-                        if ("Access-Control-Allow-Credentials".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                value = _headers._AccessControlAllowCredentials;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 28:
-                    {
-                        if ("Access-Control-Allow-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                value = _headers._AccessControlAllowHeaders;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    
-                        if ("Access-Control-Allow-Methods".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                value = _headers._AccessControlAllowMethods;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 27:
-                    {
-                        if ("Access-Control-Allow-Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                value = _headers._AccessControlAllowOrigin;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 29:
-                    {
-                        if ("Access-Control-Expose-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                value = _headers._AccessControlExposeHeaders;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-
-                case 22:
-                    {
-                        if ("Access-Control-Max-Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                value = _headers._AccessControlMaxAge;
-                                return true;
-                            }
-                            else
-                            {
-                                value = StringValues.Empty;
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-}
             value = StringValues.Empty;
             return MaybeUnknown?.TryGetValue(key, out value) ?? false;
         }
-        protected override void SetValueFast(string key, StringValues value)
+        protected unsafe override void SetValueFast(string key, StringValues value)
         {
             ValidateHeaderCharacters(value);
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            _bits |= 1L;
-                            _headers._CacheControl = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
+                            {
+                                {
+                                    _bits |= 1L;
+                                    _headers._CacheControl = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 131072L;
+                                    _headers._ContentRange = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                {
+                                    _bits |= 524288L;
+                                    _headers._LastModified = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 23081141369307216uL) && ((pUL[2] & 18437736737013759967uL) == 19422078340825153uL) && ((pUS[12] & 65503u) == 83u)))
+                            {
+                                {
+                                    _bits |= 1048576L;
+                                    _headers._AcceptRanges = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            _bits |= 131072L;
-                            _headers._ContentRange = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
+                            {
+                                {
+                                    _bits |= 2L;
+                                    _headers._Connection = value;
+                                    _headers._rawConnection = null;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 8L;
+                                    _headers._KeepAlive = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666734733754451uL) && ((pUL[1] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[8] & 65503u) == 73u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 134217728L;
+                                    _headers._SetCookie = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            _bits |= 524288L;
-                            _headers._LastModified = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
+                            {
+                                {
+                                    _bits |= 4L;
+                                    _headers._Date = value;
+                                    _headers._rawDate = null;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524835909uL)))
+                            {
+                                {
+                                    _bits |= 4194304L;
+                                    _headers._ETag = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 25051625118826582uL)))
+                            {
+                                {
+                                    _bits |= 268435456L;
+                                    _headers._Vary = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            _bits |= 1048576L;
-                            _headers._AcceptRanges = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
+                            {
+                                {
+                                    _bits |= 16L;
+                                    _headers._Pragma = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24207200188956755uL) && ((pUS[4] & 65503u) == 69u) && ((pUS[5] & 65503u) == 82u)))
+                            {
+                                {
+                                    _bits |= 67108864L;
+                                    _headers._Server = value;
+                                    _headers._rawServer = null;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            _bits |= 2L;
-                            _headers._Connection = value;
-                            _headers._rawConnection = null;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
+                            {
+                                {
+                                    _bits |= 32L;
+                                    _headers._Trailer = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 128L;
+                                    _headers._Upgrade = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                {
+                                    _bits |= 512L;
+                                    _headers._Warning = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                {
+                                    _bits |= 262144L;
+                                    _headers._Expires = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 17:
                         {
-                            _bits |= 8L;
-                            _headers._KeepAlive = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
+                            {
+                                {
+                                    _bits |= 64L;
+                                    _headers._TransferEncoding = value;
+                                    _headers._rawTransferEncoding = null;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 3:
                         {
-                            _bits |= 134217728L;
-                            _headers._SetCookie = value;
-                            return;
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
+                            {
+                                {
+                                    _bits |= 256L;
+                                    _headers._Via = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUS[0] & 65503u) == 65u) && ((pUS[1] & 65503u) == 71u) && ((pUS[2] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 2097152L;
+                                    _headers._Age = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 5:
                         {
-                            _bits |= 4L;
-                            _headers._Date = value;
-                            _headers._rawDate = null;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
+                            {
+                                {
+                                    _bits |= 1024L;
+                                    _headers._Allow = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 14:
                         {
-                            _bits |= 4194304L;
-                            _headers._ETag = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
+                            {
+                                {
+                                    _contentLength = ParseContentLength(value);
+                                    _bits |= 2048L;
+                                    _headers._ContentLength = value;
+                                    _headers._rawContentLength = null;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 12:
                         {
-                            _bits |= 268435456L;
-                            _headers._Vary = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
+                            {
+                                {
+                                    _bits |= 4096L;
+                                    _headers._ContentType = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 16:
                         {
-                            _bits |= 16L;
-                            _headers._Pragma = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
+                            {
+                                {
+                                    _bits |= 8192L;
+                                    _headers._ContentEncoding = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                {
+                                    _bits |= 16384L;
+                                    _headers._ContentLanguage = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                {
+                                    _bits |= 32768L;
+                                    _headers._ContentLocation = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666747619835991uL) && ((pUL[1] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[2] & 18437736737013759967uL) == 20548034082242629uL) && ((pUL[3] & 18437736737013759967uL) == 19422134174548035uL)))
+                            {
+                                {
+                                    _bits |= 536870912L;
+                                    _headers._WWWAuthenticate = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 11:
                         {
-                            _bits |= 67108864L;
-                            _headers._Server = value;
-                            _headers._rawServer = null;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
+                            {
+                                {
+                                    _bits |= 65536L;
+                                    _headers._ContentMD5 = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081308872048722uL) && ((pUL[1] & 18437736737015857119uL) == 19703527545569369uL) && ((pUS[8] & 65503u) == 84u) && ((pUS[9] & 65503u) == 69u) && ((pUS[10] & 65503u) == 82u)))
+                            {
+                                {
+                                    _bits |= 33554432L;
+                                    _headers._RetryAfter = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 8:
                         {
-                            _bits |= 32L;
-                            _headers._Trailer = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[1] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                {
+                                    _bits |= 8388608L;
+                                    _headers._Location = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 18:
                         {
-                            _bits |= 128L;
-                            _headers._Upgrade = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 21955344540893268uL) && ((pUL[3] & 18437736737013759967uL) == 18296161253785684uL) && ((pUS[16] & 65503u) == 84u) && ((pUS[17] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 16777216L;
+                                    _headers._ProxyAuthenticate = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 32:
                         {
-                            _bits |= 512L;
-                            _headers._Warning = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 19422125584744493uL) && ((pUL[6] & 18437736737013759967uL) == 23644233055666244uL) && ((pUL[7] & 18437736737013759967uL) == 23362749488758857uL)))
+                            {
+                                {
+                                    _bits |= 1073741824L;
+                                    _headers._AccessControlAllowCredentials = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 28:
                         {
-                            _bits |= 262144L;
-                            _headers._Expires = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 18296169843654701uL) && ((pUL[6] & 18437736737013759967uL) == 23362775258824772uL)))
+                            {
+                                {
+                                    _bits |= 2147483648L;
+                                    _headers._AccessControlAllowHeaders = value;
+                                    return;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 23644194401484845uL) && ((pUL[6] & 18437736737013759967uL) == 23362715129937992uL)))
+                            {
+                                {
+                                    _bits |= 4294967296L;
+                                    _headers._AccessControlAllowMethods = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 27:
                         {
-                            _bits |= 64L;
-                            _headers._TransferEncoding = value;
-                            _headers._rawTransferEncoding = null;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 20548025492373549uL) && ((pUS[24] & 65503u) == 71u) && ((pUS[25] & 65503u) == 73u) && ((pUS[26] & 65503u) == 78u)))
+                            {
+                                {
+                                    _bits |= 8589934592L;
+                                    _headers._AccessControlAllowOrigin = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 29:
                         {
-                            _bits |= 256L;
-                            _headers._Via = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 19421966671544399uL) && ((pUL[4] & 18437736737013759967uL) == 23362762374643800uL) && ((pUL[5] & 18437736737015857119uL) == 19422082633629765uL) && ((pUL[6] & 18437736737013759967uL) == 23081244447473729uL) && ((pUS[28] & 65503u) == 83u)))
+                            {
+                                {
+                                    _bits |= 17179869184L;
+                                    _headers._AccessControlExposeHeaders = value;
+                                    return;
+                                }
+                            }
                         }
-                    
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 22:
                         {
-                            _bits |= 2097152L;
-                            _headers._Age = value;
-                            return;
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 21673766485229647uL) && ((pUL[4] & 18437736874452713439uL) == 18296066765488193uL) && ((pUS[20] & 65503u) == 71u) && ((pUS[21] & 65503u) == 69u)))
+                            {
+                                {
+                                    _bits |= 34359738368L;
+                                    _headers._AccessControlMaxAge = value;
+                                    return;
+                                }
+                            }
                         }
-                    }
-                    break;
-
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 1024L;
-                            _headers._Allow = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _contentLength = ParseContentLength(value);
-                            _bits |= 2048L;
-                            _headers._ContentLength = value;
-                            _headers._rawContentLength = null;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 4096L;
-                            _headers._ContentType = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8192L;
-                            _headers._ContentEncoding = value;
-                            return;
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 16384L;
-                            _headers._ContentLanguage = value;
-                            return;
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 32768L;
-                            _headers._ContentLocation = value;
-                            return;
-                        }
-                    
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 536870912L;
-                            _headers._WWWAuthenticate = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 65536L;
-                            _headers._ContentMD5 = value;
-                            return;
-                        }
-                    
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 33554432L;
-                            _headers._RetryAfter = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 8:
-                    {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8388608L;
-                            _headers._Location = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 18:
-                    {
-                        if ("Proxy-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 16777216L;
-                            _headers._ProxyAuthenticate = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 32:
-                    {
-                        if ("Access-Control-Allow-Credentials".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 1073741824L;
-                            _headers._AccessControlAllowCredentials = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 28:
-                    {
-                        if ("Access-Control-Allow-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 2147483648L;
-                            _headers._AccessControlAllowHeaders = value;
-                            return;
-                        }
-                    
-                        if ("Access-Control-Allow-Methods".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 4294967296L;
-                            _headers._AccessControlAllowMethods = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 27:
-                    {
-                        if ("Access-Control-Allow-Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 8589934592L;
-                            _headers._AccessControlAllowOrigin = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 29:
-                    {
-                        if ("Access-Control-Expose-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 17179869184L;
-                            _headers._AccessControlExposeHeaders = value;
-                            return;
-                        }
-                    }
-                    break;
-
-                case 22:
-                    {
-                        if ("Access-Control-Max-Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _bits |= 34359738368L;
-                            _headers._AccessControlMaxAge = value;
-                            return;
-                        }
-                    }
-                    break;
-}
+                        break;
+                }
+            }
             ValidateHeaderCharacters(key);
             Unknown[key] = value;
         }
-        protected override void AddValueFast(string key, StringValues value)
+        protected unsafe override void AddValueFast(string key, StringValues value)
         {
             ValidateHeaderCharacters(value);
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 1L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1L;
+                                _headers._CacheControl = value;
+                                return;
                             }
-                            _bits |= 1L;
-                            _headers._CacheControl = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 131072L;
+                                _headers._ContentRange = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 524288L;
+                                _headers._LastModified = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 23081141369307216uL) && ((pUL[2] & 18437736737013759967uL) == 19422078340825153uL) && ((pUS[12] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1048576L;
+                                _headers._AcceptRanges = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 2L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2L;
+                                _headers._Connection = value;
+                                _headers._rawConnection = null;
+                                return;
                             }
-                            _bits |= 131072L;
-                            _headers._ContentRange = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 8L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8L;
+                                _headers._KeepAlive = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666734733754451uL) && ((pUL[1] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[8] & 65503u) == 73u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 134217728L;
+                                _headers._SetCookie = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 4L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4L;
+                                _headers._Date = value;
+                                _headers._rawDate = null;
+                                return;
                             }
-                            _bits |= 524288L;
-                            _headers._LastModified = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524835909uL)))
+                            {
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4194304L;
+                                _headers._ETag = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 25051625118826582uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 268435456L;
+                                _headers._Vary = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 16L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 16L;
+                                _headers._Pragma = value;
+                                return;
                             }
-                            _bits |= 1048576L;
-                            _headers._AcceptRanges = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24207200188956755uL) && ((pUS[4] & 65503u) == 69u) && ((pUS[5] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 67108864L;
+                                _headers._Server = value;
+                                _headers._rawServer = null;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            if (((_bits & 2L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 32L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 32L;
+                                _headers._Trailer = value;
+                                return;
                             }
-                            _bits |= 2L;
-                            _headers._Connection = value;
-                            _headers._rawConnection = null;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 128L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 128L;
+                                _headers._Upgrade = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 512L;
+                                _headers._Warning = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 262144L;
+                                _headers._Expires = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 17:
                         {
-                            if (((_bits & 8L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 64L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 64L;
+                                _headers._TransferEncoding = value;
+                                _headers._rawTransferEncoding = null;
+                                return;
                             }
-                            _bits |= 8L;
-                            _headers._KeepAlive = value;
-                            return;
                         }
-                    
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 3:
                         {
-                            if (((_bits & 134217728L) != 0))
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 256L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 256L;
+                                _headers._Via = value;
+                                return;
                             }
-                            _bits |= 134217728L;
-                            _headers._SetCookie = value;
-                            return;
+                        
+                            if ((((pUS[0] & 65503u) == 65u) && ((pUS[1] & 65503u) == 71u) && ((pUS[2] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2097152L;
+                                _headers._Age = value;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 5:
                         {
-                            if (((_bits & 4L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1024L;
+                                _headers._Allow = value;
+                                return;
                             }
-                            _bits |= 4L;
-                            _headers._Date = value;
-                            _headers._rawDate = null;
-                            return;
                         }
-                    
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 14:
                         {
-                            if (((_bits & 4194304L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _contentLength = ParseContentLength(value);
+                                _bits |= 2048L;
+                                _headers._ContentLength = value;
+                                _headers._rawContentLength = null;
+                                return;
                             }
-                            _bits |= 4194304L;
-                            _headers._ETag = value;
-                            return;
                         }
-                    
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 12:
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4096L;
+                                _headers._ContentType = value;
+                                return;
                             }
-                            _bits |= 268435456L;
-                            _headers._Vary = value;
-                            return;
                         }
-                    }
-                    break;
-            
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 16:
                         {
-                            if (((_bits & 16L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8192L;
+                                _headers._ContentEncoding = value;
+                                return;
                             }
-                            _bits |= 16L;
-                            _headers._Pragma = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
+                            {
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 16384L;
+                                _headers._ContentLanguage = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 32768L;
+                                _headers._ContentLocation = value;
+                                return;
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666747619835991uL) && ((pUL[1] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[2] & 18437736737013759967uL) == 20548034082242629uL) && ((pUL[3] & 18437736737013759967uL) == 19422134174548035uL)))
+                            {
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 536870912L;
+                                _headers._WWWAuthenticate = value;
+                                return;
+                            }
                         }
-                    
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 11:
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 65536L;
+                                _headers._ContentMD5 = value;
+                                return;
                             }
-                            _bits |= 67108864L;
-                            _headers._Server = value;
-                            _headers._rawServer = null;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081308872048722uL) && ((pUL[1] & 18437736737015857119uL) == 19703527545569369uL) && ((pUS[8] & 65503u) == 84u) && ((pUS[9] & 65503u) == 69u) && ((pUS[10] & 65503u) == 82u)))
+                            {
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 33554432L;
+                                _headers._RetryAfter = value;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 8:
                         {
-                            if (((_bits & 32L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[1] & 18437736737013759967uL) == 21955387490631764uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8388608L;
+                                _headers._Location = value;
+                                return;
                             }
-                            _bits |= 32L;
-                            _headers._Trailer = value;
-                            return;
                         }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 18:
                         {
-                            if (((_bits & 128L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 21955344540893268uL) && ((pUL[3] & 18437736737013759967uL) == 18296161253785684uL) && ((pUS[16] & 65503u) == 84u) && ((pUS[17] & 65503u) == 69u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 16777216L;
+                                _headers._ProxyAuthenticate = value;
+                                return;
                             }
-                            _bits |= 128L;
-                            _headers._Upgrade = value;
-                            return;
                         }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 32:
                         {
-                            if (((_bits & 512L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 19422125584744493uL) && ((pUL[6] & 18437736737013759967uL) == 23644233055666244uL) && ((pUL[7] & 18437736737013759967uL) == 23362749488758857uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 1073741824L;
+                                _headers._AccessControlAllowCredentials = value;
+                                return;
                             }
-                            _bits |= 512L;
-                            _headers._Warning = value;
-                            return;
                         }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 28:
                         {
-                            if (((_bits & 262144L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 18296169843654701uL) && ((pUL[6] & 18437736737013759967uL) == 23362775258824772uL)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 2147483648L;
+                                _headers._AccessControlAllowHeaders = value;
+                                return;
                             }
-                            _bits |= 262144L;
-                            _headers._Expires = value;
-                            return;
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 23644194401484845uL) && ((pUL[6] & 18437736737013759967uL) == 23362715129937992uL)))
+                            {
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 4294967296L;
+                                _headers._AccessControlAllowMethods = value;
+                                return;
+                            }
                         }
-                    }
-                    break;
-            
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 27:
                         {
-                            if (((_bits & 64L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 20548025492373549uL) && ((pUS[24] & 65503u) == 71u) && ((pUS[25] & 65503u) == 73u) && ((pUS[26] & 65503u) == 78u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 8589934592L;
+                                _headers._AccessControlAllowOrigin = value;
+                                return;
                             }
-                            _bits |= 64L;
-                            _headers._TransferEncoding = value;
-                            _headers._rawTransferEncoding = null;
-                            return;
                         }
-                    }
-                    break;
-            
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 29:
                         {
-                            if (((_bits & 256L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 19421966671544399uL) && ((pUL[4] & 18437736737013759967uL) == 23362762374643800uL) && ((pUL[5] & 18437736737015857119uL) == 19422082633629765uL) && ((pUL[6] & 18437736737013759967uL) == 23081244447473729uL) && ((pUS[28] & 65503u) == 83u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 17179869184L;
+                                _headers._AccessControlExposeHeaders = value;
+                                return;
                             }
-                            _bits |= 256L;
-                            _headers._Via = value;
-                            return;
                         }
-                    
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 22:
                         {
-                            if (((_bits & 2097152L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 21673766485229647uL) && ((pUL[4] & 18437736874452713439uL) == 18296066765488193uL) && ((pUS[20] & 65503u) == 71u) && ((pUS[21] & 65503u) == 69u)))
                             {
-                                ThrowDuplicateKeyException();
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    ThrowDuplicateKeyException();
+                                }
+                                _bits |= 34359738368L;
+                                _headers._AccessControlMaxAge = value;
+                                return;
                             }
-                            _bits |= 2097152L;
-                            _headers._Age = value;
-                            return;
                         }
-                    }
-                    break;
-            
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 1024L;
-                            _headers._Allow = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _contentLength = ParseContentLength(value);
-                            _bits |= 2048L;
-                            _headers._ContentLength = value;
-                            _headers._rawContentLength = null;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 4096L;
-                            _headers._ContentType = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8192L;
-                            _headers._ContentEncoding = value;
-                            return;
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 16384L;
-                            _headers._ContentLanguage = value;
-                            return;
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 32768L;
-                            _headers._ContentLocation = value;
-                            return;
-                        }
-                    
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 536870912L;
-                            _headers._WWWAuthenticate = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 65536L;
-                            _headers._ContentMD5 = value;
-                            return;
-                        }
-                    
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 33554432L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 33554432L;
-                            _headers._RetryAfter = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8388608L;
-                            _headers._Location = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 18:
-                    {
-                        if ("Proxy-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 16777216L;
-                            _headers._ProxyAuthenticate = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 32:
-                    {
-                        if ("Access-Control-Allow-Credentials".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 1073741824L;
-                            _headers._AccessControlAllowCredentials = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 28:
-                    {
-                        if ("Access-Control-Allow-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 2147483648L;
-                            _headers._AccessControlAllowHeaders = value;
-                            return;
-                        }
-                    
-                        if ("Access-Control-Allow-Methods".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 4294967296L;
-                            _headers._AccessControlAllowMethods = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 27:
-                    {
-                        if ("Access-Control-Allow-Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 8589934592L;
-                            _headers._AccessControlAllowOrigin = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 29:
-                    {
-                        if ("Access-Control-Expose-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 17179869184L;
-                            _headers._AccessControlExposeHeaders = value;
-                            return;
-                        }
-                    }
-                    break;
-            
-                case 22:
-                    {
-                        if ("Access-Control-Max-Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                ThrowDuplicateKeyException();
-                            }
-                            _bits |= 34359738368L;
-                            _headers._AccessControlMaxAge = value;
-                            return;
-                        }
-                    }
-                    break;
+                        break;
+                }
             }
             ValidateHeaderCharacters(key);
             Unknown.Add(key, value);
         }
-        protected override bool RemoveFast(string key)
+        protected unsafe override bool RemoveFast(string key)
         {
-            switch (key.Length)
+            fixed (char* ptr = key)
             {
-                case 13:
-                    {
-                        if ("Cache-Control".Equals(key, StringComparison.OrdinalIgnoreCase))
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {
+                    case 13:
                         {
-                            if (((_bits & 1L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20266486090235971uL) && ((pUL[1] & 18437736737015857119uL) == 22236810925899845uL) && ((pUL[2] & 18437736737013759967uL) == 22236875352965198uL) && ((pUS[12] & 65503u) == 76u)))
                             {
-                                _bits &= ~1L;
-                                _headers._CacheControl = StringValues.Empty;
-                                return true;
+                                if (((_bits & 1L) != 0))
+                                {
+                                    _bits &= ~1L;
+                                    _headers._CacheControl = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165586uL) && ((pUS[12] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 131072L) != 0))
+                                {
+                                    _bits &= ~131072L;
+                                    _headers._ContentRange = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644254530240588uL) && ((pUL[1] & 18437736737013759999uL) == 19140637723787309uL) && ((pUL[2] & 18437736737013759967uL) == 19422086930235465uL) && ((pUS[12] & 65503u) == 68u)))
+                            {
+                                if (((_bits & 524288L) != 0))
+                                {
+                                    _bits &= ~524288L;
+                                    _headers._LastModified = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 23081141369307216uL) && ((pUL[2] & 18437736737013759967uL) == 19422078340825153uL) && ((pUS[12] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 1048576L) != 0))
+                                {
+                                    _bits &= ~1048576L;
+                                    _headers._AcceptRanges = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Content-Range".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 10:
                         {
-                            if (((_bits & 131072L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955383196057667uL) && ((pUL[1] & 18437736737013759967uL) == 20548034081521733uL) && ((pUS[8] & 65503u) == 79u) && ((pUS[9] & 65503u) == 78u)))
                             {
-                                _bits &= ~131072L;
-                                _headers._ContentRange = StringValues.Empty;
-                                return true;
+                                if (((_bits & 2L) != 0))
+                                {
+                                    _bits &= ~2L;
+                                    _headers._Connection = StringValues.Empty;
+                                    _headers._rawConnection = null;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 22518294494117963uL) && ((pUL[1] & 18437736737013759999uL) == 20547999721652269uL) && ((pUS[8] & 65503u) == 86u) && ((pUS[9] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 8L) != 0))
+                                {
+                                    _bits &= ~8L;
+                                    _headers._KeepAlive = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666734733754451uL) && ((pUL[1] & 18437736737013759967uL) == 21110962560892995uL) && ((pUS[8] & 65503u) == 73u) && ((pUS[9] & 65503u) == 69u)))
+                            {
+                                if (((_bits & 134217728L) != 0))
+                                {
+                                    _bits &= ~134217728L;
+                                    _headers._SetCookie = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Last-Modified".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 4:
                         {
-                            if (((_bits & 524288L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422134174548036uL)))
                             {
-                                _bits &= ~524288L;
-                                _headers._LastModified = StringValues.Empty;
-                                return true;
+                                if (((_bits & 4L) != 0))
+                                {
+                                    _bits &= ~4L;
+                                    _headers._Date = StringValues.Empty;
+                                    _headers._rawDate = null;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524835909uL)))
                             {
-                                return false;
+                                if (((_bits & 4194304L) != 0))
+                                {
+                                    _bits &= ~4194304L;
+                                    _headers._ETag = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 25051625118826582uL)))
+                            {
+                                if (((_bits & 268435456L) != 0))
+                                {
+                                    _bits &= ~268435456L;
+                                    _headers._Vary = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Accept-Ranges".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 6:
                         {
-                            if (((_bits & 1048576L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19985002524704848uL) && ((pUS[4] & 65503u) == 77u) && ((pUS[5] & 65503u) == 65u)))
                             {
-                                _bits &= ~1048576L;
-                                _headers._AcceptRanges = StringValues.Empty;
-                                return true;
+                                if (((_bits & 16L) != 0))
+                                {
+                                    _bits &= ~16L;
+                                    _headers._Pragma = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 24207200188956755uL) && ((pUS[4] & 65503u) == 69u) && ((pUS[5] & 65503u) == 82u)))
                             {
-                                return false;
+                                if (((_bits & 67108864L) != 0))
+                                {
+                                    _bits &= ~67108864L;
+                                    _headers._Server = StringValues.Empty;
+                                    _headers._rawServer = null;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 10:
-                    {
-                        if ("Connection".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 7:
                         {
-                            if (((_bits & 2L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 20547952478126164uL) && ((pUS[4] & 65503u) == 76u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 82u)))
                             {
-                                _bits &= ~2L;
-                                _headers._Connection = StringValues.Empty;
-                                _headers._rawConnection = null;
-                                return true;
+                                if (((_bits & 32L) != 0))
+                                {
+                                    _bits &= ~32L;
+                                    _headers._Trailer = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081253038194773uL) && ((pUS[4] & 65503u) == 65u) && ((pUS[5] & 65503u) == 68u) && ((pUS[6] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 128L) != 0))
+                                {
+                                    _bits &= ~128L;
+                                    _headers._Upgrade = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955400375009367uL) && ((pUS[4] & 65503u) == 73u) && ((pUS[5] & 65503u) == 78u) && ((pUS[6] & 65503u) == 71u)))
+                            {
+                                if (((_bits & 512L) != 0))
+                                {
+                                    _bits &= ~512L;
+                                    _headers._Warning = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 20548016903028805uL) && ((pUS[4] & 65503u) == 82u) && ((pUS[5] & 65503u) == 69u) && ((pUS[6] & 65503u) == 83u)))
+                            {
+                                if (((_bits & 262144L) != 0))
+                                {
+                                    _bits &= ~262144L;
+                                    _headers._Expires = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Keep-Alive".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 17:
                         {
-                            if (((_bits & 8L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 21955327361679444uL) && ((pUL[1] & 18437736737013759967uL) == 23081244447604819uL) && ((pUL[2] & 18437736737013759999uL) == 18859158451585069uL) && ((pUL[3] & 18437736737013759967uL) == 21955361720500303uL) && ((pUS[16] & 65503u) == 71u)))
                             {
-                                _bits &= ~8L;
-                                _headers._KeepAlive = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 64L) != 0))
+                                {
+                                    _bits &= ~64L;
+                                    _headers._TransferEncoding = StringValues.Empty;
+                                    _headers._rawTransferEncoding = null;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Set-Cookie".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 3:
                         {
-                            if (((_bits & 134217728L) != 0))
+                            if ((((pUS[0] & 65503u) == 86u) && ((pUS[1] & 65503u) == 73u) && ((pUS[2] & 65503u) == 65u)))
                             {
-                                _bits &= ~134217728L;
-                                _headers._SetCookie = StringValues.Empty;
-                                return true;
+                                if (((_bits & 256L) != 0))
+                                {
+                                    _bits &= ~256L;
+                                    _headers._Via = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUS[0] & 65503u) == 65u) && ((pUS[1] & 65503u) == 71u) && ((pUS[2] & 65503u) == 69u)))
                             {
-                                return false;
+                                if (((_bits & 2097152L) != 0))
+                                {
+                                    _bits &= ~2097152L;
+                                    _headers._Age = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 4:
-                    {
-                        if ("Date".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 5:
                         {
-                            if (((_bits & 4L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 22236849582637121uL) && ((pUS[4] & 65503u) == 87u)))
                             {
-                                _bits &= ~4L;
-                                _headers._Date = StringValues.Empty;
-                                _headers._rawDate = null;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 1024L) != 0))
+                                {
+                                    _bits &= ~1024L;
+                                    _headers._Allow = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("ETag".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 14:
                         {
-                            if (((_bits & 4194304L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358427724uL) && ((pUS[12] & 65503u) == 84u) && ((pUS[13] & 65503u) == 72u)))
                             {
-                                _bits &= ~4194304L;
-                                _headers._ETag = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 2048L) != 0))
+                                {
+                                    _contentLength = null;
+                                    _bits &= ~2048L;
+                                    _headers._ContentLength = StringValues.Empty;
+                                    _headers._rawContentLength = null;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Vary".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 12:
                         {
-                            if (((_bits & 268435456L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19422116996251732uL)))
                             {
-                                _bits &= ~268435456L;
-                                _headers._Vary = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 4096L) != 0))
+                                {
+                                    _bits &= ~4096L;
+                                    _headers._ContentType = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 6:
-                    {
-                        if ("Pragma".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 16:
                         {
-                            if (((_bits & 16L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 22236810928062533uL) && ((pUL[3] & 18437736737013759967uL) == 19985058358689860uL)))
                             {
-                                _bits &= ~16L;
-                                _headers._Pragma = StringValues.Empty;
-                                return true;
+                                if (((_bits & 8192L) != 0))
+                                {
+                                    _bits &= ~8192L;
+                                    _headers._ContentEncoding = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 19985058358165580uL) && ((pUL[3] & 18437736737013759967uL) == 19422078339973205uL)))
                             {
-                                return false;
+                                if (((_bits & 16384L) != 0))
+                                {
+                                    _bits &= ~16384L;
+                                    _headers._ContentLanguage = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUL[2] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[3] & 18437736737013759967uL) == 21955387490631764uL)))
+                            {
+                                if (((_bits & 32768L) != 0))
+                                {
+                                    _bits &= ~32768L;
+                                    _headers._ContentLocation = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        
+                            if ((((pUL[0] & 18446743936268500959uL) == 12666747619835991uL) && ((pUL[1] & 18437736737013759967uL) == 20266559105990721uL) && ((pUL[2] & 18437736737013759967uL) == 20548034082242629uL) && ((pUL[3] & 18437736737013759967uL) == 19422134174548035uL)))
+                            {
+                                if (((_bits & 536870912L) != 0))
+                                {
+                                    _bits &= ~536870912L;
+                                    _headers._WWWAuthenticate = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Server".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 11:
                         {
-                            if (((_bits & 67108864L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 23644233056321603uL) && ((pUL[1] & 18446743936268500959uL) == 12666734734344261uL) && ((pUS[8] & 65503u) == 77u) && ((pUS[9] & 65503u) == 68u) && ((pUS[10] & 65535u) == 53u)))
                             {
-                                _bits &= ~67108864L;
-                                _headers._Server = StringValues.Empty;
-                                _headers._rawServer = null;
-                                return true;
+                                if (((_bits & 65536L) != 0))
+                                {
+                                    _bits &= ~65536L;
+                                    _headers._ContentMD5 = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 23081308872048722uL) && ((pUL[1] & 18437736737015857119uL) == 19703527545569369uL) && ((pUS[8] & 65503u) == 84u) && ((pUS[9] & 65503u) == 69u) && ((pUS[10] & 65503u) == 82u)))
                             {
-                                return false;
+                                if (((_bits & 33554432L) != 0))
+                                {
+                                    _bits &= ~33554432L;
+                                    _headers._RetryAfter = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 7:
-                    {
-                        if ("Trailer".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 8:
                         {
-                            if (((_bits & 32L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 18296161254178892uL) && ((pUL[1] & 18437736737013759967uL) == 21955387490631764uL)))
                             {
-                                _bits &= ~32L;
-                                _headers._Trailer = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 8388608L) != 0))
+                                {
+                                    _bits &= ~8388608L;
+                                    _headers._Location = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Upgrade".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 18:
                         {
-                            if (((_bits & 128L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 24770137258328144uL) && ((pUL[1] & 18437736737015857119uL) == 23925652196229209uL) && ((pUL[2] & 18437736737013759967uL) == 21955344540893268uL) && ((pUL[3] & 18437736737013759967uL) == 18296161253785684uL) && ((pUS[16] & 65503u) == 84u) && ((pUS[17] & 65503u) == 69u)))
                             {
-                                _bits &= ~128L;
-                                _headers._Upgrade = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 16777216L) != 0))
+                                {
+                                    _bits &= ~16777216L;
+                                    _headers._ProxyAuthenticate = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Warning".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 32:
                         {
-                            if (((_bits & 512L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 19422125584744493uL) && ((pUL[6] & 18437736737013759967uL) == 23644233055666244uL) && ((pUL[7] & 18437736737013759967uL) == 23362749488758857uL)))
                             {
-                                _bits &= ~512L;
-                                _headers._Warning = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 1073741824L) != 0))
+                                {
+                                    _bits &= ~1073741824L;
+                                    _headers._AccessControlAllowCredentials = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Expires".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 28:
                         {
-                            if (((_bits & 262144L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 18296169843654701uL) && ((pUL[6] & 18437736737013759967uL) == 23362775258824772uL)))
                             {
-                                _bits &= ~262144L;
-                                _headers._Expires = StringValues.Empty;
-                                return true;
+                                if (((_bits & 2147483648L) != 0))
+                                {
+                                    _bits &= ~2147483648L;
+                                    _headers._AccessControlAllowHeaders = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
-                            else
+                        
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 23644194401484845uL) && ((pUL[6] & 18437736737013759967uL) == 23362715129937992uL)))
                             {
-                                return false;
+                                if (((_bits & 4294967296L) != 0))
+                                {
+                                    _bits &= ~4294967296L;
+                                    _headers._AccessControlAllowMethods = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 17:
-                    {
-                        if ("Transfer-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 27:
                         {
-                            if (((_bits & 64L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 18296066764701775uL) && ((pUL[4] & 18437736737013759967uL) == 24488662281224268uL) && ((pUL[5] & 18437736737013759999uL) == 20548025492373549uL) && ((pUS[24] & 65503u) == 71u) && ((pUS[25] & 65503u) == 73u) && ((pUS[26] & 65503u) == 78u)))
                             {
-                                _bits &= ~64L;
-                                _headers._TransferEncoding = StringValues.Empty;
-                                _headers._rawTransferEncoding = null;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 8589934592L) != 0))
+                                {
+                                    _bits &= ~8589934592L;
+                                    _headers._AccessControlAllowOrigin = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 3:
-                    {
-                        if ("Via".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 29:
                         {
-                            if (((_bits & 256L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 19421966671544399uL) && ((pUL[4] & 18437736737013759967uL) == 23362762374643800uL) && ((pUL[5] & 18437736737015857119uL) == 19422082633629765uL) && ((pUL[6] & 18437736737013759967uL) == 23081244447473729uL) && ((pUS[28] & 65503u) == 83u)))
                             {
-                                _bits &= ~256L;
-                                _headers._Via = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 17179869184L) != 0))
+                                {
+                                    _bits &= ~17179869184L;
+                                    _headers._AccessControlExposeHeaders = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    
-                        if ("Age".Equals(key, StringComparison.OrdinalIgnoreCase))
+                        break;
+                
+                    case 22:
                         {
-                            if (((_bits & 2097152L) != 0))
+                            if ((((pUL[0] & 18437736737013759967uL) == 19422061160235073uL) && ((pUL[1] & 18437736874452713439uL) == 18859016718581843uL) && ((pUL[2] & 18437736737013759967uL) == 23081308872638543uL) && ((pUL[3] & 18437736874452713439uL) == 21673766485229647uL) && ((pUL[4] & 18437736874452713439uL) == 18296066765488193uL) && ((pUS[20] & 65503u) == 71u) && ((pUS[21] & 65503u) == 69u)))
                             {
-                                _bits &= ~2097152L;
-                                _headers._Age = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
+                                if (((_bits & 34359738368L) != 0))
+                                {
+                                    _bits &= ~34359738368L;
+                                    _headers._AccessControlMaxAge = StringValues.Empty;
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
                             }
                         }
-                    }
-                    break;
-            
-                case 5:
-                    {
-                        if ("Allow".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1024L) != 0))
-                            {
-                                _bits &= ~1024L;
-                                _headers._Allow = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 14:
-                    {
-                        if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2048L) != 0))
-                            {
-                                _contentLength = null;
-                                _bits &= ~2048L;
-                                _headers._ContentLength = StringValues.Empty;
-                                _headers._rawContentLength = null;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 12:
-                    {
-                        if ("Content-Type".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4096L) != 0))
-                            {
-                                _bits &= ~4096L;
-                                _headers._ContentType = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 16:
-                    {
-                        if ("Content-Encoding".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8192L) != 0))
-                            {
-                                _bits &= ~8192L;
-                                _headers._ContentEncoding = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Language".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16384L) != 0))
-                            {
-                                _bits &= ~16384L;
-                                _headers._ContentLanguage = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Content-Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 32768L) != 0))
-                            {
-                                _bits &= ~32768L;
-                                _headers._ContentLocation = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("WWW-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 536870912L) != 0))
-                            {
-                                _bits &= ~536870912L;
-                                _headers._WWWAuthenticate = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 11:
-                    {
-                        if ("Content-MD5".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 65536L) != 0))
-                            {
-                                _bits &= ~65536L;
-                                _headers._ContentMD5 = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Retry-After".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 33554432L) != 0))
-                            {
-                                _bits &= ~33554432L;
-                                _headers._RetryAfter = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 8:
-                    {
-                        if ("Location".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8388608L) != 0))
-                            {
-                                _bits &= ~8388608L;
-                                _headers._Location = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 18:
-                    {
-                        if ("Proxy-Authenticate".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 16777216L) != 0))
-                            {
-                                _bits &= ~16777216L;
-                                _headers._ProxyAuthenticate = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 32:
-                    {
-                        if ("Access-Control-Allow-Credentials".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 1073741824L) != 0))
-                            {
-                                _bits &= ~1073741824L;
-                                _headers._AccessControlAllowCredentials = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 28:
-                    {
-                        if ("Access-Control-Allow-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 2147483648L) != 0))
-                            {
-                                _bits &= ~2147483648L;
-                                _headers._AccessControlAllowHeaders = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    
-                        if ("Access-Control-Allow-Methods".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 4294967296L) != 0))
-                            {
-                                _bits &= ~4294967296L;
-                                _headers._AccessControlAllowMethods = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 27:
-                    {
-                        if ("Access-Control-Allow-Origin".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 8589934592L) != 0))
-                            {
-                                _bits &= ~8589934592L;
-                                _headers._AccessControlAllowOrigin = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 29:
-                    {
-                        if ("Access-Control-Expose-Headers".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 17179869184L) != 0))
-                            {
-                                _bits &= ~17179869184L;
-                                _headers._AccessControlExposeHeaders = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
-            
-                case 22:
-                    {
-                        if ("Access-Control-Max-Age".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (((_bits & 34359738368L) != 0))
-                            {
-                                _bits &= ~34359738368L;
-                                _headers._AccessControlMaxAge = StringValues.Empty;
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    break;
+                        break;
+                }
             }
             return MaybeUnknown?.Remove(key) ?? false;
         }

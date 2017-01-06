@@ -61,6 +61,147 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 ": "")}
             }}";
 
+        static string TryGetValueStringSwitch(IEnumerable<IGrouping<int, KnownHeader>> values) =>
+            $@"fixed (char* ptr = key)
+            {{
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {{{Each(values, byLength => $@"
+                    case {byLength.Key}:
+                        {{{Each(byLength, header => $@"
+                            if ({header.EqualIgnoreCaseChars()})
+                            {{
+                                if ({header.TestBit()})
+                                {{
+                                    value = _headers._{header.Identifier};
+                                    return true;
+                                }}
+                                else
+                                {{
+                                    value = StringValues.Empty;
+                                    return false;
+                                }}
+                            }}
+                        ")}}}
+                        break;
+                ")}}}
+            }}";
+
+        static string GetValueStringSwitch(IEnumerable<IGrouping<int, KnownHeader>> values) =>
+            $@"fixed (char* ptr = key)
+            {{
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {{{Each(values, byLength => $@"
+                    case {byLength.Key}:
+                        {{{Each(byLength, header => $@"
+                            if ({header.EqualIgnoreCaseChars()})
+                            {{
+                                if ({header.TestBit()})
+                                {{
+                                    return _headers._{header.Identifier};
+                                }}
+                                else
+                                {{
+                                    ThrowKeyNotFoundException();
+                                }}
+                            }}
+                        ")}}}
+                        break;
+                ")}}}
+            }}";
+
+        static string SetValueStringSwitch(IEnumerable<IGrouping<int, KnownHeader>> values, string className) =>
+            $@"fixed (char* ptr = key)
+            {{
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {{{Each(values, byLength => $@"
+                    case {byLength.Key}:
+                        {{{Each(byLength, header => $@"
+                            if ({header.EqualIgnoreCaseChars()})
+                            {{
+                                {{{If(className == "FrameResponseHeaders" && header.Identifier == "ContentLength", () => @"
+                                    _contentLength = ParseContentLength(value);")}
+                                    {header.SetBit()};
+                                    _headers._{header.Identifier} = value;{(header.EnhancedSetter == false ? "" : $@"
+                                    _headers._raw{header.Identifier} = null;")}
+                                    return;
+                                }}
+                            }}
+                        ")}}}
+                        break;
+                ")}}}
+            }}";
+
+        static string AddValueStringSwitch(IEnumerable<IGrouping<int, KnownHeader>> values, string className) =>
+            $@"fixed (char* ptr = key)
+            {{
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {{{Each(values, byLength => $@"
+                    case {byLength.Key}:
+                        {{{Each(byLength, header => $@"
+                            if ({header.EqualIgnoreCaseChars()})
+                            {{
+                                if ({header.TestBit()})
+                                {{
+                                    ThrowDuplicateKeyException();
+                                }}{
+                                If(className == "FrameResponseHeaders" && header.Identifier == "ContentLength", () => @"
+                                _contentLength = ParseContentLength(value);")}
+                                {header.SetBit()};
+                                _headers._{header.Identifier} = value;{(header.EnhancedSetter == false ? "" : $@"
+                                _headers._raw{header.Identifier} = null;")}
+                                return;
+                            }}
+                        ")}}}
+                        break;
+                ")}}}
+            }}";
+
+        static string RemoveStringSwitch(IEnumerable<IGrouping<int, KnownHeader>> values, string className) =>
+            $@"fixed (char* ptr = key)
+            {{
+                var pCh = ptr;
+                var pUL = (ulong*)pCh;
+                var pUI = (uint*)pCh;
+                var pUS = (ushort*)pCh;
+                switch (key.Length)
+                {{{Each(values, byLength => $@"
+                    case {byLength.Key}:
+                        {{{Each(byLength, header => $@"
+                            if ({header.EqualIgnoreCaseChars()})
+                            {{
+                                if ({header.TestBit()})
+                                {{{If(className == "FrameResponseHeaders" && header.Identifier == "ContentLength", () => @"
+                                    _contentLength = null;")}
+                                    {header.ClearBit()};
+                                    _headers._{header.Identifier} = StringValues.Empty;{(header.EnhancedSetter == false ? "" : $@"
+                                    _headers._raw{header.Identifier} = null;")}
+                                    return true;
+                                }}
+                                else
+                                {{
+                                    return false;
+                                }}
+                            }}
+                        ")}}}
+                        break;
+                ")}}}
+            }}";
         class KnownHeader
         {
             public string Name { get; set; }
@@ -107,6 +248,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 }
                 return $"({result})";
             }
+            public string EqualIgnoreCaseChars()
+            {
+                var result = "";
+                var delim = "";
+                var index = 0;
+                while (index != Name.Length)
+                {
+                    if (Name.Length - index >= 4)
+                    {
+                        result += delim + TermChar(Name, index, 4, "pUL", "uL");
+                        index += 4;
+                    }
+                    else if (Name.Length - index >= 4)
+                    {
+                        result += delim + TermChar(Name, index, 2, "pUI", "u");
+                        index += 2;
+                    }
+                    else
+                    {
+                        result += delim + TermChar(Name, index, 1, "pUS", "u");
+                        index += 1;
+                    }
+                    delim = " && ";
+                }
+                return $"({result})";
+            }
             protected string Term(string name, int offset, int count, string array, string suffix)
             {
                 ulong mask = 0;
@@ -117,6 +284,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                     var isAlpha = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
                     comp = (comp << 8) + (ch & (isAlpha ? 0xdfu : 0xffu));
                     mask = (mask << 8) + (isAlpha ? 0xdfu : 0xffu);
+                }
+                return $"(({array}[{offset / count}] & {mask}{suffix}) == {comp}{suffix})";
+            }
+            protected string TermChar(string name, int offset, int count, string array, string suffix)
+            {
+                ulong mask = 0;
+                ulong comp = 0;
+                for (var scan = 0; scan < count; scan++)
+                {
+                    var ch = (byte)name[offset + count - scan - 1];
+                    var isAlpha = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
+                    comp = (comp << 16) + (ch & (isAlpha ? 0xdfu : 0xffu));
+                    mask = (mask << 16) + (isAlpha ? 0xffdfu : 0xffffu); // look at all 16 bits to validate
                 }
                 return $"(({array}[{offset / count}] & {mask}{suffix}) == {comp}{suffix})";
             }
@@ -315,128 +495,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {{
             return BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
         }}
-        protected override StringValues GetValueFast(string key)
+        protected unsafe override StringValues GetValueFast(string key)
         {{
-            switch (key.Length)
-            {{{Each(loop.HeadersByLength, byLength => $@"
-                case {byLength.Key}:
-                    {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {{
-                            if ({header.TestBit()})
-                            {{
-                                return _headers._{header.Identifier};
-                            }}
-                            else
-                            {{
-                                ThrowKeyNotFoundException();
-                            }}
-                        }}
-                    ")}}}
-                    break;
-")}}}
+            {GetValueStringSwitch(loop.HeadersByLength)}
+
             if (MaybeUnknown == null)
             {{
                 ThrowKeyNotFoundException();
             }}
             return MaybeUnknown[key];
         }}
-        protected override bool TryGetValueFast(string key, out StringValues value)
+        protected unsafe override bool TryGetValueFast(string key, out StringValues value)
         {{
-            switch (key.Length)
-            {{{Each(loop.HeadersByLength, byLength => $@"
-                case {byLength.Key}:
-                    {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {{
-                            if ({header.TestBit()})
-                            {{
-                                value = _headers._{header.Identifier};
-                                return true;
-                            }}
-                            else
-                            {{
-                                value = StringValues.Empty;
-                                return false;
-                            }}
-                        }}
-                    ")}}}
-                    break;
-")}}}
+            {TryGetValueStringSwitch(loop.HeadersByLength)}
+
             value = StringValues.Empty;
             return MaybeUnknown?.TryGetValue(key, out value) ?? false;
         }}
-        protected override void SetValueFast(string key, StringValues value)
+        protected unsafe override void SetValueFast(string key, StringValues value)
         {{
             {(loop.ClassName == "FrameResponseHeaders" ? "ValidateHeaderCharacters(value);" : "")}
-            switch (key.Length)
-            {{{Each(loop.HeadersByLength, byLength => $@"
-                case {byLength.Key}:
-                    {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {{{If(loop.ClassName == "FrameResponseHeaders" && header.Identifier == "ContentLength", () => @"
-                            _contentLength = ParseContentLength(value);")}
-                            {header.SetBit()};
-                            _headers._{header.Identifier} = value;{(header.EnhancedSetter == false ? "" : $@"
-                            _headers._raw{header.Identifier} = null;")}
-                            return;
-                        }}
-                    ")}}}
-                    break;
-")}}}
+            {SetValueStringSwitch(loop.HeadersByLength, loop.ClassName)}
             {(loop.ClassName == "FrameResponseHeaders" ? "ValidateHeaderCharacters(key);" : "")}
             Unknown[key] = value;
         }}
-        protected override void AddValueFast(string key, StringValues value)
+        protected unsafe override void AddValueFast(string key, StringValues value)
         {{
             {(loop.ClassName == "FrameResponseHeaders" ? "ValidateHeaderCharacters(value);" : "")}
-            switch (key.Length)
-            {{{Each(loop.HeadersByLength, byLength => $@"
-                case {byLength.Key}:
-                    {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {{
-                            if ({header.TestBit()})
-                            {{
-                                ThrowDuplicateKeyException();
-                            }}{
-                            If(loop.ClassName == "FrameResponseHeaders" && header.Identifier == "ContentLength", () => @"
-                            _contentLength = ParseContentLength(value);")}
-                            {header.SetBit()};
-                            _headers._{header.Identifier} = value;{(header.EnhancedSetter == false ? "" : $@"
-                            _headers._raw{header.Identifier} = null;")}
-                            return;
-                        }}
-                    ")}}}
-                    break;
-            ")}}}
+            {AddValueStringSwitch(loop.HeadersByLength, loop.ClassName)}
             {(loop.ClassName == "FrameResponseHeaders" ? "ValidateHeaderCharacters(key);" : "")}
             Unknown.Add(key, value);
         }}
-        protected override bool RemoveFast(string key)
+        protected unsafe override bool RemoveFast(string key)
         {{
-            switch (key.Length)
-            {{{Each(loop.HeadersByLength, byLength => $@"
-                case {byLength.Key}:
-                    {{{Each(byLength, header => $@"
-                        if (""{header.Name}"".Equals(key, StringComparison.OrdinalIgnoreCase))
-                        {{
-                            if ({header.TestBit()})
-                            {{{If(loop.ClassName == "FrameResponseHeaders" && header.Identifier == "ContentLength", () => @"
-                                _contentLength = null;")}
-                                {header.ClearBit()};
-                                _headers._{header.Identifier} = StringValues.Empty;{(header.EnhancedSetter == false ? "" : $@"
-                                _headers._raw{header.Identifier} = null;")}
-                                return true;
-                            }}
-                            else
-                            {{
-                                return false;
-                            }}
-                        }}
-                    ")}}}
-                    break;
-            ")}}}
+            {RemoveStringSwitch(loop.HeadersByLength, loop.ClassName)}
             return MaybeUnknown?.Remove(key) ?? false;
         }}
         protected override void ClearFast()
