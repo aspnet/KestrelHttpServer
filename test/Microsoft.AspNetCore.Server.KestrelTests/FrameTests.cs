@@ -96,6 +96,48 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
+        [InlineData("Header: value\r\n\r\n", "Header")]
+        [InlineData("Header: value\r\n\r\n", "header")]
+        [InlineData("header: value\r\n\r\n", "header")]
+        [InlineData("header: value\r\n\r\n", "HEADER")]
+        [InlineData("HEADER: value\r\n\r\n", "header")]
+        [InlineData("Cache-Control: value\r\n\r\n", "Cache-Control")]
+        [InlineData("Cache-Control: value\r\n\r\n", "cache-control")]
+        [InlineData("cache-control: value\r\n\r\n", "cache-control")]
+        [InlineData("cache-control: value\r\n\r\n", "CACHE-CONTROL")]
+        [InlineData("CACHE-CONTROL: value\r\n\r\n", "cache-control")]
+        [InlineData("Connection: value\r\n\r\n", "Connection")]
+        [InlineData("Connection: value\r\n\r\n", "connection")]
+        [InlineData("connection: value\r\n\r\n", "connection")]
+        [InlineData("connection: value\r\n\r\n", "CONNECTION")]
+        [InlineData("CONNECTION: value\r\n\r\n", "connection")]
+        [InlineData("User-Agent: value\r\n\r\n", "User-Agent")]
+        [InlineData("User-Agent: value\r\n\r\n", "user-agent")]
+        [InlineData("user-agent: value\r\n\r\n", "user-agent")]
+        [InlineData("user-agent: value\r\n\r\n", "USER-AGENT")]
+        [InlineData("USER-AGENT: value\r\n\r\n", "user-agent")]
+        [InlineData("From: value\r\n\r\n", "From")]
+        [InlineData("From: value\r\n\r\n", "from")]
+        [InlineData("from: value\r\n\r\n", "from")]
+        [InlineData("from: value\r\n\r\n", "FROM")]
+        [InlineData("FROM: value\r\n\r\n", "from")]
+        public void HeaderKeysAreCaseInsensitive(string rawHeaders, string header)
+        {
+            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
+            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
+
+            var success = _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders);
+
+            Assert.True(success);
+            Assert.Equal(1, _frame.RequestHeaders.Count);
+            Assert.Equal("value", _frame.RequestHeaders[header]);
+
+            // Assert TakeMessageHeaders consumed all the input
+            var scan = _socketInput.ConsumingStart();
+            Assert.True(scan.IsEnd);
+        }
+
+        [Theory]
         [InlineData("Header: value\r\n\r\n")]
         [InlineData("Header:  value\r\n\r\n")]
         [InlineData("Header:\tvalue\r\n\r\n")]
