@@ -679,11 +679,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 consumed = buffer.Start;
 
-                var sufixBuffer = buffer.Slice(0, 2);
-                if (sufixBuffer.Length < 2)
+                if (buffer.Length < 2)
                 {
                     return;
                 }
+
+                var sufixBuffer = buffer.Slice(0, 2);
                 var sufixSpan = sufixBuffer.ToSpan();
                 if (sufixSpan[0] == '\r' && sufixSpan[1] == '\n')
                 {
@@ -700,14 +701,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 consumed = buffer.Start;
 
-                var trailerBuffer = buffer.Slice(0, 2);
-                var trailerSpan = trailerBuffer.ToSpan();
-
-                if (trailerBuffer.Length < 2)
+                if (buffer.Length < 2)
                 {
                     return;
                 }
-                else if (trailerSpan[0] == '\r' && trailerSpan[1] == '\n')
+
+                var trailerBuffer = buffer.Slice(0, 2);
+                var trailerSpan = trailerBuffer.ToSpan();
+
+                if (trailerSpan[0] == '\r' && trailerSpan[1] == '\n')
                 {
                     consumed = trailerBuffer.End;
                     _mode = Mode.Complete;
