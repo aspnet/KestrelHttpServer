@@ -1192,6 +1192,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 return RequestLineStatus.Done;
             }
+            catch (DecodingException)
+            {
+                RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestLine,
+                    Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                // won't run but compiler complains
+                return RequestLineStatus.Done;
+            }
             finally
             {
                 input.ConsumingComplete(consumed, end);
@@ -1401,11 +1408,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                     } while (ch != ByteCR);
 
-                    var name = beginName.GetArraySegment(endName);
-                    var value = beginValue.GetAsciiString(ref endValue);
-
                     consumed = scan;
-                    requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+
+                    var name = beginName.GetArraySegment(endName);
+
+                    try
+                    {
+                        var value = beginValue.GetAsciiString(ref endValue);
+                        requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                    }
+                    catch (DecodingException)
+                    {
+                        RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestHeader,
+                            $"{beginName.GetAsciiStringEscaped(endName, 1024)}: {beginValue.GetAsciiStringEscaped(endValue, 1024)}");
+                    }
 
                     _remainingRequestHeadersBytesAllowed -= bytesScanned;
                     _requestHeadersParsed++;
