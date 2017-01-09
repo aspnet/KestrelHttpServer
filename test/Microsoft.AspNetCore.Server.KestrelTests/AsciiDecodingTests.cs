@@ -22,7 +22,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var begin = mem.GetIterator();
                 var end = GetIterator(begin, byteRange.Length);
 
-                var s = begin.GetAsciiString(ref end);
+                string s;
+                begin.TryGetAsciiString(ref end, out s);
 
                 Assert.Equal(s.Length, byteRange.Length);
 
@@ -41,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Theory]
         [InlineData(0x00)]
         [InlineData(0x80)]
-        private void ExceptionThrownForZeroOrNonAscii(byte b)
+        private void ReturnsFalseForZeroOrNonAscii(byte b)
         {
             for (var length = 1; length < 16; length++)
             {
@@ -58,7 +59,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         var begin = mem.GetIterator();
                         var end = GetIterator(begin, byteRange.Length);
 
-                        Assert.Throws<BadHttpRequestException>(() => begin.GetAsciiString(ref end));
+                        string s;
+                        Assert.False(begin.TryGetAsciiString(ref end, out s));
 
                         pool.Return(mem);
                     }
@@ -94,7 +96,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var begin = mem0.GetIterator();
                 var end = GetIterator(begin, expectedByteRange.Length);
 
-                var s = begin.GetAsciiString(ref end);
+                string s;
+                begin.TryGetAsciiString(ref end, out s);
 
                 Assert.Equal(s.Length, expectedByteRange.Length);
 
@@ -135,7 +138,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var begin = mem0.GetIterator();
                 var end = GetIterator(begin, expectedByteRange.Length);
 
-                var s = begin.GetAsciiString(ref end);
+                string s;
+                begin.TryGetAsciiString(ref end, out s);
 
                 Assert.Equal(expectedByteRange.Length, s.Length);
 

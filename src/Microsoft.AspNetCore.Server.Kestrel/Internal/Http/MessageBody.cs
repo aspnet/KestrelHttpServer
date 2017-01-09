@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Internal;
-using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -281,7 +280,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             // Avoid slowing down most common case
-            if (!object.ReferenceEquals(context.Method, HttpMethods.Get))
+            if (!ReferenceEquals(context.Method, HttpMethods.Get))
             {
                 // If we got here, request contains no Content-Length or Transfer-Encoding header.
                 // Reject with 411 Length Required.

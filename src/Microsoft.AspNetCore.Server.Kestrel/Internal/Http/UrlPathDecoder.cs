@@ -10,10 +10,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         /// <summary>
         /// Unescapes the string between given memory iterators in place.
         /// </summary>
-        /// <param name="start">The iterator points to the beginning of the sequence.</param>
-        /// <param name="end">The iterator points to the byte behind the end of the sequence.</param>
-        /// <returns>The iterator points to the byte behind the end of the processed sequence.</returns>
-        public static MemoryPoolIterator Unescape(MemoryPoolIterator start, MemoryPoolIterator end)
+        /// <param name="start">The iterator pointing to the beginning of the sequence.</param>
+        /// <param name="end">The iterator pointing to the byte after the end of the sequence.</param>
+        /// <param name="decodedEnd">The iterator pointing to the byte after the end of the processed sequence.</param>
+        /// <returns>True if decoding was successful, false otherwise.</returns>
+        public static bool TryUnescape(MemoryPoolIterator start, MemoryPoolIterator end, out MemoryPoolIterator decodedEnd)
         {
             // the slot to read the input
             var reader = start;
@@ -25,7 +26,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (CompareIterators(ref reader, ref end))
                 {
-                    return writer;
+                    decodedEnd = writer;
+                    return true;
                 }
 
                 if (reader.Peek() == '%')
@@ -37,9 +39,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // percent-encodings cannot be interpreted as sequence of UTF-8 octets,
                     // these bytes should be copied to output as is. 
                     // The decodeReader iterator is always moved to the first byte not yet 
-                    // be scanned after the process. A failed decoding means the chars
+                    // scanned after the process. A failed decoding means the chars
                     // between the reader and decodeReader can be copied to output untouched. 
-                    if (!DecodeCore(ref decodeReader, ref writer, end))
+                    bool decoded;
+                    if (!TryDecodeCore(ref decodeReader, ref writer, end, out decoded))
+                    {
+                        decodedEnd = default(MemoryPoolIterator);
+                        return false;
+                    }
+                    else if (!decoded)
                     {
                         Copy(reader, decodeReader, ref writer);
                     }
@@ -54,12 +62,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         /// <summary>
-        /// Unescape the percent-encodings
+        /// Unescape percent-encoded characters.
         /// </summary>
-        /// <param name="reader">The iterator point to the first % char</param>
-        /// <param name="writer">The place to write to</param>
-        /// <param name="end">The end of the sequence</param>
-        private static bool DecodeCore(ref MemoryPoolIterator reader, ref MemoryPoolIterator writer, MemoryPoolIterator end)
+        /// <param name="reader">The iterator pointing to the first % char.</param>
+        /// <param name="writer">The place to write to.</param>
+        /// <param name="end">The end of the sequence.</param>
+        /// <param name="decoded">Indicates whether all sequences were decoded.</param>
+        /// <returns>True if there were no percent-encoded characters that represent a null character (%00). False otherwise.</returns>
+        private static bool TryDecodeCore(ref MemoryPoolIterator reader, ref MemoryPoolIterator writer, MemoryPoolIterator end, out bool decoded)
         {
             // preserves the original head. if the percent-encodings cannot be interpreted as sequence of UTF-8 octets,
             // bytes from this till the last scanned one will be copied to the memory pointed by writer.
@@ -67,18 +77,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (byte1 == 0)
             {
-                throw BadHttpRequestException.GetException(RequestRejectionReason.PathContainsNullCharacters);
+                decoded = false;
+                return false;
             }
 
             if (byte1 == -1)
             {
-                return false;
+                decoded = false;
+                return true;
             }
 
             if (byte1 <= 0x7F)
             {
                 // first byte < U+007f, it is a single byte ASCII
                 writer.Put((byte)byte1);
+                decoded = true;
                 return true;
             }
 
@@ -112,7 +125,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else
             {
                 // invalid first byte
-                return false;
+                decoded = false;
+                return true;
             }
 
             var remainingBytes = byteCount - 1;
@@ -121,20 +135,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // read following three chars
                 if (CompareIterators(ref reader, ref end))
                 {
-                    return false;
+                    decoded = false;
+                    return true;
                 }
 
                 var nextItr = reader;
                 var nextByte = UnescapePercentEncoding(ref nextItr, end);
                 if (nextByte == -1)
                 {
-                    return false;
+                    decoded = false;
+                    return true;
                 }
 
                 if ((nextByte & 0xC0) != 0x80)
                 {
                     // the follow up byte is not in form of 10xx xxxx
-                    return false;
+                    decoded = false;
+                    return true;
                 }
 
                 currentDecodeBits = (currentDecodeBits << 6) | (nextByte & 0x3F);
@@ -144,13 +161,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     // this is going to end up in the range of 0xD800-0xDFFF UTF-16 surrogates that
                     // are not allowed in UTF-8;
-                    return false;
+                    decoded = false;
+                    return true;
                 }
 
                 if (remainingBytes == 2 && currentDecodeBits >= 0x110)
                 {
                     // this is going to be out of the upper Unicode bound 0x10FFFF.
-                    return false;
+                    decoded = false;
+                    return true;
                 }
 
                 reader = nextItr;
@@ -171,7 +190,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (currentDecodeBits < expectValueMin)
             {
                 // overlong encoding (e.g. using 2 bytes to encode something that only needed 1).
-                return false;
+                decoded = false;
+                return true;
             }
 
             // all bytes are verified, write to the output
@@ -192,6 +212,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 writer.Put((byte)byte4);
             }
 
+            decoded = true;
             return true;
         }
 

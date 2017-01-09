@@ -1024,7 +1024,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
                     }
 
-                    method = begin.GetAsciiString(ref scan);
+                    if (!begin.TryGetAsciiString(ref scan, out method))
+                    {
+                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    }
 
                     if (method == null)
                     {
@@ -1080,7 +1084,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         RejectRequest(RequestRejectionReason.InvalidRequestLine,
                             Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
                     }
-                    queryString = begin.GetAsciiString(ref scan);
+
+                    if (!begin.TryGetAsciiString(ref scan, out queryString))
+                    {
+                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    }
                 }
 
                 var queryEnd = scan;
@@ -1130,16 +1139,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (needDecode)
                 {
                     // Read raw target before mutating memory.
-                    rawTarget = pathBegin.GetAsciiString(ref queryEnd);
+                    if (!pathBegin.TryGetAsciiString(ref queryEnd, out rawTarget))
+                    {
+                        RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestLine,
+                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    }
 
                     // URI was encoded, unescape and then parse as utf8
-                    pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
+                    if (!UrlPathDecoder.TryUnescape(pathBegin, pathEnd, out pathEnd))
+                    {
+                        RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestLine,
+                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    }
+
                     requestUrlPath = pathBegin.GetUtf8String(ref pathEnd);
                 }
                 else
                 {
                     // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
+                    if (!pathBegin.TryGetAsciiString(ref pathEnd, out requestUrlPath))
+                    {
+                        RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestLine,
+                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    }
 
                     if (queryString.Length == 0)
                     {
@@ -1149,7 +1171,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else
                     {
-                        rawTarget = pathBegin.GetAsciiString(ref queryEnd);
+                        if (!pathBegin.TryGetAsciiString(ref queryEnd, out rawTarget))
+                        {
+                            RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestLine,
+                                Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        }
                     }
                 }
 
@@ -1389,11 +1415,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                     } while (ch != ByteCR);
 
-                    var name = beginName.GetArraySegment(endName);
-                    var value = beginValue.GetAsciiString(ref endValue);
-
                     consumed = scan;
-                    requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+
+                    var name = beginName.GetArraySegment(endName);
+                    string value;
+                    if (!beginValue.TryGetAsciiString(ref endValue, out value) ||
+                        !requestHeaders.TryAppend(name.Array, name.Offset, name.Count, value))
+                    {
+                        RejectRequest(RequestRejectionReason.NonAsciiOrNullCharactersInRequestHeader,
+                            $"{beginName.GetAsciiStringEscaped(endName, 1024)}: {beginValue.GetAsciiStringEscaped(endValue, 1024)}");
+                    }
 
                     _remainingRequestHeadersBytesAllowed -= bytesScanned;
                     _requestHeadersParsed++;

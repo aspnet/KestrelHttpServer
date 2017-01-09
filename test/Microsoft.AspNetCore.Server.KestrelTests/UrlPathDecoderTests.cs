@@ -166,11 +166,33 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var begin = BuildSample(mem, raw);
                 var end = GetIterator(begin, rawLength);
 
-                var end2 = UrlPathDecoder.Unescape(begin, end);
+                MemoryPoolIterator end2;
+                Assert.True(UrlPathDecoder.TryUnescape(begin, end, out end2));
                 var result = begin.GetUtf8String(ref end2);
 
                 Assert.Equal(expectLength, result.Length);
                 Assert.Equal(expect, result);
+
+                pool.Return(mem);
+            }
+        }
+
+        [Theory]
+        [InlineData("%00")]
+        [InlineData("a%00")]
+        [InlineData("%00b")]
+        [InlineData("a%00b")]
+        public void TryUnescapeReturnsFalseOnNullCharacter(string raw)
+        {
+            using (var pool = new MemoryPool())
+            {
+                var mem = pool.Lease();
+
+                var begin = BuildSample(mem, raw);
+                var end = GetIterator(begin, raw.Length);
+
+                MemoryPoolIterator end2;
+                Assert.False(UrlPathDecoder.TryUnescape(begin, end, out end2));
 
                 pool.Return(mem);
             }
@@ -200,7 +222,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var begin = BuildSample(mem, raw);
             var end = GetIterator(begin, raw.Length);
 
-            var result = UrlPathDecoder.Unescape(begin, end);
+            MemoryPoolIterator result;
+            Assert.True(UrlPathDecoder.TryUnescape(begin, end, out result));
             Assert.Equal(expect, begin.GetUtf8String(ref result));
         }
 
@@ -209,7 +232,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var begin = BuildSample(mem, raw);
             var end = GetIterator(begin, raw.Length);
 
-            var result = UrlPathDecoder.Unescape(begin, end);
+
+            MemoryPoolIterator result;
+            Assert.True(UrlPathDecoder.TryUnescape(begin, end, out result));
             Assert.NotEqual(raw.Length, begin.GetUtf8String(ref result).Length);
         }
 
@@ -218,7 +243,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var begin = BuildSample(mem, raw);
             var end = GetIterator(begin, raw.Length);
 
-            var resultEnd = UrlPathDecoder.Unescape(begin, end);
+            MemoryPoolIterator resultEnd;
+            Assert.True(UrlPathDecoder.TryUnescape(begin, end, out resultEnd));
             var result = begin.GetUtf8String(ref resultEnd);
             Assert.Equal(raw, result);
         }
