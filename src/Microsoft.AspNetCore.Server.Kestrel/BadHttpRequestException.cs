@@ -64,9 +64,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 case RequestRejectionReason.InvalidCharactersInHeaderName:
                     ex = new BadHttpRequestException("Invalid characters in header name.", StatusCodes.Status400BadRequest);
                     break;
-                case RequestRejectionReason.NonAsciiOrNullCharactersInInputString:
-                    ex = new BadHttpRequestException("The input string contains non-ASCII or null characters.", StatusCodes.Status400BadRequest);
-                    break;
                 case RequestRejectionReason.RequestLineTooLong:
                     ex = new BadHttpRequestException("Request line too long.", StatusCodes.Status414UriTooLong);
                     break;
@@ -111,6 +108,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     break;
                 case RequestRejectionReason.LengthRequiredHttp10:
                     ex = new BadHttpRequestException($"{value} request contains no Content-Length header", StatusCodes.Status400BadRequest);
+                    break;
+                case RequestRejectionReason.NonAsciiOrNullCharactersInRequestLine:
+                    ex = new BadHttpRequestException($"Request line contains non-ASCII or null characters: {value}", StatusCodes.Status400BadRequest);
+                    break;
+                case RequestRejectionReason.NonAsciiOrNullCharactersInRequestHeader:
+                    ex = new BadHttpRequestException($"Request header contains non-ASCII or null characters: {value}", StatusCodes.Status400BadRequest);
                     break;
                 default:
                     ex = new BadHttpRequestException("Bad request.", StatusCodes.Status400BadRequest);

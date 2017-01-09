@@ -10,9 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         /// <summary>
         /// Unescapes the string between given memory iterators in place.
         /// </summary>
-        /// <param name="start">The iterator points to the beginning of the sequence.</param>
-        /// <param name="end">The iterator points to the byte behind the end of the sequence.</param>
-        /// <returns>The iterator points to the byte behind the end of the processed sequence.</returns>
+        /// <param name="start">The iterator pointing to the beginning of the sequence.</param>
+        /// <param name="end">The iterator pointing to the byte after the end of the sequence.</param>
+        /// <returns>The iterator pointing to the byte after the end of the processed sequence.</returns>
         public static MemoryPoolIterator Unescape(MemoryPoolIterator start, MemoryPoolIterator end)
         {
             // the slot to read the input
@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // percent-encodings cannot be interpreted as sequence of UTF-8 octets,
                     // these bytes should be copied to output as is. 
                     // The decodeReader iterator is always moved to the first byte not yet 
-                    // be scanned after the process. A failed decoding means the chars
+                    // scanned after the process. A failed decoding means the chars
                     // between the reader and decodeReader can be copied to output untouched. 
                     if (!DecodeCore(ref decodeReader, ref writer, end))
                     {
@@ -54,11 +54,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         /// <summary>
-        /// Unescape the percent-encodings
+        /// Unescape percent-encoded characters.
         /// </summary>
-        /// <param name="reader">The iterator point to the first % char</param>
-        /// <param name="writer">The place to write to</param>
-        /// <param name="end">The end of the sequence</param>
+        /// <param name="reader">The iterator pointing to the first % char.</param>
+        /// <param name="writer">The place to write to.</param>
+        /// <param name="end">The end of the sequence.</param>
         private static bool DecodeCore(ref MemoryPoolIterator reader, ref MemoryPoolIterator writer, MemoryPoolIterator end)
         {
             // preserves the original head. if the percent-encodings cannot be interpreted as sequence of UTF-8 octets,
@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (byte1 == 0)
             {
-                throw BadHttpRequestException.GetException(RequestRejectionReason.PathContainsNullCharacters);
+                throw new DecodingException("Path contains null characters");
             }
 
             if (byte1 == -1)
