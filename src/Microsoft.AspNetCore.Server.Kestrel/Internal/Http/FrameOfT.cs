@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             break;
                         }
 
-                        if (result.IsCompleted || result.IsCancelled)
+                        if (result.IsCompleted)
                         {
                             RejectRequest(RequestRejectionReason.InvalidRequestLine, requestLineStatus.ToString());
                         }
@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             break;
                         }
 
-                        if (result.IsCompleted || result.IsCancelled)
+                        if (result.IsCompleted)
                         {
                             RejectRequest(RequestRejectionReason.MalformedRequestInvalidHeaders);
                         }
