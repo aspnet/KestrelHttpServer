@@ -22,7 +22,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                                         0x01ul << 48 ) + 1;
 
         private static readonly int _vectorSpan = Vector<byte>.Count;
-
+#if DEBUG
+        // Need unit tests to test Vector path
+        private static readonly bool VectorIsHardwareAccelerated = true;
+#else
+        // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
+        private static readonly bool VectorIsHardwareAccelerated = Vector.IsHardwareAccelerated;
+#endif
         private MemoryPoolBlock _block;
         private int _index;
 
@@ -338,55 +344,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 array = block.Array;
                 while (following > 0)
                 {
-                    // Need unit tests to test Vector path
-#if !DEBUG
-                    // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (VectorIsHardwareAccelerated)
                     {
-#endif
-                    if (following >= _vectorSpan)
-                    {
-                        var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
-
-                        if (byte0Equals.Equals(Vector<byte>.Zero))
+                        if (following >= _vectorSpan)
                         {
-                            if (bytesScanned + _vectorSpan >= limit)
+                            var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
+
+                            if (byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                _block = block;
+                                if (bytesScanned + _vectorSpan >= limit)
+                                {
+                                    _block = block;
+                                    // Ensure iterator is left at limit position
+                                    _index = index + (limit - bytesScanned);
+                                    bytesScanned = limit;
+                                    return -1;
+                                }
+
+                                bytesScanned += _vectorSpan;
+                                following -= _vectorSpan;
+                                index += _vectorSpan;
+                                continue;
+                            }
+
+                            _block = block;
+
+                            var firstEqualByteIndex = LocateFirstFoundByte(byte0Equals);
+                            var vectorBytesScanned = firstEqualByteIndex + 1;
+
+                            if (bytesScanned + vectorBytesScanned > limit)
+                            {
                                 // Ensure iterator is left at limit position
                                 _index = index + (limit - bytesScanned);
                                 bytesScanned = limit;
                                 return -1;
                             }
 
-                            bytesScanned += _vectorSpan;
-                            following -= _vectorSpan;
-                            index += _vectorSpan;
-                            continue;
+                            _index = index + firstEqualByteIndex;
+                            bytesScanned += vectorBytesScanned;
+
+                            return byte0;
                         }
-
-                        _block = block;
-
-                        var firstEqualByteIndex = LocateFirstFoundByte(byte0Equals);
-                        var vectorBytesScanned = firstEqualByteIndex + 1;
-
-                        if (bytesScanned + vectorBytesScanned > limit)
-                        {
-                            // Ensure iterator is left at limit position
-                            _index = index + (limit - bytesScanned);
-                            bytesScanned = limit;
-                            return -1;
-                        }
-
-                        _index = index + firstEqualByteIndex;
-                        bytesScanned += vectorBytesScanned;
-
-                        return byte0;
                     }
-                    // Need unit tests to test Vector path
-#if !DEBUG
-                    }
-#endif
 
                     var pCurrent = (block.DataFixedPtr + index);
                     var pEnd = pCurrent + Math.Min(following, limit - bytesScanned);
@@ -444,12 +443,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 var array = block.Array;
                 while (following > 0)
                 {
-// Need unit tests to test Vector path
-#if !DEBUG
-                    // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (VectorIsHardwareAccelerated)
                     {
-#endif
                         if (following >= _vectorSpan)
                         {
                             var byte0Equals = Vector.Equals(new Vector<byte>(array, index), GetVector(byte0));
@@ -484,10 +479,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             return byte0;
                         }
-// Need unit tests to test Vector path
-#if !DEBUG
                     }
-#endif
 
                     var pCurrent = (block.DataFixedPtr + index);
                     var pEnd = block == limit.Block ? block.DataFixedPtr + limit.Index + 1 : pCurrent + following;
@@ -551,13 +543,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 var array = block.Array;
                 while (following > 0)
                 {
-
-// Need unit tests to test Vector path
-#if !DEBUG
-                    // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (VectorIsHardwareAccelerated)
                     {
-#endif
                         if (following >= _vectorSpan)
                         {
                             var data = new Vector<byte>(array, index);
@@ -608,10 +595,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             return block.Array[index + byteIndex];
                         }
-// Need unit tests to test Vector path
-#if !DEBUG
                     }
-#endif
+
                     var pCurrent = (block.DataFixedPtr + index);
                     var pEnd = block == limit.Block ? block.DataFixedPtr + limit.Index + 1 : pCurrent + following;
                     do
@@ -681,12 +666,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 var array = block.Array;
                 while (following > 0)
                 {
-// Need unit tests to test Vector path
-#if !DEBUG
-                    // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
-                    if (Vector.IsHardwareAccelerated)
+                    if (VectorIsHardwareAccelerated)
                     {
-#endif
                         if (following >= _vectorSpan)
                         {
                             var data = new Vector<byte>(array, index);
@@ -729,10 +710,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             return block.Array[index + byteIndex];
                         }
-// Need unit tests to test Vector path
-#if !DEBUG
                     }
-#endif
+
                     var pCurrent = (block.DataFixedPtr + index);
                     var pEnd = block == limit.Block ? block.DataFixedPtr + limit.Index + 1 : pCurrent + following;
                     do
