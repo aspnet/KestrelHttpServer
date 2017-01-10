@@ -425,9 +425,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var buffer = result.Buffer;
 
                         ReadCursor consumed;
-                        ParseChunkedPrefix(buffer, out consumed);
+                        ReadCursor examined;
 
-                        _input.AdvanceReader(consumed, consumed);
+                        ParseChunkedPrefix(buffer, out consumed, out examined);
+
+                        _input.AdvanceReader(consumed, examined);
                         if (_mode != Mode.Prefix)
                         {
                             break;
@@ -445,9 +447,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var buffer = result.Buffer;
 
                         ReadCursor consumed;
-                        ParseExtension(buffer, out consumed);
+                        ReadCursor examined;
 
-                        _input.AdvanceReader(consumed, consumed);
+                        ParseExtension(buffer, out consumed, out examined);
+
+                        _input.AdvanceReader(consumed, examined);
                         if (_mode != Mode.Extension)
                         {
                             break;
@@ -464,9 +468,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var result = await _input.ReadAsync();
                         var buffer = result.Buffer;
 
-                        ReadCursor consumed;
-
-                        var segment = PeekChunkedData(buffer, out consumed);
+                        var segment = PeekChunkedData(buffer);
                         _input.AdvanceReader(buffer.Start, buffer.Start);
 
                         if (segment.Count != 0)
@@ -490,10 +492,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var buffer = result.Buffer;
 
                         ReadCursor consumed;
+                        ReadCursor examined;
 
-                        ParseChunkedSuffix(buffer, out consumed);
+                        ParseChunkedSuffix(buffer, out consumed, out examined);
 
-                        _input.AdvanceReader(consumed, consumed);
+                        _input.AdvanceReader(consumed, examined);
 
                         if (_mode != Mode.Suffix)
                         {
@@ -514,10 +517,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     var buffer = result.Buffer;
 
                     ReadCursor consumed;
+                    ReadCursor examined;
 
-                    ParseChunkedTrailer(buffer, out consumed);
+                    ParseChunkedTrailer(buffer, out consumed, out examined);
 
-                    _input.AdvanceReader(consumed, consumed);
+                    _input.AdvanceReader(consumed, examined);
 
                     if (_mode != Mode.Trailer)
                     {
@@ -557,15 +561,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 return default(ArraySegment<byte>);
             }
 
-            private void ParseChunkedPrefix(ReadableBuffer buffer, out ReadCursor consumed)
+            private void ParseChunkedPrefix(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 consumed = buffer.Start;
+                examined = buffer.Start;
                 var reader = new ReadableBufferReader(buffer);
                 var ch1 = reader.Take();
                 var ch2 = reader.Take();
 
                 if (ch1 == -1 || ch2 == -1)
                 {
+                    examined = reader.Cursor;
                     return;
                 }
 
@@ -577,6 +583,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (ch1 == ';')
                     {
                         consumed = reader.Cursor;
+                        examined = reader.Cursor;
 
                         _inputLength = chunkSize;
                         _mode = Mode.Extension;
@@ -586,12 +593,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     ch2 = reader.Take();
                     if (ch2 == -1)
                     {
+                        examined = reader.Cursor;
                         return;
                     }
 
                     if (ch1 == '\r' && ch2 == '\n')
                     {
                         consumed = reader.Cursor;
+                        examined = reader.Cursor;
+
                         _inputLength = chunkSize;
 
                         if (chunkSize > 0)
@@ -611,29 +621,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 } while (ch1 != -1);
             }
 
-            private void ParseExtension(ReadableBuffer buffer, out ReadCursor consumed)
+            private void ParseExtension(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 // Chunk-extensions not currently parsed
                 // Just drain the data
                 consumed = buffer.Start;
+                examined = buffer.Start;
                 do
                 {
                     ReadCursor extensionCursor;
                     if (ReadCursorOperations.Seek(buffer.Start, buffer.End, out extensionCursor, ByteCR) == -1)
                     {
                         // End marker not found yet
-                        consumed = buffer.End;
+                        examined = buffer.End;
                         return;
                     };
 
-
-                    var sufixBuffer = buffer.Slice(extensionCursor, 2);
-                    var sufixSpan = sufixBuffer.ToSpan();
-
+                    var sufixBuffer = buffer.Slice(extensionCursor);
                     if (sufixBuffer.Length < 2)
                     {
+                        examined = buffer.End;
                         return;
                     }
+
+                    sufixBuffer = sufixBuffer.Slice(0, 2);
+                    var sufixSpan = sufixBuffer.ToSpan();
+
 
                     if (sufixSpan[1] == '\n')
                     {
@@ -650,10 +663,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 } while (_mode == Mode.Extension);
             }
 
-            private ArraySegment<byte> PeekChunkedData(ReadableBuffer buffer, out ReadCursor consumed)
+            private ArraySegment<byte> PeekChunkedData(ReadableBuffer buffer)
             {
-                consumed = buffer.Start;
-
                 if (_inputLength == 0)
                 {
                     _mode = Mode.Suffix;
@@ -664,7 +675,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 int actual = Math.Min(segment.Count, _inputLength);
                 // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.
-                consumed = buffer.Slice(actual).Start;
                 if (actual == segment.Count)
                 {
                     return segment;
@@ -675,12 +685,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            private void ParseChunkedSuffix(ReadableBuffer buffer, out ReadCursor consumed)
+            private void ParseChunkedSuffix(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 consumed = buffer.Start;
+                examined = buffer.Start;
 
                 if (buffer.Length < 2)
                 {
+                    examined = buffer.End;
                     return;
                 }
 
@@ -697,12 +709,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            private void ParseChunkedTrailer(ReadableBuffer buffer, out ReadCursor consumed)
+            private void ParseChunkedTrailer(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 consumed = buffer.Start;
+                examined = buffer.Start;
 
                 if (buffer.Length < 2)
                 {
+                    examined = buffer.End;
                     return;
                 }
 
