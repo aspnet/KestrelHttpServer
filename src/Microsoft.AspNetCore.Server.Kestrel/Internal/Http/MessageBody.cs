@@ -421,7 +421,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     while (_mode == Mode.Prefix)
                     {
-                        var result = await _input.ReadAsync();
+                        var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
                         ReadCursor consumed;
@@ -443,7 +443,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (_mode == Mode.Extension)
                     {
-                        var result = await _input.ReadAsync();
+                        var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
                         ReadCursor consumed;
@@ -465,7 +465,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (_mode == Mode.Data)
                     {
-                        var result = await _input.ReadAsync();
+                        var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
                         var segment = PeekChunkedData(buffer);
@@ -488,7 +488,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (_mode == Mode.Suffix)
                     {
-                        var result = await _input.ReadAsync();
+                        var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
                         ReadCursor consumed;
@@ -513,7 +513,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // Chunks finished, parse trailers
                 while (_mode == Mode.Trailer)
                 {
-                    var result = await _input.ReadAsync();
+                    var result = await _input.ReadAsyncDispatched();
                     var buffer = result.Buffer;
 
                     ReadCursor consumed;
@@ -538,7 +538,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     while (true)
                     {
-                        var result = await _input.ReadAsync();
+                        var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
                         if (buffer.IsEmpty && result.IsCompleted)

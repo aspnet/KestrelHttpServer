@@ -40,6 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             while (true)
             {
                 var result = await readingTask;
+                await Task.Yield();
                 pipelineReader.Advance(result.Buffer.Start);
 
                 if (!result.Buffer.IsEmpty)
@@ -57,6 +58,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 readingTask = pipelineReader.ReadAsync();
             }
+        }
+
+        public static async Task<ReadResult> ReadAsyncDispatched(this IPipelineReader pipelineReader)
+        {
+            var result = await pipelineReader.ReadAsync();
+            await Task.Yield();
+            return result;
         }
 
         public static Span<byte> ToSpan(this ReadableBuffer buffer)

@@ -297,10 +297,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else
             {
                 currentWritableBuffer = _currentWritableBuffer.Value;
-                _currentWritableBuffer = null;
                 currentWritableBuffer.Advance(readCount);
-                currentWritableBuffer.Commit();
-                Task.Run(currentWritableBuffer.SignalAsync);
+                _currentWritableBuffer = null;
+
+                currentWritableBuffer.FlushAsync();
             }
 
             if (!normalRead)

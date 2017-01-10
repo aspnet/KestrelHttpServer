@@ -113,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
         private async Task<int> ReadAsync(ArraySegment<byte> buffer)
         {
-            var result = await _input.ReadAsync();
+            var result = await _input.ReadAsyncDispatched();
             var count = Math.Min(result.Buffer.Length, buffer.Count);
             var readableBuffer = result.Buffer.Slice(0, count);
             readableBuffer.CopyTo(buffer);

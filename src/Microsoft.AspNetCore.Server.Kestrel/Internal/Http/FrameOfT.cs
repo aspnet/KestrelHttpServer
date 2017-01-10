@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.ReadAsync();
+                        var result = await Input.ReadAsyncDispatched();
                         ReadCursor examined;
                         ReadCursor consumed;
                         try
@@ -72,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     while (!_requestProcessingStopping)
                     {
 
-                        var result = await Input.ReadAsync();
+                        var result = await Input.ReadAsyncDispatched();
                         ReadCursor examined;
                         ReadCursor consumed;
 
