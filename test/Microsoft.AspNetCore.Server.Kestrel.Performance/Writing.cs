@@ -3,6 +3,7 @@
 
 using System;
 using System.IO.Pipelines;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
@@ -98,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             };
             var listenerContext = new ListenerContext(serviceContext)
             {
-                ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
+                ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 5000))
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {

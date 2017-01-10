@@ -82,11 +82,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var clientFinishedSendingRequestBody = new ManualResetEvent(false);
             var lastBytesWritten = DateTime.MaxValue;
 
-            using (var host = StartWebHost(maxRequestBufferSize, data, startReadingRequestBody, clientFinishedSendingRequestBody))
+            using (var host = StartWebHost(maxRequestBufferSize, data, ssl, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
-                var port = host.GetPort(ssl ? "https" : "http");
+                var port = host.GetPort();
                 using (var socket = CreateSocket(port))
-                using (var stream = await CreateStreamAsync(socket, ssl, host.GetHost()))
+                using (var stream = await CreateStreamAsync(socket, ssl, host.GetHost(ssl)))
                 {
                     await WritePostRequestHeaders(stream, data.Length);
 
@@ -118,13 +118,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         // The maximum is harder to determine, since there can be OS-level buffers in both the client
                         // and server, which allow the client to send more than maxRequestBufferSize before getting
                         // paused.  We assume the combined buffers are smaller than the difference between
-                        // data.Length and maxRequestBufferSize.                          
+                        // data.Length and maxRequestBufferSize.
                         var maximumExpectedBytesWritten = data.Length - 1;
 
                         // Block until the send task has gone a while without writing bytes AND
                         // the bytes written exceeds the minimum expected.  This indicates the server buffer
                         // is full.
-                        // 
+                        //
                         // If the send task is paused before the expected number of bytes have been
                         // written, keep waiting since the pause may have been caused by something else
                         // like a slow machine.
@@ -161,14 +161,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static IWebHost StartWebHost(long? maxRequestBufferSize, byte[] expectedBody, ManualResetEvent startReadingRequestBody,
+        private static IWebHost StartWebHost(long? maxRequestBufferSize, byte[] expectedBody, bool useSsl, ManualResetEvent startReadingRequestBody,
             ManualResetEvent clientFinishedSendingRequestBody)
         {
             var host = new WebHostBuilder()
                 .UseKestrel(options =>
                 {
+                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                    {
+                        if (useSsl)
+                        {
+                            listenOptions.UseHttps("TestResources/testCert.pfx", "testPassword");
+                        }
+                    });
+
                     options.Limits.MaxRequestBufferSize = maxRequestBufferSize;
-                    options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
 
                     if (maxRequestBufferSize.HasValue &&
                         maxRequestBufferSize.Value < options.Limits.MaxRequestLineSize)
@@ -176,7 +183,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         options.Limits.MaxRequestLineSize = (int)maxRequestBufferSize;
                     }
                 })
-                .UseUrls("http://127.0.0.1:0/", "https://127.0.0.1:0/")
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .Configure(app => app.Run(async context =>
                 {
@@ -194,7 +200,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // Verify client didn't send extra bytes
                     if (context.Request.Body.ReadByte() != -1)
                     {
-                        context.Response.StatusCode = 500;
+                        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                         await context.Response.WriteAsync("Client sent more bytes than expectedBody.Length");
                         return;
                     }
@@ -204,7 +210,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     {
                         if (buffer[i] != expectedBody[i])
                         {
-                            context.Response.StatusCode = 500;
+                            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                             await context.Response.WriteAsync($"Bytes received do not match expectedBody at position {i}");
                             return;
                         }

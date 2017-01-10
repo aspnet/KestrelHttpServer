@@ -3,38 +3,53 @@
 
 using System;
 using System.IO;
-using System.IO.Pipelines;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.Extensions.Internal;
+using Microsoft.Extensions.Logging;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
+namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
-    public class LibuvStream : Stream
+    internal class LoggingStream : Stream
     {
-        private readonly Pipe _input;
-        private readonly ISocketOutput _output;
+        private readonly Stream _inner;
+        private readonly ILogger _logger;
 
-        private Task<int> _cachedTask = TaskCache<int>.DefaultCompletedTask;
-
-        public LibuvStream(Pipe input, ISocketOutput output)
+        public LoggingStream(Stream inner, ILogger logger)
         {
-            _input = input;
-            _output = output;
+            _inner = inner;
+            _logger = logger;
         }
 
-        public override bool CanRead => true;
+        public override bool CanRead
+        {
+            get
+            {
+                return _inner.CanRead;
+            }
+        }
 
-        public override bool CanSeek => false;
+        public override bool CanSeek
+        {
+            get
+            {
+                return _inner.CanSeek;
+            }
+        }
 
-        public override bool CanWrite => true;
+        public override bool CanWrite
+        {
+            get
+            {
+                return _inner.CanWrite;
+            }
+        }
 
         public override long Length
         {
             get
             {
-                throw new NotSupportedException();
+                return _inner.Length;
             }
         }
 
@@ -42,86 +57,78 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
         {
             get
             {
-                throw new NotSupportedException();
+                return _inner.Position;
             }
+
             set
             {
-                throw new NotSupportedException();
+                _inner.Position = value;
             }
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            // ValueTask uses .GetAwaiter().GetResult() if necessary
-            // https://github.com/dotnet/corefx/blob/f9da3b4af08214764a51b2331f3595ffaf162abe/src/System.Threading.Tasks.Extensions/src/System/Threading/Tasks/ValueTask.cs#L156
-            return ReadAsync(new ArraySegment<byte>(buffer, offset, count)).Result;
-        }
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return ReadAsync(new ArraySegment<byte>(buffer, offset, count));
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            ArraySegment<byte> segment;
-            if (buffer != null)
-            {
-                segment = new ArraySegment<byte>(buffer, offset, count);
-            }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            _output.Write(segment);
-        }
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
-        {
-            ArraySegment<byte> segment;
-            if (buffer != null)
-            {
-                segment = new ArraySegment<byte>(buffer, offset, count);
-            }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            return _output.WriteAsync(segment, cancellationToken: token);
         }
 
         public override void Flush()
         {
-            // No-op since writes are immediate.
+            _inner.Flush();
         }
 
-        public override Task FlushAsync(CancellationToken cancellationToken)
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            // No-op since writes are immediate.
-            return TaskCache.CompletedTask;
+            int read = _inner.Read(buffer, offset, count);
+            Log("Read", read, buffer, offset);
+            return read;
         }
 
-        private async Task<int> ReadAsync(ArraySegment<byte> buffer)
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            var result = await _input.ReadAsyncDispatched();
-            var count = Math.Min(result.Buffer.Length, buffer.Count);
-            var readableBuffer = result.Buffer.Slice(0, count);
-            readableBuffer.CopyTo(buffer);
-            _input.AdvanceReader(readableBuffer.End, readableBuffer.End);
-            return count;
+            int read = await _inner.ReadAsync(buffer, offset, count, cancellationToken);
+            Log("ReadAsync", read, buffer, offset);
+            return read;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            return _inner.Seek(offset, origin);
+        }
+
+        public override void SetLength(long value)
+        {
+            _inner.SetLength(value);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Log("Write", count, buffer, offset);
+            _inner.Write(buffer, offset, count);
+        }
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Log("WriteAsync", count, buffer, offset);
+            return _inner.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+
+        private void Log(string method, int count, byte[] buffer, int offset)
+        {
+            var builder = new StringBuilder($"{method}[{count}] ");
+
+            // Write the hex
+            for (int i = offset; i < offset + count; i++)
+            {
+                builder.Append(buffer[i].ToString("X2"));
+                builder.Append(" ");
+            }
+            builder.AppendLine();
+            // Write the bytes as if they were ASCII
+            for (int i = offset; i < offset + count; i++)
+            {
+                builder.Append((char)buffer[i]);
+            }
+
+            _logger.LogDebug(builder.ToString());
         }
 
 #if NET451
+        // The below APM methods call the underlying Read/WriteAsync methods which will still be logged.
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
             var task = ReadAsync(buffer, offset, count, default(CancellationToken), state);

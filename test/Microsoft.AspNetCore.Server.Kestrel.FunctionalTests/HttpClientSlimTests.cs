@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,14 +32,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var host = StartHost(protocol: "https"))
             {
-                Assert.Equal("test", await HttpClientSlim.GetStringAsync(host.GetUri(), validateCertificate: false));
+                Assert.Equal("test", await HttpClientSlim.GetStringAsync(host.GetUri(isHttps: true), validateCertificate: false));
             }
         }
 
         [Fact]
         public async Task GetStringAsyncThrowsForErrorResponse()
         {
-            using (var host = StartHost(statusCode: 500))
+            using (var host = StartHost(statusCode: StatusCodes.Status500InternalServerError))
             {
                 await Assert.ThrowsAnyAsync<HttpRequestException>(() => HttpClientSlim.GetStringAsync(host.GetUri()));
             }
@@ -59,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var host = StartHost(protocol: "https",
                 handler: (context) => context.Request.Body.CopyToAsync(context.Response.Body)))
             {
-                Assert.Equal("test post", await HttpClientSlim.PostAsync(host.GetUri(),
+                Assert.Equal("test post", await HttpClientSlim.PostAsync(host.GetUri(isHttps: true),
                     new StringContent("test post"), validateCertificate: false));
             }
         }
@@ -67,20 +68,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task PostAsyncThrowsForErrorResponse()
         {
-            using (var host = StartHost(statusCode: 500))
+            using (var host = StartHost(statusCode: StatusCodes.Status500InternalServerError))
             {
                 await Assert.ThrowsAnyAsync<HttpRequestException>(
                     () => HttpClientSlim.PostAsync(host.GetUri(), new StringContent("")));
             }
         }
 
-        private IWebHost StartHost(string protocol = "http", int statusCode = 200, Func<HttpContext, Task> handler = null)
+        private IWebHost StartHost(string protocol = "http", int statusCode = StatusCodes.Status200OK, Func<HttpContext, Task> handler = null)
         {
             var host = new WebHostBuilder()
-                .UseUrls($"{protocol}://127.0.0.1:0")
                 .UseKestrel(options =>
                 {
-                    options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
+                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                    {
+                        if (protocol == "https")
+                        {
+                            listenOptions.UseHttps("TestResources/testCert.pfx", "testPassword");
+                        }
+                    });
                 })
                 .Configure((app) =>
                 {

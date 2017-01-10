@@ -9,13 +9,13 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
+namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
-    public class FilteredStreamAdapter : IDisposable
+    public class AdaptedPipeline : IDisposable
     {
         private readonly Stream _filteredStream;
 
-        public FilteredStreamAdapter(
+        public AdaptedPipeline(
             string connectionId,
             Stream filteredStream,
             PipelineFactory pipelineFactory,
