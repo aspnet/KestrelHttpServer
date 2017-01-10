@@ -58,18 +58,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private static readonly byte[] _unicodePipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(unicodeRequest, Pipelining)));
         private static readonly byte[] _unicodeRequest = Encoding.ASCII.GetBytes(unicodeRequest);
 
-        private Pipe SocketInput;
-        private Frame<object> Frame;
-        public PipelineFactory PipelineFactory;
-
         [Benchmark(Baseline = true, OperationsPerInvoke = InnerLoopCount)]
         public void ParsePlaintext()
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                InsertData(_plaintextRequest);
-
-                ParseData();
+                ParseData(_plaintextRequest);
             }
         }
 
@@ -78,9 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                InsertData(_plaintextPipelinedRequests);
-
-                ParseData();
+                ParseData(_plaintextPipelinedRequests);
             }
         }
 
@@ -89,9 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                InsertData(_liveaspnentRequest);
-
-                ParseData();
+                ParseData(_liveaspnentRequest);
             }
         }
 
@@ -100,49 +90,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                InsertData(_liveaspnentPipelinedRequests);
-
-                ParseData();
+                ParseData(_liveaspnentPipelinedRequests);
             }
         }
 
-        [Benchmark(OperationsPerInvoke = InnerLoopCount)]
-        public void ParseUnicode()
+        //[Benchmark(OperationsPerInvoke = InnerLoopCount)]
+        //public void ParseUnicode()
+        //{
+        //    for (var i = 0; i < InnerLoopCount; i++)
+        //    {
+        //        ParseData(_unicodeRequest);
+        //    }
+        //}
+
+        //[Benchmark(OperationsPerInvoke = InnerLoopCount * Pipelining)]
+        //public void ParseUnicodePipelined()
+        //{
+        //    for (var i = 0; i < InnerLoopCount; i++)
+        //    {
+        //        ParseData(_unicodePipelinedRequests);
+        //    }
+        //}
+
+        private void ParseData(byte[] dataBytes)
         {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                InsertData(_unicodeRequest);
-
-                ParseData();
-            }
-        }
-
-        [Benchmark(OperationsPerInvoke = InnerLoopCount * Pipelining)]
-        public void ParseUnicodePipelined()
-        {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                InsertData(_unicodePipelinedRequests);
-
-                ParseData();
-            }
-        }
-
-        private void InsertData(byte[] dataBytes)
-        {
-            SocketInput.WriteAsync(dataBytes).GetAwaiter().GetResult();
-        }
-
-        private void ParseData()
-        {
-            var readAsync = SocketInput.ReadAsync();
-            while (readAsync.IsCompleted)
+            var readableBuffer = ReadableBuffer.Create(dataBytes);
+            while (!readableBuffer.IsEmpty)
             {
                 Frame.Reset();
 
-                var readableBuffer = readAsync.GetResult().Buffer;
-                ReadCursor examined;
                 ReadCursor consumed;
+                ReadCursor examined;
                 if (Frame.TakeStartLine(readableBuffer, out consumed, out examined) != RequestLineStatus.Done)
                 {
                     ThrowInvalidStartLine();
@@ -156,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     ThrowInvalidMessageHeaders();
                 }
-                readAsync = SocketInput.ReadAsync();
+                readableBuffer = readableBuffer.Slice(consumed);
             }
         }
 
@@ -173,21 +151,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         [Setup]
         public void Setup()
         {
-            PipelineFactory = new PipelineFactory();
-            SocketInput = PipelineFactory.Create();
-
             var connectionContext = new MockConnection(new KestrelServerOptions());
-            connectionContext.Input = SocketInput;
-
             Frame = new Frame<object>(application: null, context: connectionContext);
         }
 
-        [Cleanup]
-        public void Cleanup()
-        {
-            SocketInput.CompleteWriter();
-            SocketInput.CompleteReader();
-            PipelineFactory.Dispose();
-        }
+        public Frame<object> Frame { get; set; }
     }
 }
