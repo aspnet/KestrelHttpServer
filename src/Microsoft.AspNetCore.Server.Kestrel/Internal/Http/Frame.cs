@@ -1380,12 +1380,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var name = nameBuffer.ToArray();
                 var value = valueBuffer.GetAsciiString();
 
+                // TODO: bad
+                _remainingRequestHeadersBytesAllowed -= buffer.Slice(0, lineEnd).Length;
+                _requestHeadersParsed++;
+
                 requestHeaders.Append(name, 0, name.Length, value);
                 buffer = buffer.Slice(lineEnd).Slice(1);
                 consumed = buffer.Start;
-
-                _remainingRequestHeadersBytesAllowed -= limitedBuffer.Length;
-                _requestHeadersParsed++;
             }
         }
 

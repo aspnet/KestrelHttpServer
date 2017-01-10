@@ -185,14 +185,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (adapterContext.ConnectionStream != rawStream)
                 {
                     _filteredStream = adapterContext.ConnectionStream;
-                    _adaptedPipeline = new AdaptedPipeline(ConnectionId, adapterContext.ConnectionStream,
-                        Thread.Memory, Log, ThreadPool, _bufferSizeControl);
+                    _adaptedPipeline = new AdaptedPipeline(ConnectionId, adapterContext.ConnectionStream, Thread.PipelineFactory,
+                        Thread.Memory, Log);
 
-                    _frame.Input = _adaptedPipeline.SocketInput;
-                    _frame.Output = _adaptedPipeline.SocketOutput;
+                    _frame.Input = _adaptedPipeline.Input;
+                    _frame.Output = _adaptedPipeline.Output;
 
-                // Don't attempt to read input if connection has already closed.
-                // This can happen if a client opens a connection and immediately closes it.
+                    // Don't attempt to read input if connection has already closed.
+                    // This can happen if a client opens a connection and immediately closes it.
                     _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
                         ? _adaptedPipeline.ReadInputAsync()
                         : TaskCache.CompletedTask;
