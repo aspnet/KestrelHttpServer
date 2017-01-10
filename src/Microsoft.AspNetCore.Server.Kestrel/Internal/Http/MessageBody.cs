@@ -424,12 +424,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
-                        ReadCursor consumed;
-                        ReadCursor examined;
+                        ReadCursor consumed = default(ReadCursor);
+                        ReadCursor examined = default(ReadCursor);
+                        try
+                        {
+                            ParseChunkedPrefix(buffer, out consumed, out examined);
+                        }
+                        finally
+                        {
+                            _input.AdvanceReader(consumed, examined);
+                        }
 
-                        ParseChunkedPrefix(buffer, out consumed, out examined);
-
-                        _input.AdvanceReader(consumed, examined);
                         if (_mode != Mode.Prefix)
                         {
                             break;
@@ -446,12 +451,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
-                        ReadCursor consumed;
-                        ReadCursor examined;
+                        ReadCursor consumed = default(ReadCursor);
+                        ReadCursor examined = default(ReadCursor);
+                        try
+                        {
+                            ParseExtension(buffer, out consumed, out examined);
+                        }
+                        finally
+                        {
+                            _input.AdvanceReader(consumed, examined);
+                        }
 
-                        ParseExtension(buffer, out consumed, out examined);
-
-                        _input.AdvanceReader(consumed, examined);
                         if (_mode != Mode.Extension)
                         {
                             break;
@@ -467,9 +477,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
-
-                        var segment = PeekChunkedData(buffer);
-                        _input.AdvanceReader(buffer.Start, buffer.Start);
+                        ArraySegment<byte> segment;
+                        try
+                        {
+                            segment = PeekChunkedData(buffer);
+                        }
+                        finally
+                        {
+                            _input.AdvanceReader(buffer.Start, buffer.Start);
+                        }
 
                         if (segment.Count != 0)
                         {
@@ -491,12 +507,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
 
-                        ReadCursor consumed;
-                        ReadCursor examined;
+                        ReadCursor consumed = default(ReadCursor);
+                        ReadCursor examined = default(ReadCursor);
 
-                        ParseChunkedSuffix(buffer, out consumed, out examined);
-
-                        _input.AdvanceReader(consumed, examined);
+                        try
+                        {
+                            ParseChunkedSuffix(buffer, out consumed, out examined);
+                        }
+                        finally
+                        {
+                            _input.AdvanceReader(consumed, examined);
+                        }
 
                         if (_mode != Mode.Suffix)
                         {
@@ -515,13 +536,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     var result = await _input.ReadAsyncDispatched();
                     var buffer = result.Buffer;
+                    ReadCursor consumed = default(ReadCursor);
+                    ReadCursor examined = default(ReadCursor);
 
-                    ReadCursor consumed;
-                    ReadCursor examined;
-
-                    ParseChunkedTrailer(buffer, out consumed, out examined);
-
-                    _input.AdvanceReader(consumed, examined);
+                    try
+                    {
+                        ParseChunkedTrailer(buffer, out consumed, out examined);
+                    }
+                    finally
+                    {
+                        _input.AdvanceReader(consumed, examined);
+                    }
 
                     if (_mode != Mode.Trailer)
                     {
@@ -546,10 +571,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
                         }
 
-                        ReadCursor consumed;
-                        ReadCursor examined;
-                        var takeMessageHeaders = _context.TakeMessageHeaders(buffer, _requestHeaders, out  consumed, out examined);
-                        _input.AdvanceReader(consumed, examined);
+                        ReadCursor consumed = default(ReadCursor);
+                        ReadCursor examined = default(ReadCursor);
+                        bool takeMessageHeaders;
+                        try
+                        {
+                            takeMessageHeaders = _context.TakeMessageHeaders(buffer, _requestHeaders, out consumed, out examined);
+                        }
+                        finally
+                        {
+                            _input.AdvanceReader(consumed, examined);
+                        }
+
                         if (takeMessageHeaders)
                         {
                             break;
