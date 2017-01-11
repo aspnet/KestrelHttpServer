@@ -59,7 +59,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
                     Input.CompleteWriter(ex);
                     throw;
                 }
-
             } while (bytesRead != 0);
         }
     }
