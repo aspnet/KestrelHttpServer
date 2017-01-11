@@ -113,12 +113,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         private async Task<int> ReadAsync(ArraySegment<byte> buffer)
         {
-            var result = await _input.ReadAsyncDispatched();
-            var count = Math.Min(result.Buffer.Length, buffer.Count);
-            var readableBuffer = result.Buffer.Slice(0, count);
-            readableBuffer.CopyTo(buffer);
-            _input.AdvanceReader(readableBuffer.End, readableBuffer.End);
-            return count;
+            while (true)
+            {
+                var result = await _input.ReadAsyncDispatched();
+                var readableBuffer = result.Buffer;
+                try
+                {
+                    if (!result.Buffer.IsEmpty)
+                    {
+                        var count = Math.Min(result.Buffer.Length, buffer.Count);
+                        readableBuffer = readableBuffer.Slice(0, count);
+                        readableBuffer.CopyTo(buffer);
+                        return count;
+                    }
+                    else if (result.IsCompleted || result.IsCancelled)
+                    {
+                        return 0;
+                    }
+                }
+                finally
+                {
+                    _input.AdvanceReader(readableBuffer.End, readableBuffer.End);
+                }
+            }
         }
 
 #if NET451

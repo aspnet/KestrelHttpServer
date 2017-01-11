@@ -14,20 +14,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             while (input.IsCompleted)
             {
                 var result = input.GetResult();
-                pipelineReader.Advance(result.Buffer.Start, result.Buffer.Start);
-
-                if (!result.Buffer.IsEmpty)
+                try
                 {
-                    ArraySegment<byte> data;
-                    var segment = result.Buffer.First;
-                    var arrayResult = segment.TryGetArray(out data);
-                    Debug.Assert(arrayResult);
+                    if (!result.Buffer.IsEmpty)
+                    {
+                        ArraySegment<byte> data;
+                        var segment = result.Buffer.First;
+                        var arrayResult = segment.TryGetArray(out data);
+                        Debug.Assert(arrayResult);
 
-                    return new ValueTask<ArraySegment<byte>>(data);
+                        return new ValueTask<ArraySegment<byte>>(data);
+                    }
+                    else if (result.IsCompleted || result.IsCancelled)
+                    {
+                        return default(ValueTask<ArraySegment<byte>>);
+                    }
                 }
-                else if (result.IsCancelled || result.IsCompleted)
+                finally
                 {
-                    return default(ValueTask<ArraySegment<byte>>);
+                    pipelineReader.Advance(result.Buffer.Start, result.Buffer.Start);
                 }
                 input = pipelineReader.ReadAsync();
             }
@@ -40,21 +45,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             while (true)
             {
                 var result = await readingTask;
+
                 await Task.Yield();
-                pipelineReader.Advance(result.Buffer.Start);
 
-                if (!result.Buffer.IsEmpty)
+                try
                 {
-                    ArraySegment<byte> data;
-                    var segment = result.Buffer.First;
-                    var arrayResult = segment.TryGetArray(out data);
-                    Debug.Assert(arrayResult);
+                    if (!result.Buffer.IsEmpty)
+                    {
+                        ArraySegment<byte> data;
+                        var segment = result.Buffer.First;
+                        var arrayResult = segment.TryGetArray(out data);
+                        Debug.Assert(arrayResult);
 
-                    return data;
+                        return data;
+                    }
+                    else if (result.IsCompleted || result.IsCancelled)
+                    {
+                        return default(ArraySegment<byte>);
+                    }
                 }
-                else if (result.IsCancelled || result.IsCompleted)
+                finally
                 {
-                    return default(ArraySegment<byte>);
+                    pipelineReader.Advance(result.Buffer.Start, result.Buffer.Start);
                 }
                 readingTask = pipelineReader.ReadAsync();
             }

@@ -103,8 +103,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
                 // Otherwise, it will close the connection.
                 var ignore = ApplyConnectionAdaptersAsync();
-                        }
-                        }
+            }
+        }
 
         public Task StopAsync()
         {
@@ -145,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }, this);
 
             Input.CompleteReader();
-            Input.CompleteWriter();
+            Input.CompleteWriter(new TaskCanceledException("The request was aborted"));
             _socketClosedTcs.TrySetResult(null);
         }
 
@@ -196,11 +196,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
                         ? _adaptedPipeline.ReadInputAsync()
                         : TaskCache.CompletedTask;
-            }
+                }
 
                 _frame.AdaptedConnections = adaptedConnections;
-            _frame.Start();
-        }
+                _frame.Start();
+            }
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
@@ -296,6 +296,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!normalRead)
             {
+                Input.CompleteWriter(error);
                 AbortAsync(error);
             }
         }
