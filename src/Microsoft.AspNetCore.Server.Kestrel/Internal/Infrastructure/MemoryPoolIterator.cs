@@ -21,6 +21,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                                         0x02ul << 40 |
                                                         0x01ul << 48 ) + 1;
 
+        const int Shift16Shift24 = 256 * 256 * 256 + 256 * 256;
+        const int Shift8Identity = 256 + 1;
+
         private static readonly int _vectorSpan = Vector<byte>.Count;
 
         private MemoryPoolBlock _block;
@@ -1020,64 +1023,90 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public unsafe void CopyFromAscii(string data)
         {
             var block = _block;
-            if (block == null)
+            if (block != null)
             {
-                return;
-            }
+                Debug.Assert(block.Next == null);
+                Debug.Assert(block.End == _index);
 
-            Debug.Assert(block.Next == null);
-            Debug.Assert(block.End == _index);
-
-            var pool = block.Pool;
-            var blockIndex = _index;
-            var length = data.Length;
-
-            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
-            var bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
-
-            fixed (char* pData = data)
-            {
-                var input = pData;
-                var inputEnd = pData + length;
-                var inputEndMinusSpan = inputEnd - 3;
-
-                while (input < inputEnd)
+                fixed (char* pData = data)
                 {
-                    if (bytesLeftInBlock == 0)
-                    {
-                        var nextBlock = pool.Lease();
-                        block.End = blockIndex;
-                        Volatile.Write(ref block.Next, nextBlock);
-                        block = nextBlock;
+                    var input = pData;
+                    var blockIndex = _index;
+                    var length = data.Length;
 
-                        blockIndex = block.Data.Offset;
-                        bytesLeftInBlock = block.Data.Count;
-                        bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
-                    }
-
+                    var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+                    var toCopy = Math.Min(length, bytesLeftInBlock);
+                    var toCopyULong = toCopy & ~0x3;
                     var output = (block.DataFixedPtr + block.End);
-                    var copied = 0;
-                    for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
+
+                    blockIndex += toCopy;
+
+                    int i;
+                    for (i = 0; i < toCopyULong; i += 4)
                     {
-                        *(output) = (byte)*(input);
-                        *(output + 1) = (byte)*(input + 1);
-                        *(output + 2) = (byte)*(input + 2);
-                        *(output + 3) = (byte)*(input + 3);
-                        output += 4;
-                        input += 4;
+                        var iUlong = *(ulong*)(input + i);
+                        *(uint*)(output + i) =
+                            ((uint)((iUlong * Shift16Shift24) >> 24) & 0xffff) |
+                            ((uint)((iUlong * Shift8Identity) >> 24) & 0xffff0000);
                     }
-                    for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
+                    for (; i < toCopy; i++)
                     {
-                        *(output++) = (byte)*(input++);
+                        *(output + i) = (byte)*(input + i);
                     }
 
-                    blockIndex += copied;
-                    bytesLeftInBlockMinusSpan -= copied;
-                    bytesLeftInBlock -= copied;
+                    block.End = blockIndex;
+                    if (length <= bytesLeftInBlock)
+                    {
+                        _index = blockIndex;
+                    }
+                    else
+                    {
+                        CopyFromAsciiMultiblock(input + toCopy, length - bytesLeftInBlock);
+                    }
                 }
             }
+        }
 
-            block.End = blockIndex;
+        private unsafe void CopyFromAsciiMultiblock(char* inputStart, int remainingLength)
+        {
+            var input = inputStart;
+            var length = remainingLength;
+            var block = _block;
+            var pool = block.Pool;
+            int blockIndex;
+            do
+            {
+                var nextBlock = pool.Lease();
+                Volatile.Write(ref block.Next, nextBlock);
+                block = nextBlock;
+
+                var bytesLeftInBlock = block.Data.Count;
+
+                var output = (block.DataFixedPtr + block.End);
+                var toCopy = Math.Min(length, block.Data.Count);
+                var toCopyULong = toCopy & ~0x3;
+
+                blockIndex = block.Data.Offset + toCopy;
+
+                int i;
+                for (i = 0; i < toCopyULong; i += 4)
+                {
+                    var iUlong = *(ulong*)(input + i);
+                    *(uint*)(output + i) =
+                        ((uint)((iUlong * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((iUlong * Shift8Identity) >> 24) & 0xffff0000);
+                }
+                for (; i < toCopy; i++)
+                {
+                    *(output + i) = (byte)*(input + i);
+                }
+
+                block.End = blockIndex;
+
+                length -= toCopy;
+                input += toCopy;
+            } while (length > 0);
+
             _block = block;
             _index = blockIndex;
         }

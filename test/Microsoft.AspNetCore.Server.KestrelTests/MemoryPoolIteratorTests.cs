@@ -1214,6 +1214,71 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
+        [Fact]
+        public unsafe void TestCopyFromAscii()
+        {
+            // Arrange
+            var blockSingle = _pool.Lease();
+            var blockMultiple = _pool.Lease();
+            try
+            {
+                var dataSingle = new string('\0', blockSingle.Data.Count - 1);
+                var dataMultiple = new string('\0', blockMultiple.Data.Count * 4 - 1);
+
+                fixed (char* pData = dataSingle)
+                {
+                    for (var i = 0; i < dataSingle.Length; i++)
+                    {
+                        // ascii chars 32 - 126
+                        pData[i] = (char)((i % (126 - 32)) + 32);
+                    }
+                }
+                fixed (char* pData = dataMultiple)
+                {
+                    for (var i = 0; i < dataMultiple.Length; i++)
+                    {
+                        // ascii chars 32 - 126
+                        pData[i] = (char)((i % (126 - 32)) + 32);
+                    }
+                }
+
+                // Act
+                var singleIter = blockSingle.GetIterator();
+                var multiIter = blockMultiple.GetIterator();
+
+                var singleIterEnd = singleIter;
+                var multiIterEnd = multiIter;
+
+                singleIterEnd.CopyFromAscii(dataSingle);
+                multiIterEnd.CopyFromAscii(dataMultiple);
+
+                // Assert
+                Assert.True(singleIterEnd.IsEnd);
+                foreach (var ch in dataSingle)
+                {
+                    Assert.Equal(ch, singleIter.Take());
+                }
+                Assert.True(singleIter.IsEnd);
+                Assert.Equal(singleIter.Block, singleIterEnd.Block);
+                Assert.Equal(singleIter.Index, singleIterEnd.Index);
+
+
+                Assert.True(multiIterEnd.IsEnd);
+                foreach (var ch in dataMultiple)
+                {
+                    Assert.Equal(ch, multiIter.Take());
+                }
+                Assert.True(multiIter.IsEnd);
+                Assert.Equal(multiIter.Block, multiIterEnd.Block);
+                Assert.Equal(multiIter.Index, multiIterEnd.Index);
+            }
+            finally
+            {
+                ReturnBlocks(blockSingle);
+                ReturnBlocks(blockMultiple);
+            }
+        }
+
         private delegate bool GetKnownString(MemoryPoolIterator iter, out string result);
 
         private void TestKnownStringsInterning(string input, string expected, GetKnownString action)
@@ -1242,6 +1307,17 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.True(result2);
             Assert.Equal(knownString1, expected);
             Assert.Same(knownString1, knownString2);
+        }
+
+        private static void ReturnBlocks(MemoryPoolBlock block)
+        {
+            while (block != null)
+            {
+                var returningBlock = block;
+                block = returningBlock.Next;
+
+                returningBlock.Pool.Return(returningBlock);
+            }
         }
 
         public static IEnumerable<object[]> SeekByteLimitData
