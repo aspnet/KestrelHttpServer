@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -25,8 +26,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private static readonly Action<object, object> _postAsyncCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private static readonly Libuv.uv_walk_cb _heartbeatWalkCallback = (ptr, arg) =>
         {
-            var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
-            (handle as UvStreamHandle)?.Connection?.Tick((long)arg);
+            var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
+            var nowHandle = GCHandle.FromIntPtr(arg);
+            var now = (Now)nowHandle.Target;
+            streamHandle?.Connection?.Tick(now.Milliseconds);
         };
 
         // maximum times the work queues swapped and are processed in a single pass
@@ -41,6 +44,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
         private readonly UvTimerHandle _heartbeatTimer;
+        private readonly Now _now = new Now();
+        private IntPtr _nowPtr;
         private Queue<Work> _workAdding = new Queue<Work>(1024);
         private Queue<Work> _workRunning = new Queue<Work>(1024);
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
@@ -303,8 +308,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 }
             }
 
+            // This is used to represent a 64-bit timestamp using a potentially 32-bit IntPtr.
+            var nowHandle = GCHandle.Alloc(_now, GCHandleType.Weak);
+
             try
             {
+                _nowPtr = GCHandle.ToIntPtr(nowHandle);
+
                 _loop.Run();
                 if (_stopImmediate)
                 {
@@ -331,6 +341,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             }
             finally
             {
+                nowHandle.Free();
                 _threadTcs.SetResult(null);
             }
         }
@@ -349,7 +360,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private void OnHeartbeat(UvTimerHandle timer)
         {
-            Walk(_heartbeatWalkCallback, (IntPtr)Loop.Now());
+            _now.Milliseconds = Loop.Now();
+            Walk(_heartbeatWalkCallback, _nowPtr);
         }
 
         private bool DoPostWork()
@@ -438,6 +450,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             public Action<IntPtr> Callback;
             public IntPtr Handle;
+        }
+
+        private class Now
+        {
+            public long Milliseconds;
         }
     }
 }
