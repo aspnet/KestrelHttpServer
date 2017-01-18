@@ -28,8 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
             var nowHandle = GCHandle.FromIntPtr(arg);
-            var now = (Now)nowHandle.Target;
-            streamHandle?.Connection?.Tick(now.Milliseconds);
+            var kestrelThread = (KestrelThread)nowHandle.Target;
+            streamHandle?.Connection?.Tick(kestrelThread.Now);
         };
 
         // maximum times the work queues swapped and are processed in a single pass
@@ -44,8 +44,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
         private readonly UvTimerHandle _heartbeatTimer;
-        private readonly Now _now = new Now();
-        private IntPtr _nowPtr;
         private Queue<Work> _workAdding = new Queue<Work>(1024);
         private Queue<Work> _workRunning = new Queue<Work>(1024);
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
@@ -58,6 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
         private readonly TimeSpan _shutdownTimeout;
+        private IntPtr _thisPtr;
 
         public KestrelThread(KestrelEngine engine)
         {
@@ -103,6 +102,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; }
 
         private Action<Action<IntPtr>, IntPtr> QueueCloseAsyncHandle { get; }
+
+        // The cached result of Loop.Now() which is a timestamp in milliseconds
+        private long Now { get; set; }
 
         public Task StartAsync()
         {
@@ -308,12 +310,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 }
             }
 
-            // This is used to represent a 64-bit timestamp using a potentially 32-bit IntPtr.
-            var nowHandle = GCHandle.Alloc(_now, GCHandleType.Weak);
+            // This is used to access a 64-bit timestamp (this.Now) using a potentially 32-bit IntPtr.
+            var thisHandle = GCHandle.Alloc(this, GCHandleType.Weak);
 
             try
             {
-                _nowPtr = GCHandle.ToIntPtr(nowHandle);
+                _thisPtr = GCHandle.ToIntPtr(thisHandle);
 
                 _loop.Run();
                 if (_stopImmediate)
@@ -341,7 +343,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             }
             finally
             {
-                nowHandle.Free();
+                thisHandle.Free();
                 _threadTcs.SetResult(null);
             }
         }
@@ -360,8 +362,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private void OnHeartbeat(UvTimerHandle timer)
         {
-            _now.Milliseconds = Loop.Now();
-            Walk(_heartbeatWalkCallback, _nowPtr);
+            Now = Loop.Now();
+            Walk(_heartbeatWalkCallback, _thisPtr);
         }
 
         private bool DoPostWork()
@@ -450,11 +452,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             public Action<IntPtr> Callback;
             public IntPtr Handle;
-        }
-
-        private class Now
-        {
-            public long Milliseconds;
         }
     }
 }
