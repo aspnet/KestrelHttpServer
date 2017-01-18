@@ -853,12 +853,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingInOnStartingResultsInFailedWritesAnd500Response(ListenOptions listenOptions)
         {
+            var callback1Called = false;
+            var callback2CallCount = 0;
+
             var testContext = new TestServiceContext();
-
-            var onStartingCallCount1 = 0;
-            var onStartingCallCount2 = 0;
-            var failedWriteCount = 0;
-
             var testLogger = new TestApplicationErrorLogger();
             testContext.Log = new KestrelTrace(testLogger);
 
@@ -869,23 +867,17 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var response = httpContext.Response;
                 response.OnStarting(_ =>
                 {
-                    onStartingCallCount1++;
+                    callback1Called = true;
                     throw onStartingException;
                 }, null);
                 response.OnStarting(_ =>
                 {
-                    onStartingCallCount2++;
+                    callback2CallCount++;
                     throw onStartingException;
                 }, null);
 
-                response.Headers["Content-Length"] = new[] { "11" };
-
-                var writeException = await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
-                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11));
-
+                var writeException = await Assert.ThrowsAsync<ObjectDisposedException>(async () => await response.Body.FlushAsync());
                 Assert.Same(onStartingException, writeException.InnerException);
-
-                failedWriteCount++;
             }, testContext, listenOptions))
             {
                 using (var connection = server.CreateConnection())
@@ -909,10 +901,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
             }
 
-            // The first registered OnStarting callback should not be called,
-            // since they are called LIFO and the other one failed.
-            Assert.Equal(0, onStartingCallCount1);
-            Assert.Equal(2, onStartingCallCount2);
+            // The first registered OnStarting callback should have been called,
+            // since they are called LIFO order and the other one failed.
+            Assert.False(callback1Called);
+            Assert.Equal(2, callback2CallCount);
             Assert.Equal(2, testLogger.ApplicationErrorsLogged);
         }
 

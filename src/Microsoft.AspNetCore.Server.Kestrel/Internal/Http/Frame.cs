@@ -537,23 +537,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void Flush()
         {
-            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
+            InitializeResponse(0).GetAwaiter().GetResult();
             Output.Flush();
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
-            await ProduceStartAndFireOnStarting();
+            await InitializeResponse(0);
             await Output.FlushAsync(cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
         {
-            // For the first write, ensure headers are flushed if Write(Chunked)isn't called.
+            // For the first write, ensure headers are flushed if Write(Chunked) isn't called.
             var firstWrite = !HasResponseStarted;
 
-            VerifyAndUpdateWrite(data.Count);
-            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
+            if (firstWrite)
+            {
+                InitializeResponse(data.Count).GetAwaiter().GetResult();
+            }
+            else
+            {
+                VerifyAndUpdateWrite(data.Count);
+            }
 
             if (_canHaveBody)
             {
@@ -620,9 +626,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public async Task WriteAsyncAwaited(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            VerifyAndUpdateWrite(data.Count);
-
-            await ProduceStartAndFireOnStarting();
+            await InitializeResponseAwaited(data.Count);
 
             // WriteAsyncAwaited is only called for the first write to the body.
             // Ensure headers are flushed if Write(Chunked)Async isn't called.
@@ -695,7 +699,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 responseHeaders.HeaderContentLengthValue.HasValue &&
                 _responseBytesWritten < responseHeaders.HeaderContentLengthValue.Value)
             {
-                _keepAlive = false;
+                // We need to close the connection if any bytes were written since the client
+                // cannot be certain of how many bytes it will receive.
+                if (_responseBytesWritten > 0)
+                {
+                    _keepAlive = false;
+                }
+
                 ReportApplicationError(new InvalidOperationException(
                     $"Response Content-Length mismatch: too few bytes written ({_responseBytesWritten} of {responseHeaders.HeaderContentLengthValue.Value})."));
             }
@@ -738,7 +748,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public Task ProduceStartAndFireOnStarting()
+        public Task InitializeResponse(int firstWriteByteCount)
         {
             if (HasResponseStarted)
             {
@@ -747,7 +757,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (_onStarting != null)
             {
-                return ProduceStartAndFireOnStartingAwaited();
+                return InitializeResponseAwaited(firstWriteByteCount);
             }
 
             if (_applicationException != null)
@@ -755,11 +765,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 ThrowResponseAbortedException();
             }
 
+            VerifyAndUpdateWrite(firstWriteByteCount);
             ProduceStart(appCompleted: false);
+
             return TaskCache.CompletedTask;
         }
 
-        private async Task ProduceStartAndFireOnStartingAwaited()
+        private async Task InitializeResponseAwaited(int firstWriteByteCount)
         {
             await FireOnStarting();
 
@@ -768,6 +780,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 ThrowResponseAbortedException();
             }
 
+            VerifyAndUpdateWrite(firstWriteByteCount);
             ProduceStart(appCompleted: false);
         }
 
