@@ -43,8 +43,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     while (!_requestProcessingStopping)
                     {
                         var result = await Input.ReadAsyncDispatched();
-                        ReadCursor examined;
-                        ReadCursor consumed;
+                        ReadCursor examined = result.Buffer.End;
+                        ReadCursor consumed = result.Buffer.End;
                         try
                         {
                             requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined);
@@ -53,8 +53,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             throw BadHttpRequestException.GetException(RequestRejectionReason.BadRequest);
                         }
-
-                        Input.AdvanceReader(consumed, examined);
+                        finally
+                        {
+                            Input.AdvanceReader(consumed, examined);
+                        }
 
                         if (requestLineStatus == RequestLineStatus.Done)
                         {
@@ -63,6 +65,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         if (result.IsCompleted)
                         {
+                            if (requestLineStatus == RequestLineStatus.Empty)
+                            {
+                                return;
+                            }
+
                             RejectRequest(RequestRejectionReason.InvalidRequestLine, requestLineStatus.ToString());
                         }
                     }
@@ -73,21 +80,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
 
                         var result = await Input.ReadAsyncDispatched();
-                        ReadCursor examined;
-                        ReadCursor consumed;
+                        ReadCursor examined = result.Buffer.End;
+                        ReadCursor consumed = result.Buffer.End;
 
                         bool takeMessageHeaders;
 
                         try
                         {
-                            takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out consumed, out examined);
+                            takeMessageHeaders = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out consumed,
+                                out examined);
                         }
                         catch (InvalidOperationException)
                         {
                             throw BadHttpRequestException.GetException(RequestRejectionReason.BadRequest);
                         }
-
-                        Input.AdvanceReader(consumed, examined);
+                        finally
+                        {
+                            Input.AdvanceReader(consumed, examined);
+                        }
 
                         if (takeMessageHeaders)
                         {
@@ -223,6 +233,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 try
                 {
+                    Input.CompleteReader();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {

@@ -34,8 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         public void Dispose()
         {
-            Input.CompleteWriter();
             Input.CompleteReader();
+            Input.CompleteWriter();
         }
 
         public async Task ReadInputAsync()
@@ -50,9 +50,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
                 {
                     ArraySegment<byte> array;
                     block.Memory.TryGetArray(out array);
-                    bytesRead = await _filteredStream.ReadAsync(array.Array, array.Offset, array.Count);
-                    block.Advance(bytesRead);
-                    await block.FlushAsync();
+                    try
+                    {
+                        bytesRead = await _filteredStream.ReadAsync(array.Array, array.Offset, array.Count);
+                        block.Advance(bytesRead);
+                    }
+                    finally
+                    {
+                        await block.FlushAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -60,6 +66,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
                     throw;
                 }
             } while (bytesRead != 0);
+
+            Input.CompleteWriter();
         }
     }
 }

@@ -140,11 +140,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var connection2 = (Connection)state2;
                         connection2._filteredStream.Dispose();
                         connection2._adaptedPipeline.Dispose();
+                        Input.CompleteReader();
                     }, connection);
                 }
             }, this);
 
-            Input.CompleteReader();
             Input.CompleteWriter(new TaskCanceledException("The request was aborted"));
             _socketClosedTcs.TrySetResult(null);
         }
@@ -204,6 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
+                Input.CompleteReader();
                 ConnectionControl.End(ProduceEndType.SocketDisconnect);
             }
         }

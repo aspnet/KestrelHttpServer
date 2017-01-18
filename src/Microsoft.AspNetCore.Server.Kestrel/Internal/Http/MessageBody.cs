@@ -213,8 +213,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private void ConsumedBytes(int count)
         {
             var scan = _context.Input.ReadAsync().GetResult().Buffer;
-            scan = scan.Slice(count);
-            _context.Input.AdvanceReader(scan.Start, scan.Start);
+            var consumed = scan.Move(scan.Start, count);
+            _context.Input.AdvanceReader(consumed, consumed);
 
             OnConsumedBytes(count);
         }
