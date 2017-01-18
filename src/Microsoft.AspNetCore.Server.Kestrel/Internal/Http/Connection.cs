@@ -19,6 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class Connection : ConnectionContext, IConnectionControl
     {
+        private const int AllocBufferSize = 2048;
+
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly string _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
 
@@ -217,7 +219,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private unsafe Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
             Debug.Assert(_currentWritableBuffer == null);
-            var currentWritableBuffer = Input.Alloc(2048);
+            var currentWritableBuffer = Input.Alloc(AllocBufferSize);
             _currentWritableBuffer = currentWritableBuffer;
             void* dataPtr;
             var tryGetPointer = currentWritableBuffer.Memory.TryGetPointer(out dataPtr);
@@ -243,6 +245,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // there is no data to be read right now.
                 // See the note at http://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb.
                 // We need to clean up whatever was allocated by OnAlloc.
+                Debug.Assert(_currentWritableBuffer != null);
+
                 currentWritableBuffer = _currentWritableBuffer.Value;
                 _currentWritableBuffer = null;
                 currentWritableBuffer.Commit();
@@ -288,6 +292,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else
             {
+                Debug.Assert(_currentWritableBuffer != null);
+
                 currentWritableBuffer = _currentWritableBuffer.Value;
                 currentWritableBuffer.Advance(readCount);
                 _currentWritableBuffer = null;

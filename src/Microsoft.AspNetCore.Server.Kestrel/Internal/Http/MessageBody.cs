@@ -527,7 +527,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
                         }
-
                     }
                 }
 
