@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class RequestTests
     {
-        private const int _semaphoreWaitTimeout = 2500;
+        private const int _semaphoreWaitTimeout = 250;
 
         [Theory]
         [InlineData(10 * 1024 * 1024, true)]
@@ -60,7 +60,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             {
                                 for (var i = 0; i < received; i++)
                                 {
-                                    Assert.Equal((byte)((total + i) % 256), receivedBytes[i]);
+                                    if ((byte) ((total + i) % 256) != receivedBytes[i])
+                                    {
+                                        Assert.True(false, "Data received is incorrect");
+                                    }
                                 }
                             }
 
@@ -143,7 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 client.DefaultRequestHeaders.Connection.Clear();
                 client.DefaultRequestHeaders.Connection.Add("close");
 
-                var response = await client.GetAsync($"http://localhost:{host.GetPort()}/");
+                var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
                 response.EnsureSuccessStatusCode();
             }
         }
