@@ -15,8 +15,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     {
         protected bool _isReadOnly;
         protected Dictionary<string, StringValues> MaybeUnknown;
-
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
+
+        public long? ContentLength { get; set; }
 
         StringValues IHeaderDictionary.this[string key]
         {
@@ -235,10 +236,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static long ParseContentLength(StringValues value)
+        public static long ParseContentLength(string value)
         {
             long parsed;
-            if (!HeaderUtilities.TryParseInt64(value.ToString(), out parsed))
+            if (!HeaderUtilities.TryParseInt64(value, out parsed))
             {
                 ThrowInvalidContentLengthException(value);
             }
@@ -412,7 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return transferEncodingOptions;
         }
 
-        private static void ThrowInvalidContentLengthException(string value)
+        protected static void ThrowInvalidContentLengthException(string value)
         {
             throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }

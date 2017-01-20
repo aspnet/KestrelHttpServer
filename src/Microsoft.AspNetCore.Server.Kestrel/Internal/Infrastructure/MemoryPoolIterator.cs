@@ -13,6 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
     public struct MemoryPoolIterator
     {
+        private const int _maxPositiveLongByteLength = 19;
         private const ulong _xorPowerOfTwoToHighByte = (0x07ul       |
                                                         0x06ul <<  8 |
                                                         0x05ul << 16 |
@@ -22,6 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                                         0x01ul << 48 ) + 1;
 
         private static readonly int _vectorSpan = Vector<byte>.Count;
+
+        [ThreadStatic]
+        private static byte[] _numericBytesScratch;
 
         private MemoryPoolBlock _block;
         private int _index;
@@ -1082,6 +1086,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _index = blockIndex;
         }
 
+        private static byte[] NumericBytesScratch => _numericBytesScratch ?? CreateNumericBytesScratch();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static byte[] CreateNumericBytesScratch()
+        {
+            return (_numericBytesScratch = new byte[_maxPositiveLongByteLength]);
+        }
+
+        public void CopyFromNumeric(long value)
+        {
+            var position = _maxPositiveLongByteLength;
+            var byteBuffer = NumericBytesScratch;
+            do
+            {
+                // Consider using Math.DivRem() if available
+                var quotient = value / 10;
+                byteBuffer[--position] = (byte)(0x30 + (value - quotient * 10)); // 0x30 = '0'
+                value = quotient;
+            }
+            while (value != 0);
+
+            CopyFrom(byteBuffer, position, _maxPositiveLongByteLength - position);
+        }
+
         public unsafe string GetAsciiString(ref MemoryPoolIterator end)
         {
             var block = _block;
@@ -1253,6 +1281,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             // https://github.com/dotnet/coreclr/issues/7459#issuecomment-253965670
             return Vector.AsVectorByte(new Vector<uint>(vectorByte * 0x01010101u));
         }
-
     }
 }

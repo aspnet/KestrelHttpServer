@@ -266,18 +266,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 return new ForChunkedEncoding(keepAlive, headers, context);
             }
 
-            var unparsedContentLength = headers.HeaderContentLength;
-            if (unparsedContentLength.Count > 0)
+            if (headers.ContentLength.HasValue)
             {
-                try
-                {
-                    var contentLength = FrameHeaders.ParseContentLength(unparsedContentLength);
-                    return new ForContentLength(keepAlive, contentLength, context);
-                }
-                catch (InvalidOperationException)
-                {
-                    context.RejectRequest(RequestRejectionReason.InvalidContentLength, unparsedContentLength);
-                }
+                return new ForContentLength(keepAlive, headers.ContentLength.Value, context);
             }
 
             // Avoid slowing down most common case
