@@ -32,12 +32,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         /// </summary>
         public override async Task RequestProcessingAsync()
         {
-            var requestLineStatus = RequestLineStatus.Empty;
+            var requestLineStatus = default(RequestLineStatus);
 
             try
             {
                 while (!_requestProcessingStopping)
                 {
+                    requestLineStatus = RequestLineStatus.Empty;
+
                     ConnectionControl.SetTimeout(_keepAliveMilliseconds, TimeoutAction.CloseConnection);
 
                     while (!_requestProcessingStopping)
