@@ -1035,23 +1035,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     var length = data.Length;
 
                     var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
-                    var toCopy = Math.Min(length, bytesLeftInBlock);
-                    var toCopyULong = toCopy & ~0x3;
+                    var count = Math.Min(length, bytesLeftInBlock);
                     var output = (block.DataFixedPtr + block.End);
 
-                    blockIndex += toCopy;
+                    blockIndex += count;
 
-                    int i;
-                    for (i = 0; i < toCopyULong; i += 4)
+                    // Only one path should inline, other branch should be eliminated
+                    if (IntPtr.Size == 8)
                     {
-                        var iUlong = *(ulong*)(input + i);
-                        *(uint*)(output + i) =
-                            ((uint)((iUlong * Shift16Shift24) >> 24) & 0xffff) |
-                            ((uint)((iUlong * Shift8Identity) >> 24) & 0xffff0000);
+                        CopyFromAscii64Bit(input, output, count);
                     }
-                    for (; i < toCopy; i++)
+                    else
                     {
-                        *(output + i) = (byte)*(input + i);
+                        CopyFromAscii32Bit(input, output, count);
                     }
 
                     block.End = blockIndex;
@@ -1061,7 +1057,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     }
                     else
                     {
-                        CopyFromAsciiMultiblock(input + toCopy, length - bytesLeftInBlock);
+                        CopyFromAsciiMultiblock(input + count, length - bytesLeftInBlock);
                     }
                 }
             }
@@ -1086,19 +1082,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 var toCopy = Math.Min(length, block.Data.Count);
                 var toCopyULong = toCopy & ~0x3;
 
+                // Only one path should inline, other branch should be eliminated
                 blockIndex = block.Data.Offset + toCopy;
 
-                int i;
-                for (i = 0; i < toCopyULong; i += 4)
+                if (IntPtr.Size == 8)
                 {
-                    var iUlong = *(ulong*)(input + i);
-                    *(uint*)(output + i) =
-                        ((uint)((iUlong * Shift16Shift24) >> 24) & 0xffff) |
-                        ((uint)((iUlong * Shift8Identity) >> 24) & 0xffff0000);
+                    CopyFromAscii64Bit(input, output, toCopy);
                 }
-                for (; i < toCopy; i++)
+                else
                 {
-                    *(output + i) = (byte)*(input + i);
+                    CopyFromAscii32Bit(input, output, toCopy);
                 }
 
                 block.End = blockIndex;
@@ -1283,5 +1276,89 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return Vector.AsVectorByte(new Vector<uint>(vectorByte * 0x01010101u));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe static void CopyFromAscii64Bit(char* input, byte* output, int count)
+        {
+            // Encode as bytes upto the first non-ASCII byte and return count encoded
+            var i = 0;
+            if (count >= 4)
+            {
+                var unaligned = (unchecked(-(int)input) >> 1) & 0x3;
+                // Unaligned chars
+                for (; i < unaligned; i++)
+                {
+                    var ch = *(input + i);
+                    *(output + i) = (byte)ch; // Cast convert
+                }
+
+                // Aligned
+                var ulongDoubleCount = (count - i) & ~0x7;
+                for (; i < ulongDoubleCount; i += 8)
+                {
+                    var inputUlong0 = *(ulong*)(input + i);
+                    var inputUlong1 = *(ulong*)(input + i + 4);
+                    // Pack 16 ASCII chars into 16 bytes
+                    *(uint*)(output + i) =
+                        ((uint)((inputUlong0 * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((inputUlong0 * Shift8Identity) >> 24) & 0xffff0000);
+                    *(uint*)(output + i + 4) =
+                        ((uint)((inputUlong1 * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((inputUlong1 * Shift8Identity) >> 24) & 0xffff0000);
+                }
+                if (count - 4 > i)
+                {
+                    var inputUlong = *(ulong*)(input + i);
+                    // Pack 8 ASCII chars into 8 bytes
+                    *(uint*)(output + i) =
+                        ((uint)((inputUlong * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((inputUlong * Shift8Identity) >> 24) & 0xffff0000);
+                    i += 4;
+                }
+            }
+
+            for (; i < count; i++)
+            {
+                var ch = *(input + i);
+                *(output + i) = (byte)ch; // Cast convert
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe static void CopyFromAscii32Bit(char* input, byte* output, int count)
+        {
+            // Encode as bytes upto the first non-ASCII byte and return count encoded
+            var i = 0;
+            // Unaligned chars
+            if ((unchecked((int)input) & 0x2) != 0)
+            {
+                var ch = *input;
+                i = 1;
+                *(output) = (byte)ch; // Cast convert
+            }
+
+            // Aligned
+            var uintCount = (count - i) & ~0x3;
+            for (; i < uintCount; i += 4)
+            {
+                var inputUint0 = *(uint*)(input + i);
+                var inputUint1 = *(uint*)(input + i + 2);
+                // Pack 4 ASCII chars into 4 bytes
+                *(ushort*)(output + i) = (ushort)(inputUint0 | (inputUint0 >> 8));
+                *(ushort*)(output + i + 2) = (ushort)(inputUint1 | (inputUint1 >> 8));
+            }
+            if (count - 1 > i)
+            {
+                var inputUint = *(uint*)(input + i);
+                // Pack 2 ASCII chars into 2 bytes
+                *(ushort*)(output + i) = (ushort)(inputUint | (inputUint >> 8));
+                i += 2;
+            }
+
+            if (i < count)
+            {
+                var ch = *(input + i);
+                *(output + i) = (byte)ch; // Cast convert
+            }
+        }
     }
 }
