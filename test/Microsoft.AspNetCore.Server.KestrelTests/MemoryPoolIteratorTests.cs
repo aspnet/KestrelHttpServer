@@ -1214,28 +1214,27 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        [Fact]
-        public unsafe void TestCopyFromAscii()
+        [Theory]
+        [InlineData(0, MemoryPool.MaxPooledBlockLength * 3 + 64)]
+        public unsafe void TestCopyFromAscii(int start, int end)
+        {
+            for (var i = start; i <= end; i++)
+            {
+                TestCopyFromAscii(i);
+            }
+        }
+
+        private unsafe void TestCopyFromAscii(int size)
         {
             // Arrange
-            var blockSingle = _pool.Lease();
-            var blockMultiple = _pool.Lease();
+            var block = _pool.Lease();
             try
             {
-                var dataSingle = new string('\0', blockSingle.Data.Count - 1);
-                var dataMultiple = new string('\0', blockMultiple.Data.Count * 4 - 1);
+                var data = new string('\0', size);
 
-                fixed (char* pData = dataSingle)
+                fixed (char* pData = data)
                 {
-                    for (var i = 0; i < dataSingle.Length; i++)
-                    {
-                        // ascii chars 32 - 126
-                        pData[i] = (char)((i % (126 - 32)) + 32);
-                    }
-                }
-                fixed (char* pData = dataMultiple)
-                {
-                    for (var i = 0; i < dataMultiple.Length; i++)
+                    for (var i = 0; i < data.Length; i++)
                     {
                         // ascii chars 32 - 126
                         pData[i] = (char)((i % (126 - 32)) + 32);
@@ -1243,39 +1242,25 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
 
                 // Act
-                var singleIter = blockSingle.GetIterator();
-                var multiIter = blockMultiple.GetIterator();
+                var iter = block.GetIterator();
 
-                var singleIterEnd = singleIter;
-                var multiIterEnd = multiIter;
+                var iterEnd = iter;
 
-                singleIterEnd.CopyFromAscii(dataSingle);
-                multiIterEnd.CopyFromAscii(dataMultiple);
+                iterEnd.CopyFromAscii(data);
 
                 // Assert
-                Assert.True(singleIterEnd.IsEnd);
-                foreach (var ch in dataSingle)
+                Assert.True(iterEnd.IsEnd);
+                foreach (var ch in data)
                 {
-                    Assert.Equal(ch, singleIter.Take());
+                    Assert.Equal(ch, iter.Take());
                 }
-                Assert.True(singleIter.IsEnd);
-                Assert.Equal(singleIter.Block, singleIterEnd.Block);
-                Assert.Equal(singleIter.Index, singleIterEnd.Index);
-
-
-                Assert.True(multiIterEnd.IsEnd);
-                foreach (var ch in dataMultiple)
-                {
-                    Assert.Equal(ch, multiIter.Take());
-                }
-                Assert.True(multiIter.IsEnd);
-                Assert.Equal(multiIter.Block, multiIterEnd.Block);
-                Assert.Equal(multiIter.Index, multiIterEnd.Index);
+                Assert.True(iter.IsEnd);
+                Assert.Equal(iter.Block, iterEnd.Block);
+                Assert.Equal(iter.Index, iterEnd.Index);
             }
             finally
             {
-                ReturnBlocks(blockSingle);
-                ReturnBlocks(blockMultiple);
+                ReturnBlocks(block);
             }
         }
 
