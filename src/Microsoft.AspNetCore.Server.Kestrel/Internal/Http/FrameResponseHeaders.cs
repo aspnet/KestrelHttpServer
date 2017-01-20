@@ -17,8 +17,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public bool HasTransferEncoding => HeaderTransferEncoding.Count != 0;
 
-        public bool HasContentLength => ContentLength.HasValue;
-
         public bool HasServer => HeaderServer.Count != 0;
 
         public bool HasDate => HeaderDate.Count != 0;

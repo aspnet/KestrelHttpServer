@@ -656,7 +656,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (responseHeaders != null &&
                 !responseHeaders.HasTransferEncoding &&
-                responseHeaders.HasContentLength &&
+                responseHeaders.ContentLength.HasValue &&
                 _responseBytesWritten + count > responseHeaders.ContentLength.Value)
             {
                 _keepAlive = false;
@@ -678,7 +678,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Called after VerifyAndUpdateWrite(), so _responseBytesWritten has already been updated.
             if (responseHeaders != null &&
                 !responseHeaders.HasTransferEncoding &&
-                responseHeaders.HasContentLength &&
+                responseHeaders.ContentLength.HasValue &&
                 _responseBytesWritten == responseHeaders.ContentLength.Value)
             {
                 _abortedCts = null;
@@ -919,7 +919,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // automatically for HEAD requests or 204, 205, 304 responses.
             if (_canHaveBody)
             {
-                if (!hasTransferEncoding && !responseHeaders.HasContentLength)
+                if (!hasTransferEncoding && !responseHeaders.ContentLength.HasValue)
                 {
                     if (appCompleted && StatusCode != StatusCodes.Status101SwitchingProtocols)
                     {
