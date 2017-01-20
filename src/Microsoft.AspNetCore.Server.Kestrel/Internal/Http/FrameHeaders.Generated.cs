@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -709,13 +710,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (ContentLength.HasValue)
                 {
-                    return ContentLength.ToString();
+                    return HeaderUtilities.FormatInt64(ContentLength.Value);
                 }
                 return StringValues.Empty;
             }
             set
             {
-                ContentLength = ParseContentLength(value);
+                ContentLength = ParseRequestContentLength(value);
             }
         }
         
@@ -1162,7 +1163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (ContentLength.HasValue)
                             {
-                                return ContentLength.ToString();
+                                return HeaderUtilities.FormatInt64(ContentLength.Value);
                             }
                             else
                             {
@@ -1835,7 +1836,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (ContentLength.HasValue)
                             {
-                                value = ContentLength.ToString();
+                                value = HeaderUtilities.FormatInt64(ContentLength.Value);
                                 return true;
                             }
                             else
@@ -2302,7 +2303,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            ContentLength = ParseContentLength(value);
+                            ContentLength = ParseRequestContentLength(value);
                             return;
                         }
                     }
@@ -2831,7 +2832,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             }
                             else
                             {
-                                ContentLength = ParseContentLength(value);
+                                ContentLength = ParseRequestContentLength(value);
                             }
                             return;
                         }
@@ -4563,7 +4564,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         ThrowArgumentException();
                     }
 
-                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", ContentLength.ToString());
+                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(ContentLength.Value));
                     ++arrayIndex;
                 }
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
@@ -5122,11 +5123,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 if (ContentLength.HasValue)
                                 {
-                                    ThrowInvalidContentLengthException(AppendValue(ContentLength.ToString(), value).ToString());
+                                    ThrowInvalidRequestContentLengthException(AppendValue(HeaderUtilities.FormatInt64(ContentLength.Value), value).ToString());
                                 }
                                 else
                                 {
-                                    ContentLength = ParseContentLength(value);
+                                    ContentLength = ParseRequestContentLength(value);
                                 }
                                 return;
                             }
@@ -5855,7 +5856,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 state44:
                     if (_collection.ContentLength.HasValue)
                     {
-                        _current = new KeyValuePair<string, StringValues>("Content-Length", _collection.ContentLength.ToString());
+                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection.ContentLength.Value));
                         _state = 45;
                         return true;
                     }
@@ -6451,13 +6452,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (ContentLength.HasValue)
                 {
-                    return ContentLength.ToString();
+                    return HeaderUtilities.FormatInt64(ContentLength.Value);
                 }
                 return StringValues.Empty;
             }
             set
             {
-                ContentLength = ParseContentLength(value);
+                ContentLength = ParseResponseContentLength(value);
             }
         }
         
@@ -6973,7 +6974,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (ContentLength.HasValue)
                             {
-                                return ContentLength.ToString();
+                                return HeaderUtilities.FormatInt64(ContentLength.Value);
                             }
                             else
                             {
@@ -7561,7 +7562,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (ContentLength.HasValue)
                             {
-                                value = ContentLength.ToString();
+                                value = HeaderUtilities.FormatInt64(ContentLength.Value);
                                 return true;
                             }
                             else
@@ -7906,7 +7907,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            ContentLength = ParseContentLength(value);
+                            ContentLength = ParseResponseContentLength(value);
                             return;
                         }
                     }
@@ -8391,7 +8392,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             }
                             else
                             {
-                                ContentLength = ParseContentLength(value);
+                                ContentLength = ParseResponseContentLength(value);
                             }
                             return;
                         }
@@ -9717,7 +9718,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         ThrowArgumentException();
                     }
 
-                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", ContentLength.ToString());
+                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(ContentLength.Value));
                     ++arrayIndex;
                 }
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
@@ -11014,7 +11015,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 state36:
                     if (_collection.ContentLength.HasValue)
                     {
-                        _current = new KeyValuePair<string, StringValues>("Content-Length", _collection.ContentLength.ToString());
+                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection.ContentLength.Value));
                         _state = 37;
                         return true;
                     }

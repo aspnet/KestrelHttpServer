@@ -236,12 +236,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static long ParseContentLength(string value)
+        public static long ParseRequestContentLength(string value)
         {
             long parsed;
             if (!HeaderUtilities.TryParseInt64(value, out parsed))
             {
-                ThrowInvalidContentLengthException(value);
+                ThrowInvalidRequestContentLengthException(value);
+            }
+
+            return parsed;
+        }
+
+        public static long ParseResponseContentLength(string value)
+        {
+            long parsed;
+            if (!HeaderUtilities.TryParseInt64(value, out parsed))
+            {
+                ThrowInvalidResponseContentLengthException(value);
             }
 
             return parsed;
@@ -413,9 +424,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return transferEncodingOptions;
         }
 
-        protected static void ThrowInvalidContentLengthException(string value)
+        protected static void ThrowInvalidResponseContentLengthException(string value)
         {
             throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
+        }
+
+        protected static void ThrowInvalidRequestContentLengthException(string value)
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
         }
 
         private static void ThrowInvalidHeaderCharacter(char ch)
