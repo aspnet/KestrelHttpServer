@@ -249,7 +249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 ThrowInvalidHeaderCharacter(pHeader + offset, Vector<byte>.Count);
                             }
-                        } while (offset + Vector<byte>.Count <= length);
+                        } while (offset <= length - Vector<byte>.Count);
                     }
 
                     // Non-vector testing:
@@ -258,7 +258,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // Flag > 0x007f => All but highest bit picked up by 0x7f flagging, highest bit picked up by < 0x20 flagging
                     // Bitwise | or the above three together
                     // Bitwise & and each char with 0xff80; result should be 0 if all tests pass
-                    if (offset + sizeof(ulong) <= length)
+                    if (offset <= length - sizeof(ulong))
                     {
                         do
                         {
@@ -268,9 +268,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(ulong));
                             }
-                        } while (offset + sizeof(ulong) <= length);
+                        } while (offset <= length - sizeof(ulong));
                     }
-                    if (offset + sizeof(uint) <= length)
+                    if (offset <= length - sizeof(uint))
                     {
                         var stringUint = (uint*)(pHeader + offset);
                         offset += sizeof(uint);
@@ -279,7 +279,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(uint));
                         }
                     }
-                    if (offset + sizeof(ushort) <= length)
+                    if (offset <= length - sizeof(ushort))
                     {
                         var stringUshort = (ushort*)(pHeader + offset);
                         offset += sizeof(ushort);
