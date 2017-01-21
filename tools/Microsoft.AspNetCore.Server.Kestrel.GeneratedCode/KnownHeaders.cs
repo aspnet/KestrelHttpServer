@@ -23,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
              $@"var pUL = (ulong*)pUB;
                 var pUI = (uint*)pUB;
                 var pUS = (ushort*)pUB;
+                var stringValue = new StringValues(value);
                 switch (keyLength)
                 {{{Each(values, byLength => $@"
                     case {byLength.Key}:
@@ -45,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                                 else
                                 {{
                                     {header.SetBit()};
-                                    _headers._{header.Identifier} = new StringValues(value);{(header.EnhancedSetter == false ? "" : $@"
+                                    _headers._{header.Identifier} = stringValue;{(header.EnhancedSetter == false ? "" : $@"
                                     _headers._raw{header.Identifier} = null;")}
                                 }}
                                 return;")}
@@ -572,22 +573,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {AppendSwitch(loop.Headers.Where(h => !h.PrimaryHeader).GroupBy(x => x.Name.Length), loop.ClassName)}
 
                 AppendUnknownHeaders(pKeyBytes, keyLength, value);
-        }}
-
-        private unsafe void AppendUnknownHeaders(byte* pKeyBytes, int keyLength, string value)
-        {{
-            string key = new string('\0', keyLength);
-            fixed (char* keyBuffer = key)
-            {{
-                if (!AsciiUtilities.TryGetAsciiString(pKeyBytes, keyBuffer, keyLength))
-                {{
-                    throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidCharactersInHeaderName);
-                }}
-            }}
-
-            StringValues existing;
-            Unknown.TryGetValue(key, out existing);
-            Unknown[key] = AppendValue(existing, value);
         }}" : "")}
 
         private struct HeaderReferences

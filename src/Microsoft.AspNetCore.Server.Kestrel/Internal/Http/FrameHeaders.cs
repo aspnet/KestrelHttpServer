@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 
@@ -104,6 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ClearFast();
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         protected static StringValues AppendValue(StringValues existing, string append)
         {
             return StringValues.Concat(existing, append);
