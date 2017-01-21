@@ -7,13 +7,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
-using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public abstract class FrameHeaders : IHeaderDictionary
     {
-        private long? _contentLength;
+        protected long? _contentLength;
         protected bool _isReadOnly;
         protected Dictionary<string, StringValues> MaybeUnknown;
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
@@ -254,28 +253,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
             }
-        }
-
-        public static long ParseRequestContentLength(string value)
-        {
-            long parsed;
-            if (!HeaderUtilities.TryParseInt64(value, out parsed))
-            {
-                ThrowInvalidRequestContentLengthException(value);
-            }
-
-            return parsed;
-        }
-
-        public static long ParseResponseContentLength(string value)
-        {
-            long parsed;
-            if (!HeaderUtilities.TryParseInt64(value, out parsed))
-            {
-                ThrowInvalidResponseContentLengthException(value);
-            }
-
-            return parsed;
         }
 
         public static unsafe ConnectionOptions ParseConnection(StringValues connection)

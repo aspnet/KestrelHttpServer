@@ -3,8 +3,10 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -52,6 +54,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
+        private static long ParseContentLength(string value)
+        {
+            long parsed;
+            if (!HeaderUtilities.TryParseInt64(value, out parsed))
+            {
+                ThrowInvalidResponseContentLengthException(value);
+            }
+
+            return parsed;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SetValueUnknown(string key, StringValues value)
+        {
+            ValidateHeaderCharacters(key);
+            Unknown[key] = value;
+        }
+
         public partial struct Enumerator : IEnumerator<KeyValuePair<string, StringValues>>
         {
             private readonly FrameResponseHeaders _collection;
@@ -86,5 +106,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _state = 0;
             }
         }
+
     }
 }

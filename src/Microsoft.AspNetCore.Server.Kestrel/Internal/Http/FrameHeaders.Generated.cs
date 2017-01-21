@@ -752,21 +752,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 StringValues value;
-                if (ContentLength.HasValue)
+                if (_contentLength.HasValue)
                 {
-                    value = new StringValues(HeaderUtilities.FormatInt64(ContentLength.Value));
+                    value = new StringValues(HeaderUtilities.FormatInt64(_contentLength.Value));
                 }
                 return value;
             }
             set
             {
-                ContentLength = ParseRequestContentLength(value);
+                _contentLength = ParseContentLength(value);
             }
         }
 
         protected override int GetCountFast()
         {
-            return (ContentLength.HasValue ? 1 : 0 ) + BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
+            return (_contentLength.HasValue ? 1 : 0 ) + BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
         }
 
         protected override bool TryGetValueFast(string key, out StringValues value)
@@ -1118,9 +1118,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (ContentLength.HasValue)
+                            if (_contentLength.HasValue)
                             {
-                                value = HeaderUtilities.FormatInt64(ContentLength.Value);
+                                value = HeaderUtilities.FormatInt64(_contentLength.Value);
                                 return true;
                             }
                             return false;
@@ -1500,7 +1500,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            ContentLength = ParseRequestContentLength(value);
+                            _contentLength = ParseContentLength(value.ToString());
                             return;
                         }
                     }
@@ -1594,8 +1594,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     break;
             }
-            
-            Unknown[key] = value;
+
+            SetValueUnknown(key, value);
         }
 
         protected override bool AddValueFast(string key, StringValues value)
@@ -1980,9 +1980,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (!ContentLength.HasValue)
+                            if (!_contentLength.HasValue)
                             {
-                                ContentLength = ParseRequestContentLength(value);
+                                _contentLength = ParseContentLength(value);
                                 return true;
                             }
                             return false;
@@ -2506,9 +2506,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (ContentLength.HasValue)
+                            if (_contentLength.HasValue)
                             {
-                                ContentLength = null;
+                                _contentLength = null;
                                 return true;
                             }
                             return false;
@@ -2651,7 +2651,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected override void ClearFast()
         {
             MaybeUnknown?.Clear();
-            ContentLength = null;
+            _contentLength = null;
             if(FrameHeaders.BitCount(_bits) > 12)
             {
                 _headers = default(HeaderReferences);
@@ -3485,13 +3485,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     array[arrayIndex] = new KeyValuePair<string, StringValues>("Access-Control-Request-Headers", _headers._AccessControlRequestHeaders);
                     ++arrayIndex;
                 }
-                if (ContentLength.HasValue)
+                if (_contentLength.HasValue)
                 {
                     if (arrayIndex == array.Length)
                     {
                         return false;
                     }
-                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(ContentLength.Value));
+                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_contentLength.Value));
                     ++arrayIndex;
                 }
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
@@ -4045,13 +4045,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         
                             if ((((pUL[0] & 18437701552104792031uL) == 3266321689424580419uL) && ((pUI[2] & 3755991007u) == 1196311884u) && ((pUS[6] & 57311u) == 18516u)))
                             {
-                                if (ContentLength.HasValue)
+                                if (_contentLength.HasValue)
                                 {
                                     ThrowRequestMultipleContentLengths();
                                 }
                                 else
                                 {
-                                    ContentLength = ParseRequestContentLength(value);
+                                    _contentLength = ParseContentLength(value);
                                 }
                                 return;
                             }
@@ -4781,9 +4781,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 
                 state44:
-                    if (_collection.ContentLength.HasValue)
+                    if (_collection._contentLength.HasValue)
                     {
-                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection.ContentLength.Value));
+                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection._contentLength.Value));
                         _state = 45;
                         return true;
                     }
@@ -5413,15 +5413,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 StringValues value;
-                if (ContentLength.HasValue)
+                if (_contentLength.HasValue)
                 {
-                    value = new StringValues(HeaderUtilities.FormatInt64(ContentLength.Value));
+                    value = new StringValues(HeaderUtilities.FormatInt64(_contentLength.Value));
                 }
                 return value;
             }
             set
             {
-                ContentLength = ParseResponseContentLength(value);
+                _contentLength = ParseContentLength(value);
             }
         }
 
@@ -5451,7 +5451,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
         protected override int GetCountFast()
         {
-            return (ContentLength.HasValue ? 1 : 0 ) + BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
+            return (_contentLength.HasValue ? 1 : 0 ) + BitCount(_bits) + (MaybeUnknown?.Count ?? 0);
         }
 
         protected override bool TryGetValueFast(string key, out StringValues value)
@@ -5849,9 +5849,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (ContentLength.HasValue)
+                            if (_contentLength.HasValue)
                             {
-                                value = HeaderUtilities.FormatInt64(ContentLength.Value);
+                                value = HeaderUtilities.FormatInt64(_contentLength.Value);
                                 return true;
                             }
                             return false;
@@ -6158,15 +6158,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            ContentLength = ParseResponseContentLength(value);
+                            _contentLength = ParseContentLength(value.ToString());
                             return;
                         }
                     }
                     break;
             }
-            
-            ValidateHeaderCharacters(key);
-            Unknown[key] = value;
+
+            SetValueUnknown(key, value);
         }
 
         protected override bool AddValueFast(string key, StringValues value)
@@ -6604,9 +6603,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (!ContentLength.HasValue)
+                            if (!_contentLength.HasValue)
                             {
-                                ContentLength = ParseResponseContentLength(value);
+                                _contentLength = ParseContentLength(value);
                                 return true;
                             }
                             return false;
@@ -7055,9 +7054,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if ("Content-Length".Equals(key, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (ContentLength.HasValue)
+                            if (_contentLength.HasValue)
                             {
-                                ContentLength = null;
+                                _contentLength = null;
                                 return true;
                             }
                             return false;
@@ -7072,7 +7071,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected override void ClearFast()
         {
             MaybeUnknown?.Clear();
-            ContentLength = null;
+            _contentLength = null;
             if(FrameHeaders.BitCount(_bits) > 12)
             {
                 _headers = default(HeaderReferences);
@@ -7754,13 +7753,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     array[arrayIndex] = new KeyValuePair<string, StringValues>("Access-Control-Max-Age", _headers._AccessControlMaxAge);
                     ++arrayIndex;
                 }
-                if (ContentLength.HasValue)
+                if (_contentLength.HasValue)
                 {
                     if (arrayIndex == array.Length)
                     {
                         return false;
                     }
-                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(ContentLength.Value));
+                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_contentLength.Value));
                     ++arrayIndex;
                 }
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
@@ -7770,7 +7769,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         
         protected void CopyToFast(ref MemoryPoolIterator output)
         {
-            var tempBits = _bits | (ContentLength.HasValue ? -9223372036854775808L : 0);
+            var tempBits = _bits | (_contentLength.HasValue ? -9223372036854775808L : 0);
             
                 
                 if ((_bits & 2L) != 0)
@@ -7880,7 +7879,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             
                 
-                if (ContentLength.HasValue)
+                if (_contentLength.HasValue)
                 {
                     output.CopyFrom(_headerBytes, 592, 18);
                     output.CopyFromNumeric((ulong)ContentLength.Value);
@@ -9056,9 +9055,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 
                 state36:
-                    if (_collection.ContentLength.HasValue)
+                    if (_collection._contentLength.HasValue)
                     {
-                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection.ContentLength.Value));
+                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection._contentLength.Value));
                         _state = 37;
                         return true;
                     }

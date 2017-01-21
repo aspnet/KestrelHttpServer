@@ -3,12 +3,31 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public partial class FrameRequestHeaders : FrameHeaders
     {
+        private static long ParseContentLength(string value)
+        {
+            long parsed;
+            if (!HeaderUtilities.TryParseInt64(value, out parsed))
+            {
+                ThrowInvalidRequestContentLengthException(value);
+            }
+
+            return parsed;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SetValueUnknown(string key, StringValues value)
+        {
+            Unknown[key] = value;
+        }
+
         public Enumerator GetEnumerator()
         {
             return new Enumerator(this);
