@@ -53,7 +53,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 // Unlike the IHeaderDictionary version, this getter will throw a KeyNotFoundException.
-                return GetValueFast(key);
+                StringValues value;
+                if (!TryGetValueFast(key, out value))
+                {
+                    ThrowKeyNotFoundException();
+                }
+                return value;
             }
             set
             {
@@ -124,16 +129,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected virtual int GetCountFast()
         { throw new NotImplementedException(); }
 
-        protected virtual StringValues GetValueFast(string key)
-        { throw new NotImplementedException(); }
-
         protected virtual bool TryGetValueFast(string key, out StringValues value)
         { throw new NotImplementedException(); }
 
         protected virtual void SetValueFast(string key, StringValues value)
         { throw new NotImplementedException(); }
 
-        protected virtual void AddValueFast(string key, StringValues value)
+        protected virtual bool AddValueFast(string key, StringValues value)
         { throw new NotImplementedException(); }
 
         protected virtual bool RemoveFast(string key)
@@ -142,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected virtual void ClearFast()
         { throw new NotImplementedException(); }
 
-        protected virtual void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
+        protected virtual bool CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
         { throw new NotImplementedException(); }
 
         protected virtual IEnumerator<KeyValuePair<string, StringValues>> GetEnumeratorFast()
@@ -159,7 +161,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 ThrowHeadersReadOnlyException();
             }
-            AddValueFast(key, value);
+
+            if (!AddValueFast(key, value))
+            {
+                ThrowDuplicateKeyException();
+            }
         }
 
         void ICollection<KeyValuePair<string, StringValues>>.Clear()
@@ -187,7 +193,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         void ICollection<KeyValuePair<string, StringValues>>.CopyTo(KeyValuePair<string, StringValues>[] array, int arrayIndex)
         {
-            CopyToFast(array, arrayIndex);
+            if (!CopyToFast(array, arrayIndex))
+            {
+                ThrowArgumentException();
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
