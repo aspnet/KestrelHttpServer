@@ -450,6 +450,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
         }
 
+        protected static void ThrowRequestMultipleContentLengths()
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.MultipleContentLengths);
+        }
+
         private static void ThrowInvalidHeaderCharacter(char ch)
         {
             throw new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));

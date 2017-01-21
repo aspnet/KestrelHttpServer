@@ -5123,7 +5123,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 if (ContentLength.HasValue)
                                 {
-                                    ThrowInvalidRequestContentLengthException(AppendValue(HeaderUtilities.FormatInt64(ContentLength.Value), value).ToString());
+                                    ThrowRequestMultipleContentLengths();
                                 }
                                 else
                                 {

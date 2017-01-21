@@ -34,11 +34,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                             {{{(header.Identifier == "ContentLength" ? $@"
                                 if (ContentLength.HasValue)
                                 {{
-                                    ThrowInvalid{(className == "FrameResponseHeaders" ? "Response" : "Request")}ContentLengthException(AppendValue(HeaderUtilities.FormatInt64(ContentLength.Value), value).ToString());
+                                    ThrowRequestMultipleContentLengths();
                                 }}
                                 else
                                 {{
-                                    ContentLength = Parse{(className == "FrameResponseHeaders" ? "Response" : "Request")}ContentLength(value);
+                                    ContentLength = ParseRequestContentLength(value);
                                 }}
                                 return;" : $@"
                                 if ({header.TestBit()})
