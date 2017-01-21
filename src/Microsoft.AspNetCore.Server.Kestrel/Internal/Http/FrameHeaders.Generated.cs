@@ -9839,7 +9839,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (ContentLength.HasValue)
                 {
                     output.CopyFrom(_headerBytes, 592, 18);
-                    output.CopyFromNumeric(ContentLength.Value);
+                    output.CopyFromNumeric((ulong)ContentLength.Value);
 
                     tempBits &= ~-9223372036854775808L;
                     if(tempBits == 0)

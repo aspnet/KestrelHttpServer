@@ -571,7 +571,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (ContentLength.HasValue)
                 {{
                     output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
-                    output.CopyFromNumeric(ContentLength.Value);
+                    output.CopyFromNumeric((ulong)ContentLength.Value);
 
                     tempBits &= ~{1L << 63}L;
                     if(tempBits == 0)

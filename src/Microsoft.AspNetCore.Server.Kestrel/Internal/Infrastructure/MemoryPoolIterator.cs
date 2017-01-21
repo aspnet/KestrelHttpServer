@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
     public struct MemoryPoolIterator
     {
-        private const int _maxPositiveLongByteLength = 19;
+        private const int _maxULongByteLength = 20;
         private const ulong _xorPowerOfTwoToHighByte = (0x07ul       |
                                                         0x06ul <<  8 |
                                                         0x05ul << 16 |
@@ -1091,12 +1091,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static byte[] CreateNumericBytesScratch()
         {
-            return (_numericBytesScratch = new byte[_maxPositiveLongByteLength]);
+            var bytes = new byte[_maxULongByteLength];
+            _numericBytesScratch = bytes;
+            return bytes;
         }
 
-        public void CopyFromNumeric(long value)
+        public void CopyFromNumeric(ulong value)
         {
-            var position = _maxPositiveLongByteLength;
+            var position = _maxULongByteLength;
             var byteBuffer = NumericBytesScratch;
             do
             {
@@ -1107,7 +1109,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
             while (value != 0);
 
-            CopyFrom(byteBuffer, position, _maxPositiveLongByteLength - position);
+            CopyFrom(byteBuffer, position, _maxULongByteLength - position);
         }
 
         public unsafe string GetAsciiString(ref MemoryPoolIterator end)

@@ -13,11 +13,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public abstract class FrameHeaders : IHeaderDictionary
     {
+        private long? _contentLength;
         protected bool _isReadOnly;
         protected Dictionary<string, StringValues> MaybeUnknown;
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
 
-        public long? ContentLength { get; set; }
+        public long? ContentLength {
+            get { return _contentLength; }
+            set
+            {
+                if (value.HasValue && value.Value < 0)
+                {
+                    ThrowInvalidResponseContentLengthException(value.Value);
+                }
+                _contentLength = value;
+            }
+        }
 
         StringValues IHeaderDictionary.this[string key]
         {
@@ -422,6 +433,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             return transferEncodingOptions;
+        }
+
+        protected static void ThrowInvalidResponseContentLengthException(long value)
+        {
+            throw new ArgumentOutOfRangeException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }
 
         protected static void ThrowInvalidResponseContentLengthException(string value)
