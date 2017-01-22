@@ -1258,9 +1258,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
         {
-            var scan = input.ConsumingStart();
-            var consumed = scan;
-            var end = scan;
+            var end = input.ConsumingStart();
+            var consumed = end;
+            var remainingBytesAllowed = _remainingRequestHeadersBytesAllowed;
             try
             {
                 while (!end.IsEnd)
@@ -1303,9 +1303,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
 
                     int bytesScanned;
-                    if (end.Seek(ByteLF, out bytesScanned, _remainingRequestHeadersBytesAllowed) == -1)
+                    if (end.Seek(ByteCR, out bytesScanned, remainingBytesAllowed) == -1)
                     {
-                        if (bytesScanned >= _remainingRequestHeadersBytesAllowed)
+                        if (bytesScanned >= remainingBytesAllowed)
                         {
                             RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
                         }
@@ -1315,51 +1315,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                     }
 
-                    var beginName = scan;
-                    if (scan.Seek(ByteColon, ref end) == -1)
+                    var validate = end;
+                    validate.Take();
+                    ch = validate.Peek();
+                    if (ch == -1)
                     {
-                        RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
+                        end = validate;
+                        return false;
                     }
-                    var endName = scan;
-
-                    scan.Take();
-
-                    var validateName = beginName;
-                    if (validateName.Seek(ByteSpace, ByteTab, ref endName) != -1)
+                    else if (ch == ByteLF && bytesScanned + 1 > remainingBytesAllowed)
                     {
-                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
+                        end = validate;
+                        RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
                     }
-
-                    var beginValue = scan;
-                    ch = scan.Take();
-
-                    while (ch == ByteSpace || ch == ByteTab)
-                    {
-                        beginValue = scan;
-                        ch = scan.Take();
-                    }
-
-                    scan = beginValue;
-                    if (scan.Seek(ByteCR, ref end) == -1)
-                    {
-                        RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
-                    }
-
-                    scan.Take(); // we know this is '\r'
-                    ch = scan.Take(); // expecting '\n'
-                    end = scan;
-
-                    if (ch != ByteLF)
+                    else if (ch != ByteLF)
                     {
                         RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
                     }
 
-                    var next = scan.Peek();
-                    if (next == -1)
+                    bytesScanned++;
+                    remainingBytesAllowed -= bytesScanned;
+
+                    validate.Take();
+                    ch = validate.Peek();
+                    if (ch == -1)
                     {
+                        end = validate;
                         return false;
                     }
-                    else if (next == ByteSpace || next == ByteTab)
+                    else if (ch == ByteSpace || ch == ByteTab)
                     {
                         // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
                         //
@@ -1381,6 +1365,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
                     }
 
+                    var scan = consumed;
+                    if (scan.Seek(ByteColon, ref end) == -1)
+                    {
+                        RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
+                    }
+
+                    validate = consumed;
+                    if (validate.Seek(ByteSpace, ByteTab, ByteLF, ref scan) != -1)
+                    {
+                        if (validate.Peek() == ByteLF)
+                        {
+                            RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
+                        }
+                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
+                    }
+
+                    var name = consumed.GetArraySegment(validate);
+                    scan.Take();
+
+                    ch = scan.Peek();
+
+                    // Skip starting whitespace
+                    while (ch == ByteSpace || ch == ByteTab)
+                    {
+                        scan.Take();
+                        ch = scan.Peek();
+                    }
+
                     // Trim trailing whitespace from header value by repeatedly advancing to next
                     // whitespace or CR.
                     //
@@ -1388,27 +1400,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // - If whitespace is found, this is the _tentative_ end of the header value.
                     //   If non-whitespace is found after it and it's not CR, seek again to the next
                     //   whitespace or CR for a new (possibly tentative) end of value.
-                    var ws = beginValue;
-                    var endValue = scan;
+
+                    validate = end;
+                    consumed = scan;
                     do
                     {
-                        ws.Seek(ByteSpace, ByteTab, ByteCR);
-                        endValue = ws;
+                        consumed.Seek(ByteSpace, ByteTab, ByteCR);
+                        validate = consumed;
 
-                        ch = ws.Take();
+                        ch = consumed.Peek();
                         while (ch == ByteSpace || ch == ByteTab)
                         {
-                            ch = ws.Take();
+                            consumed.Take();
+                            ch = consumed.Peek();
                         }
                     } while (ch != ByteCR);
 
-                    var name = beginName.GetArraySegment(endName);
-                    var value = beginValue.GetAsciiString(ref endValue);
+                    var value = scan.GetAsciiString(ref validate);
 
-                    consumed = scan;
+                    end.Take(); // CR
+                    end.Take(); // LF
+                    consumed = end;
+
                     requestHeaders.Append(name.Array, name.Offset, name.Count, value);
 
-                    _remainingRequestHeadersBytesAllowed -= bytesScanned;
+                    _remainingRequestHeadersBytesAllowed = remainingBytesAllowed;
                     _requestHeadersParsed++;
                 }
 
