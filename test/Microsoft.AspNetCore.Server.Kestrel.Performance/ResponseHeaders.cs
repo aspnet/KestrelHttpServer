@@ -109,28 +109,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 _responseHeadersDirect.Reset();
 
                 _response.StatusCode = 200;
-                _response.ContentType = "text/plain";
-                _response.ContentLength = 13;
+                _response.ContentType = "text/css";
+                _response.ContentLength = 421;
 
                 var headers = _response.Headers;
 
                 headers["Connection"] = "Close";
-                headers["Cache-Control"] = "Test Value";
-                headers["Keep-Alive"] = "Test Value";
-                headers["Pragma"] = "Test Value";
-                headers["Trailer"] = "Test Value";
-                headers["Transfer-Encoding"] = "Test Value";
-                headers["Upgrade"] = "Test Value";
-                headers["Via"] = "Test Value";
-                headers["Warning"] = "Test Value";
-                headers["Allow"] = "Test Value";
-                headers["Content-Encoding"] = "Test Value";
-                headers["Content-Language"] = "Test Value";
-                headers["Content-Location"] = "Test Value";
-                headers["Content-MD5"] = "Test Value";
-                headers["Content-Range"] = "Test Value";
-                headers["Expires"] = "Test Value";
-                headers["Last-Modified"] = "Test Value";
+                headers["Cache-Control"] = "public, max-age=30672000";
+                headers["Vary"] = "Accept-Encoding";
+                headers["Content-Encoding"] = "gzip";
+                headers["Expires"] = "Fri, 12 Jan 2018 22:01:55 GMT";
+                headers["Last-Modified"] = "Wed, 22 Jun 2016 20:08:29 GMT";
+                headers["Set-Cookie"] = "prov=20629ccd-8b0f-e8ef-2935-cd26609fc0bc; __qca=P0-1591065732-1479167353442; _ga=GA1.2.1298898376.1479167354; _gat=1; sgt=id=9519gfde_3347_4762_8762_df51458c8ec2; acct=t=why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric&s=why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric";
+                headers["ETag"] = "\"54ef7954-1078\"";
+                headers["Transfer-Encoding"] = "chunked";
+                headers["Content-Language"] = "en-gb";
+                headers["Upgrade"] = "websocket";
+                headers["Via"] = "1.1 varnish";
+                headers["Access-Control-Allow-Origin"] = "*";
+                headers["Access-Control-Allow-credentials"] = "true";
+                headers["Access-Control-Expose-Headers"] = "Client-Protocol, Content-Length, Content-Type, X-Bandwidth-Est, X-Bandwidth-Est2, X-Bandwidth-Est-Comp, X-Bandwidth-Avg, X-Walltime-Ms, X-Sequence-Num";
 
                 var dateHeaderValues = _dateHeaderValueManager.GetDateHeaderValues();
                 _responseHeadersDirect.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
@@ -151,9 +149,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 var headers = _response.Headers;
 
-                headers["Unknown"] = "Unknown";
-                headers["IUnknown"] = "Unknown";
-                headers["X-Unknown"] = "Unknown";
+                headers["Link"] = "<https://www.gravatar.com/avatar/6ae816bfaad7bbc58b17fac49ef5cced?d=404&s=250>; rel=\"canonical\"";
+                headers["X-Ua-Compatible"] = "IE=Edge";
+                headers["X-Powered-By"] = "ASP.NET";
+                headers["X-Content-Type-Options"] = "nosniff";
+                headers["X-Xss-Protection"] = "1; mode=block";
+                headers["X-Frame-Options"] = "SAMEORIGIN";
+                headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
+                headers["Content-Security-Policy"] = "default-src 'none'; script-src 'self' cdnjs.cloudflare.com code.jquery.com scotthelme.disqus.com a.disquscdn.com www.google-analytics.com go.disqus.com platform.twitter.com cdn.syndication.twimg.com; style-src 'self' a.disquscdn.com fonts.googleapis.com cdnjs.cloudflare.com platform.twitter.com; img-src 'self' data: www.gravatar.com www.google-analytics.com links.services.disqus.com referrer.disqus.com a.disquscdn.com cdn.syndication.twimg.com syndication.twitter.com pbs.twimg.com platform.twitter.com abs.twimg.com; child-src fusiontables.googleusercontent.com fusiontables.google.com www.google.com disqus.com www.youtube.com syndication.twitter.com platform.twitter.com; frame-src fusiontables.googleusercontent.com fusiontables.google.com www.google.com disqus.com www.youtube.com syndication.twitter.com platform.twitter.com; connect-src 'self' links.services.disqus.com; font-src 'self' cdnjs.cloudflare.com fonts.gstatic.com fonts.googleapis.com; form-action 'self'; upgrade-insecure-requests;";
 
                 var dateHeaderValues = _dateHeaderValueManager.GetDateHeaderValues();
                 _responseHeadersDirect.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
