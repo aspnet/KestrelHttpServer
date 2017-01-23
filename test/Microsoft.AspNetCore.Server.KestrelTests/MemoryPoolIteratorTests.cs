@@ -1214,6 +1214,56 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
+        [Theory]
+        [InlineData(0, MemoryPool.MaxPooledBlockLength * 3 + 64)]
+        public unsafe void TestCopyFromAscii(int start, int end)
+        {
+            for (var i = start; i <= end; i++)
+            {
+                TestCopyFromAscii(i);
+            }
+        }
+
+        private unsafe void TestCopyFromAscii(int size)
+        {
+            // Arrange
+            var block = _pool.Lease();
+            try
+            {
+                var data = new string('\0', size);
+
+                fixed (char* pData = data)
+                {
+                    for (var i = 0; i < data.Length; i++)
+                    {
+                        // ascii chars 32 - 126
+                        pData[i] = (char)((i % (126 - 32)) + 32);
+                    }
+                }
+
+                // Act
+                var iter = block.GetIterator();
+
+                var iterEnd = iter;
+
+                iterEnd.CopyFromAscii(data);
+
+                // Assert
+                Assert.True(iterEnd.IsEnd);
+                foreach (var ch in data)
+                {
+                    Assert.Equal(ch, iter.Take());
+                }
+                Assert.True(iter.IsEnd);
+                Assert.Equal(iter.Block, iterEnd.Block);
+                Assert.Equal(iter.Index, iterEnd.Index);
+            }
+            finally
+            {
+                ReturnBlocks(block);
+            }
+        }
+
         private delegate bool GetKnownString(MemoryPoolIterator iter, out string result);
 
         private void TestKnownStringsInterning(string input, string expected, GetKnownString action)
@@ -1242,6 +1292,17 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.True(result2);
             Assert.Equal(knownString1, expected);
             Assert.Same(knownString1, knownString2);
+        }
+
+        private static void ReturnBlocks(MemoryPoolBlock block)
+        {
+            while (block != null)
+            {
+                var returningBlock = block;
+                block = returningBlock.Next;
+
+                returningBlock.Pool.Return(returningBlock);
+            }
         }
 
         public static IEnumerable<object[]> SeekByteLimitData
