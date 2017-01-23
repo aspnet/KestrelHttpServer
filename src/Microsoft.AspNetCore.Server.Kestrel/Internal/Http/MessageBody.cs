@@ -325,7 +325,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (count > 0)
                 {
-                    throw new InvalidDataException("Consuming non-existant data");
+                    throw new InvalidDataException("Consuming non-existent data");
                 }
             }
         }
