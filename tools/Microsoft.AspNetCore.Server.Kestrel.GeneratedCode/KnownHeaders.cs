@@ -68,6 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
             public bool PrimaryHeader { get; set; }
             public string TestBit() => $"(_bits & {1L << Index}L) != 0";
             public string TestTempBit() => $"(tempBits & {1L << Index}L) != 0";
+            public string TestNotTempBit() => $"(tempBits & ~{1L << Index}L) == 0";
             public string TestNotBit() => $"(_bits & {1L << Index}L) == 0";
             public string SetBit() => $"_bits |= {1L << Index}L";
             public string ClearBit() => $"_bits &= ~{1L << Index}L";
@@ -532,11 +533,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }}
                     }}
 
-                    tempBits &= ~{1L << header.Index}L;
-                    if(tempBits == 0)
+                    if({header.TestNotTempBit()})
                     {{
                         return;
                     }}
+                    tempBits &= ~{1L << header.Index}L;
                 }}{(header.Identifier == "Server" ? $@"
                 if ((tempBits & {1L << 63}L) != 0)
                 {{
