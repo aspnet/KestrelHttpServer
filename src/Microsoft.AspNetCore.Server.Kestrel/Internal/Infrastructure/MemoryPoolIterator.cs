@@ -21,9 +21,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                                         0x02ul << 40 |
                                                         0x01ul << 48 ) + 1;
 
-        const int Shift16Shift24 = 256 * 256 * 256 + 256 * 256;
-        const int Shift8Identity = 256 + 1;
-
         private static readonly int _vectorSpan = Vector<byte>.Count;
 
         private MemoryPoolBlock _block;
@@ -1279,6 +1276,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe static void CopyFromAscii64Bit(char* input, byte* output, int count)
         {
+            const int Shift16Shift24 = (1 << 16) | (1 << 24);
+            const int Shift8Identity = (1 << 8) + 1;
+
             // Encode as bytes upto the first non-ASCII byte and return count encoded
             var i = 0;
             if (count >= 4)
