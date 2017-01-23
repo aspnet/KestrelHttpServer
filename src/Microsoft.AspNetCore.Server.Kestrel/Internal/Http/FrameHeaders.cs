@@ -5,6 +5,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
@@ -211,25 +213,80 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return TryGetValueFast(key, out value);
         }
 
-        public static void ValidateHeaderCharacters(StringValues headerValues)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ValidateHeaderCharacters(ref StringValues headerValues)
         {
             var count = headerValues.Count;
             for (var i = 0; i < count; i++)
-
             {
                 ValidateHeaderCharacters(headerValues[i]);
             }
         }
 
-        public static void ValidateHeaderCharacters(string headerCharacters)
+        public static unsafe void ValidateHeaderCharacters(string headerCharacters)
         {
             if (headerCharacters != null)
             {
-                foreach (var ch in headerCharacters)
+                fixed (char* header = headerCharacters)
                 {
-                    if (ch < 0x20 || ch > 0x7E)
+                    // offsets and lengths are handled in byte* sizes
+                    var pHeader = (byte*)header;
+                    var offset = 0;
+                    var length = headerCharacters.Length * 2;
+
+                    if (Vector.IsHardwareAccelerated && Vector<byte>.Count <= length)
                     {
-                        ThrowInvalidHeaderCharacter(ch);
+                        var vSub = Vector.AsVectorUInt16(new Vector<uint>(0x00200020u));
+                        // 0x7e as highest ascii (don't include DEL)
+                        // 0x20 as lowest ascii (space)
+                        var vTest = Vector.AsVectorUInt16(new Vector<uint>(0x007e007eu - 0x00200020u));
+
+                        do
+                        {
+                            var stringVector = Unsafe.Read<Vector<ushort>>(pHeader + offset);
+                            offset += Vector<byte>.Count;
+                            if (Vector.GreaterThanAny(stringVector - vSub, vTest))
+                            {
+                                ThrowInvalidHeaderCharacter(pHeader + offset, Vector<byte>.Count);
+                            }
+                        } while (offset <= length - Vector<byte>.Count);
+                    }
+
+                    // Non-vector testing:
+                    // Flag 0x7f     => Add 0x0001 to each char so DEL (0x7f) will set a high bit
+                    // Flag < 0x20   => Sub 0x0020 from each char so high bit will be set in previous char bit
+                    // Flag > 0x007f => All but highest bit picked up by 0x7f flagging, highest bit picked up by < 0x20 flagging
+                    // Bitwise | or the above three together
+                    // Bitwise & and each char with 0xff80; result should be 0 if all tests pass
+                    if (offset <= length - sizeof(ulong))
+                    {
+                        do
+                        {
+                            var stringUlong = (ulong*)(pHeader + offset);
+                            offset += sizeof(ulong);
+                            if ((((*stringUlong + 0x0001000100010001UL) | (*stringUlong - 0x0020002000200020UL)) & 0xff80ff80ff80ff80UL) != 0)
+                            {
+                                ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(ulong));
+                            }
+                        } while (offset <= length - sizeof(ulong));
+                    }
+                    if (offset <= length - sizeof(uint))
+                    {
+                        var stringUint = (uint*)(pHeader + offset);
+                        offset += sizeof(uint);
+                        if ((((*stringUint + 0x00010001u) | (*stringUint - 0x00200020u)) & 0xff80ff80u) != 0)
+                        {
+                            ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(uint));
+                        }
+                    }
+                    if (offset <= length - sizeof(ushort))
+                    {
+                        var stringUshort = (ushort*)(pHeader + offset);
+                        offset += sizeof(ushort);
+                        if ((((*stringUshort + 0x0001u) | (*stringUshort - 0x0020u)) & 0xff80u) != 0)
+                        {
+                            ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(ushort));
+                        }
                     }
                 }
             }
@@ -417,9 +474,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }
 
-        private static void ThrowInvalidHeaderCharacter(char ch)
+        private unsafe static Exception GetInvalidHeaderCharacterException(byte* end, int byteCount)
         {
-            throw new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
+            var start = end - byteCount;
+            while (start < end)
+            {
+                var ch = *(char*)start;
+                if (ch < 0x20 || ch >= 0x7f)
+                {
+                    return new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
+                }
+                start += sizeof(char);
+            }
+
+            // Should never be reached, use different exception type so unit tests can pick it up
+            return new ArgumentException("Invalid non-ASCII or control character in header");
+        }
+
+        private unsafe static void ThrowInvalidHeaderCharacter(byte* end, int byteCount)
+        {
+            throw GetInvalidHeaderCharacterException(end, byteCount);
         }
     }
 }
