@@ -1096,15 +1096,86 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return bytes;
         }
 
-        public void CopyFromNumeric(ulong value)
+        public unsafe void CopyFromNumeric(ulong value)
         {
+            const byte AsciiDigitStart = (byte)'0';
+
+            var block = _block;
+            if (block == null)
+            {
+                return;
+            }
+
+            var blockIndex = _index;
+            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+            var start = block.DataFixedPtr + blockIndex;
+
+            if (value < 10)
+            {
+                if (bytesLeftInBlock < 1)
+                {
+                    goto overflow;
+                }
+                _index = blockIndex + 1;
+                block.End = blockIndex + 1;
+
+                *(start) = (byte)(((uint)value) + AsciiDigitStart);
+            }
+            else if (value < 100)
+            {
+                if (bytesLeftInBlock < 2)
+                {
+                    goto overflow;
+                }
+                _index = blockIndex + 2;
+                block.End = blockIndex + 2;
+
+                var val = (uint)value;
+                var tens = (byte)((val * 205u) >> 11); // div10, valid to 1028
+
+                *(start)     = (byte)(tens + AsciiDigitStart);
+                *(start + 1) = (byte)(val - (tens * 10) + AsciiDigitStart);
+            }
+            else if (value < 1000)
+            {
+                if (bytesLeftInBlock < 3)
+                {
+                    goto overflow;
+                }
+                _index = blockIndex + 3;
+                block.End = blockIndex + 3;
+
+                var val      = (uint)value;
+                var digit0   = (byte)((val * 41u) >> 12); // div100, valid to 1098
+                var digits01 = (byte)((val * 205u) >> 11); // div10, valid to 1028
+
+                *(start)     = (byte)(digit0 + AsciiDigitStart);
+                *(start + 1) = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
+                *(start + 2) = (byte)(val - (digits01 * 10) + AsciiDigitStart);
+            }
+            else
+            {
+                goto overflow;
+            }
+
+            return;
+
+        overflow:
+            CopyFromNumericOverflow(value);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private unsafe void CopyFromNumericOverflow(ulong value)
+        {
+            const byte AsciiDigitStart = (byte)'0';
+
             var position = _maxULongByteLength;
             var byteBuffer = NumericBytesScratch;
             do
             {
                 // Consider using Math.DivRem() if available
                 var quotient = value / 10;
-                byteBuffer[--position] = (byte)(0x30 + (value - quotient * 10)); // 0x30 = '0'
+                byteBuffer[--position] = (byte)(AsciiDigitStart + (value - quotient * 10)); // 0x30 = '0'
                 value = quotient;
             }
             while (value != 0);
