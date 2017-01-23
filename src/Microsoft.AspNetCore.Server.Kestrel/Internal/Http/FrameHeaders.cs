@@ -488,6 +488,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }
+        protected static void ThrowInvalidRequestContentLengthException(string value)
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
+        }
+
+        protected static void ThrowRequestMultipleContentLengths()
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.MultipleContentLengths);
+        }
 
         private unsafe static Exception GetInvalidHeaderCharacterException(byte* end, int byteCount)
         {
