@@ -5,18 +5,31 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
-using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public abstract class FrameHeaders : IHeaderDictionary
     {
+        protected long? _contentLength;
         protected bool _isReadOnly;
         protected Dictionary<string, StringValues> MaybeUnknown;
-
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
+
+        public long? ContentLength {
+            get { return _contentLength; }
+            set
+            {
+                if (value.HasValue && value.Value < 0)
+                {
+                    ThrowInvalidResponseContentLengthException(value.Value);
+                }
+                _contentLength = value;
+            }
+        }
 
         StringValues IHeaderDictionary.this[string key]
         {
@@ -41,7 +54,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 // Unlike the IHeaderDictionary version, this getter will throw a KeyNotFoundException.
-                return GetValueFast(key);
+                StringValues value;
+                if (!TryGetValueFast(key, out value))
+                {
+                    ThrowKeyNotFoundException();
+                }
+                return value;
             }
             set
             {
@@ -88,6 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ClearFast();
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         protected static StringValues AppendValue(StringValues existing, string append)
         {
             return StringValues.Concat(existing, append);
@@ -112,16 +131,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected virtual int GetCountFast()
         { throw new NotImplementedException(); }
 
-        protected virtual StringValues GetValueFast(string key)
-        { throw new NotImplementedException(); }
-
         protected virtual bool TryGetValueFast(string key, out StringValues value)
         { throw new NotImplementedException(); }
 
         protected virtual void SetValueFast(string key, StringValues value)
         { throw new NotImplementedException(); }
 
-        protected virtual void AddValueFast(string key, StringValues value)
+        protected virtual bool AddValueFast(string key, StringValues value)
         { throw new NotImplementedException(); }
 
         protected virtual bool RemoveFast(string key)
@@ -130,7 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected virtual void ClearFast()
         { throw new NotImplementedException(); }
 
-        protected virtual void CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
+        protected virtual bool CopyToFast(KeyValuePair<string, StringValues>[] array, int arrayIndex)
         { throw new NotImplementedException(); }
 
         protected virtual IEnumerator<KeyValuePair<string, StringValues>> GetEnumeratorFast()
@@ -147,7 +163,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 ThrowHeadersReadOnlyException();
             }
-            AddValueFast(key, value);
+
+            if (!AddValueFast(key, value))
+            {
+                ThrowDuplicateKeyException();
+            }
         }
 
         void ICollection<KeyValuePair<string, StringValues>>.Clear()
@@ -175,7 +195,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         void ICollection<KeyValuePair<string, StringValues>>.CopyTo(KeyValuePair<string, StringValues>[] array, int arrayIndex)
         {
-            CopyToFast(array, arrayIndex);
+            if (!CopyToFast(array, arrayIndex))
+            {
+                ThrowArgumentException();
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -211,39 +234,83 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return TryGetValueFast(key, out value);
         }
 
-        public static void ValidateHeaderCharacters(StringValues headerValues)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ValidateHeaderCharacters(ref StringValues headerValues)
         {
             var count = headerValues.Count;
             for (var i = 0; i < count; i++)
-
             {
                 ValidateHeaderCharacters(headerValues[i]);
             }
         }
 
-        public static void ValidateHeaderCharacters(string headerCharacters)
+        public static unsafe void ValidateHeaderCharacters(string headerCharacters)
         {
             if (headerCharacters != null)
             {
-                foreach (var ch in headerCharacters)
+                fixed (char* header = headerCharacters)
                 {
-                    if (ch < 0x20 || ch > 0x7E)
+                    // offsets and lengths are handled in byte* sizes
+                    var pHeader = (byte*)header;
+                    var offset = 0;
+                    var length = headerCharacters.Length * 2;
+
+                    if (Vector.IsHardwareAccelerated && Vector<byte>.Count <= length)
                     {
-                        ThrowInvalidHeaderCharacter(ch);
+                        var vSub = Vector.AsVectorUInt16(new Vector<uint>(0x00200020u));
+                        // 0x7e as highest ascii (don't include DEL)
+                        // 0x20 as lowest ascii (space)
+                        var vTest = Vector.AsVectorUInt16(new Vector<uint>(0x007e007eu - 0x00200020u));
+
+                        do
+                        {
+                            var stringVector = Unsafe.Read<Vector<ushort>>(pHeader + offset);
+                            offset += Vector<byte>.Count;
+                            if (Vector.GreaterThanAny(stringVector - vSub, vTest))
+                            {
+                                ThrowInvalidHeaderCharacter(pHeader + offset, Vector<byte>.Count);
+                            }
+                        } while (offset <= length - Vector<byte>.Count);
+                    }
+
+                    // Non-vector testing:
+                    // Flag 0x7f     => Add 0x0001 to each char so DEL (0x7f) will set a high bit
+                    // Flag < 0x20   => Sub 0x0020 from each char so high bit will be set in previous char bit
+                    // Flag > 0x007f => All but highest bit picked up by 0x7f flagging, highest bit picked up by < 0x20 flagging
+                    // Bitwise | or the above three together
+                    // Bitwise & and each char with 0xff80; result should be 0 if all tests pass
+                    if (offset <= length - sizeof(ulong))
+                    {
+                        do
+                        {
+                            var stringUlong = (ulong*)(pHeader + offset);
+                            offset += sizeof(ulong);
+                            if ((((*stringUlong + 0x0001000100010001UL) | (*stringUlong - 0x0020002000200020UL)) & 0xff80ff80ff80ff80UL) != 0)
+                            {
+                                ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(ulong));
+                            }
+                        } while (offset <= length - sizeof(ulong));
+                    }
+                    if (offset <= length - sizeof(uint))
+                    {
+                        var stringUint = (uint*)(pHeader + offset);
+                        offset += sizeof(uint);
+                        if ((((*stringUint + 0x00010001u) | (*stringUint - 0x00200020u)) & 0xff80ff80u) != 0)
+                        {
+                            ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(uint));
+                        }
+                    }
+                    if (offset <= length - sizeof(ushort))
+                    {
+                        var stringUshort = (ushort*)(pHeader + offset);
+                        offset += sizeof(ushort);
+                        if ((((*stringUshort + 0x0001u) | (*stringUshort - 0x0020u)) & 0xff80u) != 0)
+                        {
+                            ThrowInvalidHeaderCharacter(pHeader + offset, sizeof(ushort));
+                        }
                     }
                 }
             }
-        }
-
-        public static long ParseContentLength(StringValues value)
-        {
-            long parsed;
-            if (!HeaderUtilities.TryParseInt64(value.ToString(), out parsed))
-            {
-                ThrowInvalidContentLengthException(value);
-            }
-
-            return parsed;
         }
 
         public static unsafe ConnectionOptions ParseConnection(StringValues connection)
@@ -412,14 +479,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return transferEncodingOptions;
         }
 
-        private static void ThrowInvalidContentLengthException(string value)
+        protected static void ThrowInvalidResponseContentLengthException(long value)
+        {
+            throw new ArgumentOutOfRangeException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
+        }
+
+        protected static void ThrowInvalidResponseContentLengthException(string value)
         {
             throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }
-
-        private static void ThrowInvalidHeaderCharacter(char ch)
+        protected static void ThrowInvalidRequestContentLengthException(string value)
         {
-            throw new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
+            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
+        }
+
+        protected static void ThrowRequestMultipleContentLengths()
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.MultipleContentLengths);
+        }
+
+        private unsafe static Exception GetInvalidHeaderCharacterException(byte* end, int byteCount)
+        {
+            var start = end - byteCount;
+            while (start < end)
+            {
+                var ch = *(char*)start;
+                if (ch < 0x20 || ch >= 0x7f)
+                {
+                    return new InvalidOperationException(string.Format("Invalid non-ASCII or control character in header: 0x{0:X4}", (ushort)ch));
+                }
+                start += sizeof(char);
+            }
+
+            // Should never be reached, use different exception type so unit tests can pick it up
+            return new ArgumentException("Invalid non-ASCII or control character in header");
+        }
+
+        private unsafe static void ThrowInvalidHeaderCharacter(byte* end, int byteCount)
+        {
+            throw GetInvalidHeaderCharacterException(end, byteCount);
         }
     }
 }

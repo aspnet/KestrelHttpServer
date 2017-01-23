@@ -13,6 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
     public struct MemoryPoolIterator
     {
+        private const int _maxULongByteLength = 20;
         private const ulong _xorPowerOfTwoToHighByte = (0x07ul       |
                                                         0x06ul <<  8 |
                                                         0x05ul << 16 |
@@ -22,6 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                                         0x01ul << 48 ) + 1;
 
         private static readonly int _vectorSpan = Vector<byte>.Count;
+
+        [ThreadStatic]
+        private static byte[] _numericBytesScratch;
 
         private MemoryPoolBlock _block;
         private int _index;
@@ -1020,66 +1024,182 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public unsafe void CopyFromAscii(string data)
         {
             var block = _block;
+            if (block != null)
+            {
+                Debug.Assert(block.Next == null);
+                Debug.Assert(block.End == _index);
+
+                fixed (char* pData = data)
+                {
+                    var input = pData;
+                    var blockIndex = _index;
+                    var length = data.Length;
+
+                    var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+                    var count = Math.Min(length, bytesLeftInBlock);
+                    var output = (block.DataFixedPtr + block.End);
+
+                    blockIndex += count;
+
+                    // Only one path should inline, other branch should be eliminated
+                    if (IntPtr.Size == 8)
+                    {
+                        CopyFromAscii64Bit(input, output, count);
+                    }
+                    else
+                    {
+                        CopyFromAscii32Bit(input, output, count);
+                    }
+
+                    block.End = blockIndex;
+                    if (length <= bytesLeftInBlock)
+                    {
+                        _index = blockIndex;
+                    }
+                    else
+                    {
+                        CopyFromAsciiMultiblock(input + count, length - bytesLeftInBlock);
+                    }
+                }
+            }
+        }
+
+        private unsafe void CopyFromAsciiMultiblock(char* inputStart, int remainingLength)
+        {
+            var input = inputStart;
+            var length = remainingLength;
+            var block = _block;
+            var pool = block.Pool;
+            int blockIndex;
+            do
+            {
+                var nextBlock = pool.Lease();
+                Volatile.Write(ref block.Next, nextBlock);
+                block = nextBlock;
+
+                var bytesLeftInBlock = block.Data.Count;
+
+                var output = (block.DataFixedPtr + block.End);
+                var toCopy = Math.Min(length, block.Data.Count);
+                var toCopyULong = toCopy & ~0x3;
+
+                // Only one path should inline, other branch should be eliminated
+                blockIndex = block.Data.Offset + toCopy;
+
+                if (IntPtr.Size == 8)
+                {
+                    CopyFromAscii64Bit(input, output, toCopy);
+                }
+                else
+                {
+                    CopyFromAscii32Bit(input, output, toCopy);
+                }
+
+                block.End = blockIndex;
+
+                length -= toCopy;
+                input += toCopy;
+            } while (length > 0);
+
+            _block = block;
+            _index = blockIndex;
+        }
+
+        private static byte[] NumericBytesScratch => _numericBytesScratch ?? CreateNumericBytesScratch();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static byte[] CreateNumericBytesScratch()
+        {
+            var bytes = new byte[_maxULongByteLength];
+            _numericBytesScratch = bytes;
+            return bytes;
+        }
+
+        public unsafe void CopyFromNumeric(ulong value)
+        {
+            const byte AsciiDigitStart = (byte)'0';
+
+            var block = _block;
             if (block == null)
             {
                 return;
             }
 
-            Debug.Assert(block.Next == null);
-            Debug.Assert(block.End == _index);
-
-            var pool = block.Pool;
             var blockIndex = _index;
-            var length = data.Length;
-
             var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
-            var bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
+            var start = block.DataFixedPtr + blockIndex;
 
-            fixed (char* pData = data)
+            if (value < 10)
             {
-                var input = pData;
-                var inputEnd = pData + length;
-                var inputEndMinusSpan = inputEnd - 3;
-
-                while (input < inputEnd)
+                if (bytesLeftInBlock < 1)
                 {
-                    if (bytesLeftInBlock == 0)
-                    {
-                        var nextBlock = pool.Lease();
-                        block.End = blockIndex;
-                        Volatile.Write(ref block.Next, nextBlock);
-                        block = nextBlock;
-
-                        blockIndex = block.Data.Offset;
-                        bytesLeftInBlock = block.Data.Count;
-                        bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
-                    }
-
-                    var output = (block.DataFixedPtr + block.End);
-                    var copied = 0;
-                    for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
-                    {
-                        *(output) = (byte)*(input);
-                        *(output + 1) = (byte)*(input + 1);
-                        *(output + 2) = (byte)*(input + 2);
-                        *(output + 3) = (byte)*(input + 3);
-                        output += 4;
-                        input += 4;
-                    }
-                    for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
-                    {
-                        *(output++) = (byte)*(input++);
-                    }
-
-                    blockIndex += copied;
-                    bytesLeftInBlockMinusSpan -= copied;
-                    bytesLeftInBlock -= copied;
+                    goto overflow;
                 }
+                _index = blockIndex + 1;
+                block.End = blockIndex + 1;
+
+                *(start) = (byte)(((uint)value) + AsciiDigitStart);
+            }
+            else if (value < 100)
+            {
+                if (bytesLeftInBlock < 2)
+                {
+                    goto overflow;
+                }
+                _index = blockIndex + 2;
+                block.End = blockIndex + 2;
+
+                var val = (uint)value;
+                var tens = (byte)((val * 205u) >> 11); // div10, valid to 1028
+
+                *(start)     = (byte)(tens + AsciiDigitStart);
+                *(start + 1) = (byte)(val - (tens * 10) + AsciiDigitStart);
+            }
+            else if (value < 1000)
+            {
+                if (bytesLeftInBlock < 3)
+                {
+                    goto overflow;
+                }
+                _index = blockIndex + 3;
+                block.End = blockIndex + 3;
+
+                var val      = (uint)value;
+                var digit0   = (byte)((val * 41u) >> 12); // div100, valid to 1098
+                var digits01 = (byte)((val * 205u) >> 11); // div10, valid to 1028
+
+                *(start)     = (byte)(digit0 + AsciiDigitStart);
+                *(start + 1) = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
+                *(start + 2) = (byte)(val - (digits01 * 10) + AsciiDigitStart);
+            }
+            else
+            {
+                goto overflow;
             }
 
-            block.End = blockIndex;
-            _block = block;
-            _index = blockIndex;
+            return;
+
+        overflow:
+            CopyFromNumericOverflow(value);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private unsafe void CopyFromNumericOverflow(ulong value)
+        {
+            const byte AsciiDigitStart = (byte)'0';
+
+            var position = _maxULongByteLength;
+            var byteBuffer = NumericBytesScratch;
+            do
+            {
+                // Consider using Math.DivRem() if available
+                var quotient = value / 10;
+                byteBuffer[--position] = (byte)(AsciiDigitStart + (value - quotient * 10)); // 0x30 = '0'
+                value = quotient;
+            }
+            while (value != 0);
+
+            CopyFrom(byteBuffer, position, _maxULongByteLength - position);
         }
 
         public unsafe string GetAsciiString(ref MemoryPoolIterator end)
@@ -1254,5 +1374,92 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return Vector.AsVectorByte(new Vector<uint>(vectorByte * 0x01010101u));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe static void CopyFromAscii64Bit(char* input, byte* output, int count)
+        {
+            const int Shift16Shift24 = (1 << 16) | (1 << 24);
+            const int Shift8Identity = (1 << 8) + 1;
+
+            // Encode as bytes upto the first non-ASCII byte and return count encoded
+            var i = 0;
+            if (count >= 4)
+            {
+                var unaligned = (unchecked(-(int)input) >> 1) & 0x3;
+                // Unaligned chars
+                for (; i < unaligned; i++)
+                {
+                    var ch = *(input + i);
+                    *(output + i) = (byte)ch; // Cast convert
+                }
+
+                // Aligned
+                var ulongDoubleCount = (count - i) & ~0x7;
+                for (; i < ulongDoubleCount; i += 8)
+                {
+                    var inputUlong0 = *(ulong*)(input + i);
+                    var inputUlong1 = *(ulong*)(input + i + 4);
+                    // Pack 16 ASCII chars into 16 bytes
+                    *(uint*)(output + i) =
+                        ((uint)((inputUlong0 * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((inputUlong0 * Shift8Identity) >> 24) & 0xffff0000);
+                    *(uint*)(output + i + 4) =
+                        ((uint)((inputUlong1 * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((inputUlong1 * Shift8Identity) >> 24) & 0xffff0000);
+                }
+                if (count - 4 > i)
+                {
+                    var inputUlong = *(ulong*)(input + i);
+                    // Pack 8 ASCII chars into 8 bytes
+                    *(uint*)(output + i) =
+                        ((uint)((inputUlong * Shift16Shift24) >> 24) & 0xffff) |
+                        ((uint)((inputUlong * Shift8Identity) >> 24) & 0xffff0000);
+                    i += 4;
+                }
+            }
+
+            for (; i < count; i++)
+            {
+                var ch = *(input + i);
+                *(output + i) = (byte)ch; // Cast convert
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe static void CopyFromAscii32Bit(char* input, byte* output, int count)
+        {
+            // Encode as bytes upto the first non-ASCII byte and return count encoded
+            var i = 0;
+            // Unaligned chars
+            if ((unchecked((int)input) & 0x2) != 0)
+            {
+                var ch = *input;
+                i = 1;
+                *(output) = (byte)ch; // Cast convert
+            }
+
+            // Aligned
+            var uintCount = (count - i) & ~0x3;
+            for (; i < uintCount; i += 4)
+            {
+                var inputUint0 = *(uint*)(input + i);
+                var inputUint1 = *(uint*)(input + i + 2);
+                // Pack 4 ASCII chars into 4 bytes
+                *(ushort*)(output + i) = (ushort)(inputUint0 | (inputUint0 >> 8));
+                *(ushort*)(output + i + 2) = (ushort)(inputUint1 | (inputUint1 >> 8));
+            }
+            if (count - 1 > i)
+            {
+                var inputUint = *(uint*)(input + i);
+                // Pack 2 ASCII chars into 2 bytes
+                *(ushort*)(output + i) = (ushort)(inputUint | (inputUint >> 8));
+                i += 2;
+            }
+
+            if (i < count)
+            {
+                var ch = *(input + i);
+                *(output + i) = (byte)ch; // Cast convert
+            }
+        }
     }
 }
