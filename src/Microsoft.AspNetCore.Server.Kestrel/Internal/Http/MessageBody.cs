@@ -271,7 +271,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 try
                 {
-                    var contentLength = FrameHeaders.ParseContentLength(unparsedContentLength);
+                    var contentLength = FrameHeaders.ParseContentLength(ref unparsedContentLength);
                     return new ForContentLength(keepAlive, contentLength, context);
                 }
                 catch (InvalidOperationException)

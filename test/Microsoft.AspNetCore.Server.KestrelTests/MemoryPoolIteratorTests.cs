@@ -972,7 +972,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public void EmptyIteratorBehaviourIsValid()
+        public unsafe void EmptyIteratorBehaviourIsValid()
         {
             const byte byteCr = (byte) '\n';
             ulong longValue;
@@ -983,6 +983,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Null(default(MemoryPoolIterator).GetUtf8String(ref end));
             // Assert.Equal doesn't work for default(ArraySegments)
             Assert.True(default(MemoryPoolIterator).GetArraySegment(end).Equals(default(ArraySegment<byte>)));
+            byte* pName;
+            Assert.True(default(MemoryPoolIterator).GetPointerOrArraySegment(end, out pName).Equals(default(ArraySegment<byte>)));
+            Assert.True(pName == null);
             Assert.True(default(MemoryPoolIterator).IsDefault);
             Assert.True(default(MemoryPoolIterator).IsEnd);
             Assert.Equal(default(MemoryPoolIterator).Take(), -1);
@@ -1000,7 +1003,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public void TestGetArraySegment()
+        public unsafe void TestGetArraySegment()
         {
             MemoryPoolBlock block0 = null;
             MemoryPoolBlock block1 = null;
@@ -1024,30 +1027,47 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 end0.Skip(byteRange.Length);
                 end1.Skip(byteRange.Length * 2);
 
+                byte* pName2;
+                byte* pName3;
+
                 // Act
                 var as0 = begin.GetArraySegment(end0);
                 var as1 = begin.GetArraySegment(end1);
 
+                var as2 = begin.GetPointerOrArraySegment(end0, out pName2);
+                var as3 = begin.GetPointerOrArraySegment(end1, out pName3);
+
                 // Assert
                 Assert.Equal(as0.Count, byteRange.Length);
                 Assert.Equal(as1.Count, byteRange.Length * 2);
+                Assert.True(as2.Equals(default(ArraySegment<byte>)));
+                Assert.Equal(as3.Count, byteRange.Length * 2);
+
+                Assert.True(pName2 != null);
+                Assert.True(pName3 == null);
 
                 for (var i = 1; i < byteRange.Length; i++)
                 {
                     var asb0 = as0.Array[i + as0.Offset];
                     var asb1 = as1.Array[i + as1.Offset];
+                    var pb2 = *(pName2 + i);
+                    var asb3 = as3.Array[i + as3.Offset];
                     var b = byteRange[i];
 
                     Assert.Equal(asb0, b);
                     Assert.Equal(asb1, b);
+                    Assert.Equal(pb2, b);
+                    Assert.Equal(asb3, b);
                 }
 
                 for (var i = 1 + byteRange.Length; i < byteRange.Length * 2; i++)
                 {
                     var asb1 = as1.Array[i + as1.Offset];
+                    var asb3 = as3.Array[i + as3.Offset];
                     var b = byteRange[i - byteRange.Length];
 
                     Assert.Equal(asb1, b);
+                    Assert.Equal(asb3, b);
                 }
 
             }

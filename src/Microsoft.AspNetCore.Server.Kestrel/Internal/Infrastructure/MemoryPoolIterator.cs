@@ -1219,6 +1219,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal unsafe ArraySegment<byte> GetPointerOrArraySegment(MemoryPoolIterator end, out byte* pName)
+        {
+            var block = _block;
+            if (block == null || end.IsDefault)
+            {
+                pName = null;
+                return default(ArraySegment<byte>);
+            }
+
+            var index = _index;
+            if (end.Block == block)
+            {
+                pName = block.DataFixedPtr + index;
+                return default(ArraySegment<byte>);
+            }
+
+            pName = null;
+            return GetArraySegmentMultiBlock(ref end);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ArraySegment<byte> GetArraySegment(MemoryPoolIterator end)
         {
             var block = _block;

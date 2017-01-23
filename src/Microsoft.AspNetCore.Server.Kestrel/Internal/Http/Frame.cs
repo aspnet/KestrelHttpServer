@@ -177,6 +177,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public IHeaderDictionary RequestHeaders { get; set; }
         public Stream RequestBody { get; set; }
 
+        private bool _outputTransferEncoding;
+        private bool HasTransferEncoding => _outputTransferEncoding || FrameResponseHeaders.HasTransferEncoding;
+
         private int _statusCode;
         public int StatusCode
         {
@@ -328,6 +331,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void Reset()
         {
+            _outputTransferEncoding = false;
             FrameRequestHeaders?.Reset();
             FrameResponseHeaders?.Reset();
 
@@ -656,7 +660,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var responseHeaders = FrameResponseHeaders;
 
             if (responseHeaders != null &&
-                !responseHeaders.HasTransferEncoding &&
+                !HasTransferEncoding &&
                 responseHeaders.HasContentLength &&
                 _responseBytesWritten + count > responseHeaders.HeaderContentLengthValue.Value)
             {
@@ -678,7 +682,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             //
             // Called after VerifyAndUpdateWrite(), so _responseBytesWritten has already been updated.
             if (responseHeaders != null &&
-                !responseHeaders.HasTransferEncoding &&
+                !HasTransferEncoding &&
                 responseHeaders.HasContentLength &&
                 _responseBytesWritten == responseHeaders.HeaderContentLengthValue.Value)
             {
@@ -691,7 +695,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var responseHeaders = FrameResponseHeaders;
 
             if (!HttpMethods.IsHead(Method) &&
-                !responseHeaders.HasTransferEncoding &&
+                !HasTransferEncoding &&
                 responseHeaders.HeaderContentLengthValue.HasValue &&
                 _responseBytesWritten < responseHeaders.HeaderContentLengthValue.Value)
             {
@@ -894,6 +898,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var hasConnection = responseHeaders.HasConnection;
             var connectionOptions = FrameHeaders.ParseConnection(responseHeaders.HeaderConnection);
             var hasTransferEncoding = responseHeaders.HasTransferEncoding;
+            _outputTransferEncoding = hasTransferEncoding;
             var transferCoding = FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding);
 
             var end = Output.ProducingStart();
@@ -1256,7 +1261,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public unsafe bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -1402,11 +1407,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                     } while (ch != ByteCR);
 
-                    var name = beginName.GetArraySegment(endName);
+                    byte* pName;
+                    var name = beginName.GetPointerOrArraySegment(endName, out pName);
                     var value = beginValue.GetAsciiString(ref endValue);
 
                     consumed = scan;
-                    requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                    if (pName != null)
+                    {
+                        requestHeaders.Append(pName, endName.Index - beginName.Index, value);
+                    }
+                    else
+                    {
+                        requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                    }
 
                     _remainingRequestHeadersBytesAllowed -= bytesScanned;
                     _requestHeadersParsed++;
