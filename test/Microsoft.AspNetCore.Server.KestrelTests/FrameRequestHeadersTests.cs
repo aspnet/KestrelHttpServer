@@ -241,15 +241,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public void AppendThrowsWhenHeaderValueContainsNonASCIICharacters()
+        public void TryAppendReturnsFalseWhenHeaderNameContainsNonASCIICharacters()
         {
             var headers = new FrameRequestHeaders();
             const string key = "\u00141ód\017c";
 
             var encoding = Encoding.GetEncoding("iso-8859-1");
-            var exception = Assert.Throws<BadHttpRequestException>(
-                () => headers.Append(encoding.GetBytes(key), 0, encoding.GetByteCount(key), key));
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+            Assert.False(headers.TryAppend(encoding.GetBytes(key), 0, encoding.GetByteCount(key), "value"));
         }
     }
 }

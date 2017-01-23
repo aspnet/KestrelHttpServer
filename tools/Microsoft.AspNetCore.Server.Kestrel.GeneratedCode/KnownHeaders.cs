@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
             return condition ? formatter() : "";
         }
 
-        static string AppendSwitch(IEnumerable<IGrouping<int, KnownHeader>> values, string className, bool handleUnknown = false) => 
+        static string TryAppendSwitch(IEnumerable<IGrouping<int, KnownHeader>> values, string className, bool handleUnknown = false) => 
             $@"fixed (byte* ptr = &keyBytes[keyOffset])
             {{
                 var pUB = ptr;
@@ -43,21 +43,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                                     _headers._{header.Identifier} = new StringValues(value);{(header.EnhancedSetter == false ? "" : $@"
                                     _headers._raw{header.Identifier} = null;")}
                                 }}
-                                return;
+                                return true;
                             }}
                         ")}}}
                         break;
                 ")}}}
 
                 {(handleUnknown ? $@"
-                    key = new string('\0', keyLength);
-                    fixed(char *keyBuffer = key)
+                key = new string('\0', keyLength);
+                fixed(char *keyBuffer = key)
+                {{
+                    if (!AsciiUtilities.TryGetAsciiString(ptr, keyBuffer, keyLength))
                     {{
-                        if (!AsciiUtilities.TryGetAsciiString(ptr, keyBuffer, keyLength))
-                        {{
-                            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidCharactersInHeaderName);
-                        }}
+                        return false;
                     }}
+                }}
                 ": "")}
             }}";
 
@@ -518,21 +518,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         
         " : "")}
         {(loop.ClassName == "FrameRequestHeaders" ? $@"
-        public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
+        public unsafe bool TryAppend(byte[] keyBytes, int keyOffset, int keyLength, string value)
         {{
-            {AppendSwitch(loop.Headers.Where(h => h.PrimaryHeader).GroupBy(x => x.Name.Length), loop.ClassName)}
+            {TryAppendSwitch(loop.Headers.Where(h => h.PrimaryHeader).GroupBy(x => x.Name.Length), loop.ClassName)}
             
-            AppendNonPrimaryHeaders(keyBytes, keyOffset, keyLength, value);
+            return TryAppendNonPrimaryHeaders(keyBytes, keyOffset, keyLength, value);
         }}
         
-        private unsafe void AppendNonPrimaryHeaders(byte[] keyBytes, int keyOffset, int keyLength, string value)
+        private unsafe bool TryAppendNonPrimaryHeaders(byte[] keyBytes, int keyOffset, int keyLength, string value)
         {{
             string key;
-            {AppendSwitch(loop.Headers.Where(h => !h.PrimaryHeader).GroupBy(x => x.Name.Length), loop.ClassName, true)}
+            {TryAppendSwitch(loop.Headers.Where(h => !h.PrimaryHeader).GroupBy(x => x.Name.Length), loop.ClassName, true)}
 
             StringValues existing;
             Unknown.TryGetValue(key, out existing);
             Unknown[key] = AppendValue(existing, value);
+
+            return true;
         }}" : "")}
         private struct HeaderReferences
         {{{Each(loop.Headers, header => @"

@@ -196,7 +196,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             catch (BadHttpRequestException ex)
             {
                 // Handle BadHttpRequestException thrown during request line or header parsing.
-                // SetBadRequestState logs the error.
                 SetBadRequestState(ex);
             }
             catch (IOException ex) when (ex.InnerException is UvException)

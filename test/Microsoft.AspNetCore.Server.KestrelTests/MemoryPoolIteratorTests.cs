@@ -976,10 +976,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             const byte byteCr = (byte) '\n';
             ulong longValue;
+            string s;
             var end = default(MemoryPoolIterator);
 
             Assert.False(default(MemoryPoolIterator).TryPeekLong(out longValue));
-            Assert.Null(default(MemoryPoolIterator).GetAsciiString(ref end));
+            Assert.True(default(MemoryPoolIterator).TryGetAsciiString(ref end, out s));
             Assert.Null(default(MemoryPoolIterator).GetUtf8String(ref end));
             // Assert.Equal doesn't work for default(ArraySegments)
             Assert.True(default(MemoryPoolIterator).GetArraySegment(end).Equals(default(ArraySegment<byte>)));

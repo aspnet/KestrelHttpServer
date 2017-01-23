@@ -1082,24 +1082,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _index = blockIndex;
         }
 
-        public unsafe string GetAsciiString(ref MemoryPoolIterator end)
+        public unsafe bool TryGetAsciiString(ref MemoryPoolIterator end, out string asciiString)
         {
             var block = _block;
             if (block == null || end.IsDefault)
             {
-                return null;
+                asciiString = null;
+                return true;
             }
 
             var length = GetLength(end);
 
             if (length == 0)
             {
-                return null;
+                asciiString = null;
+                return true;
             }
 
             var inputOffset = _index;
 
-            var asciiString = new string('\0', length);
+            asciiString = new string('\0', length);
 
             fixed (char* outputStart = asciiString)
             {
@@ -1118,7 +1120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     {
                         if (!AsciiUtilities.TryGetAsciiString(block.DataFixedPtr + inputOffset, output + outputOffset, following))
                         {
-                            throw BadHttpRequestException.GetException(RequestRejectionReason.NonAsciiOrNullCharactersInInputString);
+                            return false;
                         }
 
                         outputOffset += following;
@@ -1135,7 +1137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 }
             }
 
-            return asciiString;
+            return true;
         }
 
         public string GetUtf8String(ref MemoryPoolIterator end)
