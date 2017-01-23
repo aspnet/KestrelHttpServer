@@ -372,7 +372,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         protected override void SetValueFast(string key, StringValues value)
         {{{(loop.ClassName == "FrameResponseHeaders" ? @"
-            ValidateHeaderCharacters(value);" : "")}
+            ValidateHeaderCharacters(ref value);" : "")}
             switch (key.Length)
             {{{Each(loop.HeadersByLength, byLength => $@"
                 case {byLength.Key}:
