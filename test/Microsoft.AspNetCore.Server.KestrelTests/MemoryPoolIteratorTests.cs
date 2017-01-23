@@ -1324,6 +1324,17 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Same(knownString1, knownString2);
         }
 
+        private static void ReturnBlocks(MemoryPoolBlock block)
+        {
+            while (block != null)
+            {
+                var returningBlock = block;
+                block = returningBlock.Next;
+
+                returningBlock.Pool.Return(returningBlock);
+            }
+        }
+
         public static IEnumerable<object[]> SeekByteLimitData
         {
             get
