@@ -3,8 +3,10 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -13,19 +15,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private static readonly byte[] _CrLf = new[] { (byte)'\r', (byte)'\n' };
         private static readonly byte[] _colonSpace = new[] { (byte)':', (byte)' ' };
 
-        private long? _contentLength;
-
         public bool HasConnection => HeaderConnection.Count != 0;
 
         public bool HasTransferEncoding => HeaderTransferEncoding.Count != 0;
 
-        public bool HasContentLength => HeaderContentLength.Count != 0;
-
         public bool HasServer => HeaderServer.Count != 0;
 
         public bool HasDate => HeaderDate.Count != 0;
-
-        public long? HeaderContentLengthValue => _contentLength;
 
         public Enumerator GetEnumerator()
         {
@@ -56,6 +52,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
             }
+        }
+
+        private static long ParseContentLength(string value)
+        {
+            long parsed;
+            if (!HeaderUtilities.TryParseInt64(value, out parsed))
+            {
+                ThrowInvalidResponseContentLengthException(value);
+            }
+
+            return parsed;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SetValueUnknown(string key, StringValues value)
+        {
+            ValidateHeaderCharacters(key);
+            Unknown[key] = value;
         }
 
         public partial struct Enumerator : IEnumerator<KeyValuePair<string, StringValues>>
@@ -92,5 +106,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _state = 0;
             }
         }
+
     }
 }
