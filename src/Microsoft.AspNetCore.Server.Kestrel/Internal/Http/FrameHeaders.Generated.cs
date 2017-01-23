@@ -2652,441 +2652,443 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             MaybeUnknown?.Clear();
             _contentLength = null;
-            if(FrameHeaders.BitCount(_bits) > 12)
+            var tempBits = _bits;
+            _bits = 0;
+
+            if(FrameHeaders.BitCount(tempBits) > 12)
             {
                 _headers = default(HeaderReferences);
-                _bits = 0;
                 return;
             }
             
-            if ((_bits & 524288L) != 0)
+            if ((tempBits & 524288L) != 0)
             {
                 _headers._Accept = default(StringValues);
-                _bits &= ~524288L;
-                if(_bits == 0)
+                if((tempBits & ~524288L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~524288L;
             }
             
-            if ((_bits & 134217728L) != 0)
+            if ((tempBits & 134217728L) != 0)
             {
                 _headers._Host = default(StringValues);
-                _bits &= ~134217728L;
-                if(_bits == 0)
+                if((tempBits & ~134217728L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~134217728L;
             }
             
-            if ((_bits & 549755813888L) != 0)
+            if ((tempBits & 549755813888L) != 0)
             {
                 _headers._UserAgent = default(StringValues);
-                _bits &= ~549755813888L;
-                if(_bits == 0)
+                if((tempBits & ~549755813888L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~549755813888L;
             }
             
-            if ((_bits & 1L) != 0)
+            if ((tempBits & 1L) != 0)
             {
                 _headers._CacheControl = default(StringValues);
-                _bits &= ~1L;
-                if(_bits == 0)
+                if((tempBits & ~1L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1L;
             }
             
-            if ((_bits & 2L) != 0)
+            if ((tempBits & 2L) != 0)
             {
                 _headers._Connection = default(StringValues);
-                _bits &= ~2L;
-                if(_bits == 0)
+                if((tempBits & ~2L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2L;
             }
             
-            if ((_bits & 4L) != 0)
+            if ((tempBits & 4L) != 0)
             {
                 _headers._Date = default(StringValues);
-                _bits &= ~4L;
-                if(_bits == 0)
+                if((tempBits & ~4L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4L;
             }
             
-            if ((_bits & 8L) != 0)
+            if ((tempBits & 8L) != 0)
             {
                 _headers._KeepAlive = default(StringValues);
-                _bits &= ~8L;
-                if(_bits == 0)
+                if((tempBits & ~8L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8L;
             }
             
-            if ((_bits & 16L) != 0)
+            if ((tempBits & 16L) != 0)
             {
                 _headers._Pragma = default(StringValues);
-                _bits &= ~16L;
-                if(_bits == 0)
+                if((tempBits & ~16L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~16L;
             }
             
-            if ((_bits & 32L) != 0)
+            if ((tempBits & 32L) != 0)
             {
                 _headers._Trailer = default(StringValues);
-                _bits &= ~32L;
-                if(_bits == 0)
+                if((tempBits & ~32L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~32L;
             }
             
-            if ((_bits & 64L) != 0)
+            if ((tempBits & 64L) != 0)
             {
                 _headers._TransferEncoding = default(StringValues);
-                _bits &= ~64L;
-                if(_bits == 0)
+                if((tempBits & ~64L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~64L;
             }
             
-            if ((_bits & 128L) != 0)
+            if ((tempBits & 128L) != 0)
             {
                 _headers._Upgrade = default(StringValues);
-                _bits &= ~128L;
-                if(_bits == 0)
+                if((tempBits & ~128L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~128L;
             }
             
-            if ((_bits & 256L) != 0)
+            if ((tempBits & 256L) != 0)
             {
                 _headers._Via = default(StringValues);
-                _bits &= ~256L;
-                if(_bits == 0)
+                if((tempBits & ~256L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~256L;
             }
             
-            if ((_bits & 512L) != 0)
+            if ((tempBits & 512L) != 0)
             {
                 _headers._Warning = default(StringValues);
-                _bits &= ~512L;
-                if(_bits == 0)
+                if((tempBits & ~512L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~512L;
             }
             
-            if ((_bits & 1024L) != 0)
+            if ((tempBits & 1024L) != 0)
             {
                 _headers._Allow = default(StringValues);
-                _bits &= ~1024L;
-                if(_bits == 0)
+                if((tempBits & ~1024L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1024L;
             }
             
-            if ((_bits & 2048L) != 0)
+            if ((tempBits & 2048L) != 0)
             {
                 _headers._ContentType = default(StringValues);
-                _bits &= ~2048L;
-                if(_bits == 0)
+                if((tempBits & ~2048L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2048L;
             }
             
-            if ((_bits & 4096L) != 0)
+            if ((tempBits & 4096L) != 0)
             {
                 _headers._ContentEncoding = default(StringValues);
-                _bits &= ~4096L;
-                if(_bits == 0)
+                if((tempBits & ~4096L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4096L;
             }
             
-            if ((_bits & 8192L) != 0)
+            if ((tempBits & 8192L) != 0)
             {
                 _headers._ContentLanguage = default(StringValues);
-                _bits &= ~8192L;
-                if(_bits == 0)
+                if((tempBits & ~8192L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8192L;
             }
             
-            if ((_bits & 16384L) != 0)
+            if ((tempBits & 16384L) != 0)
             {
                 _headers._ContentLocation = default(StringValues);
-                _bits &= ~16384L;
-                if(_bits == 0)
+                if((tempBits & ~16384L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~16384L;
             }
             
-            if ((_bits & 32768L) != 0)
+            if ((tempBits & 32768L) != 0)
             {
                 _headers._ContentMD5 = default(StringValues);
-                _bits &= ~32768L;
-                if(_bits == 0)
+                if((tempBits & ~32768L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~32768L;
             }
             
-            if ((_bits & 65536L) != 0)
+            if ((tempBits & 65536L) != 0)
             {
                 _headers._ContentRange = default(StringValues);
-                _bits &= ~65536L;
-                if(_bits == 0)
+                if((tempBits & ~65536L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~65536L;
             }
             
-            if ((_bits & 131072L) != 0)
+            if ((tempBits & 131072L) != 0)
             {
                 _headers._Expires = default(StringValues);
-                _bits &= ~131072L;
-                if(_bits == 0)
+                if((tempBits & ~131072L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~131072L;
             }
             
-            if ((_bits & 262144L) != 0)
+            if ((tempBits & 262144L) != 0)
             {
                 _headers._LastModified = default(StringValues);
-                _bits &= ~262144L;
-                if(_bits == 0)
+                if((tempBits & ~262144L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~262144L;
             }
             
-            if ((_bits & 1048576L) != 0)
+            if ((tempBits & 1048576L) != 0)
             {
                 _headers._AcceptCharset = default(StringValues);
-                _bits &= ~1048576L;
-                if(_bits == 0)
+                if((tempBits & ~1048576L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1048576L;
             }
             
-            if ((_bits & 2097152L) != 0)
+            if ((tempBits & 2097152L) != 0)
             {
                 _headers._AcceptEncoding = default(StringValues);
-                _bits &= ~2097152L;
-                if(_bits == 0)
+                if((tempBits & ~2097152L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2097152L;
             }
             
-            if ((_bits & 4194304L) != 0)
+            if ((tempBits & 4194304L) != 0)
             {
                 _headers._AcceptLanguage = default(StringValues);
-                _bits &= ~4194304L;
-                if(_bits == 0)
+                if((tempBits & ~4194304L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4194304L;
             }
             
-            if ((_bits & 8388608L) != 0)
+            if ((tempBits & 8388608L) != 0)
             {
                 _headers._Authorization = default(StringValues);
-                _bits &= ~8388608L;
-                if(_bits == 0)
+                if((tempBits & ~8388608L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8388608L;
             }
             
-            if ((_bits & 16777216L) != 0)
+            if ((tempBits & 16777216L) != 0)
             {
                 _headers._Cookie = default(StringValues);
-                _bits &= ~16777216L;
-                if(_bits == 0)
+                if((tempBits & ~16777216L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~16777216L;
             }
             
-            if ((_bits & 33554432L) != 0)
+            if ((tempBits & 33554432L) != 0)
             {
                 _headers._Expect = default(StringValues);
-                _bits &= ~33554432L;
-                if(_bits == 0)
+                if((tempBits & ~33554432L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~33554432L;
             }
             
-            if ((_bits & 67108864L) != 0)
+            if ((tempBits & 67108864L) != 0)
             {
                 _headers._From = default(StringValues);
-                _bits &= ~67108864L;
-                if(_bits == 0)
+                if((tempBits & ~67108864L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~67108864L;
             }
             
-            if ((_bits & 268435456L) != 0)
+            if ((tempBits & 268435456L) != 0)
             {
                 _headers._IfMatch = default(StringValues);
-                _bits &= ~268435456L;
-                if(_bits == 0)
+                if((tempBits & ~268435456L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~268435456L;
             }
             
-            if ((_bits & 536870912L) != 0)
+            if ((tempBits & 536870912L) != 0)
             {
                 _headers._IfModifiedSince = default(StringValues);
-                _bits &= ~536870912L;
-                if(_bits == 0)
+                if((tempBits & ~536870912L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~536870912L;
             }
             
-            if ((_bits & 1073741824L) != 0)
+            if ((tempBits & 1073741824L) != 0)
             {
                 _headers._IfNoneMatch = default(StringValues);
-                _bits &= ~1073741824L;
-                if(_bits == 0)
+                if((tempBits & ~1073741824L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1073741824L;
             }
             
-            if ((_bits & 2147483648L) != 0)
+            if ((tempBits & 2147483648L) != 0)
             {
                 _headers._IfRange = default(StringValues);
-                _bits &= ~2147483648L;
-                if(_bits == 0)
+                if((tempBits & ~2147483648L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2147483648L;
             }
             
-            if ((_bits & 4294967296L) != 0)
+            if ((tempBits & 4294967296L) != 0)
             {
                 _headers._IfUnmodifiedSince = default(StringValues);
-                _bits &= ~4294967296L;
-                if(_bits == 0)
+                if((tempBits & ~4294967296L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4294967296L;
             }
             
-            if ((_bits & 8589934592L) != 0)
+            if ((tempBits & 8589934592L) != 0)
             {
                 _headers._MaxForwards = default(StringValues);
-                _bits &= ~8589934592L;
-                if(_bits == 0)
+                if((tempBits & ~8589934592L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8589934592L;
             }
             
-            if ((_bits & 17179869184L) != 0)
+            if ((tempBits & 17179869184L) != 0)
             {
                 _headers._ProxyAuthorization = default(StringValues);
-                _bits &= ~17179869184L;
-                if(_bits == 0)
+                if((tempBits & ~17179869184L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~17179869184L;
             }
             
-            if ((_bits & 34359738368L) != 0)
+            if ((tempBits & 34359738368L) != 0)
             {
                 _headers._Referer = default(StringValues);
-                _bits &= ~34359738368L;
-                if(_bits == 0)
+                if((tempBits & ~34359738368L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~34359738368L;
             }
             
-            if ((_bits & 68719476736L) != 0)
+            if ((tempBits & 68719476736L) != 0)
             {
                 _headers._Range = default(StringValues);
-                _bits &= ~68719476736L;
-                if(_bits == 0)
+                if((tempBits & ~68719476736L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~68719476736L;
             }
             
-            if ((_bits & 137438953472L) != 0)
+            if ((tempBits & 137438953472L) != 0)
             {
                 _headers._TE = default(StringValues);
-                _bits &= ~137438953472L;
-                if(_bits == 0)
+                if((tempBits & ~137438953472L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~137438953472L;
             }
             
-            if ((_bits & 274877906944L) != 0)
+            if ((tempBits & 274877906944L) != 0)
             {
                 _headers._Translate = default(StringValues);
-                _bits &= ~274877906944L;
-                if(_bits == 0)
+                if((tempBits & ~274877906944L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~274877906944L;
             }
             
-            if ((_bits & 1099511627776L) != 0)
+            if ((tempBits & 1099511627776L) != 0)
             {
                 _headers._Origin = default(StringValues);
-                _bits &= ~1099511627776L;
-                if(_bits == 0)
+                if((tempBits & ~1099511627776L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1099511627776L;
             }
             
-            if ((_bits & 2199023255552L) != 0)
+            if ((tempBits & 2199023255552L) != 0)
             {
                 _headers._AccessControlRequestMethod = default(StringValues);
-                _bits &= ~2199023255552L;
-                if(_bits == 0)
+                if((tempBits & ~2199023255552L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2199023255552L;
             }
             
-            if ((_bits & 4398046511104L) != 0)
+            if ((tempBits & 4398046511104L) != 0)
             {
                 _headers._AccessControlRequestHeaders = default(StringValues);
-                _bits &= ~4398046511104L;
-                if(_bits == 0)
+                if((tempBits & ~4398046511104L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4398046511104L;
             }
             
         }
@@ -7058,361 +7060,363 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             MaybeUnknown?.Clear();
             _contentLength = null;
-            if(FrameHeaders.BitCount(_bits) > 12)
+            var tempBits = _bits;
+            _bits = 0;
+
+            if(FrameHeaders.BitCount(tempBits) > 12)
             {
                 _headers = default(HeaderReferences);
-                _bits = 0;
                 return;
             }
             
-            if ((_bits & 2L) != 0)
+            if ((tempBits & 2L) != 0)
             {
                 _headers._Connection = default(StringValues);
-                _bits &= ~2L;
-                if(_bits == 0)
+                if((tempBits & ~2L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2L;
             }
             
-            if ((_bits & 4L) != 0)
+            if ((tempBits & 4L) != 0)
             {
                 _headers._Date = default(StringValues);
-                _bits &= ~4L;
-                if(_bits == 0)
+                if((tempBits & ~4L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4L;
             }
             
-            if ((_bits & 2048L) != 0)
+            if ((tempBits & 2048L) != 0)
             {
                 _headers._ContentType = default(StringValues);
-                _bits &= ~2048L;
-                if(_bits == 0)
+                if((tempBits & ~2048L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2048L;
             }
             
-            if ((_bits & 33554432L) != 0)
+            if ((tempBits & 33554432L) != 0)
             {
                 _headers._Server = default(StringValues);
-                _bits &= ~33554432L;
-                if(_bits == 0)
+                if((tempBits & ~33554432L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~33554432L;
             }
             
-            if ((_bits & 1L) != 0)
+            if ((tempBits & 1L) != 0)
             {
                 _headers._CacheControl = default(StringValues);
-                _bits &= ~1L;
-                if(_bits == 0)
+                if((tempBits & ~1L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1L;
             }
             
-            if ((_bits & 8L) != 0)
+            if ((tempBits & 8L) != 0)
             {
                 _headers._KeepAlive = default(StringValues);
-                _bits &= ~8L;
-                if(_bits == 0)
+                if((tempBits & ~8L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8L;
             }
             
-            if ((_bits & 16L) != 0)
+            if ((tempBits & 16L) != 0)
             {
                 _headers._Pragma = default(StringValues);
-                _bits &= ~16L;
-                if(_bits == 0)
+                if((tempBits & ~16L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~16L;
             }
             
-            if ((_bits & 32L) != 0)
+            if ((tempBits & 32L) != 0)
             {
                 _headers._Trailer = default(StringValues);
-                _bits &= ~32L;
-                if(_bits == 0)
+                if((tempBits & ~32L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~32L;
             }
             
-            if ((_bits & 64L) != 0)
+            if ((tempBits & 64L) != 0)
             {
                 _headers._TransferEncoding = default(StringValues);
-                _bits &= ~64L;
-                if(_bits == 0)
+                if((tempBits & ~64L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~64L;
             }
             
-            if ((_bits & 128L) != 0)
+            if ((tempBits & 128L) != 0)
             {
                 _headers._Upgrade = default(StringValues);
-                _bits &= ~128L;
-                if(_bits == 0)
+                if((tempBits & ~128L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~128L;
             }
             
-            if ((_bits & 256L) != 0)
+            if ((tempBits & 256L) != 0)
             {
                 _headers._Via = default(StringValues);
-                _bits &= ~256L;
-                if(_bits == 0)
+                if((tempBits & ~256L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~256L;
             }
             
-            if ((_bits & 512L) != 0)
+            if ((tempBits & 512L) != 0)
             {
                 _headers._Warning = default(StringValues);
-                _bits &= ~512L;
-                if(_bits == 0)
+                if((tempBits & ~512L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~512L;
             }
             
-            if ((_bits & 1024L) != 0)
+            if ((tempBits & 1024L) != 0)
             {
                 _headers._Allow = default(StringValues);
-                _bits &= ~1024L;
-                if(_bits == 0)
+                if((tempBits & ~1024L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1024L;
             }
             
-            if ((_bits & 4096L) != 0)
+            if ((tempBits & 4096L) != 0)
             {
                 _headers._ContentEncoding = default(StringValues);
-                _bits &= ~4096L;
-                if(_bits == 0)
+                if((tempBits & ~4096L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4096L;
             }
             
-            if ((_bits & 8192L) != 0)
+            if ((tempBits & 8192L) != 0)
             {
                 _headers._ContentLanguage = default(StringValues);
-                _bits &= ~8192L;
-                if(_bits == 0)
+                if((tempBits & ~8192L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8192L;
             }
             
-            if ((_bits & 16384L) != 0)
+            if ((tempBits & 16384L) != 0)
             {
                 _headers._ContentLocation = default(StringValues);
-                _bits &= ~16384L;
-                if(_bits == 0)
+                if((tempBits & ~16384L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~16384L;
             }
             
-            if ((_bits & 32768L) != 0)
+            if ((tempBits & 32768L) != 0)
             {
                 _headers._ContentMD5 = default(StringValues);
-                _bits &= ~32768L;
-                if(_bits == 0)
+                if((tempBits & ~32768L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~32768L;
             }
             
-            if ((_bits & 65536L) != 0)
+            if ((tempBits & 65536L) != 0)
             {
                 _headers._ContentRange = default(StringValues);
-                _bits &= ~65536L;
-                if(_bits == 0)
+                if((tempBits & ~65536L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~65536L;
             }
             
-            if ((_bits & 131072L) != 0)
+            if ((tempBits & 131072L) != 0)
             {
                 _headers._Expires = default(StringValues);
-                _bits &= ~131072L;
-                if(_bits == 0)
+                if((tempBits & ~131072L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~131072L;
             }
             
-            if ((_bits & 262144L) != 0)
+            if ((tempBits & 262144L) != 0)
             {
                 _headers._LastModified = default(StringValues);
-                _bits &= ~262144L;
-                if(_bits == 0)
+                if((tempBits & ~262144L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~262144L;
             }
             
-            if ((_bits & 524288L) != 0)
+            if ((tempBits & 524288L) != 0)
             {
                 _headers._AcceptRanges = default(StringValues);
-                _bits &= ~524288L;
-                if(_bits == 0)
+                if((tempBits & ~524288L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~524288L;
             }
             
-            if ((_bits & 1048576L) != 0)
+            if ((tempBits & 1048576L) != 0)
             {
                 _headers._Age = default(StringValues);
-                _bits &= ~1048576L;
-                if(_bits == 0)
+                if((tempBits & ~1048576L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1048576L;
             }
             
-            if ((_bits & 2097152L) != 0)
+            if ((tempBits & 2097152L) != 0)
             {
                 _headers._ETag = default(StringValues);
-                _bits &= ~2097152L;
-                if(_bits == 0)
+                if((tempBits & ~2097152L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2097152L;
             }
             
-            if ((_bits & 4194304L) != 0)
+            if ((tempBits & 4194304L) != 0)
             {
                 _headers._Location = default(StringValues);
-                _bits &= ~4194304L;
-                if(_bits == 0)
+                if((tempBits & ~4194304L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4194304L;
             }
             
-            if ((_bits & 8388608L) != 0)
+            if ((tempBits & 8388608L) != 0)
             {
                 _headers._ProxyAuthenticate = default(StringValues);
-                _bits &= ~8388608L;
-                if(_bits == 0)
+                if((tempBits & ~8388608L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8388608L;
             }
             
-            if ((_bits & 16777216L) != 0)
+            if ((tempBits & 16777216L) != 0)
             {
                 _headers._RetryAfter = default(StringValues);
-                _bits &= ~16777216L;
-                if(_bits == 0)
+                if((tempBits & ~16777216L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~16777216L;
             }
             
-            if ((_bits & 67108864L) != 0)
+            if ((tempBits & 67108864L) != 0)
             {
                 _headers._SetCookie = default(StringValues);
-                _bits &= ~67108864L;
-                if(_bits == 0)
+                if((tempBits & ~67108864L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~67108864L;
             }
             
-            if ((_bits & 134217728L) != 0)
+            if ((tempBits & 134217728L) != 0)
             {
                 _headers._Vary = default(StringValues);
-                _bits &= ~134217728L;
-                if(_bits == 0)
+                if((tempBits & ~134217728L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~134217728L;
             }
             
-            if ((_bits & 268435456L) != 0)
+            if ((tempBits & 268435456L) != 0)
             {
                 _headers._WWWAuthenticate = default(StringValues);
-                _bits &= ~268435456L;
-                if(_bits == 0)
+                if((tempBits & ~268435456L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~268435456L;
             }
             
-            if ((_bits & 536870912L) != 0)
+            if ((tempBits & 536870912L) != 0)
             {
                 _headers._AccessControlAllowCredentials = default(StringValues);
-                _bits &= ~536870912L;
-                if(_bits == 0)
+                if((tempBits & ~536870912L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~536870912L;
             }
             
-            if ((_bits & 1073741824L) != 0)
+            if ((tempBits & 1073741824L) != 0)
             {
                 _headers._AccessControlAllowHeaders = default(StringValues);
-                _bits &= ~1073741824L;
-                if(_bits == 0)
+                if((tempBits & ~1073741824L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~1073741824L;
             }
             
-            if ((_bits & 2147483648L) != 0)
+            if ((tempBits & 2147483648L) != 0)
             {
                 _headers._AccessControlAllowMethods = default(StringValues);
-                _bits &= ~2147483648L;
-                if(_bits == 0)
+                if((tempBits & ~2147483648L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~2147483648L;
             }
             
-            if ((_bits & 4294967296L) != 0)
+            if ((tempBits & 4294967296L) != 0)
             {
                 _headers._AccessControlAllowOrigin = default(StringValues);
-                _bits &= ~4294967296L;
-                if(_bits == 0)
+                if((tempBits & ~4294967296L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~4294967296L;
             }
             
-            if ((_bits & 8589934592L) != 0)
+            if ((tempBits & 8589934592L) != 0)
             {
                 _headers._AccessControlExposeHeaders = default(StringValues);
-                _bits &= ~8589934592L;
-                if(_bits == 0)
+                if((tempBits & ~8589934592L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~8589934592L;
             }
             
-            if ((_bits & 17179869184L) != 0)
+            if ((tempBits & 17179869184L) != 0)
             {
                 _headers._AccessControlMaxAge = default(StringValues);
-                _bits &= ~17179869184L;
-                if(_bits == 0)
+                if((tempBits & ~17179869184L) == 0)
                 {
                     return;
                 }
+                tempBits &= ~17179869184L;
             }
             
         }
