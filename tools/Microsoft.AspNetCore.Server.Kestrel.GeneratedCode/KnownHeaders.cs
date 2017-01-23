@@ -67,6 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
             public bool EnhancedSetter { get; set; }
             public bool PrimaryHeader { get; set; }
             public string TestBit() => $"(_bits & {1L << Index}L) != 0";
+            public string TestTempBit() => $"(tempBits & {1L << Index}L) != 0";
             public string TestNotBit() => $"(_bits & {1L << Index}L) == 0";
             public string SetBit() => $"_bits |= {1L << Index}L";
             public string ClearBit() => $"_bits &= ~{1L << Index}L";
@@ -130,7 +131,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
             {
                 "Connection",
                 "Date",
-                "Content-Length",
                 "Content-Type",
                 "Server",
             };
@@ -147,7 +147,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 "Via",
                 "Warning",
                 "Allow",
-                "Content-Length",
                 "Content-Type",
                 "Content-Encoding",
                 "Content-Language",
@@ -189,7 +188,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 "User-Agent",
             })
             .Concat(corsRequestHeaders)
-            .Where((header) => header != "Content-Length")
             .Select((header, index) => new KnownHeader
             {
                 Name = header,
@@ -234,7 +232,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 "WWW-Authenticate",
             })
             .Concat(corsResponseHeaders)
-            .Where((header) => header != "Content-Length")
             .Select((header, index) => new KnownHeader
             {
                 Name = header,
@@ -468,7 +465,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _bits = 0;
                 return;
             }}
-            {Each(loop.Headers.Where(header => header.Index >= 0).OrderBy(h => !h.PrimaryHeader), header => $@"
+            {Each(loop.Headers.Where(header => header.Identifier != "ContentLength").OrderBy(h => !h.PrimaryHeader), header => $@"
             if ({header.TestBit()})
             {{
                 _headers._{header.Identifier} = default(StringValues);
@@ -487,7 +484,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {{
                 return false;
             }}
-            {Each(loop.Headers.Where(header => header.Index >= 0), header => $@"
+            {Each(loop.Headers.Where(header => header.Identifier != "ContentLength"), header => $@"
                 if ({header.TestBit()})
                 {{
                     if (arrayIndex == array.Length)
@@ -514,20 +511,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected void CopyToFast(ref MemoryPoolIterator output)
         {{
             var tempBits = _bits | (_contentLength.HasValue ? {1L << 63}L : 0);
-            {Each(loop.Headers.OrderBy(h => !h.PrimaryHeader), header => $@"
-                {(header.Identifier == "ContentLength" ? $@"
-                if (_contentLength.HasValue)
-                {{
-                    output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
-                    output.CopyFromNumeric((ulong)ContentLength.Value);
-
-                    tempBits &= ~{1L << 63}L;
-                    if(tempBits == 0)
-                    {{
-                        return;
-                    }}
-                }}" : $@"
-                if ({header.TestBit()})
+            {Each(loop.Headers.Where(header => header.Identifier != "ContentLength").OrderBy(h => !h.PrimaryHeader), header => $@"
+                if ({header.TestTempBit()})
                 {{ {(header.EnhancedSetter == false ? "" : $@"
                     if (_headers._raw{header.Identifier} != null)
                     {{
@@ -552,8 +537,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {{
                         return;
                     }}
-                }}")}
-            ")}
+                }}{(header.Identifier == "Server" ? $@"
+                if ((tempBits & {1L << 63}L) != 0)
+                {{
+                    output.CopyFrom(_headerBytes, {loop.Headers.First(x => x.Identifier == "ContentLength").BytesOffset}, {loop.Headers.First(x => x.Identifier == "ContentLength").BytesCount});
+                    output.CopyFromNumeric((ulong)ContentLength.Value);
+
+                    tempBits &= ~{1L << 63}L;
+                    if(tempBits == 0)
+                    {{
+                        return;
+                    }}
+                }}" : "")}")}
         }}" : "")}
         {(loop.ClassName == "FrameRequestHeaders" ? $@"
         public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
@@ -576,7 +571,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }}" : "")}
 
         private struct HeaderReferences
-        {{{Each(loop.Headers.Where(header => header.Index >= 0), header => @"
+        {{{Each(loop.Headers.Where(header => header.Identifier != "ContentLength"), header => @"
             public StringValues _" + header.Identifier + ";")}
             {Each(loop.Headers.Where(header => header.EnhancedSetter), header => @"
             public byte[] _raw" + header.Identifier + ";")}
@@ -588,7 +583,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {{
                 switch (_state)
                 {{
-                    {Each(loop.Headers.Where(header => header.Index >= 0), header => $@"
+                    {Each(loop.Headers.Where(header => header.Identifier != "ContentLength"), header => $@"
                     case {header.Index}:
                         goto state{header.Index};
                     ")}
@@ -597,7 +592,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     default:
                         goto state_default;
                 }}
-                {Each(loop.Headers.Where(header => header.Index >= 0), header => $@"
+                {Each(loop.Headers.Where(header => header.Identifier != "ContentLength"), header => $@"
                 state{header.Index}:
                     if ({header.TestBit()})
                     {{
