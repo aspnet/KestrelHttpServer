@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -32,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                             {{{(header.Identifier == "ContentLength" ? $@"
                                 if (_contentLength.HasValue)
                                 {{
-                                    ThrowRequestMultipleContentLengths();
+                                    ThrowMultipleContentLengths();
                                 }}
                                 else
                                 {{
@@ -202,6 +203,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 PrimaryHeader = requestPrimaryHeaders.Contains("Content-Length")
             }})
             .ToArray();
+            Debug.Assert(requestHeaders.Length <= 64);
+            Debug.Assert(requestHeaders.Max(x => x.Index) <= 62);
+
             var enhancedHeaders = new[]
             {
                 "Connection",
@@ -248,6 +252,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                 PrimaryHeader = responsePrimaryHeaders.Contains("Content-Length")
             }})
             .ToArray();
+            // 63 for reponseHeaders as it steals one bit for Content-Length in CopyTo(ref MemoryPoolIterator output)
+            Debug.Assert(responseHeaders.Length <= 63);
+            Debug.Assert(responseHeaders.Max(x => x.Index) <= 62);
+
             var loops = new[]
             {
                 new
@@ -460,21 +468,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {{
             MaybeUnknown?.Clear();
             _contentLength = null;
-            if(FrameHeaders.BitCount(_bits) > 12)
+            var tempBits = _bits;
+            _bits = 0;
+            if(FrameHeaders.BitCount(tempBits) > 12)
             {{
                 _headers = default(HeaderReferences);
-                _bits = 0;
                 return;
             }}
             {Each(loop.Headers.Where(header => header.Identifier != "ContentLength").OrderBy(h => !h.PrimaryHeader), header => $@"
-            if ({header.TestBit()})
+            if ({header.TestTempBit()})
             {{
                 _headers._{header.Identifier} = default(StringValues);
-                {header.ClearBit()};
-                if(_bits == 0)
+                if({header.TestNotTempBit()})
                 {{
                     return;
                 }}
+                tempBits &= ~{1L << header.Index}L;
             }}
             ")}
         }}
@@ -544,11 +553,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     output.CopyFrom(_headerBytes, {loop.Headers.First(x => x.Identifier == "ContentLength").BytesOffset}, {loop.Headers.First(x => x.Identifier == "ContentLength").BytesCount});
                     output.CopyFromNumeric((ulong)ContentLength.Value);
 
-                    tempBits &= ~{1L << 63}L;
-                    if(tempBits == 0)
+                    if((tempBits & ~{1L << 63}L) == 0)
                     {{
                         return;
                     }}
+                    tempBits &= ~{1L << 63}L;
                 }}" : "")}")}
         }}" : "")}
         {(loop.ClassName == "FrameRequestHeaders" ? $@"

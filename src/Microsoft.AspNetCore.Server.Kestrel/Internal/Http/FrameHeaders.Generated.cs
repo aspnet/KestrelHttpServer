@@ -2654,7 +2654,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _contentLength = null;
             var tempBits = _bits;
             _bits = 0;
-
             if(FrameHeaders.BitCount(tempBits) > 12)
             {
                 _headers = default(HeaderReferences);
@@ -4051,7 +4050,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 if (_contentLength.HasValue)
                                 {
-                                    ThrowRequestMultipleContentLengths();
+                                    ThrowMultipleContentLengths();
                                 }
                                 else
                                 {
@@ -7062,7 +7061,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _contentLength = null;
             var tempBits = _bits;
             _bits = 0;
-
             if(FrameHeaders.BitCount(tempBits) > 12)
             {
                 _headers = default(HeaderReferences);
@@ -7865,11 +7863,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     output.CopyFrom(_headerBytes, 592, 18);
                     output.CopyFromNumeric((ulong)ContentLength.Value);
 
-                    tempBits &= ~-9223372036854775808L;
-                    if(tempBits == 0)
+                    if((tempBits & ~-9223372036854775808L) == 0)
                     {
                         return;
                     }
+                    tempBits &= ~-9223372036854775808L;
                 }
                 if ((tempBits & 1L) != 0)
                 { 

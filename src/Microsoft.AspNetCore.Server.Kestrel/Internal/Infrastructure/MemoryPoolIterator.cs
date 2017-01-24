@@ -1114,7 +1114,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (bytesLeftInBlock < 1)
                 {
-                    goto overflow;
+                    CopyFromNumericOverflow(value);
+                    return;
                 }
                 _index = blockIndex + 1;
                 block.End = blockIndex + 1;
@@ -1125,7 +1126,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (bytesLeftInBlock < 2)
                 {
-                    goto overflow;
+                    CopyFromNumericOverflow(value);
+                    return;
                 }
                 _index = blockIndex + 2;
                 block.End = blockIndex + 2;
@@ -1140,7 +1142,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (bytesLeftInBlock < 3)
                 {
-                    goto overflow;
+                    CopyFromNumericOverflow(value);
+                    return;
                 }
                 _index = blockIndex + 3;
                 block.End = blockIndex + 3;
@@ -1155,13 +1158,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
             else
             {
-                goto overflow;
+                CopyFromNumericOverflow(value);
             }
-
-            return;
-
-        overflow:
-            CopyFromNumericOverflow(value);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
