@@ -18,13 +18,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected Dictionary<string, StringValues> MaybeUnknown;
         protected Dictionary<string, StringValues> Unknown => MaybeUnknown ?? (MaybeUnknown = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase));
 
-        public long? ContentLength {
+        public long? ContentLength
+        {
             get { return _contentLength; }
             set
             {
                 if (value.HasValue && value.Value < 0)
                 {
-                    ThrowInvalidResponseContentLengthException(value.Value);
+                    ThrowInvalidContentLengthException(value.Value);
                 }
                 _contentLength = value;
             }
@@ -423,24 +424,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return transferEncodingOptions;
         }
 
-        protected static void ThrowInvalidResponseContentLengthException(long value)
+        private static void ThrowInvalidContentLengthException(long value)
         {
             throw new ArgumentOutOfRangeException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
-        }
-
-        protected static void ThrowInvalidResponseContentLengthException(string value)
-        {
-            throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
-        }
-
-        protected static void ThrowInvalidRequestContentLengthException(string value)
-        {
-            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
-        }
-
-        protected static void ThrowRequestMultipleContentLengths()
-        {
-            throw BadHttpRequestException.GetException(RequestRejectionReason.MultipleContentLengths);
         }
 
         private static void ThrowInvalidHeaderCharacter(char ch)

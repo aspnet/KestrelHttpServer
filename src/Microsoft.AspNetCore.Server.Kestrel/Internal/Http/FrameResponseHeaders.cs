@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -59,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             long parsed;
             if (!HeaderUtilities.TryParseInt64(value, out parsed))
             {
-                ThrowInvalidResponseContentLengthException(value);
+                ThrowInvalidContentLengthException(value);
             }
 
             return parsed;
@@ -70,6 +71,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             ValidateHeaderCharacters(key);
             Unknown[key] = value;
+        }
+
+        private static void ThrowInvalidContentLengthException(string value)
+        {
+            throw new InvalidOperationException($"Invalid Content-Length: \"{value}\". Value must be a positive integral number.");
         }
 
         public partial struct Enumerator : IEnumerator<KeyValuePair<string, StringValues>>

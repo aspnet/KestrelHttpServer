@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             long parsed;
             if (!HeaderUtilities.TryParseInt64(value, out parsed))
             {
-                ThrowInvalidRequestContentLengthException(value);
+                ThrowInvalidContentLengthException(value);
             }
 
             return parsed;
@@ -44,6 +44,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             StringValues existing;
             Unknown.TryGetValue(key, out existing);
             Unknown[key] = AppendValue(existing, value);
+        }
+
+        private static void ThrowInvalidContentLengthException(string value)
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
+        }
+
+        private static void ThrowMultipleContentLengths()
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.MultipleContentLengths);
         }
 
         public Enumerator GetEnumerator()
