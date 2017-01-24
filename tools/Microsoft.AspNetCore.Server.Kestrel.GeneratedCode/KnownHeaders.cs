@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.GeneratedCode
                             {{{(header.Identifier == "ContentLength" ? $@"
                                 if (_contentLength.HasValue)
                                 {{
-                                    ThrowMultipleContentLengths();
+                                    ThrowMultipleContentLengthsException();
                                 }}
                                 else
                                 {{

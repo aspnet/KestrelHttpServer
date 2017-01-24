@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidContentLength, value);
         }
 
-        private static void ThrowMultipleContentLengths()
+        private static void ThrowMultipleContentLengthsException()
         {
             throw BadHttpRequestException.GetException(RequestRejectionReason.MultipleContentLengths);
         }
