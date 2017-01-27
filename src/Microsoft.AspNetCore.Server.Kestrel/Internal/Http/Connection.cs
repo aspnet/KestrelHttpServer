@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
             }
 
-            Input = Thread.PipelineFactory.Create();
+            Input = Thread.PipelineFactory.Create(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
@@ -187,8 +187,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (adapterContext.ConnectionStream != rawStream)
                 {
                     _filteredStream = adapterContext.ConnectionStream;
-                    _adaptedPipeline = new AdaptedPipeline(ConnectionId, adapterContext.ConnectionStream, Thread.PipelineFactory,
-                        Thread.Memory, Log);
+                    _adaptedPipeline = new AdaptedPipeline(
+                        ConnectionId,
+                        adapterContext.ConnectionStream,
+                        Thread.PipelineFactory.Create(ServerOptions.Limits.MaxRequestBufferSize ?? 0),
+                        Thread.Memory,
+                        Log);
 
                     _frame.Input = _adaptedPipeline.Input;
                     _frame.Output = _adaptedPipeline.Output;
@@ -281,7 +285,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var currentWritableBuffer = _currentWritableBuffer.Value;
                 currentWritableBuffer.Advance(readCount);
-                currentWritableBuffer.FlushAsync();
+                var flushTask = currentWritableBuffer.FlushAsync();
+                if (!flushTask.IsCompleted)
+                {
+                    //Console.WriteLine("Paused on " + Input.Length);
+                    ((IConnectionControl) this).Pause();
+                    flushTask.ContinueWith((task, state) =>
+                    {
+
+                        //Console.WriteLine("Resumed on " + Input.Length);
+                        Thread.Post((connectionControl) => ((IConnectionControl) connectionControl).Resume(), state);
+                    }, this);
+                }
+                else
+                {
+                    //Console.WriteLine("Wrote up to " + Input.Length);
+                }
             }
 
             if (!normalRead)

@@ -20,11 +20,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         public AdaptedPipeline(
             string connectionId,
             Stream filteredStream,
-            PipelineFactory pipelineFactory,
+            Pipe pipelineFactory,
             MemoryPool memory,
             IKestrelTrace logger)
         {
-            Input = pipelineFactory.Create();
+            Input = pipelineFactory;
             Output = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
 
             _filteredStream = filteredStream;

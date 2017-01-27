@@ -65,9 +65,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        // TODO: Uncomment after adding backpressure to pipelines
-        //[Theory]
-        //[MemberData(nameof(LargeUploadData))]
+        [Theory]
+        [MemberData(nameof(LargeUploadData))]
         public async Task LargeUpload(long? maxRequestBufferSize, bool ssl, bool expectPause)
         {
             // Parameters
