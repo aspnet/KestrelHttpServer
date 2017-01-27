@@ -45,7 +45,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
         private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
         private static readonly byte[] _bytesHttpVersion11 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
-        private static readonly byte[] _bytesContentLengthZero = Encoding.ASCII.GetBytes("\r\nContent-Length: 0");
         private static readonly byte[] _bytesEndHeaders = Encoding.ASCII.GetBytes("\r\n\r\n");
         private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("\r\nServer: Kestrel");
 
@@ -661,12 +660,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (responseHeaders != null &&
                 !responseHeaders.HasTransferEncoding &&
-                responseHeaders.HasContentLength &&
-                _responseBytesWritten + count > responseHeaders.HeaderContentLengthValue.Value)
+                responseHeaders.ContentLength.HasValue &&
+                _responseBytesWritten + count > responseHeaders.ContentLength.Value)
             {
                 _keepAlive = false;
                 throw new InvalidOperationException(
-                    $"Response Content-Length mismatch: too many bytes written ({_responseBytesWritten + count} of {responseHeaders.HeaderContentLengthValue.Value}).");
+                    $"Response Content-Length mismatch: too many bytes written ({_responseBytesWritten + count} of {responseHeaders.ContentLength.Value}).");
             }
 
             _responseBytesWritten += count;
@@ -683,8 +682,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Called after VerifyAndUpdateWrite(), so _responseBytesWritten has already been updated.
             if (responseHeaders != null &&
                 !responseHeaders.HasTransferEncoding &&
-                responseHeaders.HasContentLength &&
-                _responseBytesWritten == responseHeaders.HeaderContentLengthValue.Value)
+                responseHeaders.ContentLength.HasValue &&
+                _responseBytesWritten == responseHeaders.ContentLength.Value)
             {
                 _abortedCts = null;
             }
@@ -696,8 +695,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!HttpMethods.IsHead(Method) &&
                 !responseHeaders.HasTransferEncoding &&
-                responseHeaders.HeaderContentLengthValue.HasValue &&
-                _responseBytesWritten < responseHeaders.HeaderContentLengthValue.Value)
+                responseHeaders.ContentLength.HasValue &&
+                _responseBytesWritten < responseHeaders.ContentLength.Value)
             {
                 // We need to close the connection if any bytes were written since the client
                 // cannot be certain of how many bytes it will receive.
@@ -707,7 +706,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
 
                 ReportApplicationError(new InvalidOperationException(
-                    $"Response Content-Length mismatch: too few bytes written ({_responseBytesWritten} of {responseHeaders.HeaderContentLengthValue.Value})."));
+                    $"Response Content-Length mismatch: too few bytes written ({_responseBytesWritten} of {responseHeaders.ContentLength.Value})."));
             }
         }
 
@@ -924,13 +923,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // automatically for HEAD requests or 204, 205, 304 responses.
             if (_canHaveBody)
             {
-                if (!hasTransferEncoding && !responseHeaders.HasContentLength)
+                if (!hasTransferEncoding && !responseHeaders.ContentLength.HasValue)
                 {
                     if (appCompleted && StatusCode != StatusCodes.Status101SwitchingProtocols)
                     {
                         // Since the app has completed and we are only now generating
                         // the headers we can safely set the Content-Length to 0.
-                        responseHeaders.SetRawContentLength("0", _bytesContentLengthZero);
+                        responseHeaders.ContentLength = 0;
                     }
                     else
                     {
@@ -1453,7 +1452,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
 
             responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
-            responseHeaders.SetRawContentLength("0", _bytesContentLengthZero);
+            responseHeaders.ContentLength = 0;
 
             if (ServerOptions.AddServerHeader)
             {
