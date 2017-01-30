@@ -94,27 +94,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             }
         }
 
-        //[Benchmark(OperationsPerInvoke = InnerLoopCount)]
-        //public void ParseUnicode()
-        //{
-        //    for (var i = 0; i < InnerLoopCount; i++)
-        //    {
-        //        ParseData(_unicodeRequest);
-        //    }
-        //}
+        [Benchmark(OperationsPerInvoke = InnerLoopCount)]
+        public void ParseUnicode()
+        {
+            for (var i = 0; i < InnerLoopCount; i++)
+            {
+                ParseData(_unicodeRequest);
+            }
+        }
 
-        //[Benchmark(OperationsPerInvoke = InnerLoopCount * Pipelining)]
-        //public void ParseUnicodePipelined()
-        //{
-        //    for (var i = 0; i < InnerLoopCount; i++)
-        //    {
-        //        ParseData(_unicodePipelinedRequests);
-        //    }
-        //}
+        [Benchmark(OperationsPerInvoke = InnerLoopCount * Pipelining)]
+        public void ParseUnicodePipelined()
+        {
+            for (var i = 0; i < InnerLoopCount; i++)
+            {
+                ParseData(_unicodePipelinedRequests);
+            }
+        }
 
         private void ParseData(byte[] dataBytes)
         {
-            var readableBuffer = ReadableBuffer.Create(dataBytes);
+            // We need to copy because we modify data inplace in TakeStartLine
+            var data = new byte[dataBytes.Length];
+            Array.Copy(dataBytes, data, data.Length);
+
+            var readableBuffer = ReadableBuffer.Create(data);
             while (!readableBuffer.IsEmpty)
             {
                 Frame.Reset();
