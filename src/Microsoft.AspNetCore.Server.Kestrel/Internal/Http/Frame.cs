@@ -1030,8 +1030,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            // TODO: Bad
-            end = buffer.Slice(end, 1).End;
+            end = buffer.Move(end, 1);
             ReadCursor methodEnd;
             string method;
             if (!buffer.GetKnownMethod(out method))
@@ -1065,8 +1064,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var needDecode = false;
             ReadCursor pathEnd;
-            // TODO: Bad
-            var pathBegin = buffer.Slice(methodEnd, 1).End;
+
+            var pathBegin = buffer.Move(methodEnd, 1);
 
             var chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
             if (chFound == -1)

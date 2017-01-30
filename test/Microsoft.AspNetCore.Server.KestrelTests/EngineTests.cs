@@ -34,8 +34,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters = { new PassThroughConnectionAdapter() }
-                    }
-                };
+            }
+        };
 
         [Fact]
         public void EngineCanStartAndStop()

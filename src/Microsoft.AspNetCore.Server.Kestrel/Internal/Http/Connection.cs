@@ -288,18 +288,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var flushTask = currentWritableBuffer.FlushAsync();
                 if (!flushTask.IsCompleted)
                 {
-                    //Console.WriteLine("Paused on " + Input.Length);
                     ((IConnectionControl) this).Pause();
                     flushTask.ContinueWith((task, state) =>
                     {
-
-                        //Console.WriteLine("Resumed on " + Input.Length);
                         Thread.Post((connectionControl) => ((IConnectionControl) connectionControl).Resume(), state);
                     }, this);
-                }
-                else
-                {
-                    //Console.WriteLine("Wrote up to " + Input.Length);
                 }
             }
 

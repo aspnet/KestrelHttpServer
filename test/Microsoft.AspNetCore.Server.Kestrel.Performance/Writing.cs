@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Moq;
-using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
