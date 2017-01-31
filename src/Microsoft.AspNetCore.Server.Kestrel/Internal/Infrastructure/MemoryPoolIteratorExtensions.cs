@@ -73,16 +73,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         public static string GetAsciiStringEscaped(this ReadCursor start, ReadCursor end, int maxChars)
         {
             var sb = new StringBuilder();
-            var r = new ReadableBufferReader(start, end);
+            var reader = new ReadableBufferReader(start, end);
 
-            while (maxChars > 0 && !r.End)
+            while (maxChars > 0 && !reader.End)
             {
-                var ch = r.Take();
+                var ch = reader.Take();
                 sb.Append(ch < 0x20 || ch >= 0x7F ? $"<0x{ch:X2}>" : ((char)ch).ToString());
                 maxChars--;
             }
 
-            if (!r.End)
+            if (!reader.End)
             {
                 sb.Append("...");
             }
@@ -140,8 +140,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
 
             ulong value = begin.ReadLittleEndian<ulong>();
-
-
             if ((value & _mask4Chars) == _httpGetMethodLong)
             {
                 knownMethod = HttpMethods.Get;

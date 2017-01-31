@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         catch (InvalidOperationException)
                         {
-                            throw BadHttpRequestException.GetException(RequestRejectionReason.BadRequest);
+                            throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidRequestLine);
                         }
                         finally
                         {
@@ -82,8 +82,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
 
                         var result = await Input.ReadAsyncDispatched();
-                        ReadCursor examined = result.Buffer.End;
-                        ReadCursor consumed = result.Buffer.End;
+                        var examined = result.Buffer.End;
+                        var consumed = result.Buffer.End;
 
                         bool headersDone;
 
@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         catch (InvalidOperationException)
                         {
-                            throw BadHttpRequestException.GetException(RequestRejectionReason.BadRequest);
+                            throw BadHttpRequestException.GetException(RequestRejectionReason.MalformedRequestInvalidHeaders);
                         }
                         finally
                         {

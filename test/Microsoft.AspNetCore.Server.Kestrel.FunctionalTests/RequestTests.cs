@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class RequestTests
     {
-        private const int _semaphoreWaitTimeout = 250;
+        private const int _semaphoreWaitTimeout = 2500;
 
         [Theory]
         [InlineData(10 * 1024 * 1024, true)]
@@ -60,10 +60,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             {
                                 for (var i = 0; i < received; i++)
                                 {
-                                    if ((byte) ((total + i) % 256) != receivedBytes[i])
-                                    {
-                                        Assert.True(false, "Data received is incorrect");
-                                    }
+                                    // Do not use Assert.Equal here, it is to slow for this hot path
+                                    Assert.True((byte)((total + i) % 256) != receivedBytes[i], "Data received is incorrect");
                                 }
                             }
 

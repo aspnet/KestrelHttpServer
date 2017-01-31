@@ -445,9 +445,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
+                        var consumed = default(ReadCursor);
+                        var examined = default(ReadCursor);
 
-                        ReadCursor consumed = default(ReadCursor);
-                        ReadCursor examined = default(ReadCursor);
                         try
                         {
                             ParseChunkedPrefix(buffer, out consumed, out examined);
@@ -472,9 +472,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
+                        var consumed = default(ReadCursor);
+                        var examined = default(ReadCursor);
 
-                        ReadCursor consumed = default(ReadCursor);
-                        ReadCursor examined = default(ReadCursor);
                         try
                         {
                             ParseExtension(buffer, out consumed, out examined);
@@ -528,9 +528,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         var result = await _input.ReadAsyncDispatched();
                         var buffer = result.Buffer;
-
-                        ReadCursor consumed = default(ReadCursor);
-                        ReadCursor examined = default(ReadCursor);
+                        var consumed = default(ReadCursor);
+                        var examined = default(ReadCursor);
 
                         try
                         {
@@ -557,8 +556,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     var result = await _input.ReadAsyncDispatched();
                     var buffer = result.Buffer;
-                    ReadCursor consumed = default(ReadCursor);
-                    ReadCursor examined = default(ReadCursor);
+                    var consumed = default(ReadCursor);
+                    var examined = default(ReadCursor);
 
                     try
                     {
@@ -592,8 +591,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
                         }
 
-                        ReadCursor consumed = default(ReadCursor);
-                        ReadCursor examined = default(ReadCursor);
+                        var consumed = default(ReadCursor);
+                        var examined = default(ReadCursor);
+
                         bool takeMessageHeaders;
                         try
                         {
@@ -724,8 +724,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     _mode = Mode.Suffix;
                     return default(ArraySegment<byte>);
                 }
-                ArraySegment<byte> segment;
-                buffer.First.TryGetArray(out segment);
+                var segment = buffer.First.GetArray();
 
                 int actual = Math.Min(segment.Count, _inputLength);
                 // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.

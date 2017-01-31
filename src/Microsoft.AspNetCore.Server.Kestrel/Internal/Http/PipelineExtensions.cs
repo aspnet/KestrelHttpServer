@@ -1,8 +1,10 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
-using System.Buffers;
-using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -18,10 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     if (!result.Buffer.IsEmpty)
                     {
-                        ArraySegment<byte> data;
                         var segment = result.Buffer.First;
-                        var arrayResult = segment.TryGetArray(out data);
-                        Debug.Assert(arrayResult);
+                        var data = segment.GetArray();
 
                         return new ValueTask<ArraySegment<byte>>(data);
                     }
@@ -46,18 +46,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 var result = await readingTask;
 
-                await Task.Yield();
+                await AwaitableThreadPool.Yield();
 
                 try
                 {
                     if (!result.Buffer.IsEmpty)
                     {
-                        ArraySegment<byte> data;
                         var segment = result.Buffer.First;
-                        var arrayResult = segment.TryGetArray(out data);
-                        Debug.Assert(arrayResult);
-
-                        return data;
+                        return segment.GetArray();
                     }
                     else if (result.IsCompleted || result.IsCancelled)
                     {
@@ -68,6 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     pipelineReader.Advance(result.Buffer.Start, result.Buffer.Start);
                 }
+
                 readingTask = pipelineReader.ReadAsync();
             }
         }
@@ -75,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public static async Task<ReadResult> ReadAsyncDispatched(this IPipelineReader pipelineReader)
         {
             var result = await pipelineReader.ReadAsync();
-            await Task.Yield();
+            await AwaitableThreadPool.Yield();
             return result;
         }
 
@@ -90,6 +87,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // todo: slow
                 return buffer.ToArray();
             }
+        }
+
+        public static ArraySegment<byte> ToArraySegment(this ReadableBuffer buffer)
+        {
+            if (buffer.IsSingleSpan)
+            {
+                return buffer.First.GetArray();
+            }
+            else
+            {
+                // todo: slow
+                return new ArraySegment<byte>(buffer.ToArray());
+            }
+        }
+
+        public static ArraySegment<byte> GetArray(this Memory<byte> memory)
+        {
+            ArraySegment<byte> result;
+            if (!memory.TryGetArray(out result))
+            {
+                throw new InvalidOperationException("Memory backed by array was expected");
+            }
+            return result;
         }
     }
 }

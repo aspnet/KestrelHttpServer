@@ -30,7 +30,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         RequestTimeout,
         FinalTransferCodingNotChunked,
         LengthRequired,
-        LengthRequiredHttp10,
-        BadRequest
+        LengthRequiredHttp10
     }
 }

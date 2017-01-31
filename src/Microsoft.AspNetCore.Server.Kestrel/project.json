@@ -12,7 +12,7 @@
     ]
   },
   "dependencies": {
-    "Libuv": "1.9.1",
+    "Libuv": "1.10.0-*",
     "Microsoft.AspNetCore.Hosting": "1.2.0-*",
     "Microsoft.Extensions.Logging.Abstractions": "1.2.0-*",
     "Microsoft.Extensions.TaskCache.Sources": {
@@ -23,7 +23,7 @@
     "System.Buffers": "4.4.0-*",
     "System.Numerics.Vectors": "4.4.0-*",
     "System.Threading.Tasks.Extensions": "4.4.0-*",
-    //"System.IO.Pipelines": "0.1.0-*",
+    "System.IO.Pipelines": "0.1.0-*",
     "System.IO.Pipelines.Text.Primitives": "0.1.0-*",
     "System.Text.Encodings.Web.Utf8": "0.1.0-*"
   },

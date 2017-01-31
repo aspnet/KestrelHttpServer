@@ -1328,8 +1328,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
                 }
 
-                ReadCursor whitspace;
-                if (ReadCursorOperations.Seek(beginName, endName, out whitspace, ByteTab, ByteSpace) != -1)
+                ReadCursor whitespace;
+                if (ReadCursorOperations.Seek(beginName, endName, out whitespace, ByteTab, ByteSpace) != -1)
                 {
                     RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                 }
@@ -1388,7 +1388,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var valueBuffer = buffer.Slice(endName, endValue).Slice(1).TrimStart().TrimEnd();
 
                 // GetArraySegment
-                var name = nameBuffer.ToArray();
+                var name = nameBuffer.ToArraySegment();
                 var value = valueBuffer.GetAsciiString();
 
                 lineEnd = limitedBuffer.Move(lineEnd, 1);
@@ -1397,7 +1397,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _remainingRequestHeadersBytesAllowed -= buffer.Slice(0, lineEnd).Length;
                 _requestHeadersParsed++;
 
-                requestHeaders.Append(name, 0, name.Length, value);
+                requestHeaders.Append(name.Array, name.Offset, name.Count, value);
                 buffer = buffer.Slice(lineEnd);
                 consumed = buffer.Start;
             }
