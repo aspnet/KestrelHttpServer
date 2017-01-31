@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                                 for (var i = 0; i < received; i++)
                                 {
                                     // Do not use Assert.Equal here, it is to slow for this hot path
-                                    Assert.True((byte)((total + i) % 256) != receivedBytes[i], "Data received is incorrect");
+                                    Assert.True((byte)((total + i) % 256) == receivedBytes[i], "Data received is incorrect");
                                 }
                             }
 

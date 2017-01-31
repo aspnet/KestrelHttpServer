@@ -503,23 +503,22 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("", Frame.RequestLineStatus.Empty)]
-        [InlineData("G", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GE", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET ", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET /", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / ", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / H", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HT", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTT", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTTP", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTTP/", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTTP/1", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTTP/1.", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTTP/1.1", Frame.RequestLineStatus.Incomplete)]
-        [InlineData("GET / HTTP/1.1\r", Frame.RequestLineStatus.Incomplete)]
-        public async Task TakeStartLineReturnsWhenGivenIncompleteRequestLines(string requestLine, Frame.RequestLineStatus expectedReturnValue)
+        [InlineData("G")]
+        [InlineData("GE")]
+        [InlineData("GET")]
+        [InlineData("GET ")]
+        [InlineData("GET /")]
+        [InlineData("GET / ")]
+        [InlineData("GET / H")]
+        [InlineData("GET / HT")]
+        [InlineData("GET / HTT")]
+        [InlineData("GET / HTTP")]
+        [InlineData("GET / HTTP/")]
+        [InlineData("GET / HTTP/1")]
+        [InlineData("GET / HTTP/1.")]
+        [InlineData("GET / HTTP/1.1")]
+        [InlineData("GET / HTTP/1.1\r")]
+        public async Task TakeStartLineReturnsWhenGivenIncompleteRequestLines(string requestLine)
         {
             var requestLineBytes = Encoding.ASCII.GetBytes(requestLine);
             await _socketInput.WriteAsync(requestLineBytes);
@@ -528,7 +527,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var returnValue = _frame.TakeStartLine(readableBuffer, out consumed, out examined);
             _socketInput.AdvanceReader(consumed, examined);
 
-            Assert.Equal(expectedReturnValue, returnValue);
+            Assert.False(returnValue);
         }
 
         [Fact]
@@ -544,21 +543,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             var expectedRequestHeadersTimeout = (long)_serviceContext.ServerOptions.Limits.RequestHeadersTimeout.TotalMilliseconds;
             connectionControl.Verify(cc => cc.ResetTimeout(expectedRequestHeadersTimeout, TimeoutAction.SendTimeoutResponse));
-        }
-
-        [Fact]
-        public async Task TakeStartLineDoesNotStartRequestHeadersTimeoutIfNoDataAvailable()
-        {
-            var connectionControl = new Mock<IConnectionControl>();
-            _connectionContext.ConnectionControl = connectionControl.Object;
-
-            await _socketInput.WriteAsync(new byte[] {});
-
-            var readableBuffer = (await _socketInput.ReadAsync()).Buffer;
-            _frame.TakeStartLine(readableBuffer, out consumed, out examined);
-            _socketInput.AdvanceReader(consumed, examined);
-
-            connectionControl.Verify(cc => cc.ResetTimeout(It.IsAny<long>(), It.IsAny<TimeoutAction>()), Times.Never);
         }
 
         [Fact]

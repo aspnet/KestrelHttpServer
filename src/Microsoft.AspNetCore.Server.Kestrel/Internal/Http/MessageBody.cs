@@ -413,7 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // byte consts don't have a data type annotation so we pre-cast it
             private const byte ByteCR = (byte)'\r';
 
-            private readonly Pipe _input = null;
+            private readonly IPipelineReader _input = null;
             private readonly FrameRequestHeaders _requestHeaders;
             private int _inputLength;
 
@@ -454,7 +454,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            _input.AdvanceReader(consumed, examined);
+                            _input.Advance(consumed, examined);
                         }
 
                         if (_mode != Mode.Prefix)
@@ -481,7 +481,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            _input.AdvanceReader(consumed, examined);
+                            _input.Advance(consumed, examined);
                         }
 
                         if (_mode != Mode.Extension)
@@ -506,7 +506,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            _input.AdvanceReader(buffer.Start, buffer.Start);
+                            _input.Advance(buffer.Start, buffer.Start);
                         }
 
                         if (segment.Count != 0)
@@ -537,7 +537,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            _input.AdvanceReader(consumed, examined);
+                            _input.Advance(consumed, examined);
                         }
 
                         if (_mode != Mode.Suffix)
@@ -565,7 +565,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     finally
                     {
-                        _input.AdvanceReader(consumed, examined);
+                        _input.Advance(consumed, examined);
                     }
 
                     if (_mode != Mode.Trailer)
@@ -601,7 +601,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            _input.AdvanceReader(consumed, examined);
+                            _input.Advance(consumed, examined);
                         }
 
                         if (takeMessageHeaders)

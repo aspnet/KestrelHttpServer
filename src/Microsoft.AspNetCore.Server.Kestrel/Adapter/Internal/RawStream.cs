@@ -13,10 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
     public class RawStream : Stream
     {
-        private readonly Pipe _input;
+        private readonly IPipelineReader _input;
         private readonly ISocketOutput _output;
-
-        private Task<int> _cachedTask = TaskCache<int>.DefaultCompletedTask;
 
         public RawStream(Pipe input, ISocketOutput output)
         {
@@ -132,7 +130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
                 }
                 finally
                 {
-                    _input.AdvanceReader(readableBuffer.End, readableBuffer.End);
+                    _input.Advance(readableBuffer.End, readableBuffer.End);
                 }
             }
         }

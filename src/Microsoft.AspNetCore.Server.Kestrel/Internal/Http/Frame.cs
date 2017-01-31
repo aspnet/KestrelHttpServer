@@ -990,21 +990,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.ProducingComplete(end);
         }
 
-        public RequestLineStatus TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
             var start = buffer.Start;
             var end = buffer.Start;
 
             examined = buffer.End;
             consumed = buffer.Start;
-
-            // We may hit this when the client has stopped sending data but
-            // the connection hasn't closed yet, and therefore Frame.Stop()
-            // hasn't been called yet.
-            if (buffer.IsEmpty)
-            {
-                return RequestLineStatus.Empty;
-            }
 
             if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
             {
@@ -1026,7 +1018,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else
                 {
-                    return RequestLineStatus.Incomplete;
+                    return false;
                 }
             }
 
@@ -1188,7 +1180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 QueryString = string.Empty;
             }
 
-            return RequestLineStatus.Done;
+            return true;
         }
 
         private void RejectRequestLine(ReadCursor start, ReadCursor end)

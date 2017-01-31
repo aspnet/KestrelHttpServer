@@ -72,7 +72,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public static async Task<ReadResult> ReadAsyncDispatched(this IPipelineReader pipelineReader)
         {
             var result = await pipelineReader.ReadAsync();
+
             await AwaitableThreadPool.Yield();
+
             return result;
         }
 
@@ -82,11 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 return buffer.First.Span;
             }
-            else
-            {
-                // todo: slow
-                return buffer.ToArray();
-            }
+            return buffer.ToArray();
         }
 
         public static ArraySegment<byte> ToArraySegment(this ReadableBuffer buffer)
@@ -95,11 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 return buffer.First.GetArray();
             }
-            else
-            {
-                // todo: slow
-                return new ArraySegment<byte>(buffer.ToArray());
-            }
+            return new ArraySegment<byte>(buffer.ToArray());
         }
 
         public static ArraySegment<byte> GetArray(this Memory<byte> memory)

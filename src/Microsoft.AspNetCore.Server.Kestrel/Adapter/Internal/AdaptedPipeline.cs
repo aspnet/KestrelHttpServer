@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
     public class AdaptedPipeline : IDisposable
     {
-        private const int AllocBufferSize = 2048;
+        private const int MinAllocBufferSize = 2048;
 
         private readonly Stream _filteredStream;
 
@@ -36,7 +36,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         public void Dispose()
         {
-            Input.CompleteReader();
             Input.CompleteWriter();
         }
 
@@ -46,8 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
             do
             {
-                // TODO: We might want to read into tail space no matter how small it is
-                var block = Input.Alloc(AllocBufferSize);
+                var block = Input.Alloc(MinAllocBufferSize);
 
                 try
                 {

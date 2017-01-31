@@ -125,7 +125,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 ReadCursor consumed;
                 ReadCursor examined;
-                if (Frame.TakeStartLine(readableBuffer, out consumed, out examined) != RequestLineStatus.Done)
+                if (Frame.TakeStartLine(readableBuffer, out consumed, out examined) != true)
                 {
                     ThrowInvalidStartLine();
                 }

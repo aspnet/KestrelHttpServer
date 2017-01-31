@@ -38,6 +38,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 while (!_requestProcessingStopping)
                 {
+                    // If writer completes with an error Input.ReadAsyncDispatched would throw and
+                    // this would not be reset to empty. But it's required by ECONNRESET check lower in the method.
                     requestLineStatus = RequestLineStatus.Empty;
 
                     ConnectionControl.SetTimeout(_keepAliveMilliseconds, TimeoutAction.CloseConnection);
@@ -47,9 +49,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var result = await Input.ReadAsyncDispatched();
                         var examined = result.Buffer.End;
                         var consumed = result.Buffer.End;
+
                         try
                         {
-                            requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined);
+                            if (!result.Buffer.IsEmpty)
+                            {
+                                requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined)
+                                    ? RequestLineStatus.Done : RequestLineStatus.Incomplete;
+                            }
+                            else
+                            {
+                                requestLineStatus = RequestLineStatus.Empty;
+                            }
                         }
                         catch (InvalidOperationException)
                         {

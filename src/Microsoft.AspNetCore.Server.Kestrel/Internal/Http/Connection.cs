@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class Connection : ConnectionContext, IConnectionControl
     {
-        private const int AllocBufferSize = 2048;
+        private const int MinAllocBufferSize = 2048;
 
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly string _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
@@ -43,7 +43,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private Task _readInputTask;
 
         private TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
-        private BufferSizeControl _bufferSizeControl;
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
@@ -58,11 +57,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ConnectionControl = this;
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
-
-            if (ServerOptions.Limits.MaxRequestBufferSize.HasValue)
-            {
-                _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
-            }
 
             Input = Thread.PipelineFactory.Create(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
@@ -223,7 +217,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private unsafe Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
             Debug.Assert(_currentWritableBuffer == null);
-            var currentWritableBuffer = Input.Alloc(AllocBufferSize);
+            var currentWritableBuffer = Input.Alloc(MinAllocBufferSize);
             _currentWritableBuffer = currentWritableBuffer;
             void* dataPtr;
             var tryGetPointer = currentWritableBuffer.Memory.TryGetPointer(out dataPtr);
