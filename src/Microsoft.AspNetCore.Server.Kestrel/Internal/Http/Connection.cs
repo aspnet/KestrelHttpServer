@@ -98,7 +98,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
                 // Otherwise, it will close the connection.
-                var ignore = ApplyConnectionAdaptersAsync();
+                // Dispatch ApplyConnectionAdaptersAsync to a thread pool so if the first read completes synchronously
+                // we won't be on IO thread
+                ThreadPool.Run(() =>
+                {
+                    var ignore = ApplyConnectionAdaptersAsync();
+                });
             }
         }
 

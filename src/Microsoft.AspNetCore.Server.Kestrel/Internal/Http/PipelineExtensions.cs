@@ -3,6 +3,7 @@
 
 using System;
 using System.IO.Pipelines;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
@@ -69,12 +70,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static async Task<ReadResult> ReadAsyncDispatched(this IPipelineReader pipelineReader)
+        public static ValueTask<ReadResult> ReadAsyncDispatched(this IPipelineReader pipelineReader)
         {
-            var result = await pipelineReader.ReadAsync();
+            var result = pipelineReader.ReadAsync();
+            if (result.IsCompleted)
+            {
+                return new ValueTask<ReadResult>(result.GetResult());
+            }
+            return new ValueTask<ReadResult>(ReadAsyncDispatchedAwaited(result));
+        }
 
+        private static async Task<ReadResult> ReadAsyncDispatchedAwaited(ReadableBufferAwaitable awaitable)
+        {
+            var result = await awaitable;
             await AwaitableThreadPool.Yield();
-
             return result;
         }
 
