@@ -182,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                             }
                         },
                         null);
-                }, null);
+                }, (object)null);
 
                 await connectTcs.Task;
 

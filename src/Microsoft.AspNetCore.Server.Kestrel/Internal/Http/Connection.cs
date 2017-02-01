@@ -290,7 +290,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     ((IConnectionControl) this).Pause();
                     flushTask.ContinueWith((task, state) =>
                     {
-                        Thread.Post((connectionControl) => ((IConnectionControl) connectionControl).Resume(), state);
+                        if (task.Result)
+                        {
+                            Thread.Post(connectionControl => ((IConnectionControl) connectionControl).Resume(), state);
+                        }
                     }, this);
                 }
             }

@@ -24,8 +24,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     {
         public const long HeartbeatMilliseconds = 1000;
 
-        private static readonly Action<object, object> _postCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
-        private static readonly Action<object, object> _postAsyncCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private static readonly Libuv.uv_walk_cb _heartbeatWalkCallback = (ptr, arg) =>
         {
             var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
@@ -185,7 +183,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
                 var result = await WaitAsync(PostAsync(state =>
                 {
-                    var listener = (KestrelThread)state;
+                    var listener = state;
                     listener.WriteReqPool.Dispose();
                 },
                 this), _shutdownTimeout).ConfigureAwait(false);
@@ -230,13 +228,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _loop.Stop();
         }
 
-        public void Post(Action<object> callback, object state)
+        public void Post<T>(Action<T> callback, T state)
         {
             lock (_workSync)
             {
                 _workAdding.Enqueue(new Work
                 {
-                    CallbackAdapter = _postCallbackAdapter,
+                    CallbackAdapter = CallbackAdapter<T>.PostCallbackAdapter,
                     Callback = callback,
                     State = state
                 });
@@ -246,17 +244,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private void Post(Action<KestrelThread> callback)
         {
-            Post(thread => callback((KestrelThread)thread), this);
+            Post(callback, this);
         }
 
-        public Task PostAsync(Action<object> callback, object state)
+        public Task PostAsync<T>(Action<T> callback, T state)
         {
             var tcs = new TaskCompletionSource<object>();
             lock (_workSync)
             {
                 _workAdding.Enqueue(new Work
                 {
-                    CallbackAdapter = _postAsyncCallbackAdapter,
+                    CallbackAdapter = CallbackAdapter<T>.PostAsyncCallbackAdapter,
                     Callback = callback,
                     State = state,
                     Completion = tcs
@@ -458,5 +456,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             public Action<IntPtr> Callback;
             public IntPtr Handle;
         }
+
+        private class CallbackAdapter<T>
+        {
+            public static readonly Action<object, object> PostCallbackAdapter = (callback, state) => ((Action<T>)callback).Invoke((T)state);
+            public static readonly Action<object, object> PostAsyncCallbackAdapter = (callback, state) => ((Action<T>)callback).Invoke((T)state);
+        }
+
     }
 }
