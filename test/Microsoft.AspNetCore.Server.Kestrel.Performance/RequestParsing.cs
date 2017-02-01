@@ -63,7 +63,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                ParseData(_plaintextRequest);
+                InsertData(_plaintextRequest);
+                ParseData();
             }
         }
 
@@ -72,7 +73,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                ParseData(_plaintextPipelinedRequests);
+                InsertData(_plaintextPipelinedRequests);
+                ParseData();
             }
         }
 
@@ -81,7 +83,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                ParseData(_liveaspnentRequest);
+                InsertData(_liveaspnentRequest);
+                ParseData();
             }
         }
 
@@ -90,7 +93,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                ParseData(_liveaspnentPipelinedRequests);
+                InsertData(_liveaspnentPipelinedRequests);
+                ParseData();
             }
         }
 
@@ -99,7 +103,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                ParseData(_unicodeRequest);
+                InsertData(_unicodeRequest);
+                ParseData();
             }
         }
 
@@ -108,29 +113,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                ParseData(_unicodePipelinedRequests);
+                InsertData(_unicodePipelinedRequests);
+                ParseData();
             }
         }
 
-        private void ParseData(byte[] dataBytes)
+        private void InsertData(byte[] bytes)
         {
-            // We need to copy because we modify data inplace in TakeStartLine
-            var data = new byte[dataBytes.Length];
-            Array.Copy(dataBytes, data, data.Length);
+            // There should not be any backpressure and task completes immediately
+            Pipe.WriteAsync(bytes).GetAwaiter().GetResult();
+        }
 
-            var readableBuffer = ReadableBuffer.Create(data);
-            while (!readableBuffer.IsEmpty)
+        private void ParseData()
+        {
+            do
             {
+                var awaitable = Pipe.ReadAsync();
+                if (!awaitable.IsCompleted)
+                {
+                    // No more data
+                    return;
+                }
+
+                var result = awaitable.GetAwaiter().GetResult();
+                var readableBuffer = result.Buffer;
+
                 Frame.Reset();
 
                 ReadCursor consumed;
                 ReadCursor examined;
-                if (Frame.TakeStartLine(readableBuffer, out consumed, out examined) != true)
+                if (!Frame.TakeStartLine(readableBuffer, out consumed, out examined))
                 {
                     ThrowInvalidStartLine();
                 }
+                Pipe.AdvanceReader(consumed, examined);
 
-                readableBuffer = readableBuffer.Slice(consumed);
+                result = Pipe.ReadAsync().GetAwaiter().GetResult();
+                readableBuffer = result.Buffer;
 
                 Frame.InitializeHeaders();
 
@@ -138,8 +157,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     ThrowInvalidMessageHeaders();
                 }
-                readableBuffer = readableBuffer.Slice(consumed);
+                Pipe.AdvanceReader(consumed, examined);
             }
+            while(true);
         }
 
         private void ThrowInvalidStartLine()
@@ -157,8 +177,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             var connectionContext = new MockConnection(new KestrelServerOptions());
             Frame = new Frame<object>(application: null, context: connectionContext);
+            PipelineFactory = new PipelineFactory();
+            Pipe = PipelineFactory.Create();
         }
 
+        public Pipe Pipe { get; set; }
+
         public Frame<object> Frame { get; set; }
+
+        public PipelineFactory PipelineFactory { get; set; }
     }
 }

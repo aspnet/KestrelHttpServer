@@ -1377,9 +1377,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 //   whitespace or CR for a new (possibly tentative) end of value.
 
                 var nameBuffer = buffer.Slice(beginName, endName);
+
+                // TODO: TrimStart and TrimEnd are pretty slow
                 var valueBuffer = buffer.Slice(endName, endValue).Slice(1).TrimStart().TrimEnd();
 
-                // GetArraySegment
                 var name = nameBuffer.ToArraySegment();
                 var value = valueBuffer.GetAsciiString();
 
