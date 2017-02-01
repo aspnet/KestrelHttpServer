@@ -390,13 +390,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public void Start()
         {
             Reset();
-            _requestProcessingTask =
-                Task.Factory.StartNew(
-                    (o) => ((Frame)o).RequestProcessingAsync(),
-                    this,
-                    default(CancellationToken),
-                    TaskCreationOptions.DenyChildAttach,
-                    TaskScheduler.Default).Unwrap();
+            _requestProcessingTask = RequestProcessingAsync();
             _frameStartedTcs.SetResult(null);
         }
 

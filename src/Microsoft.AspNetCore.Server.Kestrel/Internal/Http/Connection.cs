@@ -90,21 +90,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Start socket prior to applying the ConnectionAdapter
             _socket.ReadStart(_allocCallback, _readCallback, this);
 
-            if (_connectionAdapters.Count == 0)
+            // Dispatch to a thread pool so if the first read completes synchronously
+            // we won't be on IO thread
+            ThreadPool.Run(() =>
             {
-                _frame.Start();
-            }
-            else
-            {
-                // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
-                // Otherwise, it will close the connection.
-                // Dispatch ApplyConnectionAdaptersAsync to a thread pool so if the first read completes synchronously
-                // we won't be on IO thread
-                ThreadPool.Run(() =>
+                if (_connectionAdapters.Count == 0)
                 {
+                    _frame.Start();
+                }
+                else
+                {
+                    // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
+                    // Otherwise, it will close the connection.
                     var ignore = ApplyConnectionAdaptersAsync();
-                });
-            }
+                }
+            });
         }
 
         public Task StopAsync()
