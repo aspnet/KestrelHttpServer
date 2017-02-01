@@ -521,7 +521,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
                         }
-
                     }
 
                     while (_mode == Mode.Suffix)
@@ -594,19 +593,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var consumed = default(ReadCursor);
                         var examined = default(ReadCursor);
 
-                        bool takeMessageHeaders;
                         try
                         {
-                            takeMessageHeaders = _context.TakeMessageHeaders(buffer, _requestHeaders, out consumed, out examined);
+                            if (_context.TakeMessageHeaders(buffer, _requestHeaders, out consumed, out examined))
+                            {
+                                break;
+                            }
                         }
                         finally
                         {
                             _input.Advance(consumed, examined);
-                        }
-
-                        if (takeMessageHeaders)
-                        {
-                            break;
                         }
                     }
                     _mode = Mode.Complete;
@@ -705,6 +701,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (sufixSpan[1] == '\n')
                     {
                         consumed = sufixBuffer.End;
+                        examined = sufixBuffer.End;
                         if (_inputLength > 0)
                         {
                             _mode = Mode.Data;
@@ -754,6 +751,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (sufixSpan[0] == '\r' && sufixSpan[1] == '\n')
                 {
                     consumed = sufixBuffer.End;
+                    examined = sufixBuffer.End;
                     _mode = Mode.Prefix;
                 }
                 else
@@ -779,6 +777,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (trailerSpan[0] == '\r' && trailerSpan[1] == '\n')
                 {
                     consumed = trailerBuffer.End;
+                    examined = trailerBuffer.End;
                     _mode = Mode.Complete;
                 }
                 else
