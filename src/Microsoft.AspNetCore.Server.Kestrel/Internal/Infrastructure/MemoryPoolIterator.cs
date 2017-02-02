@@ -1217,7 +1217,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     {
                         if (!AsciiUtilities.TryGetAsciiString(block.DataFixedPtr + inputOffset, output + outputOffset, following))
                         {
-                            throw BadHttpRequestException.GetException(RequestRejectionReason.NonAsciiOrNullCharactersInInputString);
+                            throw new DecodingException("Non-ASCII or null characters in input string");
                         }
 
                         outputOffset += following;

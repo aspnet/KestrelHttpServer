@@ -176,6 +176,27 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
+        [Theory]
+        [InlineData("%00")]
+        [InlineData("a%00")]
+        [InlineData("%00b")]
+        [InlineData("a%00b")]
+        public void UnescapeThrowsOnNullCharacter(string raw)
+        {
+            using (var pool = new MemoryPool())
+            {
+                var mem = pool.Lease();
+
+                var begin = BuildSample(mem, raw);
+                var end = GetIterator(begin, raw.Length);
+
+                MemoryPoolIterator end2;
+                Assert.Throws<DecodingException>(() => end2 = UrlPathDecoder.Unescape(begin, end));
+
+                pool.Return(mem);
+            }
+        }
+
         private MemoryPoolIterator BuildSample(MemoryPoolBlock mem, string data)
         {
             var store = data.Select(c => (byte)c).ToArray();

@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (!AsciiUtilities.TryGetAsciiString(pKeyBytes, keyBuffer, keyLength))
                 {
-                    throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidCharactersInHeaderName);
+                    throw new DecodingException("Header name contains non-ASCII or null characters");
                 }
             }
 
