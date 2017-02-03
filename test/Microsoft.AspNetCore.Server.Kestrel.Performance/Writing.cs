@@ -15,6 +15,7 @@ using Moq;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
+    [Config(typeof(CoreConfig))]
     public class Writing
     {
         private readonly TestFrame<object> _frame;
