@@ -9,7 +9,6 @@ function ToProjectName($file)
 $projectreferences = ls (Join-Path $references *.csproj) -rec;
 
 $localprojects = ls -rec *.csproj;
-Write-Host $localprojects
 
 foreach ($project in $localprojects)
 {
