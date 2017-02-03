@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     mockLibuv.AllocCallback(socket.InternalGetHandle(), 2048, out ignored);
                     mockLibuv.ReadCallback(socket.InternalGetHandle(), 0, ref ignored);
                     Assert.False(connection.Input.Writing.IsCompleted);
-                }, null);
+                }, (object)null);
 
                 connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
             }

@@ -48,6 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private long _timeoutTimestamp = long.MaxValue;
         private TimeoutAction _timeoutAction;
         private WritableBuffer? _currentWritableBuffer;
+        private PipeOptions _pipeOptions;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -57,8 +58,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ConnectionControl = this;
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
+            _pipeOptions = new PipeOptions();
+            _pipeOptions.MaximumSizeHigh = (int)(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
+            _pipeOptions.MaximumSizeLow = (int)(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
 
-            Input = Thread.PipelineFactory.Create(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
@@ -189,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     _adaptedPipeline = new AdaptedPipeline(
                         ConnectionId,
                         adapterContext.ConnectionStream,
-                        Thread.PipelineFactory.Create(ServerOptions.Limits.MaxRequestBufferSize ?? 0),
+                        Thread.PipelineFactory.Create(_pipeOptions),
                         Thread.Memory,
                         Log);
 
@@ -238,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ((Connection)state).OnRead(handle, status);
         }
 
-        private void OnRead(UvStreamHandle handle, int status)
+        private async void OnRead(UvStreamHandle handle, int status)
         {
             var normalRead = status >= 0;
             var normalDone = status == Constants.EOF;
@@ -288,13 +291,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (!flushTask.IsCompleted)
                 {
                     ((IConnectionControl) this).Pause();
-                    flushTask.ContinueWith((task, state) =>
+                    if (await flushTask)
                     {
-                        if (task.Result)
-                        {
-                            Thread.Post(connectionControl => ((IConnectionControl) connectionControl).Resume(), state);
-                        }
-                    }, this);
+                        Thread.Post(connectionControl => connectionControl.Resume(), (IConnectionControl)this);
+                    }
                 }
             }
 
