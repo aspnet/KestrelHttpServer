@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private long _timeoutTimestamp = long.MaxValue;
         private TimeoutAction _timeoutAction;
         private WritableBuffer? _currentWritableBuffer;
-        private PipeOptions _pipeOptions;
+        private readonly PipeOptions _pipeOptions;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -62,6 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _pipeOptions.MaximumSizeHigh = (int)(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
             _pipeOptions.MaximumSizeLow = (int)(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
 
+            Input = Thread.PipelineFactory.Create(_pipeOptions);
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
