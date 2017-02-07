@@ -215,9 +215,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void ConsumedBytes(int count)
         {
-            var scan = _context.Input.ReadAsync().GetResult().Buffer;
+            var scan = _context.Input.Reader.ReadAsync().GetResult().Buffer;
             var consumed = scan.Move(scan.Start, count);
-            _context.Input.AdvanceReader(consumed, consumed);
+            _context.Input.Reader.Advance(consumed, consumed);
 
             OnConsumedBytes(count);
         }
@@ -304,7 +304,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
             {
-                return _context.Input.PeekAsync();
+                return _context.Input.Reader.PeekAsync();
             }
         }
 
@@ -351,7 +351,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return new ValueTask<ArraySegment<byte>>();
                 }
 
-                var task = _context.Input.PeekAsync();
+                var task = _context.Input.Reader.PeekAsync();
 
                 if (task.IsCompleted)
                 {
@@ -413,7 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // byte consts don't have a data type annotation so we pre-cast it
             private const byte ByteCR = (byte)'\r';
 
-            private readonly IPipelineReader _input = null;
+            private readonly IPipeReader _input;
             private readonly FrameRequestHeaders _requestHeaders;
             private int _inputLength;
 
@@ -423,7 +423,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
-                _input = _context.Input;
+                _input = _context.Input.Reader;
                 _requestHeaders = headers;
             }
 

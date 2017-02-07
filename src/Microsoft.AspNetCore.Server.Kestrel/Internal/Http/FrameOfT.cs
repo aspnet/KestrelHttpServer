@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.ReadAsyncDispatched();
+                        var result = await Input.Reader.ReadAsyncDispatched();
                         var examined = result.Buffer.End;
                         var consumed = result.Buffer.End;
 
@@ -68,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            Input.AdvanceReader(consumed, examined);
+                            Input.Reader.Advance(consumed, examined);
                         }
 
                         if (requestLineStatus == RequestLineStatus.Done)
@@ -92,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     while (!_requestProcessingStopping)
                     {
 
-                        var result = await Input.ReadAsyncDispatched();
+                        var result = await Input.Reader.ReadAsyncDispatched();
                         var examined = result.Buffer.End;
                         var consumed = result.Buffer.End;
 
@@ -109,7 +109,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            Input.AdvanceReader(consumed, examined);
+                            Input.Reader.Advance(consumed, examined);
                         }
 
                         if (headersDone)
@@ -246,7 +246,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 try
                 {
-                    Input.CompleteReader();
+                    Input.Reader.Complete();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {

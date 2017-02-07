@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public static class PipelineExtensions
     {
-        public static ValueTask<ArraySegment<byte>> PeekAsync(this IPipelineReader pipelineReader)
+        public static ValueTask<ArraySegment<byte>> PeekAsync(this IPipeReader pipelineReader)
         {
             var input = pipelineReader.ReadAsync();
             while (input.IsCompleted)
@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return new ValueTask<ArraySegment<byte>>(pipelineReader.PeekAsyncAwaited(input));
         }
 
-        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IPipelineReader pipelineReader, ReadableBufferAwaitable readingTask)
+        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IPipeReader pipelineReader, ReadableBufferAwaitable readingTask)
         {
             while (true)
             {
@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static ValueTask<ReadResult> ReadAsyncDispatched(this IPipelineReader pipelineReader)
+        public static ValueTask<ReadResult> ReadAsyncDispatched(this IPipeReader pipelineReader)
         {
             var result = pipelineReader.ReadAsync();
             if (result.IsCompleted)

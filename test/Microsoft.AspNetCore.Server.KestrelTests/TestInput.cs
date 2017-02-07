@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     class TestInput : IConnectionControl, IFrameControl, IDisposable
     {
         private MemoryPool _memoryPool;
-        private PipelineFactory _pipelineFactory;
+        private PipeFactory _pipelineFactory;
 
         public TestInput()
         {
@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             FrameContext.ConnectionContext.ListenerContext.ServiceContext.Log = trace;
 
             _memoryPool = new MemoryPool();
-            _pipelineFactory = new PipelineFactory();
+            _pipelineFactory = new PipeFactory();
             FrameContext.Input = _pipelineFactory.Create();;
         }
 
@@ -54,10 +54,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void Add(string text, bool fin = false)
         {
             var data = Encoding.ASCII.GetBytes(text);
-            FrameContext.Input.WriteAsync(data).Wait();
+            FrameContext.Input.Writer.WriteAsync(data).Wait();
             if (fin)
             {
-                FrameContext.Input.CompleteWriter();
+                FrameContext.Input.Writer.Complete();
             }
         }
 

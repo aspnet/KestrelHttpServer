@@ -13,10 +13,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
     public class RawStream : Stream
     {
-        private readonly IPipelineReader _input;
+        private readonly IPipeReader _input;
         private readonly ISocketOutput _output;
 
-        public RawStream(Pipe input, ISocketOutput output)
+        public RawStream(IPipeReader input, ISocketOutput output)
         {
             _input = input;
             _output = output;

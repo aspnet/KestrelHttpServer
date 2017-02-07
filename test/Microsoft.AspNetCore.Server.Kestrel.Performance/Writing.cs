@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private TestFrame<object> MakeFrame()
         {
-            var socketInput = new PipelineFactory().Create();
+            var socketInput = new PipeFactory().Create();
 
             var serviceContext = new ServiceContext
             {

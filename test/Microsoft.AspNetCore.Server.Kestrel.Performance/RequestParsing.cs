@@ -121,14 +121,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private void InsertData(byte[] bytes)
         {
             // There should not be any backpressure and task completes immediately
-            Pipe.WriteAsync(bytes).GetAwaiter().GetResult();
+            Pipe.Writer.WriteAsync(bytes).GetAwaiter().GetResult();
         }
 
         private void ParseData()
         {
             do
             {
-                var awaitable = Pipe.ReadAsync();
+                var awaitable = Pipe.Reader.ReadAsync();
                 if (!awaitable.IsCompleted)
                 {
                     // No more data
@@ -146,9 +146,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     ThrowInvalidStartLine();
                 }
-                Pipe.AdvanceReader(consumed, examined);
+                Pipe.Reader.Advance(consumed, examined);
 
-                result = Pipe.ReadAsync().GetAwaiter().GetResult();
+                result = Pipe.Reader.ReadAsync().GetAwaiter().GetResult();
                 readableBuffer = result.Buffer;
 
                 Frame.InitializeHeaders();
@@ -157,7 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     ThrowInvalidMessageHeaders();
                 }
-                Pipe.AdvanceReader(consumed, examined);
+                Pipe.Reader.Advance(consumed, examined);
             }
             while(true);
         }
@@ -177,14 +177,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             var connectionContext = new MockConnection(new KestrelServerOptions());
             Frame = new Frame<object>(application: null, context: connectionContext);
-            PipelineFactory = new PipelineFactory();
+            PipelineFactory = new PipeFactory();
             Pipe = PipelineFactory.Create();
         }
 
-        public Pipe Pipe { get; set; }
+        public IPipe Pipe { get; set; }
 
         public Frame<object> Frame { get; set; }
 
-        public PipelineFactory PipelineFactory { get; set; }
+        public PipeFactory PipelineFactory { get; set; }
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public ListenerContext ListenerContext { get; set; }
 
-        public Pipe Input { get; set; }
+        public IPipe Input { get; set; }
 
         public ISocketOutput Output { get; set; }
 

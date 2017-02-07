@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task StopAsync()
         {
             _frame.StopAsync();
-            _frame.Input.CancelPendingRead();
+            _frame.Input.Reader.CancelPendingRead();
 
             return _socketClosedTcs.Task;
         }
@@ -145,12 +145,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var connection2 = (Connection)state2;
                         connection2._filteredStream.Dispose();
                         connection2._adaptedPipeline.Dispose();
-                        Input.CompleteReader();
+                        Input.Reader.Complete();
                     }, connection);
                 }
             }, this);
 
-            Input.CompleteWriter(new TaskCanceledException("The request was aborted"));
+            Input.Writer.Complete(new TaskCanceledException("The request was aborted"));
             _socketClosedTcs.TrySetResult(null);
         }
 
@@ -176,7 +176,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             try
             {
-                var rawStream = new RawStream(Input, Output);
+                var rawStream = new RawStream(Input.Reader, Output);
                 var adapterContext = new ConnectionAdapterContext(rawStream);
                 var adaptedConnections = new IAdaptedConnection[_connectionAdapters.Count];
 
@@ -213,7 +213,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
-                Input.CompleteReader();
+                Input.Reader.Complete();
                 ConnectionControl.End(ProduceEndType.SocketDisconnect);
             }
         }
@@ -226,7 +226,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private unsafe Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
             Debug.Assert(_currentWritableBuffer == null);
-            var currentWritableBuffer = Input.Alloc(MinAllocBufferSize);
+            var currentWritableBuffer = Input.Writer.Alloc(MinAllocBufferSize);
             _currentWritableBuffer = currentWritableBuffer;
             void* dataPtr;
             var tryGetPointer = currentWritableBuffer.Memory.TryGetPointer(out dataPtr);
@@ -301,7 +301,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!normalRead)
             {
-                Input.CompleteWriter(error);
+                Input.Writer.Complete(error);
                 AbortAsync(error);
             }
 
@@ -326,7 +326,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
                 // This should be treated the same as OnRead() seeing a "normalDone" condition.
                 Log.ConnectionReadFin(ConnectionId);
-                Input.CompleteWriter();
+                Input.Writer.Complete();
             }
         }
 

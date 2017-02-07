@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             Memory = new MemoryPool();
-            PipelineFactory = new PipelineFactory();
+            PipelineFactory = new PipeFactory();
             WriteReqPool = new WriteReqPool(this, _log);
             ConnectionManager = new ConnectionManager(this, _threadPool);
         }
@@ -93,7 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public MemoryPool Memory { get; }
 
-        public PipelineFactory PipelineFactory { get; }
+        public PipeFactory PipelineFactory { get; }
 
         public ConnectionManager ConnectionManager { get; }
 

@@ -20,23 +20,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         public AdaptedPipeline(
             string connectionId,
             Stream filteredStream,
-            Pipe pipelineFactory,
+            IPipe pipe,
             MemoryPool memory,
             IKestrelTrace logger)
         {
-            Input = pipelineFactory;
+            Input = pipe;
             Output = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
 
             _filteredStream = filteredStream;
         }
 
-        public Pipe Input { get; }
+        public IPipe Input { get; }
 
         public ISocketOutput Output { get; }
 
         public void Dispose()
         {
-            Input.CompleteWriter();
+            Input.Writer.Complete();
         }
 
         public async Task ReadInputAsync()
@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
             do
             {
-                var block = Input.Alloc(MinAllocBufferSize);
+                var block = Input.Writer.Alloc(MinAllocBufferSize);
 
                 try
                 {
@@ -62,12 +62,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
                 }
                 catch (Exception ex)
                 {
-                    Input.CompleteWriter(ex);
+                    Input.Writer.Complete(ex);
                     throw;
                 }
             } while (bytesRead != 0);
 
-            Input.CompleteWriter();
+            Input.Writer.Complete();
         }
     }
 }

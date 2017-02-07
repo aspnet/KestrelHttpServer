@@ -283,7 +283,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // so no need to bounds check in this test.
                 var socketInput = input.FrameContext.Input;
                 var bytes = Encoding.ASCII.GetBytes(data[0]);
-                var buffer = socketInput.Alloc(2048);
+                var buffer = socketInput.Writer.Alloc(2048);
                 ArraySegment<byte> block;
                 Assert.True(buffer.Memory.TryGetArray(out block));
                 Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
@@ -295,7 +295,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 writeTcs = new TaskCompletionSource<byte[]>();
                 bytes = Encoding.ASCII.GetBytes(data[1]);
-                buffer = socketInput.Alloc(2048);
+                buffer = socketInput.Writer.Alloc(2048);
                 Assert.True(buffer.Memory.TryGetArray(out block));
                 Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
                 buffer.Advance(bytes.Length);
@@ -305,7 +305,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 if (headers.HeaderConnection == "close")
                 {
-                    socketInput.CompleteWriter();
+                    socketInput.Writer.Complete();
                 }
 
                 await copyToAsyncTask;

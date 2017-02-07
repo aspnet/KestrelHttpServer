@@ -597,18 +597,18 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             for (var split = 0; split <= maxSplit; split++)
             {
-                using (var pipelineFactory = new PipelineFactory())
+                using (var pipelineFactory = new PipeFactory())
                 {
                     // Arrange
                     var pipe = pipelineFactory.Create();
-                    var buffer = pipe.Alloc();
+                    var buffer = pipe.Writer.Alloc();
                     var block1Input = input.Substring(0, split);
                     var block2Input = input.Substring(split);
                     buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block1Input)));
                     buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block2Input)));
                     buffer.FlushAsync().GetAwaiter().GetResult();
 
-                    var readResult = pipe.ReadAsync().GetAwaiter().GetResult();
+                    var readResult = pipe.Reader.ReadAsync().GetAwaiter().GetResult();
 
                     // Act
                     string boundaryKnownString;
@@ -655,18 +655,18 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             for (var split = 0; split <= maxSplit; split++)
             {
-                using (var pipelineFactory = new PipelineFactory())
+                using (var pipelineFactory = new PipeFactory())
                 {
                     // Arrange
                     var pipe = pipelineFactory.Create();
-                    var buffer = pipe.Alloc();
+                    var buffer = pipe.Writer.Alloc();
                     var block1Input = input.Substring(0, split);
                     var block2Input = input.Substring(split);
                     buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block1Input)));
                     buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block2Input)));
                     buffer.FlushAsync().GetAwaiter().GetResult();
 
-                    var readResult = pipe.ReadAsync().GetAwaiter().GetResult();
+                    var readResult = pipe.Reader.ReadAsync().GetAwaiter().GetResult();
 
                     // Act
                     string boundaryKnownString;
@@ -700,16 +700,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("HTTP/1.1\r", "")]
         public void KnownVersionCanBeReadAtAnyBlockBoundary(string block1Input, string block2Input)
         {
-            using (var pipelineFactory = new PipelineFactory())
+            using (var pipelineFactory = new PipeFactory())
             {
                 // Arrange
                 var pipe = pipelineFactory.Create();
-                var buffer = pipe.Alloc();
+                var buffer = pipe.Writer.Alloc();
                 buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block1Input)));
                 buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block2Input)));
                 buffer.FlushAsync().GetAwaiter().GetResult();
 
-                var readResult = pipe.ReadAsync().GetAwaiter().GetResult();
+                var readResult = pipe.Reader.ReadAsync().GetAwaiter().GetResult();
                 // Act
                 string knownVersion;
                 var result = readResult.Buffer.GetKnownVersion(out knownVersion);
@@ -746,7 +746,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Arrange
 
                 block = _pool.Lease();
-                var chars = input.ToString().ToCharArray().Select(c => (byte)c).ToArray();
+                var chars = input.ToString().ToCharArray().Select(c => (byte) c).ToArray();
                 Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
                 block.End += chars.Length;
                 var scan = block.GetIterator();

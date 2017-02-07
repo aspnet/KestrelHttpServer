@@ -99,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         public ConnectionContext ConnectionContext { get; }
-        public Pipe Input { get; set; }
+        public IPipe Input { get; set; }
         public ISocketOutput Output { get; set; }
         public IEnumerable<IAdaptedConnection> AdaptedConnections { get; set; }
 
