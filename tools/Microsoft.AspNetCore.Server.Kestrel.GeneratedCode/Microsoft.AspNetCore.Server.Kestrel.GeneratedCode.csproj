@@ -12,4 +12,16 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="1.2.0-*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <CodeGeneratedFile Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Internal\Http\FrameHeaders.Generated.cs" />
+    <CodeGeneratedFile Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Internal\Http\Frame.Generated.cs" />
+  </ItemGroup>
+
+  <Target Name="GenerateCode"
+          Inputs="@(Compile)"
+          Outputs="@(CodeGeneratedFile)"
+          AfterTargets="CopyFilesToOutputDirectory">
+    <Exec Command="dotnet $(OutputPath)$(AssemblyName).dll @(CodeGeneratedFile->'%(FullPath)', ' ')" />
+  </Target>
+
 </Project>

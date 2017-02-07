@@ -26,22 +26,4 @@
     <PackageReference Include="System.Threading.ThreadPool" Version="4.4.0-*" />
   </ItemGroup>
 
-  <ItemGroup>
-    <CodeGenInput Include="..\..\tools\Microsoft.AspNetCore.Server.Kestrel.GeneratedCode\KnownHeaders.cs" />
-    <CodeGenInput Include="..\..\tools\Microsoft.AspNetCore.Server.Kestrel.GeneratedCode\FrameFeatureCollection.cs" />
-    <CodeGenOutput Include="Internal\Http\FrameHeaders.Generated.cs" />
-    <CodeGenOutput Include="Internal\Http\Frame.Generated.cs" />
-  </ItemGroup>
-
-  <Target Name="GenerateCode"
-          Inputs="@(CodeGenInput)"
-          Outputs="@(CodeGenOutput)"
-          BeforeTargets="CoreCompile">
-    <Exec Condition="!Exists('..\..\tools\Microsoft.AspNetCore.Server.Kestrel.GeneratedCode\obj\project.assets.json')"
-          Command="dotnet restore"
-          WorkingDirectory="..\..\tools\Microsoft.AspNetCore.Server.Kestrel.GeneratedCode" />
-    <Exec Command="dotnet run -- @(CodeGenOutput->'%(FullPath)', ' ')"
-          WorkingDirectory="..\..\tools\Microsoft.AspNetCore.Server.Kestrel.GeneratedCode" />
-  </Target>
-
 </Project>
