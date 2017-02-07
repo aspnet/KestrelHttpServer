@@ -59,8 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
             _pipeOptions = new PipeOptions();
-            _pipeOptions.MaximumSizeHigh = (int)(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
-            _pipeOptions.MaximumSizeLow = (int)(ServerOptions.Limits.MaxRequestBufferSize ?? 0);
+            _pipeOptions.MaximumSizeHigh = ServerOptions.Limits.MaxRequestBufferSize ?? 0;
+            _pipeOptions.MaximumSizeLow = ServerOptions.Limits.MaxRequestBufferSize ?? 0;
 
             Input = Thread.PipelineFactory.Create(_pipeOptions);
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
@@ -264,6 +264,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             IOException error = null;
+            WritableBufferAwaitable? flushTask = null;
             if (errorDone)
             {
                 Exception uvError;
@@ -288,14 +289,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var currentWritableBuffer = _currentWritableBuffer.Value;
                 currentWritableBuffer.Advance(readCount);
-                var flushTask = currentWritableBuffer.FlushAsync();
-                if (!flushTask.IsCompleted)
+                flushTask = currentWritableBuffer.FlushAsync();
+            }
+
+            _currentWritableBuffer = null;
+            if (flushTask?.IsCompleted == false)
+            {
+                ((IConnectionControl)this).Pause();
+                if (await flushTask.Value)
                 {
-                    ((IConnectionControl) this).Pause();
-                    if (await flushTask)
-                    {
-                        Thread.Post(connectionControl => connectionControl.Resume(), (IConnectionControl)this);
-                    }
+                    Thread.Post(connectionControl => connectionControl.Resume(), (IConnectionControl)this);
                 }
             }
 
@@ -305,7 +308,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 AbortAsync(error);
             }
 
-            _currentWritableBuffer = null;
         }
 
         void IConnectionControl.Pause()
