@@ -315,12 +315,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         void IConnectionControl.Pause()
         {
             Log.ConnectionPause(ConnectionId);
-            _socket.ReadStop();
+
+            // Even though this method is called on the event loop already,
+            // post anyway so the ReadStop() call doesn't get reordered
+            // relative to the ReadStart() call made in Resume().
+            Thread.Post(state => ((Connection)state).OnPausePosted(), this);
         }
 
         void IConnectionControl.Resume()
         {
             Log.ConnectionResume(ConnectionId);
+
+            // This is called from the consuming thread.
+            Thread.Post(state => ((Connection)state).OnResumePosted(), this);
+        }
+
+        private void OnPausePosted()
+        {
+            // It's possible that uv_close was called between the call to Thread.Post() and now.
+            if (!_socket.IsClosed)
+            {
+                _socket.ReadStop();
+            }
+        }
+
+        private void OnResumePosted()
+        {
+            // It's possible that uv_close was called even before the call to Resume().
+            if (!_socket.IsClosed)
+            {
             try
             {
                 _socket.ReadStart(_allocCallback, _readCallback, this);
@@ -332,6 +355,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 Log.ConnectionReadFin(ConnectionId);
                 Input.Writer.Complete();
             }
+        }
         }
 
         void IConnectionControl.End(ProduceEndType endType)
