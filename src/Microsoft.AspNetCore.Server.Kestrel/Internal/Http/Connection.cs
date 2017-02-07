@@ -59,6 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
             _pipeOptions = new PipeOptions();
+            _pipeOptions.ReaderScheduler = TaskRunScheduler.Default;
+            _pipeOptions.WriterScheduler = Thread;
             _pipeOptions.MaximumSizeHigh = ServerOptions.Limits.MaxRequestBufferSize ?? 0;
             _pipeOptions.MaximumSizeLow = ServerOptions.Limits.MaxRequestBufferSize ?? 0;
 

@@ -112,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         {
             while (true)
             {
-                var result = await _input.ReadAsyncDispatched();
+                var result = await _input.ReadAsync();
                 var readableBuffer = result.Buffer;
                 try
                 {

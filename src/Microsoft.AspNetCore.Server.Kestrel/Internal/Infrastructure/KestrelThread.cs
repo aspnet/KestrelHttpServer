@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     /// <summary>
     /// Summary description for KestrelThread
     /// </summary>
-    public class KestrelThread
+    public class KestrelThread: IScheduler
     {
         public const long HeartbeatMilliseconds = 1000;
 
@@ -441,6 +441,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private static async Task<bool> WaitAsync(Task task, TimeSpan timeout)
         {
             return await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false) == task;
+        }
+
+        public void Schedule(Action action)
+        {
+            Post(state => state(), action);
         }
 
         private struct Work

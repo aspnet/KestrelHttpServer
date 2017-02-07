@@ -70,16 +70,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static ValueTask<ReadResult> ReadAsyncDispatched(this IPipeReader pipelineReader)
-        {
-            var result = pipelineReader.ReadAsync();
-            if (result.IsCompleted)
-            {
-                return new ValueTask<ReadResult>(result.GetResult());
-            }
-            return new ValueTask<ReadResult>(ReadAsyncDispatchedAwaited(result));
-        }
-
         private static async Task<ReadResult> ReadAsyncDispatchedAwaited(ReadableBufferAwaitable awaitable)
         {
             var result = await awaitable;
