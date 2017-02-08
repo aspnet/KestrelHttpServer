@@ -109,7 +109,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public async Task ThrowingOnReadDoesNotUnobservedException()
+        public async Task ThrowingOnReadDoesNotCauseUnobservedException()
         {
             var unobservedExceptionThrown = false;
 
@@ -133,8 +133,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     using (var connection = server.CreateConnection())
                     {
-                        await connection.Send("GET / HTTP/1.1\r\n\r\n");
-                        await connection.ReceiveEnd();
+                        try
+                        {
+                            await connection.Send("GET / HTTP/1.1\r\n\r\n");
+                            await connection.ReceiveEnd();
+                        }
+                        catch (IOException)
+                        {
+                            // Since Stream.ReadAsync throws, the send may fail to complete
+                            // if the server aborts the connection quickly enough.
+                        }
                     }
                 }
 
