@@ -297,10 +297,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _currentWritableBuffer = null;
             if (flushTask?.IsCompleted == false)
             {
-                ((IConnectionControl)this).Pause();
+                OnPausePosted();
                 if (await flushTask.Value)
                 {
-                    Thread.Post(connectionControl => connectionControl.Resume(), (IConnectionControl)this);
+                    OnResumePosted();
                 }
             }
 
@@ -319,7 +319,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Even though this method is called on the event loop already,
             // post anyway so the ReadStop() call doesn't get reordered
             // relative to the ReadStart() call made in Resume().
-            Thread.Post(state => ((Connection)state).OnPausePosted(), this);
+            Thread.Post(state => state.OnPausePosted(), this);
         }
 
         void IConnectionControl.Resume()
@@ -327,7 +327,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Log.ConnectionResume(ConnectionId);
 
             // This is called from the consuming thread.
-            Thread.Post(state => ((Connection)state).OnResumePosted(), this);
+            Thread.Post(state => state.OnResumePosted(), this);
         }
 
         private void OnPausePosted()
@@ -344,18 +344,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // It's possible that uv_close was called even before the call to Resume().
             if (!_socket.IsClosed)
             {
-            try
-            {
-                _socket.ReadStart(_allocCallback, _readCallback, this);
+                try
+                {
+                    _socket.ReadStart(_allocCallback, _readCallback, this);
+                }
+                catch (UvException)
+                {
+                    // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
+                    // This should be treated the same as OnRead() seeing a "normalDone" condition.
+                    Log.ConnectionReadFin(ConnectionId);
+                    Input.Writer.Complete();
+                }
             }
-            catch (UvException)
-            {
-                // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
-                // This should be treated the same as OnRead() seeing a "normalDone" condition.
-                Log.ConnectionReadFin(ConnectionId);
-                Input.Writer.Complete();
-            }
-        }
         }
 
         void IConnectionControl.End(ProduceEndType endType)

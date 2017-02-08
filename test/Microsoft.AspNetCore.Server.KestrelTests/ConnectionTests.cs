@@ -49,8 +49,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     Libuv.uv_buf_t ignored;
                     mockLibuv.AllocCallback(socket.InternalGetHandle(), 2048, out ignored);
                     mockLibuv.ReadCallback(socket.InternalGetHandle(), 0, ref ignored);
-                    // TODO: FIX THIS TEST!!!
-                    //Assert.False(connection.Input.Writing.IsCompleted);
+                    
+                    var readAwaitable = connection.Input.Reader.ReadAsync();
+                    
+                    var result = readAwaitable.GetResult();
+                    Assert.False(result.IsCompleted);
                 }, (object)null);
 
                 connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
