@@ -4,8 +4,8 @@
     "emitEntryPoint": true
   },
   "dependencies": {
-    "Microsoft.AspNetCore.Http.Features": "1.0.1",
-    "Microsoft.AspNetCore.Hosting": "1.0.1"
+    "Microsoft.AspNetCore.Http.Features": "1.0.2",
+    "Microsoft.AspNetCore.Hosting": "1.0.2"
   },
   "frameworks": {
     "netcoreapp1.0": {
