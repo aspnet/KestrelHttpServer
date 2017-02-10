@@ -286,12 +286,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         void IConnectionControl.Pause()
         {
+            if (_socket.IsClosed)
+            {
+                return;
+            }
+
             Log.ConnectionPause(ConnectionId);
             _socket.ReadStop();
         }
 
         void IConnectionControl.Resume()
         {
+            if (_socket.IsClosed)
+            {
+                return;
+            }
+
             Log.ConnectionResume(ConnectionId);
             try
             {
