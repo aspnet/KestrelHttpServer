@@ -4,14 +4,14 @@
     "emitEntryPoint": true
   },
   "dependencies": {
-    "Microsoft.AspNetCore.Http.Features": "1.0.1",
-    "Microsoft.AspNetCore.Hosting": "1.0.1"
+    "Microsoft.AspNetCore.Http.Features": "1.0.2",
+    "Microsoft.AspNetCore.Hosting": "1.0.2"
   },
   "frameworks": {
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.3",
+          "version": "1.0.4",
           "type": "platform"
         }
       }
