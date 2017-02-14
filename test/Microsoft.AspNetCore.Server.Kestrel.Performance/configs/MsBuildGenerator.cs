@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     public class MsBuildGenerator : DotNetCliGenerator
     {
         public MsBuildGenerator()
-            : base("netcoreapp1.1", null, (Func<Platform, string>) (_ => "x64"), null, null)
+            : base("netcoreapp2.0", null, (Func<Platform, string>) (_ => "x64"), null, null)
         {
         }
 
@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
   <Import Project=""..\build\common.props"" />
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp1.1</TargetFramework>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputType>Exe</OutputType>
   </PropertyGroup>

@@ -8,9 +8,10 @@
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Key.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
     <PublicSign Condition="'$(OS)' != 'Windows_NT'">true</PublicSign>
-    <NetCoreAppImplicitPackageVersion>1.2.0-*</NetCoreAppImplicitPackageVersion>
-    <NetStandardImplicitPackageVersion>1.6.2-*</NetStandardImplicitPackageVersion>
+    <NetCoreAppImplicitPackageVersion>2.0.0-*</NetCoreAppImplicitPackageVersion>
+    <NetStandardImplicitPackageVersion>2.0.0-*</NetStandardImplicitPackageVersion>
     <VersionSuffix Condition="'$(VersionSuffix)'!='' AND '$(BuildNumber)' != ''">$(VersionSuffix)-$(BuildNumber)</VersionSuffix>
+    <DisableHandlePackageFileConflicts Condition="'$(TargetFramework)'=='net451' OR $(MSBuildProjectFullPath.Contains('\src\'))">true</DisableHandlePackageFileConflicts>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,5 +21,4 @@
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETFramework' AND '$(OutputType)'=='library'">
     <PackageReference Include="NETStandard.Library" Version="$(NetStandardImplicitPackageVersion)" />
   </ItemGroup>
-
 </Project>

@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
     public class MsBuildToolchain : Toolchain
     {
-        private const string TargetFrameworkMoniker = "netcoreapp1.1";
+        private const string TargetFrameworkMoniker = "netcoreapp2.0";
 
         public MsBuildToolchain()
             : base("MsBuildCore",
