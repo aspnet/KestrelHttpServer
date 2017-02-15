@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26117.0
+VisualStudioVersion = 15.0.26206.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7972A5D6-3385-4127-9277-428506DD44FF}"
 	ProjectSection(SolutionItems) = preProject
@@ -39,6 +39,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{0EF2AC
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel", "src\Microsoft.AspNetCore.Server.Kestrel\Microsoft.AspNetCore.Server.Kestrel.csproj", "{F510611A-3BEE-4B88-A613-5F4A74ED82A1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BD2D4D29-1BD9-40D0-BB31-337D5416B63C} = {BD2D4D29-1BD9-40D0-BB31-337D5416B63C}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.KestrelTests", "test\Microsoft.AspNetCore.Server.KestrelTests\Microsoft.AspNetCore.Server.KestrelTests.csproj", "{37F3BFB2-6454-49E5-9D7F-581BF755CCFE}"
 EndProject

@@ -3,7 +3,7 @@
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp1.1</TargetFrameworks>
+    <TargetFramework>netcoreapp1.1</TargetFramework>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
@@ -11,5 +11,17 @@
     <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="1.2.0-*" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="1.2.0-*" />
   </ItemGroup>
+
+  <ItemGroup>
+    <CodeGeneratedFile Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Internal\Http\FrameHeaders.Generated.cs" />
+    <CodeGeneratedFile Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Internal\Http\Frame.Generated.cs" />
+  </ItemGroup>
+
+  <Target Name="GenerateCode"
+          Inputs="@(Compile)"
+          Outputs="@(CodeGeneratedFile)"
+          AfterTargets="CopyFilesToOutputDirectory">
+    <Exec Command="dotnet $(OutputPath)$(AssemblyName).dll @(CodeGeneratedFile->'%(FullPath)', ' ')" />
+  </Target>
 
 </Project>
