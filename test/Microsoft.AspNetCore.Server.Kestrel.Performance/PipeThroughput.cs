@@ -58,7 +58,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             for (int i = 0; i < InnerLoopCount; i++)
             {
                 var writableBuffer = _pipe.Writer.Alloc(_writeLenght);
-                _plaintextRequest.CopyTo(writableBuffer.Memory.Span);
                 writableBuffer.Advance(_writeLenght);
                 writableBuffer.FlushAsync().GetAwaiter().GetResult();
                 var result = _pipe.Reader.ReadAsync().GetAwaiter().GetResult();
