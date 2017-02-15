@@ -48,7 +48,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private long _timeoutTimestamp = long.MaxValue;
         private TimeoutAction _timeoutAction;
         private WritableBuffer? _currentWritableBuffer;
-        private readonly PipeOptions _pipeOptions;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -58,13 +57,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ConnectionControl = this;
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
-            _pipeOptions = new PipeOptions();
-            _pipeOptions.ReaderScheduler = TaskRunScheduler.Default;
-            _pipeOptions.WriterScheduler = Thread;
-            _pipeOptions.MaximumSizeHigh = ServerOptions.Limits.MaxRequestBufferSize ?? 0;
-            _pipeOptions.MaximumSizeLow = ServerOptions.Limits.MaxRequestBufferSize ?? 0;
 
-            Input = Thread.PipelineFactory.Create(_pipeOptions);
+            Input = Thread.PipelineFactory.Create(ListenerContext.LibuvPipeOptions);
             Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
@@ -98,19 +92,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             // Dispatch to a thread pool so if the first read completes synchronously
             // we won't be on IO thread
-            ThreadPool.Run(() =>
+            try
             {
-                if (_connectionAdapters.Count == 0)
-                {
-                    _frame.Start();
-                }
-                else
-                {
-                    // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
-                    // Otherwise, it will close the connection.
-                    var ignore = ApplyConnectionAdaptersAsync();
-                }
-            });
+                ThreadPool.UnsafeRun(state => ((Connection)state).StartFrame(), _frame);
+            }
+            catch (Exception e)
+            {
+                Log.LogError(0, e, "Connection.StartFrame");
+                throw;
+            }
+        }
+
+        private void StartFrame()
+        {
+            if (_connectionAdapters.Count == 0)
+            {
+                Start();
+            }
+            else
+            {
+                // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
+                // Otherwise, it will close the connection.
+                var ignore = ApplyConnectionAdaptersAsync();
+            }
         }
 
         public Task StopAsync()
@@ -195,7 +199,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     _adaptedPipeline = new AdaptedPipeline(
                         ConnectionId,
                         adapterContext.ConnectionStream,
-                        Thread.PipelineFactory.Create(_pipeOptions),
+                        Thread.PipelineFactory.Create(ListenerContext.AdaptedPipeOptions),
                         Thread.Memory,
                         Log);
 
