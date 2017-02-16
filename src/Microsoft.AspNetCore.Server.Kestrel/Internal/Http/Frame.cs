@@ -29,10 +29,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private const byte ByteCR = (byte)'\r';
         private const byte ByteLF = (byte)'\n';
         private const byte ByteColon = (byte)':';
+        private const byte ByteForwardSlash = (byte)'/';
         private const byte ByteSpace = (byte)' ';
         private const byte ByteTab = (byte)'\t';
         private const byte ByteQuestionMark = (byte)'?';
         private const byte BytePercentage = (byte)'%';
+
+        private const string EmptyPath = "/";
 
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
         private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
@@ -988,7 +991,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public RequestLineStatus TakeStartLine(SocketInput input)
         {
-            const int MaxInvalidRequestLineChars = 32;
+            // expected start line format: https://tools.ietf.org/html/rfc7230#section-3.1.1
 
             var scan = input.ConsumingStart();
             var start = scan;
@@ -1026,22 +1029,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 end.Take();
 
+                // begin consuming method
                 string method;
                 var begin = scan;
                 if (!begin.GetKnownMethod(out method))
                 {
                     if (scan.Seek(ByteSpace, ref end) == -1)
                     {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        RejectInvalidStartLine(start, end);
                     }
 
                     method = begin.GetAsciiString(ref scan);
 
                     if (method == null)
                     {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        RejectInvalidStartLine(start, end);
                     }
 
                     // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
@@ -1050,8 +1052,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if (!IsValidTokenChar(method[i]))
                         {
-                            RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                                Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                            RejectInvalidStartLine(start, end);
                         }
                     }
                 }
@@ -1060,14 +1061,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     scan.Skip(method.Length);
                 }
 
+                // consume space
                 scan.Take();
+
+                // begin consuming request-target
                 begin = scan;
+
+                var targetBegin = scan;
+
+                if (targetBegin.Peek() != ByteForwardSlash)
+                {
+                    string requestUriScheme;
+                    if (scan.GetKnownHttpSchema(out requestUriScheme))
+                    {
+                        // Start-line can contain uri in absolute form. e.g. 'GET http://contoso.com/favicon.ico HTTP/1.1'
+                        // Clients should only send this to proxies, but the spec requires we handle it anyways.
+                        // cref https://tools.ietf.org/html/rfc7230#section-5.3
+                        scan.Skip(requestUriScheme.Length);
+
+                        if (scan.Seek(ByteForwardSlash, ByteSpace, ByteQuestionMark, ref end) == -1)
+                        {
+                            RejectInvalidStartLine(start, end);
+                        }
+
+                        begin = scan;
+                    }
+                }
+
                 var needDecode = false;
                 var chFound = scan.Seek(ByteSpace, ByteQuestionMark, BytePercentage, ref end);
                 if (chFound == -1)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectInvalidStartLine(start, end);
                 }
                 else if (chFound == BytePercentage)
                 {
@@ -1075,40 +1100,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     chFound = scan.Seek(ByteSpace, ByteQuestionMark, ref end);
                     if (chFound == -1)
                     {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        RejectInvalidStartLine(start, end);
                     }
                 }
 
                 var pathBegin = begin;
                 var pathEnd = scan;
 
-                var queryString = "";
+                var queryString = string.Empty;
                 if (chFound == ByteQuestionMark)
                 {
                     begin = scan;
                     if (scan.Seek(ByteSpace, ref end) == -1)
                     {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        RejectInvalidStartLine(start, end);
                     }
                     queryString = begin.GetAsciiString(ref scan);
                 }
 
                 var queryEnd = scan;
 
-                if (pathBegin.Peek() == ByteSpace)
+                if (pathBegin.Peek() == ByteSpace && targetBegin.Index == pathBegin.Index)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectInvalidStartLine(start, end);
                 }
 
+                // consume space
                 scan.Take();
+
+                // begin consuming HTTP-version
                 begin = scan;
                 if (scan.Seek(ByteCR, ref end) == -1)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectInvalidStartLine(start, end);
                 }
 
                 string httpVersion;
@@ -1118,8 +1142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     if (httpVersion == string.Empty)
                     {
-                        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                            Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                        RejectInvalidStartLine(start, end);
                     }
                     else
                     {
@@ -1127,11 +1150,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
 
-                scan.Take(); // consume CR
+                // consume CR
+                scan.Take();
                 if (scan.Take() != ByteLF)
                 {
-                    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-                        Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
+                    RejectInvalidStartLine(start, end);
                 }
 
                 // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
@@ -1142,7 +1165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (needDecode)
                 {
                     // Read raw target before mutating memory.
-                    rawTarget = pathBegin.GetAsciiString(ref queryEnd);
+                    rawTarget = targetBegin.GetAsciiString(ref queryEnd);
 
                     // URI was encoded, unescape and then parse as utf8
                     pathEnd = UrlPathDecoder.Unescape(pathBegin, pathEnd);
@@ -1153,19 +1176,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // URI wasn't encoded, parse as ASCII
                     requestUrlPath = pathBegin.GetAsciiString(ref pathEnd);
 
-                    if (queryString.Length == 0)
+                    if (queryString.Length == 0 && targetBegin.Index == pathBegin.Index)
                     {
                         // No need to allocate an extra string if the path didn't need
-                        // decoding and there's no query string following it.
+                        // decoding and there's no query string following it, and the
+                        // request-target isn't absolute-form
                         rawTarget = requestUrlPath;
                     }
                     else
                     {
-                        rawTarget = pathBegin.GetAsciiString(ref queryEnd);
+                        rawTarget = targetBegin.GetAsciiString(ref queryEnd);
                     }
                 }
 
-                var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
+                if (targetBegin.Index < pathBegin.Index)
+                {
+                    // validation of absolute-form URI may be slow, but clients
+                    // should not be sending this form anyways, so perf optimization 
+                    // not high priority
+                    Uri _;
+                    if (!Uri.TryCreate(rawTarget, UriKind.Absolute, out _))
+                    {
+                        RejectInvalidStartLine(start, end);
+                    }
+                }
+
+                var normalizedUrlPath = requestUrlPath == null
+                    ? EmptyPath
+                    : PathNormalizer.RemoveDotSegments(requestUrlPath);
 
                 consumed = scan;
                 Method = method;
@@ -1174,17 +1212,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 HttpVersion = httpVersion;
 
                 bool caseMatches;
-                if (RequestUrlStartsWithPathBase(normalizedTarget, out caseMatches))
+                if (RequestUrlStartsWithPathBase(normalizedUrlPath, out caseMatches))
                 {
-                    PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
-                    Path = normalizedTarget.Substring(_pathBase.Length);
+                    // request-target is in origin-form or absolute-form 
+                    // and path should be adjusted for matching the server base path
+                    PathBase = caseMatches ? _pathBase : normalizedUrlPath.Substring(0, _pathBase.Length);
+                    Path = normalizedUrlPath.Substring(_pathBase.Length);
                 }
-                else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
+                else if ((requestUrlPath?.Length > 0 && requestUrlPath[0] == '/')
+                    || (rawTarget.Length > 0 && rawTarget[0] == '/')
+                    || ReferenceEquals(normalizedUrlPath, EmptyPath))
                 {
-                    Path = normalizedTarget;
+                    // request-target is in origin-form or absolute-form
+                    Path = normalizedUrlPath;
                 }
                 else
                 {
+                    // request-target is in asterisk-form and authority-form
+                    // also the catch-all for other malformed request-targets
                     Path = string.Empty;
                     PathBase = string.Empty;
                     QueryString = string.Empty;
@@ -1490,6 +1535,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             throw new ObjectDisposedException(
                     "The response has been aborted due to an unhandled application exception.",
                     _applicationException);
+        }
+
+        private void RejectInvalidStartLine(MemoryPoolIterator start, MemoryPoolIterator end)
+        {
+            const int MaxInvalidRequestLineChars = 32;
+
+            RejectRequest(RequestRejectionReason.InvalidRequestLine,
+                Log.IsEnabled(LogLevel.Information)
+                    ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars)
+                    : string.Empty);
         }
 
         public void RejectRequest(RequestRejectionReason reason)
