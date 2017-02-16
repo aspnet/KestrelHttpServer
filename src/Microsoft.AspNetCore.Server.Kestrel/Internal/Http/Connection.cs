@@ -313,7 +313,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 Input.Writer.Complete(error);
                 var ignore = AbortAsync(error);
             }
-
         }
 
         void IConnectionControl.Pause()
