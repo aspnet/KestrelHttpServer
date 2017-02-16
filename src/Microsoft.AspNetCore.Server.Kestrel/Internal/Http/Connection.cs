@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // we won't be on IO thread
             try
             {
-                ThreadPool.UnsafeRun(state => ((Connection)state).StartFrame(), _frame);
+                ThreadPool.UnsafeRun(state => ((Connection)state).StartFrame(), this);
             }
             catch (Exception e)
             {
@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             if (_connectionAdapters.Count == 0)
             {
-                Start();
+                _frame.Start();
             }
             else
             {
