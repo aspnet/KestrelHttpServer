@@ -311,7 +311,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (!normalRead)
             {
                 Input.Writer.Complete(error);
-                AbortAsync(error);
+                var ignore = AbortAsync(error);
             }
 
         }
