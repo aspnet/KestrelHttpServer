@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
-        private bool ReadingInput => _tcs.Task.Status == TaskStatus.WaitingForActivation;
+        private bool ReadingInput => !_tcs.Task.IsCompleted;
 
         public bool CheckFinOrThrow()
         {
