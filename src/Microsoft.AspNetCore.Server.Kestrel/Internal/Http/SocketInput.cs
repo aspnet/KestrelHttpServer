@@ -332,6 +332,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private void SetConnectionError(Exception error)
         {
             _tcs.TrySetException(error);
+            // Prevent UnobservedTaskException
+            var ignore = _tcs.Task.Exception;
         }
 
         private void FinReceived()

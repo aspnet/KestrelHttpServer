@@ -52,7 +52,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
                 catch (Exception ex)
                 {
                     SocketInput.IncomingComplete(0, ex);
-                    throw;
+
+                    // Don't rethrow the exception. It should be handled by the SocketInput consumer.
+                    return;
                 }
 
                 SocketInput.IncomingComplete(bytesRead, error: null);

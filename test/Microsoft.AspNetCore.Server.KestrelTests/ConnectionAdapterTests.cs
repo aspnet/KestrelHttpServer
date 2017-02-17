@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Adapter;
-using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -109,6 +108,54 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
+        [Fact]
+        public async Task ThrowingOnReadDoesNotCauseUnobservedException()
+        {
+            var unobservedExceptionThrown = false;
+
+            EventHandler<UnobservedTaskExceptionEventArgs> unobservedExceptionHandler = (sender, args) =>
+            {
+                unobservedExceptionThrown = true;
+            };
+
+            try
+            {
+                TaskScheduler.UnobservedTaskException += unobservedExceptionHandler;
+
+                var adapter = new ThrowOnReadConnectionAdapter();
+                var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
+                {
+                    ConnectionAdapters = { adapter }
+                };
+
+                var serviceContext = new TestServiceContext();
+                using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        try
+                        {
+                            await connection.Send("GET / HTTP/1.1\r\n\r\n");
+                            await connection.ReceiveEnd();
+                        }
+                        catch (IOException)
+                        {
+                            // Since Stream.ReadAsync throws, the send may fail to complete
+                            // if the server aborts the connection quickly enough.
+                        }
+                    }
+                }
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                Assert.False(unobservedExceptionThrown);
+            }
+            finally
+            {
+                TaskScheduler.UnobservedTaskException -= unobservedExceptionHandler;
+            }
+        }
+
         private class RewritingConnectionAdapter : IConnectionAdapter
         {
             private RewritingStream _rewritingStream;
@@ -136,6 +183,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
             {
                 throw new Exception();
+            }
+        }
+
+        private class ThrowOnReadConnectionAdapter : IConnectionAdapter
+        {
+            public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+            {
+                return Task.FromResult<IAdaptedConnection>(new AdaptedConnection(new ThrowOnReadStream()));
             }
         }
 
@@ -247,6 +302,46 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 return _innerStream.WriteAsync(buffer, offset, count, cancellationToken);
             }
+        }
+
+        private class ThrowOnReadStream : Stream
+        {
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                await Task.Delay(1);
+                throw new Exception();
+            }
+
+            public override void Flush()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override bool CanRead { get; }
+            public override bool CanSeek { get; }
+            public override bool CanWrite { get; }
+            public override long Length { get; }
+            public override long Position { get; set; }
         }
     }
 }
