@@ -157,6 +157,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool GetKnownMethod(this Span<byte> span, out string knownMethod)
+        {
+            knownMethod = null;
+            if (span.Length < sizeof(ulong))
+            {
+                return false;
+            }
+
+            ulong value = span.Read<ulong>();
+            if ((value & _mask4Chars) == _httpGetMethodLong)
+            {
+                knownMethod = HttpMethods.Get;
+                return true;
+            }
+            foreach (var x in _knownMethods)
+            {
+                if ((value & x.Item1) == x.Item2)
+                {
+                    knownMethod = x.Item3;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Checks 9 bytes from <paramref name="begin"/>  correspond to a known HTTP version.
         /// </summary>
@@ -193,6 +220,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             if (knownVersion != null)
             {
                 if (begin.Slice(sizeof(ulong)).Peek() != '\r')
+                {
+                    knownVersion = null;
+                }
+            }
+
+            return knownVersion != null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool GetKnownVersion(this Span<byte> span, out string knownVersion)
+        {
+            knownVersion = null;
+
+            if (span.Length < sizeof(ulong))
+            {
+                return false;
+            }
+
+            var value = span.Read<ulong>();
+            if (value == _http11VersionLong)
+            {
+                knownVersion = Http11Version;
+            }
+            else if (value == _http10VersionLong)
+            {
+                knownVersion = Http10Version;
+            }
+
+            if (knownVersion != null)
+            {
+                if (span[sizeof(ulong) + 1] != (byte)'\r')
                 {
                     knownVersion = null;
                 }

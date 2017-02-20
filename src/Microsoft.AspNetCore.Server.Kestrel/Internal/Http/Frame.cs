@@ -984,8 +984,192 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.ProducingComplete(end);
         }
 
+        public bool TakeStartLineSpan(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        {
+            var start = buffer.Start;
+            var end = buffer.Start;
+
+            examined = buffer.End;
+            consumed = buffer.Start;
+
+            if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
+            {
+                ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
+            }
+
+            _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
+
+            var limitedBuffer = buffer;
+            if (buffer.Length >= ServerOptions.Limits.MaxRequestLineSize)
+            {
+                limitedBuffer = buffer.Slice(0, ServerOptions.Limits.MaxRequestLineSize);
+            }
+
+            var memories = new Memory<byte>[3];
+            int index = 0;
+
+            foreach (var item in limitedBuffer)
+            {
+                memories[index++] = item;
+            }
+
+            var span0 = memories[0].Span;
+
+            var startLineEndIndex = span0.IndexOf(ByteLF);
+            if (startLineEndIndex == -1)
+            {
+                if (span0.Length == ServerOptions.Limits.MaxRequestLineSize)
+                {
+                    RejectRequest(RequestRejectionReason.RequestLineTooLong);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            var methodEnd = 0;
+            startLineEndIndex++;
+            if (!span0.GetKnownMethod(out string method))
+            {
+                //if (ReadCursorOperations.Seek(buffer.Start, end, out methodEnd, ByteSpace) == -1)
+                //{
+                //    RejectRequestLine(start, end);
+                //}
+
+                //method = buffer.Slice(buffer.Start, methodEnd).GetAsciiString();
+
+                //if (method == null)
+                //{
+                //    RejectRequestLine(start, end);
+                //}
+
+                //// Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
+                //// So we can be a tiny bit slower and more careful here.
+                //for (int i = 0; i < method.Length; i++)
+                //{
+                //    if (!IsValidTokenChar(method[i]))
+                //    {
+                //        RejectRequestLine(start, end);
+                //    }
+                //}
+                return false;
+            }
+            else
+            {
+                methodEnd += method.Length;
+            }
+
+            var needDecode = false;
+            var pathBegin = methodEnd + 1;
+            var pathToEndSpan = span0.Slice(pathBegin, startLineEndIndex - pathBegin);
+            pathBegin = 0;
+
+            // TODO: IndexOfAny
+            var spaceIndex = pathToEndSpan.IndexOf(ByteSpace);
+            var questionMarkIndex = pathToEndSpan.IndexOf(ByteQuestionMark);
+            var percentageIndex = pathToEndSpan.IndexOf(BytePercentage);
+
+            var pathEnd = MinNonZero(spaceIndex, questionMarkIndex, percentageIndex);
+
+            // var chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
+            if (spaceIndex == -1 && questionMarkIndex == -1 && percentageIndex == -1)
+            {
+                RejectRequestLine(start, end);
+            }
+            else if (percentageIndex != -1)
+            {
+                needDecode = true;
+
+                pathEnd = MinNonZero(spaceIndex, questionMarkIndex);
+                // chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark);
+                if (questionMarkIndex == -1 && spaceIndex == -1)
+                {
+                    RejectRequestLine(start, end);
+                }
+            }
+
+            var queryString = "";
+            var queryEnd = pathEnd;
+            if (questionMarkIndex != -1)
+            {
+                if (spaceIndex == -1)
+                {
+                    RejectRequestLine(start, end);
+                }
+
+                unsafe
+                {
+                    //fixed (byte* queryStringBuffer = &pathToEndSpan.DangerousGetPinnableReference())
+                    //{
+                    //    queryString = Encoding.UTF8.GetString(queryStringBuffer + spaceIndex, questionMarkIndex - spaceIndex);
+                    //}
+                }
+            }
+
+            if (pathBegin == pathEnd)
+            {
+                RejectRequestLine(start, end);
+            }
+
+            var versionToEndSpan = pathToEndSpan.Slice(queryEnd, pathToEndSpan.Length - queryEnd);
+            queryEnd = 0;
+            var versionEnd = versionToEndSpan.IndexOf(ByteCR);
+
+            if (versionEnd == -1)
+            {
+                RejectRequestLine(start, end);
+            }
+            //ReadCursor versionEnd;
+            //if (ReadCursorOperations.Seek(queryEnd, end, out versionEnd, ByteCR) == -1)
+            //{
+            //    RejectRequestLine(start, end);
+            //}
+
+            var versionBuffer = versionToEndSpan.Slice(queryEnd + 1, versionToEndSpan.Length - (queryEnd + 1));
+            if (!versionToEndSpan.GetKnownVersion(out string httpVersion))
+            {
+
+            }
+
+            //string httpVersion;
+            //var versionBuffer = buffer.Slice(queryEnd, end).Slice(1);
+            //if (!versionBuffer.GetKnownVersion(out httpVersion))
+            //{
+            //    httpVersion = versionBuffer.Start.GetAsciiStringEscaped(versionEnd, 9);
+
+            //    if (httpVersion == string.Empty)
+            //    {
+            //        RejectRequestLine(start, end);
+            //    }
+            //    else
+            //    {
+            //        RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
+            //    }
+            //}
+
+            return true;
+        }
+
+        private int MinNonZero(int v1, int v2)
+        {
+            v1 = v1 == -1 ? int.MaxValue : v1;
+            v2 = v2 == -1 ? int.MaxValue : v2;
+            return Math.Min(v1, v2);
+        }
+
+        private int MinNonZero(int v1, int v2, int v3)
+        {
+            v1 = v1 == -1 ? int.MaxValue : v1;
+            v2 = v2 == -1 ? int.MaxValue : v2;
+            v3 = v3 == -1 ? int.MaxValue : v3;
+            return Math.Min(Math.Min(v1, v2), v3);
+        }
+
         public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
+            TakeStartLineSpan(buffer, out consumed, out examined);
+
             var start = buffer.Start;
             var end = buffer.Start;
 
@@ -1066,7 +1250,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     RejectRequestLine(start, end);
                 }
-            };
+            }
 
             var queryString = "";
             ReadCursor queryEnd = pathEnd;
