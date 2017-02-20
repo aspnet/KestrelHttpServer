@@ -250,7 +250,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
             if (knownVersion != null)
             {
-                if (span[sizeof(ulong) + 1] != (byte)'\r')
+                if (span[sizeof(ulong)] != (byte)'\r')
                 {
                     knownVersion = null;
                 }

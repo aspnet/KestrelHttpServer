@@ -1004,21 +1004,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 limitedBuffer = buffer.Slice(0, ServerOptions.Limits.MaxRequestLineSize);
             }
-
-            var memories = new Memory<byte>[3];
-            int index = 0;
-
-            foreach (var item in limitedBuffer)
+            if (ReadCursorOperations.Seek(limitedBuffer.Start, limitedBuffer.End, out end, ByteLF) == -1)
             {
-                memories[index++] = item;
-            }
-
-            var span0 = memories[0].Span;
-
-            var startLineEndIndex = span0.IndexOf(ByteLF);
-            if (startLineEndIndex == -1)
-            {
-                if (span0.Length == ServerOptions.Limits.MaxRequestLineSize)
+                if (limitedBuffer.Length == ServerOptions.Limits.MaxRequestLineSize)
                 {
                     RejectRequest(RequestRejectionReason.RequestLineTooLong);
                 }
@@ -1028,32 +1016,59 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            var methodEnd = 0;
-            startLineEndIndex++;
-            if (!span0.GetKnownMethod(out string method))
+            const int stackAllocLimit = 512;
+
+            var startLineBuffer = limitedBuffer.Slice(0, end);
+
+            Span<byte> span;
+
+            if (startLineBuffer.IsSingleSpan)
             {
-                //if (ReadCursorOperations.Seek(buffer.Start, end, out methodEnd, ByteSpace) == -1)
-                //{
-                //    RejectRequestLine(start, end);
-                //}
+                // No copies, directly use the one and only span
+                span = startLineBuffer.ToSpan();
+            }
+            else if (startLineBuffer.Length < stackAllocLimit)
+            {
+                unsafe
+                {
+                    // Multiple buffers and < stackAllocLimit, copy into a stack buffer
+                    byte* stackBuffer = stackalloc byte[stackAllocLimit];
+                    span = new Span<byte>(stackBuffer, startLineBuffer.Length);
+                    limitedBuffer.CopyTo(span);
+                }
+            }
+            else
+            {
+                // We're not a single span here but we can use pooled arrays to avoid allocations in the rare case
+                span = new Span<byte>(new byte[startLineBuffer.Length]);
+                startLineBuffer.CopyTo(span);
+            }
 
-                //method = buffer.Slice(buffer.Start, methodEnd).GetAsciiString();
+            var methodEnd = 0;
+            if (!span.GetKnownMethod(out string method))
+            {
+                methodEnd = span.IndexOf(ByteSpace);
+                if (methodEnd == -1)
+                {
+                    RejectRequestLine(start, end);
+                }
 
-                //if (method == null)
-                //{
-                //    RejectRequestLine(start, end);
-                //}
+                method = new Utf8String(span.Slice(0, methodEnd)).ToString();
 
-                //// Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
-                //// So we can be a tiny bit slower and more careful here.
-                //for (int i = 0; i < method.Length; i++)
-                //{
-                //    if (!IsValidTokenChar(method[i]))
-                //    {
-                //        RejectRequestLine(start, end);
-                //    }
-                //}
-                return false;
+                if (method == null)
+                {
+                    RejectRequestLine(start, end);
+                }
+
+                // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
+                // So we can be a tiny bit slower and more careful here.
+                for (int i = 0; i < method.Length; i++)
+                {
+                    if (!IsValidTokenChar(method[i]))
+                    {
+                        RejectRequestLine(start, end);
+                    }
+                }
             }
             else
             {
@@ -1062,7 +1077,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var needDecode = false;
             var pathBegin = methodEnd + 1;
-            var pathToEndSpan = span0.Slice(pathBegin, startLineEndIndex - pathBegin);
+            var pathToEndSpan = span.Slice(pathBegin, span.Length - pathBegin);
+            var pbs = Encoding.UTF8.GetString(pathToEndSpan.ToArray());
             pathBegin = 0;
 
             // TODO: IndexOfAny
@@ -1112,8 +1128,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectRequestLine(start, end);
             }
 
-            var versionToEndSpan = pathToEndSpan.Slice(queryEnd, pathToEndSpan.Length - queryEnd);
-            queryEnd = 0;
+            var versionBegin = queryEnd + 1;
+            var versionToEndSpan = pathToEndSpan.Slice(versionBegin, pathToEndSpan.Length - versionBegin);
+            var ves = Encoding.ASCII.GetString(versionToEndSpan.ToArray());
+            versionBegin = 0;
             var versionEnd = versionToEndSpan.IndexOf(ByteCR);
 
             if (versionEnd == -1)
@@ -1125,8 +1143,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             //{
             //    RejectRequestLine(start, end);
             //}
-
-            var versionBuffer = versionToEndSpan.Slice(queryEnd + 1, versionToEndSpan.Length - (queryEnd + 1));
             if (!versionToEndSpan.GetKnownVersion(out string httpVersion))
             {
 
