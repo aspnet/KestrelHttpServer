@@ -1036,7 +1036,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // Multiple buffers and < stackAllocLimit, copy into a stack buffer
                     byte* stackBuffer = stackalloc byte[stackAllocLimit];
                     span = new Span<byte>(stackBuffer, startLineBuffer.Length);
-                    limitedBuffer.CopyTo(span);
+                    startLineBuffer.CopyTo(span);
                 }
             }
             else
@@ -1579,7 +1579,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         // Multiple buffers and < stackAllocLimit, copy into a stack buffer
                         byte* stackBuffer = stackalloc byte[stackAllocLimit];
                         span = new Span<byte>(stackBuffer, headerBuffer.Length);
-                        limitedBuffer.CopyTo(span);
+                        headerBuffer.CopyTo(span);
                     }
                 }
                 else
@@ -1596,7 +1596,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
 
                 var nameBuffer = span.Slice(0, endNameIndex);
-                var nbs = nameBuffer.GetAsciiString();
+                // var nbs = nameBuffer.GetAsciiString();
                 if (nameBuffer.IndexOf(ByteSpace) != -1 || nameBuffer.IndexOf(ByteTab) != -1)
                 {
                     RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
