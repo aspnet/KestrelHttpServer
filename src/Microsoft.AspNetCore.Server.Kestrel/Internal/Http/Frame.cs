@@ -1034,7 +1034,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 unsafe
                 {
                     // Multiple buffers and < stackAllocLimit, copy into a stack buffer
-                    byte* stackBuffer = stackalloc byte[stackAllocLimit];
+                    byte* stackBuffer = stackalloc byte[startLineBuffer.Length];
                     span = new Span<byte>(stackBuffer, startLineBuffer.Length);
                     startLineBuffer.CopyTo(span);
                 }
@@ -1577,7 +1577,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     unsafe
                     {
                         // Multiple buffers and < stackAllocLimit, copy into a stack buffer
-                        byte* stackBuffer = stackalloc byte[stackAllocLimit];
+                        byte* stackBuffer = stackalloc byte[headerBuffer.Length];
                         span = new Span<byte>(stackBuffer, headerBuffer.Length);
                         headerBuffer.CopyTo(span);
                     }
