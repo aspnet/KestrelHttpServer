@@ -3501,11 +3501,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
         
         
-        public unsafe void Append(byte[] keyBytes, int keyOffset, int keyLength, string value)
+        public unsafe void Append(byte* pKeyBytes, int keyLength, string value)
         {
-            fixed (byte* ptr = &keyBytes[keyOffset])
-            {
-                var pUB = ptr;
+            
+                var pUB = pKeyBytes;
                 var pUL = (ulong*)pUB;
                 var pUI = (uint*)pUB;
                 var pUS = (ushort*)pUB;
@@ -3567,11 +3566,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         break;
                 }
 
-                AppendNonPrimaryHeaders(ptr, keyOffset, keyLength, value);
-            }
+                AppendNonPrimaryHeaders(pKeyBytes, keyLength, value);
+            
         }
         
-        private unsafe void AppendNonPrimaryHeaders(byte* pKeyBytes, int keyOffset, int keyLength, string value)
+        private unsafe void AppendNonPrimaryHeaders(byte* pKeyBytes, int keyLength, string value)
         {
                 var pUB = pKeyBytes;
                 var pUL = (ulong*)pUB;

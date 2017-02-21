@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         try
                         {
-                            headersDone = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out consumed,
+                            headersDone = TakeMessageHeadersSpan(result.Buffer, FrameRequestHeaders, out consumed,
                                 out examined);
                         }
                         catch (InvalidOperationException)

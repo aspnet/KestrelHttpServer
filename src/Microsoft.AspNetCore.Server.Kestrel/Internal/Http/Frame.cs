@@ -1493,12 +1493,184 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             consumed = buffer.Start;
             examined = buffer.End;
 
-            //while (true)
-            //{
+            var bufferLength = buffer.Length;
+            var reader = new ReadableBufferReader(buffer.Start, buffer.End);
 
-            //}
+            while (true)
+            {
+                var start = reader;
+                int ch1 = reader.Take();
+                var ch2 = reader.Take();
 
-            return true;
+                if (ch1 == -1)
+                {
+                    return false;
+                }
+
+                if (ch1 == ByteCR)
+                {
+                    // Check for final CRLF.
+                    if (ch2 == -1)
+                    {
+                        return false;
+                    }
+                    else if (ch2 == ByteLF)
+                    {
+                        consumed = reader.Cursor;
+                        examined = consumed;
+                        ConnectionControl.CancelTimeout();
+                        return true;
+                    }
+
+                    // Headers don't end in CRLF line.
+                    RejectRequest(RequestRejectionReason.HeadersCorruptedInvalidHeaderSequence);
+                }
+                else if (ch1 == ByteSpace || ch1 == ByteTab)
+                {
+                    RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
+                }
+
+                // If we've parsed the max allowed numbers of headers and we're starting a new
+                // one, we've gone over the limit.
+                if (_requestHeadersParsed == ServerOptions.Limits.MaxRequestHeaderCount)
+                {
+                    RejectRequest(RequestRejectionReason.TooManyHeaders);
+                }
+
+                // Reset the reader since we're not at the end of headers
+                reader = start;
+
+                // Now parse a single header
+                ReadCursor lineEnd;
+                var limitedBuffer = buffer;
+                if (bufferLength >= _remainingRequestHeadersBytesAllowed)
+                {
+                    limitedBuffer = buffer.Slice(consumed, _remainingRequestHeadersBytesAllowed);
+                }
+
+                if (ReadCursorOperations.Seek(consumed, limitedBuffer.End, out lineEnd, ByteLF) == -1)
+                {
+                    if (limitedBuffer.Length == _remainingRequestHeadersBytesAllowed)
+                    {
+                        RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
+                const int stackAllocLimit = 512;
+
+                // Get a specific header line
+                lineEnd = limitedBuffer.Move(lineEnd, 2);
+                var headerBuffer = limitedBuffer.Slice(consumed, lineEnd);
+
+                Span<byte> span;
+                if (headerBuffer.IsSingleSpan)
+                {
+                    // No copies, directly use the one and only span
+                    span = headerBuffer.ToSpan();
+                }
+                else if (headerBuffer.Length < stackAllocLimit)
+                {
+                    unsafe
+                    {
+                        // Multiple buffers and < stackAllocLimit, copy into a stack buffer
+                        byte* stackBuffer = stackalloc byte[stackAllocLimit];
+                        span = new Span<byte>(stackBuffer, headerBuffer.Length);
+                        limitedBuffer.CopyTo(span);
+                    }
+                }
+                else
+                {
+                    // We're not a single span here but we can use pooled arrays to avoid allocations in the rare case
+                    span = new Span<byte>(new byte[headerBuffer.Length]);
+                    headerBuffer.CopyTo(span);
+                }
+
+                int endNameIndex = span.IndexOf(ByteColon);
+                if (endNameIndex == -1)
+                {
+                    RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
+                }
+
+                var nameBuffer = span.Slice(0, endNameIndex);
+                var nbs = nameBuffer.GetAsciiString();
+                if (nameBuffer.IndexOf(ByteSpace) != -1 || nameBuffer.IndexOf(ByteTab) != -1)
+                {
+                    RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
+                }
+
+                int endValueIndex = span.IndexOf(ByteCR);
+                if (endValueIndex == -1)
+                {
+                    RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
+                }
+
+                var lineSuffix = span.Slice(endValueIndex);
+                if (lineSuffix.Length < 3)
+                {
+                    return false;
+                }
+
+                // lineSuffix = lineSuffix.Slice(0, 3); // \r\n\r
+                // var lineSufixSpan = lineSuffix;
+                // This check and MissingCRInHeaderLine is a bit backwards, we should do it at once instead of having another seek
+                if (lineSuffix[1] != ByteLF)
+                {
+                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                }
+
+                var next = lineSuffix[2];
+                if (next == ByteSpace || next == ByteTab)
+                {
+                    // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
+                    //
+                    // Historically, HTTP header field values could be extended over
+                    // multiple lines by preceding each extra line with at least one space
+                    // or horizontal tab (obs-fold).  This specification deprecates such
+                    // line folding except within the message/http media type
+                    // (Section 8.3.1).  A sender MUST NOT generate a message that includes
+                    // line folding (i.e., that has any field-value that contains a match to
+                    // the obs-fold rule) unless the message is intended for packaging
+                    // within the message/http media type.
+                    //
+                    // A server that receives an obs-fold in a request message that is not
+                    // within a message/http container MUST either reject the message by
+                    // sending a 400 (Bad Request), preferably with a representation
+                    // explaining that obsolete line folding is unacceptable, or replace
+                    // each received obs-fold with one or more SP octets prior to
+                    // interpreting the field value or forwarding the message downstream.
+                    RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
+                }
+
+                // Trim trailing whitespace from header value by repeatedly advancing to next
+                // whitespace or CR.
+                //
+                // - If CR is found, this is the end of the header value.
+                // - If whitespace is found, this is the _tentative_ end of the header value.
+                //   If non-whitespace is found after it and it's not CR, seek again to the next
+                //   whitespace or CR for a new (possibly tentative) end of value.
+
+                var valueBuffer = span.Slice(endNameIndex + 1, endValueIndex - (endNameIndex + 1));
+
+                // TODO: Trim else where
+                var value = valueBuffer.GetAsciiString().Trim();
+
+                var headerLineLength = span.Length - 1;
+
+                _remainingRequestHeadersBytesAllowed -= headerLineLength;
+                bufferLength -= headerLineLength;
+
+                _requestHeadersParsed++;
+
+                requestHeaders.Append(nameBuffer, value);
+
+                // -1 so that we can re-check the extra \r
+                reader.Skip(headerLineLength);
+                consumed = reader.Cursor;
+            }
         }
 
         public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor consumed, out ReadCursor examined)
@@ -1635,7 +1807,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // TODO: TrimStart and TrimEnd are pretty slow
                 var valueBuffer = buffer.Slice(endName, endValue).Slice(1).TrimStart().TrimEnd();
 
-                var name = nameBuffer.ToArraySegment();
+                var name = nameBuffer.ToSpan();
                 var value = valueBuffer.GetAsciiString();
 
                 lineEnd = limitedBuffer.Move(lineEnd, 1);
@@ -1644,7 +1816,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _remainingRequestHeadersBytesAllowed -= buffer.Slice(0, lineEnd).Length;
                 _requestHeadersParsed++;
 
-                requestHeaders.Append(name.Array, name.Offset, name.Count, value);
+                requestHeaders.Append(name, value);
                 buffer = buffer.Slice(lineEnd);
                 consumed = buffer.Start;
             }
