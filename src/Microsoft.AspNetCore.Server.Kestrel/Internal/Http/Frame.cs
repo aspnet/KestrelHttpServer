@@ -1109,12 +1109,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var queryEnd = pathEnd;
             if (questionMarkIndex != -1)
             {
+                queryEnd = spaceIndex;
                 if (spaceIndex == -1)
                 {
                     RejectRequestLine(start, end);
                 }
 
-                queryString = pathToEndSpan.Slice(pathEnd, queryEnd).GetAsciiString();
+                queryString = pathToEndSpan.Slice(pathEnd, queryEnd - pathEnd).GetAsciiString();
             }
 
             if (pathBegin == pathEnd)
