@@ -1055,7 +1055,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequestLine(start, end);
                 }
 
-                method = new Utf8String(span.Slice(0, methodEnd)).ToString();
+                method = span.Slice(0, methodEnd).GetAsciiString();
 
                 if (method == null)
                 {
@@ -1135,7 +1135,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!versionToEndSpan.GetKnownVersion(out string httpVersion))
             {
-                httpVersion = new Utf8String(versionToEndSpan.Slice(0, versionEnd)).ToString();
+                httpVersion = versionToEndSpan.Slice(0, versionEnd).GetAsciiString();
 
                 if (httpVersion == string.Empty)
                 {
