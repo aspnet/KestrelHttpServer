@@ -1563,8 +1563,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 const int stackAllocLimit = 512;
 
-                // Get a specific header line
-                lineEnd = limitedBuffer.Move(lineEnd, 2);
+                // TODO: Find a better way to move 2 positions if possible
+                lineEnd = limitedBuffer.Move(lineEnd, 1);
+
+                if (lineEnd != limitedBuffer.End)
+                {
+                    lineEnd = limitedBuffer.Move(lineEnd, 1);
+                }
+
                 var headerBuffer = limitedBuffer.Slice(consumed, lineEnd);
 
                 Span<byte> span;

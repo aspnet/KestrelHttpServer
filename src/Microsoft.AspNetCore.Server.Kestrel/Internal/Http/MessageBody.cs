@@ -595,7 +595,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         try
                         {
-                            if (_context.TakeMessageHeaders(buffer, _requestHeaders, out consumed, out examined))
+                            if (_context.TakeMessageHeadersSpan(buffer, _requestHeaders, out consumed, out examined))
                             {
                                 break;
                             }
