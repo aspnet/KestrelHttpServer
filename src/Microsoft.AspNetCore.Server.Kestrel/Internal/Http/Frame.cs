@@ -1137,7 +1137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 httpVersion = versionToEndSpan.Slice(0, versionEnd).GetAsciiString();
 
-                if (httpVersion == string.Empty)
+                if (httpVersion == null)
                 {
                     RejectRequestLine(start, end);
                 }
@@ -1147,7 +1147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            if (versionToEndSpan[versionToEndSpan.Length - 1] != ByteLF)
+            if (versionToEndSpan[versionEnd + 1] != ByteLF)
             {
                 RejectRequestLine(start, end);
             }
