@@ -1018,6 +1018,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             const int stackAllocLimit = 512;
 
+            // Move 1 byte past the \r
+            end = limitedBuffer.Move(end, 1);
             var startLineBuffer = limitedBuffer.Slice(0, end);
 
             Span<byte> span;
@@ -1078,7 +1080,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var needDecode = false;
             var pathBegin = methodEnd + 1;
             var pathToEndSpan = span.Slice(pathBegin, span.Length - pathBegin);
-            var pbs = Encoding.UTF8.GetString(pathToEndSpan.ToArray());
+            // var pbs = Encoding.UTF8.GetString(pathToEndSpan.ToArray());
             pathBegin = 0;
 
             // TODO: IndexOfAny
@@ -1088,7 +1090,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var pathEnd = MinNonZero(spaceIndex, questionMarkIndex, percentageIndex);
 
-            // var chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark, BytePercentage);
             if (spaceIndex == -1 && questionMarkIndex == -1 && percentageIndex == -1)
             {
                 RejectRequestLine(start, end);
@@ -1098,7 +1099,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 needDecode = true;
 
                 pathEnd = MinNonZero(spaceIndex, questionMarkIndex);
-                // chFound = ReadCursorOperations.Seek(pathBegin, end, out pathEnd, ByteSpace, ByteQuestionMark);
                 if (questionMarkIndex == -1 && spaceIndex == -1)
                 {
                     RejectRequestLine(start, end);
@@ -1114,13 +1114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequestLine(start, end);
                 }
 
-                unsafe
-                {
-                    //fixed (byte* queryStringBuffer = &pathToEndSpan.DangerousGetPinnableReference())
-                    //{
-                    //    queryString = Encoding.UTF8.GetString(queryStringBuffer + spaceIndex, questionMarkIndex - spaceIndex);
-                    //}
-                }
+                queryString = pathToEndSpan.Slice(pathEnd, queryEnd).GetAsciiString();
             }
 
             if (pathBegin == pathEnd)
@@ -1130,7 +1124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var versionBegin = queryEnd + 1;
             var versionToEndSpan = pathToEndSpan.Slice(versionBegin, pathToEndSpan.Length - versionBegin);
-            var ves = Encoding.ASCII.GetString(versionToEndSpan.ToArray());
+            // var ves = Encoding.ASCII.GetString(versionToEndSpan.ToArray());
             versionBegin = 0;
             var versionEnd = versionToEndSpan.IndexOf(ByteCR);
 
@@ -1138,31 +1132,86 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 RejectRequestLine(start, end);
             }
-            //ReadCursor versionEnd;
-            //if (ReadCursorOperations.Seek(queryEnd, end, out versionEnd, ByteCR) == -1)
-            //{
-            //    RejectRequestLine(start, end);
-            //}
+
             if (!versionToEndSpan.GetKnownVersion(out string httpVersion))
             {
+                httpVersion = new Utf8String(versionToEndSpan.Slice(0, versionEnd)).ToString();
 
+                if (httpVersion == string.Empty)
+                {
+                    RejectRequestLine(start, end);
+                }
+                else
+                {
+                    RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
+                }
             }
 
-            //string httpVersion;
-            //var versionBuffer = buffer.Slice(queryEnd, end).Slice(1);
-            //if (!versionBuffer.GetKnownVersion(out httpVersion))
-            //{
-            //    httpVersion = versionBuffer.Start.GetAsciiStringEscaped(versionEnd, 9);
+            if (versionToEndSpan[versionToEndSpan.Length - 1] != ByteLF)
+            {
+                RejectRequestLine(start, end);
+            }
 
-            //    if (httpVersion == string.Empty)
-            //    {
-            //        RejectRequestLine(start, end);
-            //    }
-            //    else
-            //    {
-            //        RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
-            //    }
-            //}
+            var pathBuffer = pathToEndSpan.Slice(pathBegin, pathEnd);
+            var targetBuffer = pathToEndSpan.Slice(pathBegin, queryEnd);
+
+            // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
+            // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
+            // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
+            string requestUrlPath;
+            string rawTarget;
+            if (needDecode)
+            {
+                // Read raw target before mutating memory.
+                rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
+
+                // URI was encoded, unescape and then parse as utf8
+                var pathSpan = pathBuffer;
+                int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
+                requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();
+            }
+            else
+            {
+                // URI wasn't encoded, parse as ASCII
+                requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
+
+                if (queryString.Length == 0)
+                {
+                    // No need to allocate an extra string if the path didn't need
+                    // decoding and there's no query string following it.
+                    rawTarget = requestUrlPath;
+                }
+                else
+                {
+                    rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
+                }
+            }
+
+            var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
+
+            consumed = end;
+            examined = end;
+            Method = method;
+            QueryString = queryString;
+            RawTarget = rawTarget;
+            HttpVersion = httpVersion;
+
+            bool caseMatches;
+            if (RequestUrlStartsWithPathBase(normalizedTarget, out caseMatches))
+            {
+                PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
+                Path = normalizedTarget.Substring(_pathBase.Length);
+            }
+            else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
+            {
+                Path = normalizedTarget;
+            }
+            else
+            {
+                Path = string.Empty;
+                PathBase = string.Empty;
+                QueryString = string.Empty;
+            }
 
             return true;
         }
@@ -1184,8 +1233,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
-            TakeStartLineSpan(buffer, out consumed, out examined);
-
             var start = buffer.Start;
             var end = buffer.Start;
 
@@ -1437,6 +1484,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
             }
+
+            return true;
+        }
+
+        public bool TakeMessageHeadersSpan(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor consumed, out ReadCursor examined)
+        {
+            consumed = buffer.Start;
+            examined = buffer.End;
+
+            //while (true)
+            //{
+
+            //}
 
             return true;
         }

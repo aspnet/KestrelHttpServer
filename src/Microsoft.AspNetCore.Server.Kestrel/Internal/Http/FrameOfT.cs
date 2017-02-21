@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (!result.Buffer.IsEmpty)
                             {
-                                requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined)
+                                requestLineStatus = TakeStartLineSpan(result.Buffer, out consumed, out examined)
                                     ? RequestLineStatus.Done : RequestLineStatus.Incomplete;
                             }
                             else
