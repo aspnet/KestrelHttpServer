@@ -1494,7 +1494,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             examined = buffer.End;
 
             var bufferLength = buffer.Length;
-            var reader = new ReadableBufferReader(buffer.Start, buffer.End);
+            var reader = new ReadableBufferReader(buffer);
 
             while (true)
             {
