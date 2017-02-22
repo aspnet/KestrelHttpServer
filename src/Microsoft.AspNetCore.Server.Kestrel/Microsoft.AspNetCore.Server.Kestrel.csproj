@@ -19,9 +19,9 @@
     <PackageReference Include="System.Numerics.Vectors" Version="$(CoreFxVersion)" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(CoreFxVersion)" />
     
-    <PackageReference Include="System.IO.Pipelines" Version="0.1.0-*" />
-    <PackageReference Include="System.IO.Pipelines.Text.Primitives" Version="0.1.0-*" />
-    <PackageReference Include="System.Text.Encodings.Web.Utf8" Version="0.1.0-*" />
+    <ProjectReference Include="C:\Users\dfowler\Documents\GitHub\corefxlab\src\System.IO.Pipelines\System.IO.Pipelines.csproj" />
+    <ProjectReference Include="C:\Users\dfowler\Documents\GitHub\corefxlab\src\System.IO.Pipelines.Text.Primitives\System.IO.Pipelines.Text.Primitives.csproj" />
+    <ProjectReference Include="C:\Users\dfowler\Documents\GitHub\corefxlab\src\System.Text.Encodings.Web.Utf8\System.Text.Encodings.Web.Utf8.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">

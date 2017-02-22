@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -15,20 +16,21 @@ namespace SampleApp
     {
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
-            loggerFactory.AddConsole(LogLevel.Trace);
-            var logger = loggerFactory.CreateLogger("Default");
+            // loggerFactory.AddConsole(LogLevel.Trace);
+            // var logger = loggerFactory.CreateLogger("Default");
+
+            var data = Encoding.UTF8.GetBytes($"hello, world{Environment.NewLine}");
 
             app.Run(async context =>
             {
-                var connectionFeature = context.Connection;
-                logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
-                    + $"{Environment.NewLine}"
-                    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
+                //var connectionFeature = context.Connection;
+                //logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
+                //    + $"{Environment.NewLine}"
+                //    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
 
-                var response = $"hello, world{Environment.NewLine}";
-                context.Response.ContentLength = response.Length;
+                context.Response.ContentLength = data.Length;
                 context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(response);
+                await context.Response.Body.WriteAsync(data, 0, data.Length);
             });
         }
 
@@ -37,18 +39,18 @@ namespace SampleApp
             var host = new WebHostBuilder()
                 .UseKestrel(options =>
                 {
-                    options.Listen(IPAddress.Loopback, 5000, listenOptions =>
+                    options.Listen(IPAddress.Any, 5000, listenOptions =>
                     {
                         // Uncomment the following to enable Nagle's algorithm for this endpoint.
                         //listenOptions.NoDelay = false;
 
-                        listenOptions.UseConnectionLogging();
+                        // listenOptions.UseConnectionLogging();
                     });
-                    options.Listen(IPAddress.Loopback, 5001, listenOptions =>
-                    {
-                        listenOptions.UseHttps("testCert.pfx", "testPassword");
-                        listenOptions.UseConnectionLogging();
-                    });
+                    //options.Listen(IPAddress.Loopback, 5001, listenOptions =>
+                    //{
+                    //    listenOptions.UseHttps("testCert.pfx", "testPassword");
+                    //    listenOptions.UseConnectionLogging();
+                    //});
 
                     options.UseSystemd();
 
