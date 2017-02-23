@@ -24,50 +24,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     {
         private const int _dataLength = 20 * 1024 * 1024;
 
-        public static IEnumerable<object[]> LargeUploadData
+        public static IEnumerable<object[]> LargeUploadData => new TheoryData<long?, bool, bool>
         {
-            get
-            {
-                var maxRequestBufferSizeValues = new Tuple<long?, bool>[] {
-                    // Smallest buffer that can hold a POST request line to the root.
-                    Tuple.Create((long?)"POST / HTTP/1.1\r\n".Length, true),
+            // Smallest buffer that can hold a POST request line to the root.
+            {"POST / HTTP/1.1\r\n".Length, true, true},
+            {"POST / HTTP/1.1\r\n".Length, false, true},
 
-                    // Small buffer, but large enough to hold all request headers.
-                    Tuple.Create((long?)16 * 1024, true),
+            // Small buffer, but large enough to hold all request headers.
+            {16 * 1024, true, true},
+            {16 * 1024, false, true},
 
-                    // Default buffer.
-                    Tuple.Create((long?)1024 * 1024, true),
+            // Default buffer.
+            {1024 * 1024, true, true},
+            {1024 * 1024, false, true},
 
-                    // Larger than default, but still significantly lower than data, so client should be paused.
-                    // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
-                    // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
-                    Tuple.Create((long?)5 * 1024 * 1024, true),
+            // Larger than default, but still significantly lower than data, so client should be paused.
+            // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
+            // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
+            {5 * 1024 * 1024, true, true},
+            {5 * 1024 * 1024, true, true},
+                    
+            // Largest possible buffer, should never trigger backpressure.
+            {long.MaxValue, true, false},
+            {long.MaxValue, false, false},
 
-                    // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
-                    // OS-level buffers in client and/or server will handle the overflow.
-                    Tuple.Create((long?)_dataLength - 1, false),
+            // Disables all code related to computing and limiting the size of the input buffer.
+            {null, true, false},
+            {null, false, false},
 
-                    // Buffer is exactly the same size as data.  Exposed race condition where
-                    // IConnectionControl.Resume() was called after socket was disconnected.
-                    Tuple.Create((long?)_dataLength, false),
+            // We are not running this tight tests with ssl because ssl adds overhead to data size
+            // and might not allow it to fit into input pipe
 
-                    // Largest possible buffer, should never trigger backpressure.
-                    Tuple.Create((long?)long.MaxValue, false),
+            // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
+            // OS-level buffers in client and/or server will handle the overflow.
+            {_dataLength - 1, false, false},
 
-                    // Disables all code related to computing and limiting the size of the input buffer.
-                    Tuple.Create((long?)null, false)
-                };
-                var sslValues = new[] { true, false };
-
-                return from maxRequestBufferSize in maxRequestBufferSizeValues
-                       from ssl in sslValues
-                       select new object[] {
-                           maxRequestBufferSize.Item1,
-                           ssl,
-                           maxRequestBufferSize.Item2
-                       };
-            }
-        }
+            // Buffer is exactly the same size as data.  Exposed race condition where
+            // IConnectionControl.Resume() was called after socket was disconnected.
+            // We are not testing 
+            {_dataLength, false, false},
+        };
 
         [Theory]
         [MemberData(nameof(LargeUploadData))]
