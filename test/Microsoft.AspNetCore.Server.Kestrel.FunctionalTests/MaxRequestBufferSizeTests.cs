@@ -24,50 +24,54 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     {
         private const int _dataLength = 20 * 1024 * 1024;
 
-        public static IEnumerable<object[]> LargeUploadData => new TheoryData<long?, bool, bool>
+        public static IEnumerable<object[]> LargeUploadData
         {
-            // Smallest buffer that can hold a POST request line to the root.
-            {"POST / HTTP/1.1\r\n".Length, true, true},
-            {"POST / HTTP/1.1\r\n".Length, false, true},
+            get
+            {
+                var maxRequestBufferSizeValues = new Tuple<long?, bool>[] {
+                    // Smallest buffer that can hold a POST request line to the root.
+                    Tuple.Create((long?)"POST / HTTP/1.1\r\n".Length, true),
 
-            // Small buffer, but large enough to hold all request headers.
-            {16 * 1024, true, true},
-            {16 * 1024, false, true},
+                    // Small buffer, but large enough to hold all request headers.
+                    Tuple.Create((long?)16 * 1024, true),
 
-            // Default buffer.
-            {1024 * 1024, true, true},
-            {1024 * 1024, false, true},
+                    // Default buffer.
+                    Tuple.Create((long?)1024 * 1024, true),
 
-            // Larger than default, but still significantly lower than data, so client should be paused.
-            // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
-            // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
-            {5 * 1024 * 1024, true, true},
-            {5 * 1024 * 1024, true, true},
-                    
-            // Largest possible buffer, should never trigger backpressure.
-            {long.MaxValue, true, false},
-            {long.MaxValue, false, false},
+                    // Larger than default, but still significantly lower than data, so client should be paused.
+                    // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
+                    // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
+                    Tuple.Create((long?)5 * 1024 * 1024, true),
 
-            // Disables all code related to computing and limiting the size of the input buffer.
-            {null, true, false},
-            {null, false, false},
+                    // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
+                    // OS-level buffers in client and/or server will handle the overflow.
+                    Tuple.Create((long?)_dataLength - 1, false),
 
-            // We are not running this tight tests with ssl because ssl adds overhead to data size
-            // and might not allow it to fit into input pipe
+                    // Buffer is exactly the same size as data.  Exposed race condition where
+                    // IConnectionControl.Resume() was called after socket was disconnected.
+                    Tuple.Create((long?)_dataLength, false),
 
-            // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
-            // OS-level buffers in client and/or server will handle the overflow.
-            {_dataLength - 1, false, false},
+                    // Largest possible buffer, should never trigger backpressure.
+                    Tuple.Create((long?)long.MaxValue, false),
 
-            // Buffer is exactly the same size as data.  Exposed race condition where
-            // IConnectionControl.Resume() was called after socket was disconnected.
-            // We are not testing 
-            {_dataLength, false, false},
-        };
+                    // Disables all code related to computing and limiting the size of the input buffer.
+                    Tuple.Create((long?)null, false)
+                };
+                var sslValues = new[] { true, false };
+
+                return from maxRequestBufferSize in maxRequestBufferSizeValues
+                       from ssl in sslValues
+                       select new object[] {
+                           maxRequestBufferSize.Item1,
+                           ssl,
+                           maxRequestBufferSize.Item2
+                       };
+            }
+        }
 
         [Theory]
         [MemberData(nameof(LargeUploadData))]
-        public async Task LargeUpload(long? maxRequestBufferSize, bool ssl, bool expectPause)
+        public async Task LargeUpload(long? maxRequestBufferSize, bool connectionAdapter, bool expectPause)
         {
             // Parameters
             var data = new byte[_dataLength];
@@ -82,11 +86,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var clientFinishedSendingRequestBody = new ManualResetEvent(false);
             var lastBytesWritten = DateTime.MaxValue;
 
-            using (var host = StartWebHost(maxRequestBufferSize, data, ssl, startReadingRequestBody, clientFinishedSendingRequestBody))
+            using (var host = StartWebHost(maxRequestBufferSize, data, connectionAdapter, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
                 var port = host.GetPort();
                 using (var socket = CreateSocket(port))
-                using (var stream = await CreateStreamAsync(socket, ssl, host.GetHost(ssl)))
+                using (var stream = new NetworkStream(socket))
                 {
                     await WritePostRequestHeaders(stream, data.Length);
 
@@ -161,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static IWebHost StartWebHost(long? maxRequestBufferSize, byte[] expectedBody, bool useSsl, ManualResetEvent startReadingRequestBody,
+        private static IWebHost StartWebHost(long? maxRequestBufferSize, byte[] expectedBody, bool useConnectionAdapter, ManualResetEvent startReadingRequestBody,
             ManualResetEvent clientFinishedSendingRequestBody)
         {
             var host = new WebHostBuilder()
@@ -169,9 +173,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
                     {
-                        if (useSsl)
+                        if (useConnectionAdapter)
                         {
-                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                            listenOptions.ConnectionAdapters.Add(new PassThroughConnectionAdapter());
                         }
                     });
 
@@ -245,23 +249,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await writer.WriteAsync("POST / HTTP/1.0\r\n");
                 await writer.WriteAsync($"Content-Length: {contentLength}\r\n");
                 await writer.WriteAsync("\r\n");
-            }
-        }
-
-        private static async Task<Stream> CreateStreamAsync(Socket socket, bool ssl, string targetHost)
-        {
-            var networkStream = new NetworkStream(socket);
-            if (ssl)
-            {
-                var sslStream = new SslStream(networkStream, leaveInnerStreamOpen: false,
-                    userCertificateValidationCallback: (a, b, c, d) => true);
-                await sslStream.AuthenticateAsClientAsync(targetHost, clientCertificates: null,
-                    enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12, checkCertificateRevocation: false);
-                return sslStream;
-            }
-            else
-            {
-                return networkStream;
             }
         }
     }
