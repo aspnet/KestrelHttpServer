@@ -1563,9 +1563,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 const int stackAllocLimit = 512;
 
-                // TODO: Find a better way to move 2 positions if possible
-                lineEnd = limitedBuffer.Move(lineEnd, 1);
-
                 if (lineEnd != limitedBuffer.End)
                 {
                     lineEnd = limitedBuffer.Move(lineEnd, 1);
@@ -1616,20 +1613,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
 
                 var lineSuffix = span.Slice(endValueIndex);
-                if (lineSuffix.Length < 3)
+                if (lineSuffix.Length < 2)
                 {
                     return false;
                 }
 
-                // lineSuffix = lineSuffix.Slice(0, 3); // \r\n\r
-                // var lineSufixSpan = lineSuffix;
                 // This check and MissingCRInHeaderLine is a bit backwards, we should do it at once instead of having another seek
                 if (lineSuffix[1] != ByteLF)
                 {
                     RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
                 }
 
-                var next = lineSuffix[2];
+                // Trim trailing whitespace from header value by repeatedly advancing to next
+                // whitespace or CR.
+                //
+                // - If CR is found, this is the end of the header value.
+                // - If whitespace is found, this is the _tentative_ end of the header value.
+                //   If non-whitespace is found after it and it's not CR, seek again to the next
+                //   whitespace or CR for a new (possibly tentative) end of value.
+
+                var valueBuffer = span.Slice(endNameIndex + 1, endValueIndex - (endNameIndex + 1));
+
+                // TODO: Trim else where
+                var value = valueBuffer.GetAsciiString().Trim();
+
+                var headerLineLength = span.Length;
+
+                _remainingRequestHeadersBytesAllowed -= headerLineLength;
+                bufferLength -= headerLineLength;
+
+                _requestHeadersParsed++;
+
+                requestHeaders.Append(nameBuffer, value);
+
+                // -1 so that we can re-check the extra \r
+                reader.Skip(headerLineLength);
+                consumed = reader.Cursor;
+
+                var next = reader.Peek();
                 if (next == ByteSpace || next == ByteTab)
                 {
                     // From https://tools.ietf.org/html/rfc7230#section-3.2.4:
@@ -1651,32 +1672,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // interpreting the field value or forwarding the message downstream.
                     RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
                 }
-
-                // Trim trailing whitespace from header value by repeatedly advancing to next
-                // whitespace or CR.
-                //
-                // - If CR is found, this is the end of the header value.
-                // - If whitespace is found, this is the _tentative_ end of the header value.
-                //   If non-whitespace is found after it and it's not CR, seek again to the next
-                //   whitespace or CR for a new (possibly tentative) end of value.
-
-                var valueBuffer = span.Slice(endNameIndex + 1, endValueIndex - (endNameIndex + 1));
-
-                // TODO: Trim else where
-                var value = valueBuffer.GetAsciiString().Trim();
-
-                var headerLineLength = span.Length - 1;
-
-                _remainingRequestHeadersBytesAllowed -= headerLineLength;
-                bufferLength -= headerLineLength;
-
-                _requestHeadersParsed++;
-
-                requestHeaders.Append(nameBuffer, value);
-
-                // -1 so that we can re-check the extra \r
-                reader.Skip(headerLineLength);
-                consumed = reader.Cursor;
             }
         }
 
