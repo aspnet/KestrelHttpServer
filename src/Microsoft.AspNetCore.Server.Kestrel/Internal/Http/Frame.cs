@@ -1605,7 +1605,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
 
                 var nameBuffer = span.Slice(0, endNameIndex);
-                // var nbs = nameBuffer.GetAsciiString();
                 if (nameBuffer.IndexOf(ByteSpace) != -1 || nameBuffer.IndexOf(ByteTab) != -1)
                 {
                     RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
