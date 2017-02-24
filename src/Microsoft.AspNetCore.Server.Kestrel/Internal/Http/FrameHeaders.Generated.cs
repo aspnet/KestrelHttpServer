@@ -3503,9 +3503,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         
         public unsafe void Append(byte* pKeyBytes, int keyLength, string value)
         {
-            
-                var pUB = pKeyBytes;
-                var pUL = (ulong*)pUB;
+            var pUB = pKeyBytes;
+            var pUL = (ulong*)pUB;
                 var pUI = (uint*)pUB;
                 var pUS = (ushort*)pUB;
                 var stringValue = new StringValues(value);
@@ -3566,10 +3565,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         break;
                 }
 
-                AppendNonPrimaryHeaders(pKeyBytes, keyLength, value);
-            
+            AppendNonPrimaryHeaders(pKeyBytes, keyLength, value);
         }
-        
+
         private unsafe void AppendNonPrimaryHeaders(byte* pKeyBytes, int keyLength, string value)
         {
                 var pUB = pKeyBytes;
@@ -7766,10 +7764,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else 
                     {
-                        var valueCount = _headers._Connection.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Connection.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Connection[i]; 
+                            var value = _headers._Connection[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 17, 14);
@@ -7792,10 +7790,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else 
                     {
-                        var valueCount = _headers._Date.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Date.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Date[i]; 
+                            var value = _headers._Date[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 31, 8);
@@ -7813,10 +7811,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 2048L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ContentType.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ContentType.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ContentType[i]; 
+                            var value = _headers._ContentType[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 133, 16);
@@ -7839,10 +7837,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else 
                     {
-                        var valueCount = _headers._Server.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Server.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Server[i]; 
+                            var value = _headers._Server[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 350, 10);
@@ -7871,10 +7869,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 1L) != 0)
                 { 
                     {
-                        var valueCount = _headers._CacheControl.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._CacheControl.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._CacheControl[i]; 
+                            var value = _headers._CacheControl[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 0, 17);
@@ -7892,10 +7890,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 8L) != 0)
                 { 
                     {
-                        var valueCount = _headers._KeepAlive.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._KeepAlive.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._KeepAlive[i]; 
+                            var value = _headers._KeepAlive[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 39, 14);
@@ -7913,10 +7911,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 16L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Pragma.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Pragma.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Pragma[i]; 
+                            var value = _headers._Pragma[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 53, 10);
@@ -7934,10 +7932,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 32L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Trailer.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Trailer.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Trailer[i]; 
+                            var value = _headers._Trailer[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 63, 11);
@@ -7960,10 +7958,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else 
                     {
-                        var valueCount = _headers._TransferEncoding.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._TransferEncoding.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._TransferEncoding[i]; 
+                            var value = _headers._TransferEncoding[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 74, 21);
@@ -7981,10 +7979,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 128L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Upgrade.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Upgrade.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Upgrade[i]; 
+                            var value = _headers._Upgrade[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 95, 11);
@@ -8002,10 +8000,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 256L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Via.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Via.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Via[i]; 
+                            var value = _headers._Via[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 106, 7);
@@ -8023,10 +8021,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 512L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Warning.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Warning.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Warning[i]; 
+                            var value = _headers._Warning[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 113, 11);
@@ -8044,10 +8042,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 1024L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Allow.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Allow.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Allow[i]; 
+                            var value = _headers._Allow[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 124, 9);
@@ -8065,10 +8063,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 4096L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ContentEncoding.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ContentEncoding.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ContentEncoding[i]; 
+                            var value = _headers._ContentEncoding[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 149, 20);
@@ -8086,10 +8084,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 8192L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ContentLanguage.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ContentLanguage.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ContentLanguage[i]; 
+                            var value = _headers._ContentLanguage[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 169, 20);
@@ -8107,10 +8105,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 16384L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ContentLocation.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ContentLocation.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ContentLocation[i]; 
+                            var value = _headers._ContentLocation[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 189, 20);
@@ -8128,10 +8126,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 32768L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ContentMD5.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ContentMD5.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ContentMD5[i]; 
+                            var value = _headers._ContentMD5[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 209, 15);
@@ -8149,10 +8147,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 65536L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ContentRange.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ContentRange.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ContentRange[i]; 
+                            var value = _headers._ContentRange[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 224, 17);
@@ -8170,10 +8168,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 131072L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Expires.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Expires.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Expires[i]; 
+                            var value = _headers._Expires[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 241, 11);
@@ -8191,10 +8189,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 262144L) != 0)
                 { 
                     {
-                        var valueCount = _headers._LastModified.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._LastModified.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._LastModified[i]; 
+                            var value = _headers._LastModified[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 252, 17);
@@ -8212,10 +8210,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 524288L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AcceptRanges.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AcceptRanges.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AcceptRanges[i]; 
+                            var value = _headers._AcceptRanges[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 269, 17);
@@ -8233,10 +8231,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 1048576L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Age.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Age.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Age[i]; 
+                            var value = _headers._Age[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 286, 7);
@@ -8254,10 +8252,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 2097152L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ETag.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ETag.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ETag[i]; 
+                            var value = _headers._ETag[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 293, 8);
@@ -8275,10 +8273,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 4194304L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Location.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Location.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Location[i]; 
+                            var value = _headers._Location[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 301, 12);
@@ -8296,10 +8294,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 8388608L) != 0)
                 { 
                     {
-                        var valueCount = _headers._ProxyAuthenticate.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._ProxyAuthenticate.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._ProxyAuthenticate[i]; 
+                            var value = _headers._ProxyAuthenticate[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 313, 22);
@@ -8317,10 +8315,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 16777216L) != 0)
                 { 
                     {
-                        var valueCount = _headers._RetryAfter.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._RetryAfter.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._RetryAfter[i]; 
+                            var value = _headers._RetryAfter[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 335, 15);
@@ -8338,10 +8336,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 67108864L) != 0)
                 { 
                     {
-                        var valueCount = _headers._SetCookie.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._SetCookie.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._SetCookie[i]; 
+                            var value = _headers._SetCookie[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 360, 14);
@@ -8359,10 +8357,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 134217728L) != 0)
                 { 
                     {
-                        var valueCount = _headers._Vary.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._Vary.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._Vary[i]; 
+                            var value = _headers._Vary[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 374, 8);
@@ -8380,10 +8378,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 268435456L) != 0)
                 { 
                     {
-                        var valueCount = _headers._WWWAuthenticate.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._WWWAuthenticate.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._WWWAuthenticate[i]; 
+                            var value = _headers._WWWAuthenticate[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 382, 20);
@@ -8401,10 +8399,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 536870912L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AccessControlAllowCredentials.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AccessControlAllowCredentials.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AccessControlAllowCredentials[i]; 
+                            var value = _headers._AccessControlAllowCredentials[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 402, 36);
@@ -8422,10 +8420,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 1073741824L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AccessControlAllowHeaders.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AccessControlAllowHeaders.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AccessControlAllowHeaders[i]; 
+                            var value = _headers._AccessControlAllowHeaders[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 438, 32);
@@ -8443,10 +8441,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 2147483648L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AccessControlAllowMethods.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AccessControlAllowMethods.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AccessControlAllowMethods[i]; 
+                            var value = _headers._AccessControlAllowMethods[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 470, 32);
@@ -8464,10 +8462,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 4294967296L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AccessControlAllowOrigin.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AccessControlAllowOrigin.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AccessControlAllowOrigin[i]; 
+                            var value = _headers._AccessControlAllowOrigin[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 502, 31);
@@ -8485,10 +8483,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 8589934592L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AccessControlExposeHeaders.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AccessControlExposeHeaders.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AccessControlExposeHeaders[i]; 
+                            var value = _headers._AccessControlExposeHeaders[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 533, 33);
@@ -8506,10 +8504,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if ((tempBits & 17179869184L) != 0)
                 { 
                     {
-                        var valueCount = _headers._AccessControlMaxAge.Count; 
-                        for (var i = 0; i < valueCount; i++) 
+                        var valueCount = _headers._AccessControlMaxAge.Count;
+                        for (var i = 0; i < valueCount; i++)
                         {
-                            var value = _headers._AccessControlMaxAge[i]; 
+                            var value = _headers._AccessControlMaxAge[i];
                             if (value != null)
                             {
                                 output.CopyFrom(_headerBytes, 566, 26);

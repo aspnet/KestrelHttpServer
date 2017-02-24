@@ -569,7 +569,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var pUB = pKeyBytes;
             {AppendSwitch(loop.Headers.Where(h => h.PrimaryHeader).GroupBy(x => x.Name.Length), loop.ClassName)}
 
-            AppendNonPrimaryHeaders(ptr, keyOffset, keyLength, value);
+            AppendNonPrimaryHeaders(pKeyBytes, keyLength, value);
         }}
 
         private unsafe void AppendNonPrimaryHeaders(byte* pKeyBytes, int keyLength, string value)
