@@ -1350,20 +1350,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 reader = start;
 
                 // Now parse a single header
-                ReadCursor lineEnd;
                 ReadableBuffer limitedBuffer;
+                var overLength = false;
+
                 if (bufferLength >= _remainingRequestHeadersBytesAllowed)
                 {
                     limitedBuffer = buffer.Slice(consumed, _remainingRequestHeadersBytesAllowed);
+
+                    // If we sliced it means the current buffer bigger than what we're 
+                    // allowed to look at
+                    overLength = true;
                 }
                 else
                 {
                     limitedBuffer = buffer;
                 }
 
-                if (ReadCursorOperations.Seek(consumed, limitedBuffer.End, out lineEnd, ByteLF) == -1)
+                if (ReadCursorOperations.Seek(consumed, limitedBuffer.End, out var lineEnd, ByteLF) == -1)
                 {
-                    if (limitedBuffer.Length == _remainingRequestHeadersBytesAllowed)
+                    // We didn't find a \n in the current buffer and we had to slice it so it's an issue
+                    if (overLength)
                     {
                         RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
                     }
