@@ -90,6 +90,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return sb.ToString();
         }
 
+        public static string GetAsciiStringEscaped(this Span<byte> span)
+        {
+            var sb = new StringBuilder();
+
+            for (var i = 0; i < span.Length; ++i)
+            {
+                var ch = span[i];
+                sb.Append(ch < 0x20 || ch >= 0x7F ? $"<0x{ch:X2}>" : ((char)ch).ToString());
+            }
+
+            return sb.ToString();
+        }
+
         public static ArraySegment<byte> PeekArraySegment(this MemoryPoolIterator iter)
         {
             if (iter.IsDefault || iter.IsEnd)

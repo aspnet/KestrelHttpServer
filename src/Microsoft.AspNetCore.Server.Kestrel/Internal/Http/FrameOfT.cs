@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (!result.Buffer.IsEmpty)
                             {
-                                requestLineStatus = TakeStartLineSpan(result.Buffer, out consumed, out examined)
+                                requestLineStatus = TakeStartLine(result.Buffer, out consumed, out examined)
                                     ? RequestLineStatus.Done : RequestLineStatus.Incomplete;
                             }
                             else
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         try
                         {
-                            headersDone = TakeMessageHeadersSpan(result.Buffer, FrameRequestHeaders, out consumed,
+                            headersDone = TakeMessageHeaders(result.Buffer, FrameRequestHeaders, out consumed,
                                 out examined);
                         }
                         catch (InvalidOperationException)
