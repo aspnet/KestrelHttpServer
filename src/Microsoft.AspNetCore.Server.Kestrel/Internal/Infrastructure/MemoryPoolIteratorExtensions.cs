@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private readonly static ulong _httpConnectMethodLong = GetAsciiStringAsLong("CONNECT ");
         private readonly static ulong _httpDeleteMethodLong = GetAsciiStringAsLong("DELETE \0");
         private readonly static ulong _httpGetMethodLong = GetAsciiStringAsLong("GET \0\0\0\0");
-        private readonly static uint _httpGetMethodInt = GetAsciiStringAsInt("GET ");
+        private const uint _httpGetMethodInt = 542393671; // retun of GetAsciiStringAsInt("GET "); const results in better codegen
         private readonly static ulong _httpHeadMethodLong = GetAsciiStringAsLong("HEAD \0\0\0");
         private readonly static ulong _httpPatchMethodLong = GetAsciiStringAsLong("PATCH \0\0");
         private readonly static ulong _httpPostMethodLong = GetAsciiStringAsLong("POST \0\0\0");
@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         private unsafe static uint GetAsciiStringAsInt(string str)
         {
-            Debug.Assert(str.Length == 4, "String must be exactly 8 (ASCII) characters long.");
+            Debug.Assert(str.Length == 4, "String must be exactly 4 (ASCII) characters long.");
 
             var bytes = Encoding.ASCII.GetBytes(str);
 
@@ -259,32 +259,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetKnownVersion(this Span<byte> span, out string knownVersion)
         {
-            knownVersion = null;
-
-            if (span.Length < sizeof(ulong))
+            if (span.TryRead<ulong>(out var version))
             {
-                return false;
-            }
-
-            var value = span.Read<ulong>();
-            if (value == _http11VersionLong)
-            {
-                knownVersion = Http11Version;
-            }
-            else if (value == _http10VersionLong)
-            {
-                knownVersion = Http10Version;
-            }
-
-            if (knownVersion != null)
-            {
-                if (span[sizeof(ulong)] != (byte)'\r')
+                if (version == _http11VersionLong)
+                {
+                    knownVersion = Http11Version;
+                }
+                else if (version == _http10VersionLong)
+                {
+                    knownVersion = Http10Version;
+                }
+                else
                 {
                     knownVersion = null;
+                    return false;
+                }
+
+                if (span[sizeof(ulong)] == (byte)'\r')
+                {
+                    return true;
                 }
             }
 
-            return knownVersion != null;
+            knownVersion = null;
+            return false;
         }
     }
 }
