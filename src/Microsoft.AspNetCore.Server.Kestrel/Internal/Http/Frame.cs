@@ -1082,15 +1082,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var needDecode = false;
             var pathBegin = methodEnd + 1;
-            var pathToEndSpan = span.Slice(pathBegin, span.Length - pathBegin);
-            pathBegin = 0;
+            var spaceIndex = -1;
+            var questionMarkIndex = -1;
+            var percentageIndex = -1;
+            var pathEnd = -1;
 
-            // TODO: IndexOfAny
-            var spaceIndex = pathToEndSpan.IndexOf(ByteSpace);
-            var questionMarkIndex = pathToEndSpan.IndexOf(ByteQuestionMark);
-            var percentageIndex = pathToEndSpan.IndexOf(BytePercentage);
+            // TODO: State machineify
+            for (int i = pathBegin; i < span.Length; i++)
+            {
+                var ch = span[i];
+                if (spaceIndex == -1 && ch == ByteSpace)
+                {
+                    if (pathEnd == -1)
+                    {
+                        pathEnd = i;
+                    }
 
-            var pathEnd = MinNonZero(spaceIndex, questionMarkIndex, percentageIndex);
+                    spaceIndex = i;
+                }
+
+                if (questionMarkIndex == -1 && ch == ByteQuestionMark)
+                {
+                    if (pathEnd == -1)
+                    {
+                        pathEnd = i;
+                    }
+
+                    questionMarkIndex = i;
+                }
+
+                if (percentageIndex == -1 && ch == BytePercentage)
+                {
+                    if (pathEnd == -1)
+                    {
+                        pathEnd = i;
+                    }
+
+                    percentageIndex = i;
+                }
+            }
 
             if (spaceIndex == -1 && questionMarkIndex == -1 && percentageIndex == -1)
             {
@@ -1099,8 +1129,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else if (percentageIndex != -1)
             {
                 needDecode = true;
-
                 pathEnd = MinNonZero(spaceIndex, questionMarkIndex);
+
                 if (questionMarkIndex == -1 && spaceIndex == -1)
                 {
                     RejectRequestLine(start, end);
@@ -1117,7 +1147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequestLine(start, end);
                 }
 
-                queryString = pathToEndSpan.Slice(pathEnd, queryEnd - pathEnd).GetAsciiString();
+                queryString = span.Slice(pathEnd, queryEnd - pathEnd).GetAsciiString();
             }
 
             if (pathBegin == pathEnd)
@@ -1126,18 +1156,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             var versionBegin = queryEnd + 1;
-            var versionToEndSpan = pathToEndSpan.Slice(versionBegin, pathToEndSpan.Length - versionBegin);
-            versionBegin = 0;
-            var versionEnd = versionToEndSpan.IndexOf(ByteCR);
+            var versionEnd = -1;
+            for (int i = versionBegin; i < span.Length; i++)
+            {
+                if (span[i] == ByteCR)
+                {
+                    versionEnd = i;
+                    break;
+                }
+            }
 
             if (versionEnd == -1)
             {
                 RejectRequestLine(start, end);
             }
 
-            if (!versionToEndSpan.GetKnownVersion(out string httpVersion))
+            var versionSpan = span.Slice(versionBegin);
+            if (!versionSpan.GetKnownVersion(out string httpVersion))
             {
-                httpVersion = versionToEndSpan.Slice(0, versionEnd).GetAsciiStringEscaped();
+                httpVersion = versionSpan.Slice(0, versionEnd - versionBegin).GetAsciiStringEscaped();
 
                 if (httpVersion == string.Empty)
                 {
@@ -1149,13 +1186,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            if (versionToEndSpan[versionEnd + 1] != ByteLF)
+            if (span[versionEnd + 1] != ByteLF)
             {
                 RejectRequestLine(start, end);
             }
 
-            var pathBuffer = pathToEndSpan.Slice(pathBegin, pathEnd);
-            var targetBuffer = pathToEndSpan.Slice(pathBegin, queryEnd);
+            var pathBuffer = span.Slice(pathBegin, pathEnd - pathBegin);
+            var targetBuffer = span.Slice(pathBegin, queryEnd - pathBegin);
 
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
@@ -1198,8 +1235,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             RawTarget = rawTarget;
             HttpVersion = httpVersion;
 
-            bool caseMatches;
-            if (RequestUrlStartsWithPathBase(normalizedTarget, out caseMatches))
+            if (RequestUrlStartsWithPathBase(normalizedTarget, out bool caseMatches))
             {
                 PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
                 Path = normalizedTarget.Substring(_pathBase.Length);
@@ -1411,57 +1447,126 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     headerBuffer.CopyTo(span);
                 }
 
-                int endNameIndex = span.IndexOf(ByteColon);
-                if (endNameIndex == -1)
+                var state = HeaderState.ExpectName;
+                var endNameIndex = -1;
+                var startNameIndex = 0;
+                var endValueIndex = -1;
+                var startValueIndex = -1;
+                var sawWhitespaceInName = false;
+                var previouslyWhitespace = false;
+
+                for (int i = 0; i < span.Length; i++)
+                {
+                    var ch = span[i];
+
+                    switch (state)
+                    {
+                        case HeaderState.ExpectName:
+                            if (ch == ByteColon)
+                            {
+                                if (sawWhitespaceInName)
+                                {
+                                    RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
+                                }
+
+                                state = HeaderState.ExpectWhitespace;
+                                endNameIndex = i;
+                            }
+
+                            if (ch == ByteSpace || ch == ByteTab)
+                            {
+                                sawWhitespaceInName = true;
+                            }
+                            break;
+                        case HeaderState.ExpectWhitespace:
+                            var sws = ch == ByteTab || ch == ByteSpace || ch == ByteCR;
+
+                            if (!sws)
+                            {
+                                // Mark the first non whitespace char as the start of the
+                                // header value and change the state to expect to the header value
+                                startValueIndex = i;
+                                state = HeaderState.ExpectValue;
+                            }
+                            // If we see a CR then jump to the next state directly
+                            else if (ch == ByteCR)
+                            {
+                                goto case HeaderState.ExpectValue;
+                            }
+
+                            break;
+                        case HeaderState.ExpectValue:
+                            var ews = ch == ByteTab || ch == ByteSpace;
+
+                            if (ews)
+                            {
+                                if (!previouslyWhitespace)
+                                {
+                                    // If we see a whitespace char then maybe it's end of the
+                                    // header value
+                                    endValueIndex = i;
+                                }
+                            }
+                            else if (ch == ByteCR)
+                            {
+                                // If we see a CR and we haven't ever seen whitespace then
+                                // this is the end of the header value
+                                if (endValueIndex == -1)
+                                {
+                                    endValueIndex = i;
+                                }
+
+                                // We never saw a non whitespace character before the CR
+                                if (startValueIndex == -1)
+                                {
+                                    startValueIndex = endValueIndex;
+                                }
+
+                                state = HeaderState.ExpectNewLine;
+                            }
+                            else
+                            {
+                                // If we find a non whitespace char that isn't CR then reset the end index
+                                endValueIndex = -1;
+                            }
+
+                            previouslyWhitespace = ews;
+                            break;
+                        case HeaderState.ExpectNewLine:
+                            if (ch != ByteLF)
+                            {
+                                RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                            }
+
+                            state = HeaderState.Complete;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                if (state == HeaderState.ExpectName)
                 {
                     RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
                 }
 
-                var nameBuffer = span.Slice(0, endNameIndex);
-                if (nameBuffer.IndexOf(ByteSpace) != -1 || nameBuffer.IndexOf(ByteTab) != -1)
-                {
-                    RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
-                }
-
-                int endValueIndex = span.IndexOf(ByteCR);
-                if (endValueIndex == -1)
+                if (state == HeaderState.ExpectValue || state == HeaderState.ExpectWhitespace)
                 {
                     RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
                 }
 
-                var lineSuffix = span.Slice(endValueIndex);
-                if (lineSuffix.Length < 2)
+                if (state != HeaderState.Complete)
                 {
                     return false;
                 }
 
-                // This check and MissingCRInHeaderLine is a bit backwards, we should do it at once instead of having another seek
-                if (lineSuffix[1] != ByteLF)
-                {
-                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
-                }
-
-                // Trim trailing whitespace from header value by repeatedly advancing to next
-                // whitespace or CR.
-                //
-                // - If CR is found, this is the end of the header value.
-                // - If whitespace is found, this is the _tentative_ end of the header value.
-                //   If non-whitespace is found after it and it's not CR, seek again to the next
-                //   whitespace or CR for a new (possibly tentative) end of value.
-
-                var valueBuffer = span.Slice(endNameIndex + 1, endValueIndex - (endNameIndex + 1));
-
-                // TODO: Trim else where
-                var value = valueBuffer.GetAsciiString()?.Trim() ?? string.Empty;
-
                 var headerLineLength = span.Length;
-
-                // -1 so that we can re-check the extra \r
                 reader.Skip(headerLineLength);
 
+                // Before accepting the header line, we need to see at least one character
+                // > so we can make sure there's no space or tab
                 var next = reader.Peek();
 
-                // We cant check for line continuations to reject everything we've done so far
                 if (next == -1)
                 {
                     return false;
@@ -1488,6 +1593,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // interpreting the field value or forwarding the message downstream.
                     RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
                 }
+
+                var nameBuffer = span.Slice(startNameIndex, endNameIndex - startNameIndex);
+                var valueBuffer = span.Slice(startValueIndex, endValueIndex - startValueIndex);
+
+                var value = valueBuffer.GetAsciiString() ?? string.Empty;
 
                 // Update the frame state only after we know there's no header line continuation
                 _remainingRequestHeadersBytesAllowed -= headerLineLength;
@@ -1637,6 +1747,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             RequestPending,
             RequestStarted,
             ResponseStarted
+        }
+
+        private enum HeaderState
+        {
+            ExpectName,
+            ExpectWhitespace,
+            ExpectValue,
+            ExpectNewLine,
+            Complete
         }
     }
 }
