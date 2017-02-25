@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private readonly static ulong _httpConnectMethodLong = GetAsciiStringAsLong("CONNECT ");
         private readonly static ulong _httpDeleteMethodLong = GetAsciiStringAsLong("DELETE \0");
         private readonly static ulong _httpGetMethodLong = GetAsciiStringAsLong("GET \0\0\0\0");
+        private readonly static uint _httpGetMethodInt = GetAsciiStringAsInt("GET ");
         private readonly static ulong _httpHeadMethodLong = GetAsciiStringAsLong("HEAD \0\0\0");
         private readonly static ulong _httpPatchMethodLong = GetAsciiStringAsLong("PATCH \0\0");
         private readonly static ulong _httpPostMethodLong = GetAsciiStringAsLong("POST \0\0\0");
@@ -60,6 +61,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 return *(ulong*)ptr;
             }
         }
+
+        private unsafe static uint GetAsciiStringAsInt(string str)
+        {
+            Debug.Assert(str.Length == 4, "String must be exactly 8 (ASCII) characters long.");
+
+            var bytes = Encoding.ASCII.GetBytes(str);
+
+            fixed (byte* ptr = &bytes[0])
+            {
+                return *(uint*)ptr;
+            }
+        }
+
         private unsafe static ulong GetMaskAsLong(byte[] bytes)
         {
             Debug.Assert(bytes.Length == 8, "Mask must be exactly 8 bytes long.");
@@ -173,27 +187,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetKnownMethod(this Span<byte> span, out string knownMethod)
         {
-            knownMethod = null;
-            if (span.Length < sizeof(ulong))
+            if (span.TryRead<uint>(out var possiblyGet))
             {
-                return false;
-            }
-
-            ulong value = span.Read<ulong>();
-            if ((value & _mask4Chars) == _httpGetMethodLong)
-            {
-                knownMethod = HttpMethods.Get;
-                return true;
-            }
-            foreach (var x in _knownMethods)
-            {
-                if ((value & x.Item1) == x.Item2)
+                if (possiblyGet == _httpGetMethodInt)
                 {
-                    knownMethod = x.Item3;
+                    knownMethod = HttpMethods.Get;
                     return true;
                 }
             }
 
+            if (span.TryRead<ulong>(out var value))
+            {
+                foreach (var x in _knownMethods)
+                {
+                    if ((value & x.Item1) == x.Item2)
+                    {
+                        knownMethod = x.Item3;
+                        return true;
+                    }
+                }
+            }
+            
+            knownMethod = null;
             return false;
         }
 
