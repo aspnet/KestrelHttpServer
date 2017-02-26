@@ -1085,8 +1085,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var pathEnd = -1;
 
             // TODO: State machineify
-
-
             fixed (byte* data = &span.DangerousGetPinnableReference())
             {
                 int length = span.Length;
