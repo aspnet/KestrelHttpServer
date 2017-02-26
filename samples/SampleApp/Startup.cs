@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -16,20 +17,20 @@ namespace SampleApp
     {
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
-            loggerFactory.AddConsole(LogLevel.Trace);
-            var logger = loggerFactory.CreateLogger("Default");
+            // loggerFactory.AddConsole(LogLevel.Trace);
+            // var logger = loggerFactory.CreateLogger("Default");
 
+            var buffer = Encoding.UTF8.GetBytes($"hello, world{Environment.NewLine}");
             app.Run(async context =>
             {
-                var connectionFeature = context.Connection;
-                logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
-                    + $"{Environment.NewLine}"
-                    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
+                //var connectionFeature = context.Connection;
+                //logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
+                //    + $"{Environment.NewLine}"
+                //    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
 
-                var response = $"hello, world{Environment.NewLine}";
-                context.Response.ContentLength = response.Length;
+                context.Response.ContentLength = buffer.Length;
                 context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(response);
+                await context.Response.Body.WriteAsync(buffer, 0, buffer.Length);
             });
         }
 

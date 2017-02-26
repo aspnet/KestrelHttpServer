@@ -982,7 +982,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.ProducingComplete(end);
         }
 
-        public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        public unsafe bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
             var start = buffer.Start;
             var end = buffer.Start;
@@ -1034,13 +1034,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else if (startLineBuffer.Length < stackAllocLimit)
             {
-                unsafe
-                {
-                    // Multiple buffers and < stackAllocLimit, copy into a stack buffer
-                    byte* stackBuffer = stackalloc byte[startLineBuffer.Length];
-                    span = new Span<byte>(stackBuffer, startLineBuffer.Length);
-                    startLineBuffer.CopyTo(span);
-                }
+                // Multiple buffers and < stackAllocLimit, copy into a stack buffer
+                byte* stackBuffer = stackalloc byte[startLineBuffer.Length];
+                span = new Span<byte>(stackBuffer, startLineBuffer.Length);
+                startLineBuffer.CopyTo(span);
             }
             else
             {
@@ -1089,174 +1086,172 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             // TODO: State machineify
 
-            unsafe
+
+            fixed (byte* data = &span.DangerousGetPinnableReference())
             {
-                fixed (byte* data = &span.DangerousGetPinnableReference())
+                int length = span.Length;
+                for (int i = pathBegin; i < length; i++)
                 {
-                    int length = span.Length;
-                    for (int i = pathBegin; i < length; i++)
+                    var ch = data[i];
+                    if (spaceIndex == -1 && ch == ByteSpace)
                     {
-                        var ch = data[i];
-                        if (spaceIndex == -1 && ch == ByteSpace)
+                        if (pathEnd == -1)
                         {
-                            if (pathEnd == -1)
-                            {
-                                pathEnd = i;
-                            }
-
-                            spaceIndex = i;
+                            pathEnd = i;
                         }
 
-                        if (questionMarkIndex == -1 && ch == ByteQuestionMark)
-                        {
-                            if (pathEnd == -1)
-                            {
-                                pathEnd = i;
-                            }
+                        spaceIndex = i;
+                    }
 
-                            questionMarkIndex = i;
+                    if (questionMarkIndex == -1 && ch == ByteQuestionMark)
+                    {
+                        if (pathEnd == -1)
+                        {
+                            pathEnd = i;
                         }
 
-                        if (percentageIndex == -1 && ch == BytePercentage)
-                        {
-                            if (pathEnd == -1)
-                            {
-                                pathEnd = i;
-                            }
+                        questionMarkIndex = i;
+                    }
 
-                            percentageIndex = i;
+                    if (percentageIndex == -1 && ch == BytePercentage)
+                    {
+                        if (pathEnd == -1)
+                        {
+                            pathEnd = i;
                         }
+
+                        percentageIndex = i;
                     }
                 }
-            }
 
-            if (spaceIndex == -1 && questionMarkIndex == -1 && percentageIndex == -1)
-            {
-                RejectRequestLine(start, end);
-            }
-            else if (percentageIndex != -1)
-            {
-                needDecode = true;
-                pathEnd = MinNonZero(spaceIndex, questionMarkIndex);
-
-                if (questionMarkIndex == -1 && spaceIndex == -1)
+                if (spaceIndex == -1 && questionMarkIndex == -1 && percentageIndex == -1)
                 {
                     RejectRequestLine(start, end);
                 }
-            }
+                else if (percentageIndex != -1)
+                {
+                    needDecode = true;
+                    pathEnd = MinNonZero(spaceIndex, questionMarkIndex);
 
-            var queryString = "";
-            var queryEnd = pathEnd;
-            if (questionMarkIndex != -1)
-            {
-                queryEnd = spaceIndex;
-                if (spaceIndex == -1)
+                    if (questionMarkIndex == -1 && spaceIndex == -1)
+                    {
+                        RejectRequestLine(start, end);
+                    }
+                }
+
+                var queryString = "";
+                var queryEnd = pathEnd;
+                if (questionMarkIndex != -1)
+                {
+                    queryEnd = spaceIndex;
+                    if (spaceIndex == -1)
+                    {
+                        RejectRequestLine(start, end);
+                    }
+
+                    queryString = span.Slice(pathEnd, queryEnd - pathEnd).GetAsciiString();
+                }
+
+                if (pathBegin == pathEnd)
                 {
                     RejectRequestLine(start, end);
                 }
 
-                queryString = span.Slice(pathEnd, queryEnd - pathEnd).GetAsciiString();
-            }
-
-            if (pathBegin == pathEnd)
-            {
-                RejectRequestLine(start, end);
-            }
-
-            var versionBegin = queryEnd + 1;
-            var versionEnd = -1;
-            for (int i = versionBegin; i < span.Length; i++)
-            {
-                if (span[i] == ByteCR)
+                var versionBegin = queryEnd + 1;
+                var versionEnd = -1;
+                for (int i = versionBegin; i < span.Length; i++)
                 {
-                    versionEnd = i;
-                    break;
+                    if (data[i] == ByteCR)
+                    {
+                        versionEnd = i;
+                        break;
+                    }
                 }
-            }
 
-            if (versionEnd == -1)
-            {
-                RejectRequestLine(start, end);
-            }
-
-            var versionSpan = span.Slice(versionBegin);
-            if (!versionSpan.GetKnownVersion(out string httpVersion))
-            {
-                httpVersion = versionSpan.Slice(0, versionEnd - versionBegin).GetAsciiStringEscaped();
-
-                if (httpVersion == string.Empty)
+                if (versionEnd == -1)
                 {
                     RejectRequestLine(start, end);
                 }
-                else
+
+                var versionSpan = span.Slice(versionBegin);
+                if (!versionSpan.GetKnownVersion(out string httpVersion))
                 {
-                    RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
+                    httpVersion = versionSpan.Slice(0, versionEnd - versionBegin).GetAsciiStringEscaped();
+
+                    if (httpVersion == string.Empty)
+                    {
+                        RejectRequestLine(start, end);
+                    }
+                    else
+                    {
+                        RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
+                    }
                 }
-            }
 
-            if (span[versionEnd + 1] != ByteLF)
-            {
-                RejectRequestLine(start, end);
-            }
-
-            var pathBuffer = span.Slice(pathBegin, pathEnd - pathBegin);
-            var targetBuffer = span.Slice(pathBegin, queryEnd - pathBegin);
-
-            // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
-            // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
-            // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-            string requestUrlPath;
-            string rawTarget;
-            if (needDecode)
-            {
-                // Read raw target before mutating memory.
-                rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
-
-                // URI was encoded, unescape and then parse as utf8
-                var pathSpan = pathBuffer;
-                int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
-                requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();
-            }
-            else
-            {
-                // URI wasn't encoded, parse as ASCII
-                requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
-
-                if (queryString.Length == 0)
+                if (data[versionEnd + 1] != ByteLF)
                 {
-                    // No need to allocate an extra string if the path didn't need
-                    // decoding and there's no query string following it.
-                    rawTarget = requestUrlPath;
+                    RejectRequestLine(start, end);
                 }
-                else
+
+                var pathBuffer = span.Slice(pathBegin, pathEnd - pathBegin);
+                var targetBuffer = span.Slice(pathBegin, queryEnd - pathBegin);
+
+                // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
+                // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
+                // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
+                string requestUrlPath;
+                string rawTarget;
+                if (needDecode)
                 {
+                    // Read raw target before mutating memory.
                     rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
+
+                    // URI was encoded, unescape and then parse as utf8
+                    var pathSpan = pathBuffer;
+                    int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
+                    requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();
                 }
-            }
+                else
+                {
+                    // URI wasn't encoded, parse as ASCII
+                    requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
 
-            var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
+                    if (queryString.Length == 0)
+                    {
+                        // No need to allocate an extra string if the path didn't need
+                        // decoding and there's no query string following it.
+                        rawTarget = requestUrlPath;
+                    }
+                    else
+                    {
+                        rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
+                    }
+                }
 
-            consumed = end;
-            examined = end;
-            Method = method;
-            QueryString = queryString;
-            RawTarget = rawTarget;
-            HttpVersion = httpVersion;
+                var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
 
-            if (RequestUrlStartsWithPathBase(normalizedTarget, out bool caseMatches))
-            {
-                PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
-                Path = normalizedTarget.Substring(_pathBase.Length);
-            }
-            else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
-            {
-                Path = normalizedTarget;
-            }
-            else
-            {
-                Path = string.Empty;
-                PathBase = string.Empty;
-                QueryString = string.Empty;
+                consumed = end;
+                examined = end;
+                Method = method;
+                QueryString = queryString;
+                RawTarget = rawTarget;
+                HttpVersion = httpVersion;
+
+                if (RequestUrlStartsWithPathBase(normalizedTarget, out bool caseMatches))
+                {
+                    PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
+                    Path = normalizedTarget.Substring(_pathBase.Length);
+                }
+                else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
+                {
+                    Path = normalizedTarget;
+                }
+                else
+                {
+                    Path = string.Empty;
+                    PathBase = string.Empty;
+                    QueryString = string.Empty;
+                }
             }
 
             return true;
@@ -1341,11 +1336,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor consumed, out ReadCursor examined)
+        public unsafe bool TakeMessageHeaders(ReadableBuffer buffer, FrameRequestHeaders requestHeaders, out ReadCursor consumed, out ReadCursor examined)
         {
             consumed = buffer.Start;
             examined = buffer.End;
 
+            var bufferEnd = buffer.End;
             var bufferLength = buffer.Length;
             var reader = new ReadableBufferReader(buffer);
 
@@ -1394,23 +1390,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 reader = start;
 
                 // Now parse a single header
-                ReadableBuffer limitedBuffer;
                 var overLength = false;
 
                 if (bufferLength >= _remainingRequestHeadersBytesAllowed)
                 {
-                    limitedBuffer = buffer.Slice(consumed, _remainingRequestHeadersBytesAllowed);
+                    bufferEnd = buffer.Move(consumed, _remainingRequestHeadersBytesAllowed);
 
                     // If we sliced it means the current buffer bigger than what we're 
                     // allowed to look at
                     overLength = true;
                 }
-                else
-                {
-                    limitedBuffer = buffer;
-                }
 
-                if (ReadCursorOperations.Seek(consumed, limitedBuffer.End, out var lineEnd, ByteLF) == -1)
+                if (ReadCursorOperations.Seek(consumed, bufferEnd, out var lineEnd, ByteLF) == -1)
                 {
                     // We didn't find a \n in the current buffer and we had to slice it so it's an issue
                     if (overLength)
@@ -1425,12 +1416,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 const int stackAllocLimit = 512;
 
-                if (lineEnd != limitedBuffer.End)
+                if (lineEnd != bufferEnd)
                 {
-                    lineEnd = limitedBuffer.Move(lineEnd, 1);
+                    lineEnd = buffer.Move(lineEnd, 1);
                 }
 
-                var headerBuffer = limitedBuffer.Slice(consumed, lineEnd);
+                var headerBuffer = buffer.Slice(consumed, lineEnd);
 
                 Span<byte> span;
                 if (headerBuffer.IsSingleSpan)
@@ -1440,13 +1431,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else if (headerBuffer.Length < stackAllocLimit)
                 {
-                    unsafe
-                    {
-                        // Multiple buffers and < stackAllocLimit, copy into a stack buffer
-                        byte* stackBuffer = stackalloc byte[headerBuffer.Length];
-                        span = new Span<byte>(stackBuffer, headerBuffer.Length);
-                        headerBuffer.CopyTo(span);
-                    }
+                    // Multiple buffers and < stackAllocLimit, copy into a stack buffer
+                    byte* stackBuffer = stackalloc byte[headerBuffer.Length];
+                    span = new Span<byte>(stackBuffer, headerBuffer.Length);
+                    headerBuffer.CopyTo(span);
                 }
                 else
                 {
@@ -1463,99 +1451,96 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var sawWhitespaceInName = false;
                 var previouslyWhitespace = false;
 
-                unsafe
+                fixed (byte* data = &span.DangerousGetPinnableReference())
                 {
-                    fixed (byte* data = &span.DangerousGetPinnableReference())
+                    int length = span.Length;
+                    for (int i = 0; i < length; i++)
                     {
-                        int length = span.Length;
-                        for (int i = 0; i < length; i++)
+                        var ch = data[i];
+
+                        switch (state)
                         {
-                            var ch = data[i];
-
-                            switch (state)
-                            {
-                                case HeaderState.ExpectName:
-                                    if (ch == ByteColon)
+                            case HeaderState.ExpectName:
+                                if (ch == ByteColon)
+                                {
+                                    if (sawWhitespaceInName)
                                     {
-                                        if (sawWhitespaceInName)
-                                        {
-                                            RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
-                                        }
-
-                                        state = HeaderState.ExpectWhitespace;
-                                        endNameIndex = i;
+                                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                                     }
 
-                                    if (ch == ByteSpace || ch == ByteTab)
-                                    {
-                                        sawWhitespaceInName = true;
-                                    }
-                                    break;
-                                case HeaderState.ExpectWhitespace:
-                                    var sws = ch == ByteTab || ch == ByteSpace || ch == ByteCR;
+                                    state = HeaderState.ExpectWhitespace;
+                                    endNameIndex = i;
+                                }
 
-                                    if (!sws)
-                                    {
-                                        // Mark the first non whitespace char as the start of the
-                                        // header value and change the state to expect to the header value
-                                        startValueIndex = i;
-                                        state = HeaderState.ExpectValue;
-                                    }
-                                    // If we see a CR then jump to the next state directly
-                                    else if (ch == ByteCR)
-                                    {
-                                        goto case HeaderState.ExpectValue;
-                                    }
+                                if (ch == ByteSpace || ch == ByteTab)
+                                {
+                                    sawWhitespaceInName = true;
+                                }
+                                break;
+                            case HeaderState.ExpectWhitespace:
+                                var sws = ch == ByteTab || ch == ByteSpace || ch == ByteCR;
 
-                                    break;
-                                case HeaderState.ExpectValue:
-                                    var ews = ch == ByteTab || ch == ByteSpace;
+                                if (!sws)
+                                {
+                                    // Mark the first non whitespace char as the start of the
+                                    // header value and change the state to expect to the header value
+                                    startValueIndex = i;
+                                    state = HeaderState.ExpectValue;
+                                }
+                                // If we see a CR then jump to the next state directly
+                                else if (ch == ByteCR)
+                                {
+                                    goto case HeaderState.ExpectValue;
+                                }
 
-                                    if (ews)
+                                break;
+                            case HeaderState.ExpectValue:
+                                var ews = ch == ByteTab || ch == ByteSpace;
+
+                                if (ews)
+                                {
+                                    if (!previouslyWhitespace)
                                     {
-                                        if (!previouslyWhitespace)
-                                        {
-                                            // If we see a whitespace char then maybe it's end of the
-                                            // header value
-                                            endValueIndex = i;
-                                        }
+                                        // If we see a whitespace char then maybe it's end of the
+                                        // header value
+                                        endValueIndex = i;
                                     }
-                                    else if (ch == ByteCR)
+                                }
+                                else if (ch == ByteCR)
+                                {
+                                    // If we see a CR and we haven't ever seen whitespace then
+                                    // this is the end of the header value
+                                    if (endValueIndex == -1)
                                     {
-                                        // If we see a CR and we haven't ever seen whitespace then
-                                        // this is the end of the header value
-                                        if (endValueIndex == -1)
-                                        {
-                                            endValueIndex = i;
-                                        }
-
-                                        // We never saw a non whitespace character before the CR
-                                        if (startValueIndex == -1)
-                                        {
-                                            startValueIndex = endValueIndex;
-                                        }
-
-                                        state = HeaderState.ExpectNewLine;
-                                    }
-                                    else
-                                    {
-                                        // If we find a non whitespace char that isn't CR then reset the end index
-                                        endValueIndex = -1;
+                                        endValueIndex = i;
                                     }
 
-                                    previouslyWhitespace = ews;
-                                    break;
-                                case HeaderState.ExpectNewLine:
-                                    if (ch != ByteLF)
+                                    // We never saw a non whitespace character before the CR
+                                    if (startValueIndex == -1)
                                     {
-                                        RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                                        startValueIndex = endValueIndex;
                                     }
 
-                                    state = HeaderState.Complete;
-                                    break;
-                                default:
-                                    break;
-                            }
+                                    state = HeaderState.ExpectNewLine;
+                                }
+                                else
+                                {
+                                    // If we find a non whitespace char that isn't CR then reset the end index
+                                    endValueIndex = -1;
+                                }
+
+                                previouslyWhitespace = ews;
+                                break;
+                            case HeaderState.ExpectNewLine:
+                                if (ch != ByteLF)
+                                {
+                                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                                }
+
+                                state = HeaderState.Complete;
+                                break;
+                            default:
+                                break;
                         }
                     }
                 }
