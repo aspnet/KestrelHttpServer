@@ -1058,8 +1058,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             fixed (byte* data = &span.DangerousGetPinnableReference())
             {
-                int length = span.Length;
-                for (int i = 0; i < length; i++)
+                var length = span.Length;
+                for (var i = 0; i < length; i++)
                 {
                     var ch = data[i];
 
@@ -1438,8 +1438,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 fixed (byte* data = &span.DangerousGetPinnableReference())
                 {
-                    int length = span.Length;
-                    for (int i = 0; i < length; i++)
+                    var length = span.Length;
+                    for (var i = 0; i < length; i++)
                     {
                         var ch = data[i];
 
@@ -1463,58 +1463,61 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 }
                                 break;
                             case HeaderState.ExpectWhitespace:
-                                var sws = ch == ByteTab || ch == ByteSpace || ch == ByteCR;
-
-                                if (!sws)
                                 {
-                                    // Mark the first non whitespace char as the start of the
-                                    // header value and change the state to expect to the header value
-                                    startValueIndex = i;
-                                    state = HeaderState.ExpectValue;
-                                }
-                                // If we see a CR then jump to the next state directly
-                                else if (ch == ByteCR)
-                                {
-                                    goto case HeaderState.ExpectValue;
-                                }
+                                    var whitespace = ch == ByteTab || ch == ByteSpace || ch == ByteCR;
 
+                                    if (!whitespace)
+                                    {
+                                        // Mark the first non whitespace char as the start of the
+                                        // header value and change the state to expect to the header value
+                                        startValueIndex = i;
+                                        state = HeaderState.ExpectValue;
+                                    }
+                                    // If we see a CR then jump to the next state directly
+                                    else if (ch == ByteCR)
+                                    {
+                                        goto case HeaderState.ExpectValue;
+                                    }
+                                }
                                 break;
                             case HeaderState.ExpectValue:
-                                var ews = ch == ByteTab || ch == ByteSpace;
-
-                                if (ews)
                                 {
-                                    if (!previouslyWhitespace)
+                                    var whitespace = ch == ByteTab || ch == ByteSpace;
+
+                                    if (whitespace)
                                     {
-                                        // If we see a whitespace char then maybe it's end of the
-                                        // header value
-                                        endValueIndex = i;
+                                        if (!previouslyWhitespace)
+                                        {
+                                            // If we see a whitespace char then maybe it's end of the
+                                            // header value
+                                            endValueIndex = i;
+                                        }
                                     }
-                                }
-                                else if (ch == ByteCR)
-                                {
-                                    // If we see a CR and we haven't ever seen whitespace then
-                                    // this is the end of the header value
-                                    if (endValueIndex == -1)
+                                    else if (ch == ByteCR)
                                     {
-                                        endValueIndex = i;
+                                        // If we see a CR and we haven't ever seen whitespace then
+                                        // this is the end of the header value
+                                        if (endValueIndex == -1)
+                                        {
+                                            endValueIndex = i;
+                                        }
+
+                                        // We never saw a non whitespace character before the CR
+                                        if (startValueIndex == -1)
+                                        {
+                                            startValueIndex = endValueIndex;
+                                        }
+
+                                        state = HeaderState.ExpectNewLine;
+                                    }
+                                    else
+                                    {
+                                        // If we find a non whitespace char that isn't CR then reset the end index
+                                        endValueIndex = -1;
                                     }
 
-                                    // We never saw a non whitespace character before the CR
-                                    if (startValueIndex == -1)
-                                    {
-                                        startValueIndex = endValueIndex;
-                                    }
-
-                                    state = HeaderState.ExpectNewLine;
+                                    previouslyWhitespace = whitespace;
                                 }
-                                else
-                                {
-                                    // If we find a non whitespace char that isn't CR then reset the end index
-                                    endValueIndex = -1;
-                                }
-
-                                previouslyWhitespace = ews;
                                 break;
                             case HeaderState.ExpectNewLine:
                                 if (ch != ByteLF)
