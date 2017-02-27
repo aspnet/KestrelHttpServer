@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -20,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     /// <summary>
     /// Summary description for KestrelThread
     /// </summary>
-    public class KestrelThread: IScheduler
+    public class KestrelThread : IScheduler, ICriticalNotifyCompletion
     {
         public const long HeartbeatMilliseconds = 1000;
 
@@ -445,6 +446,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public void Schedule(Action action)
         {
             Post(state => state(), action);
+        }
+
+        // await implementation
+        public bool IsCompleted => Thread.CurrentThread.ManagedThreadId == _thread.ManagedThreadId;
+
+        public KestrelThread GetAwaiter() => this;
+
+        public void GetResult()
+        {
+        }
+
+        public void UnsafeOnCompleted(Action continuation)
+        {
+            OnCompleted(continuation);
+        }
+
+        public void OnCompleted(Action continuation)
+        {
+            Post(state => state(), continuation);
         }
 
         private struct Work
