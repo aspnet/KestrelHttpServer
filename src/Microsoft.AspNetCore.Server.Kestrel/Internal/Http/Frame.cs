@@ -1257,21 +1257,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
-        private int MinNonZero(int v1, int v2)
-        {
-            v1 = v1 == -1 ? int.MaxValue : v1;
-            v2 = v2 == -1 ? int.MaxValue : v2;
-            return Math.Min(v1, v2);
-        }
-
-        private int MinNonZero(int v1, int v2, int v3)
-        {
-            v1 = v1 == -1 ? int.MaxValue : v1;
-            v2 = v2 == -1 ? int.MaxValue : v2;
-            v3 = v3 == -1 ? int.MaxValue : v3;
-            return Math.Min(Math.Min(v1, v2), v3);
-        }
-
         private void RejectRequestLine(ReadCursor start, ReadCursor end)
         {
             const int MaxRequestLineError = 32;
