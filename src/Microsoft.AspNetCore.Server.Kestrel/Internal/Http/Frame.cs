@@ -986,6 +986,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             var start = buffer.Start;
             var end = buffer.Start;
+            var bufferEnd = buffer.End;
 
             examined = buffer.End;
             consumed = buffer.Start;
@@ -997,19 +998,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             _requestProcessingStatus = RequestProcessingStatus.RequestStarted;
 
-            ReadableBuffer limitedBuffer;
+            var overLength = false;
             if (buffer.Length >= ServerOptions.Limits.MaxRequestLineSize)
             {
-                limitedBuffer = buffer.Slice(0, ServerOptions.Limits.MaxRequestLineSize);
-            }
-            else
-            {
-                limitedBuffer = buffer;
+                bufferEnd = buffer.Move(start, ServerOptions.Limits.MaxRequestLineSize);
+
+                overLength = true;
             }
 
-            if (ReadCursorOperations.Seek(limitedBuffer.Start, limitedBuffer.End, out end, ByteLF) == -1)
+            if (ReadCursorOperations.Seek(start, bufferEnd, out end, ByteLF) == -1)
             {
-                if (limitedBuffer.Length == ServerOptions.Limits.MaxRequestLineSize)
+                if (overLength)
                 {
                     RejectRequest(RequestRejectionReason.RequestLineTooLong);
                 }
@@ -1021,9 +1020,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             const int stackAllocLimit = 512;
 
-            // Move 1 byte past the \r
-            end = limitedBuffer.Move(end, 1);
-            var startLineBuffer = limitedBuffer.Slice(0, end);
+            // Move 1 byte past the \n
+            end = buffer.Move(end, 1);
+            var startLineBuffer = buffer.Slice(start, end);
 
             Span<byte> span;
 
@@ -1046,211 +1045,214 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 startLineBuffer.CopyTo(span);
             }
 
-            var methodEnd = 0;
-            if (!span.GetKnownMethod(out string method))
-            {
-                methodEnd = span.IndexOf(ByteSpace);
-                if (methodEnd == -1)
-                {
-                    RejectRequestLine(start, end);
-                }
-
-                method = span.Slice(0, methodEnd).GetAsciiString();
-
-                if (method == null)
-                {
-                    RejectRequestLine(start, end);
-                }
-
-                // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
-                // So we can be a tiny bit slower and more careful here.
-                for (int i = 0; i < method.Length; i++)
-                {
-                    if (!IsValidTokenChar(method[i]))
-                    {
-                        RejectRequestLine(start, end);
-                    }
-                }
-            }
-            else
-            {
-                methodEnd += method.Length;
-            }
-
             var needDecode = false;
-            var pathBegin = methodEnd + 1;
-            var spaceIndex = -1;
-            var questionMarkIndex = -1;
-            var percentageIndex = -1;
+            var pathStart = -1;
+            var queryStart = -1;
+            var queryEnd = -1;
             var pathEnd = -1;
+            var versionStart = -1;
+            var queryString = "";
+            var httpVersion = "";
+            var method = "";
+            var state = StartLineState.ExpectKnownMethod;
 
-            // TODO: State machineify
             fixed (byte* data = &span.DangerousGetPinnableReference())
             {
                 int length = span.Length;
-                for (int i = pathBegin; i < length; i++)
+                for (int i = 0; i < length; i++)
                 {
                     var ch = data[i];
-                    if (spaceIndex == -1 && ch == ByteSpace)
+
+                    switch (state)
                     {
-                        if (pathEnd == -1)
-                        {
-                            pathEnd = i;
-                        }
+                        case StartLineState.ExpectKnownMethod:
+                            if (span.GetKnownMethod(out method))
+                            {
+                                // Update the index, current char, state and jump directly
+                                // to the next state
+                                i += method.Length + 1;
+                                ch = data[i];
+                                state = StartLineState.ExpectPath;
 
-                        spaceIndex = i;
+                                goto case StartLineState.ExpectPath;
+                            }
+
+                            state = StartLineState.ExpectUnknownMethod;
+                            goto case StartLineState.ExpectUnknownMethod;
+
+                        case StartLineState.ExpectUnknownMethod:
+                            if (ch == ByteSpace)
+                            {
+                                method = span.Slice(0, i).GetAsciiString();
+
+                                if (method == null)
+                                {
+                                    RejectRequestLine(start, end);
+                                }
+
+                                state = StartLineState.ExpectPath;
+                            }
+                            else if (!IsValidTokenChar((char)ch))
+                            {
+                                RejectRequestLine(start, end);
+                            }
+
+                            break;
+                        case StartLineState.ExpectPath:
+                            if (ch == ByteSpace)
+                            {
+                                pathEnd = i;
+
+                                if (pathStart == -1)
+                                {
+                                    // Empty path is illegal
+                                    RejectRequestLine(start, end);
+                                }
+
+                                // No query string found
+                                queryStart = queryEnd = i;
+
+                                state = StartLineState.ExpectKnownVersion;
+                            }
+                            else if (ch == ByteQuestionMark)
+                            {
+                                pathEnd = i;
+                                queryStart = i;
+                                state = StartLineState.ExpectQueryString;
+                            }
+                            else if (ch == BytePercentage)
+                            {
+                                needDecode = true;
+                            }
+
+                            if (pathStart == -1)
+                            {
+                                pathStart = i;
+                            }
+                            break;
+                        case StartLineState.ExpectQueryString:
+                            if (ch == ByteSpace)
+                            {
+                                queryEnd = i;
+                                state = StartLineState.ExpectKnownVersion;
+
+                                queryString = span.Slice(queryStart, queryEnd - queryStart).GetAsciiString() ?? string.Empty;
+                            }
+                            break;
+                        case StartLineState.ExpectKnownVersion:
+                            // REVIEW: We don't *need* to slice here but it makes the API
+                            // nicer, slicing should be free :)
+                            if (span.Slice(i).GetKnownVersion(out httpVersion))
+                            {
+                                // Update the index, current char, state and jump directly
+                                // to the next state
+                                i += httpVersion.Length + 1;
+                                ch = data[i];
+                                state = StartLineState.ExpectNewLine;
+
+                                goto case StartLineState.ExpectNewLine;
+                            }
+
+                            versionStart = i;
+                            state = StartLineState.ExpectUnknownVersion;
+                            goto case StartLineState.ExpectUnknownVersion;
+
+                        case StartLineState.ExpectUnknownVersion:
+                            if (ch == ByteCR)
+                            {
+                                var versionSpan = span.Slice(versionStart, i - versionStart);
+
+                                if (versionSpan.Length == 0)
+                                {
+                                    RejectRequestLine(start, end);
+                                }
+                                else
+                                {
+                                    RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, versionSpan.GetAsciiStringEscaped());
+                                }
+                            }
+                            break;
+                        case StartLineState.ExpectNewLine:
+                            if (ch != ByteLF)
+                            {
+                                RejectRequestLine(start, end);
+                            }
+
+                            state = StartLineState.Complete;
+                            break;
+                        case StartLineState.Complete:
+                            break;
+                        default:
+                            break;
                     }
-
-                    if (questionMarkIndex == -1 && ch == ByteQuestionMark)
-                    {
-                        if (pathEnd == -1)
-                        {
-                            pathEnd = i;
-                        }
-
-                        questionMarkIndex = i;
-                    }
-
-                    if (percentageIndex == -1 && ch == BytePercentage)
-                    {
-                        if (pathEnd == -1)
-                        {
-                            pathEnd = i;
-                        }
-
-                        percentageIndex = i;
-                    }
-                }
-
-                if (spaceIndex == -1 && questionMarkIndex == -1 && percentageIndex == -1)
-                {
-                    RejectRequestLine(start, end);
-                }
-                else if (percentageIndex != -1)
-                {
-                    needDecode = true;
-                    pathEnd = MinNonZero(spaceIndex, questionMarkIndex);
-
-                    if (questionMarkIndex == -1 && spaceIndex == -1)
-                    {
-                        RejectRequestLine(start, end);
-                    }
-                }
-
-                var queryString = "";
-                var queryEnd = pathEnd;
-                if (questionMarkIndex != -1)
-                {
-                    queryEnd = spaceIndex;
-                    if (spaceIndex == -1)
-                    {
-                        RejectRequestLine(start, end);
-                    }
-
-                    queryString = span.Slice(pathEnd, queryEnd - pathEnd).GetAsciiString();
-                }
-
-                if (pathBegin == pathEnd)
-                {
-                    RejectRequestLine(start, end);
-                }
-
-                var versionBegin = queryEnd + 1;
-                var versionEnd = -1;
-                for (int i = versionBegin; i < span.Length; i++)
-                {
-                    if (data[i] == ByteCR)
-                    {
-                        versionEnd = i;
-                        break;
-                    }
-                }
-
-                if (versionEnd == -1)
-                {
-                    RejectRequestLine(start, end);
-                }
-
-                var versionSpan = span.Slice(versionBegin);
-                if (!versionSpan.GetKnownVersion(out string httpVersion))
-                {
-                    httpVersion = versionSpan.Slice(0, versionEnd - versionBegin).GetAsciiStringEscaped();
-
-                    if (httpVersion == string.Empty)
-                    {
-                        RejectRequestLine(start, end);
-                    }
-                    else
-                    {
-                        RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
-                    }
-                }
-
-                if (data[versionEnd + 1] != ByteLF)
-                {
-                    RejectRequestLine(start, end);
-                }
-
-                var pathBuffer = span.Slice(pathBegin, pathEnd - pathBegin);
-                var targetBuffer = span.Slice(pathBegin, queryEnd - pathBegin);
-
-                // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
-                // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
-                // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-                string requestUrlPath;
-                string rawTarget;
-                if (needDecode)
-                {
-                    // Read raw target before mutating memory.
-                    rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
-
-                    // URI was encoded, unescape and then parse as utf8
-                    var pathSpan = pathBuffer;
-                    int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
-                    requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();
-                }
-                else
-                {
-                    // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
-
-                    if (queryString.Length == 0)
-                    {
-                        // No need to allocate an extra string if the path didn't need
-                        // decoding and there's no query string following it.
-                        rawTarget = requestUrlPath;
-                    }
-                    else
-                    {
-                        rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
-                    }
-                }
-
-                var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
-
-                consumed = end;
-                examined = end;
-                Method = method;
-                QueryString = queryString;
-                RawTarget = rawTarget;
-                HttpVersion = httpVersion;
-
-                if (RequestUrlStartsWithPathBase(normalizedTarget, out bool caseMatches))
-                {
-                    PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
-                    Path = normalizedTarget.Substring(_pathBase.Length);
-                }
-                else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
-                {
-                    Path = normalizedTarget;
-                }
-                else
-                {
-                    Path = string.Empty;
-                    PathBase = string.Empty;
-                    QueryString = string.Empty;
                 }
             }
+
+            if (state != StartLineState.Complete)
+            {
+                RejectRequestLine(start, end);
+            }
+
+            var pathBuffer = span.Slice(pathStart, pathEnd - pathStart);
+            var targetBuffer = span.Slice(pathStart, queryEnd - pathStart);
+
+            // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
+            // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
+            // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
+            string requestUrlPath;
+            string rawTarget;
+            if (needDecode)
+            {
+                // Read raw target before mutating memory.
+                rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
+
+                // URI was encoded, unescape and then parse as utf8
+                var pathSpan = pathBuffer;
+                int pathLength = UrlEncoder.Decode(pathSpan, pathSpan);
+                requestUrlPath = new Utf8String(pathSpan.Slice(0, pathLength)).ToString();
+            }
+            else
+            {
+                // URI wasn't encoded, parse as ASCII
+                requestUrlPath = pathBuffer.GetAsciiString() ?? string.Empty;
+
+                if (queryString.Length == 0)
+                {
+                    // No need to allocate an extra string if the path didn't need
+                    // decoding and there's no query string following it.
+                    rawTarget = requestUrlPath;
+                }
+                else
+                {
+                    rawTarget = targetBuffer.GetAsciiString() ?? string.Empty;
+                }
+            }
+
+            var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
+
+            consumed = end;
+            examined = end;
+            Method = method;
+            QueryString = queryString;
+            RawTarget = rawTarget;
+            HttpVersion = httpVersion;
+
+            if (RequestUrlStartsWithPathBase(normalizedTarget, out bool caseMatches))
+            {
+                PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
+                Path = normalizedTarget.Substring(_pathBase.Length);
+            }
+            else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
+            {
+                Path = normalizedTarget;
+            }
+            else
+            {
+                Path = string.Empty;
+                PathBase = string.Empty;
+                QueryString = string.Empty;
+            }
+
 
             return true;
         }
@@ -1745,6 +1747,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             RequestPending,
             RequestStarted,
             ResponseStarted
+        }
+
+        private enum StartLineState
+        {
+            ExpectKnownMethod,
+            ExpectUnknownMethod,
+            ExpectPath,
+            ExpectQueryString,
+            ExpectKnownVersion,
+            ExpectUnknownVersion,
+            ExpectNewLine,
+            Complete
         }
 
         private enum HeaderState
