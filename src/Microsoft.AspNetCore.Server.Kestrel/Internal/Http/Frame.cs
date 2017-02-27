@@ -1029,7 +1029,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (startLineBuffer.IsSingleSpan)
             {
                 // No copies, directly use the one and only span
-                span = startLineBuffer.ToSpan();
+                span = startLineBuffer.First.Span;
             }
             else if (startLineBuffer.Length < stackAllocLimit)
             {
@@ -1327,8 +1327,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             examined = buffer.End;
 
             var bufferEnd = buffer.End;
-            var bufferLength = buffer.Length;
             var reader = new ReadableBufferReader(buffer);
+            
+            // Make sure the buffer is limited
+            var overLength = false;
+            if (buffer.Length >= _remainingRequestHeadersBytesAllowed)
+            {
+                bufferEnd = buffer.Move(consumed, _remainingRequestHeadersBytesAllowed);
+
+                // If we sliced it means the current buffer bigger than what we're 
+                // allowed to look at
+                overLength = true;
+            }
 
             while (true)
             {
@@ -1374,18 +1384,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // Reset the reader since we're not at the end of headers
                 reader = start;
 
-                // Now parse a single header
-                var overLength = false;
-
-                if (bufferLength >= _remainingRequestHeadersBytesAllowed)
-                {
-                    bufferEnd = buffer.Move(consumed, _remainingRequestHeadersBytesAllowed);
-
-                    // If we sliced it means the current buffer bigger than what we're 
-                    // allowed to look at
-                    overLength = true;
-                }
-
                 if (ReadCursorOperations.Seek(consumed, bufferEnd, out var lineEnd, ByteLF) == -1)
                 {
                     // We didn't find a \n in the current buffer and we had to slice it so it's an issue
@@ -1412,7 +1410,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (headerBuffer.IsSingleSpan)
                 {
                     // No copies, directly use the one and only span
-                    span = headerBuffer.ToSpan();
+                    span = headerBuffer.First.Span;
                 }
                 else if (headerBuffer.Length < stackAllocLimit)
                 {
@@ -1429,17 +1427,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
 
                 var state = HeaderState.ExpectName;
-                var endNameIndex = -1;
-                var startNameIndex = 0;
-                var endValueIndex = -1;
-                var startValueIndex = -1;
-                var sawWhitespaceInName = false;
+                var nameStart = 0;
+                var nameEnd = -1;
+                var valueStart = -1;
+                var valueEnd = -1;
+                var nameHasWhitespace = false;
                 var previouslyWhitespace = false;
+                var headerLineLength = span.Length;
 
                 fixed (byte* data = &span.DangerousGetPinnableReference())
                 {
-                    var length = span.Length;
-                    for (var i = 0; i < length; i++)
+                    for (var i = 0; i < headerLineLength; i++)
                     {
                         var ch = data[i];
 
@@ -1448,18 +1446,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             case HeaderState.ExpectName:
                                 if (ch == ByteColon)
                                 {
-                                    if (sawWhitespaceInName)
+                                    if (nameHasWhitespace)
                                     {
                                         RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                                     }
 
                                     state = HeaderState.ExpectWhitespace;
-                                    endNameIndex = i;
+                                    nameEnd = i;
                                 }
 
                                 if (ch == ByteSpace || ch == ByteTab)
                                 {
-                                    sawWhitespaceInName = true;
+                                    nameHasWhitespace = true;
                                 }
                                 break;
                             case HeaderState.ExpectWhitespace:
@@ -1470,12 +1468,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     {
                                         // Mark the first non whitespace char as the start of the
                                         // header value and change the state to expect to the header value
-                                        startValueIndex = i;
+                                        valueStart = i;
                                         state = HeaderState.ExpectValue;
                                     }
                                     // If we see a CR then jump to the next state directly
                                     else if (ch == ByteCR)
                                     {
+                                        state = HeaderState.ExpectValue;
                                         goto case HeaderState.ExpectValue;
                                     }
                                 }
@@ -1490,22 +1489,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         {
                                             // If we see a whitespace char then maybe it's end of the
                                             // header value
-                                            endValueIndex = i;
+                                            valueEnd = i;
                                         }
                                     }
                                     else if (ch == ByteCR)
                                     {
                                         // If we see a CR and we haven't ever seen whitespace then
                                         // this is the end of the header value
-                                        if (endValueIndex == -1)
+                                        if (valueEnd == -1)
                                         {
-                                            endValueIndex = i;
+                                            valueEnd = i;
                                         }
 
                                         // We never saw a non whitespace character before the CR
-                                        if (startValueIndex == -1)
+                                        if (valueStart == -1)
                                         {
-                                            startValueIndex = endValueIndex;
+                                            valueStart = valueEnd;
                                         }
 
                                         state = HeaderState.ExpectNewLine;
@@ -1513,7 +1512,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     else
                                     {
                                         // If we find a non whitespace char that isn't CR then reset the end index
-                                        endValueIndex = -1;
+                                        valueEnd = -1;
                                     }
 
                                     previouslyWhitespace = whitespace;
@@ -1548,15 +1547,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return false;
                 }
 
-                var headerLineLength = span.Length;
+                // Skip the reader forward past the header line
                 reader.Skip(headerLineLength);
 
                 // Before accepting the header line, we need to see at least one character
                 // > so we can make sure there's no space or tab
                 var next = reader.Peek();
 
+                // TODO: We don't need to reject the line here, we can use the state machine
+                // to store the fact that we're reading a header value
                 if (next == -1)
                 {
+                    // If we can't see the next char then reject the entire line
                     return false;
                 }
 
@@ -1582,15 +1584,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     RejectRequest(RequestRejectionReason.HeaderValueLineFoldingNotSupported);
                 }
 
-                var nameBuffer = span.Slice(startNameIndex, endNameIndex - startNameIndex);
-                var valueBuffer = span.Slice(startValueIndex, endValueIndex - startValueIndex);
+                var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
+                var valueBuffer = span.Slice(valueStart, valueEnd - valueStart);
 
                 var value = valueBuffer.GetAsciiString() ?? string.Empty;
 
                 // Update the frame state only after we know there's no header line continuation
                 _remainingRequestHeadersBytesAllowed -= headerLineLength;
-                bufferLength -= headerLineLength;
-
                 _requestHeadersParsed++;
 
                 requestHeaders.Append(nameBuffer, value);
