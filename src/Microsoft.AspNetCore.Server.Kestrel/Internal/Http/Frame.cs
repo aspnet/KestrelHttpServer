@@ -1054,7 +1054,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var queryString = "";
             var httpVersion = "";
             var method = "";
-            var state = StartLineState.ExpectKnownMethod;
+            var state = StartLineState.KnownMethod;
 
             fixed (byte* data = &span.DangerousGetPinnableReference())
             {
@@ -1065,22 +1065,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     switch (state)
                     {
-                        case StartLineState.ExpectKnownMethod:
+                        case StartLineState.KnownMethod:
                             if (span.GetKnownMethod(out method))
                             {
                                 // Update the index, current char, state and jump directly
                                 // to the next state
                                 i += method.Length + 1;
                                 ch = data[i];
-                                state = StartLineState.ExpectPath;
+                                state = StartLineState.Path;
 
-                                goto case StartLineState.ExpectPath;
+                                goto case StartLineState.Path;
                             }
 
-                            state = StartLineState.ExpectUnknownMethod;
-                            goto case StartLineState.ExpectUnknownMethod;
+                            state = StartLineState.UnknownMethod;
+                            goto case StartLineState.UnknownMethod;
 
-                        case StartLineState.ExpectUnknownMethod:
+                        case StartLineState.UnknownMethod:
                             if (ch == ByteSpace)
                             {
                                 method = span.Slice(0, i).GetAsciiString();
@@ -1090,7 +1090,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     RejectRequestLine(start, end);
                                 }
 
-                                state = StartLineState.ExpectPath;
+                                state = StartLineState.Path;
                             }
                             else if (!IsValidTokenChar((char)ch))
                             {
@@ -1098,7 +1098,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             }
 
                             break;
-                        case StartLineState.ExpectPath:
+                        case StartLineState.Path:
                             if (ch == ByteSpace)
                             {
                                 pathEnd = i;
@@ -1112,13 +1112,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 // No query string found
                                 queryStart = queryEnd = i;
 
-                                state = StartLineState.ExpectKnownVersion;
+                                state = StartLineState.KnownVersion;
                             }
                             else if (ch == ByteQuestionMark)
                             {
                                 pathEnd = i;
+
+                                if (pathStart == -1)
+                                {
+                                    // Empty path is illegal
+                                    RejectRequestLine(start, end);
+                                }
+
                                 queryStart = i;
-                                state = StartLineState.ExpectQueryString;
+                                state = StartLineState.QueryString;
                             }
                             else if (ch == BytePercentage)
                             {
@@ -1130,16 +1137,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 pathStart = i;
                             }
                             break;
-                        case StartLineState.ExpectQueryString:
+                        case StartLineState.QueryString:
                             if (ch == ByteSpace)
                             {
                                 queryEnd = i;
-                                state = StartLineState.ExpectKnownVersion;
+                                state = StartLineState.KnownVersion;
 
                                 queryString = span.Slice(queryStart, queryEnd - queryStart).GetAsciiString() ?? string.Empty;
                             }
                             break;
-                        case StartLineState.ExpectKnownVersion:
+                        case StartLineState.KnownVersion:
                             // REVIEW: We don't *need* to slice here but it makes the API
                             // nicer, slicing should be free :)
                             if (span.Slice(i).GetKnownVersion(out httpVersion))
@@ -1148,16 +1155,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 // to the next state
                                 i += httpVersion.Length + 1;
                                 ch = data[i];
-                                state = StartLineState.ExpectNewLine;
+                                state = StartLineState.NewLine;
 
-                                goto case StartLineState.ExpectNewLine;
+                                goto case StartLineState.NewLine;
                             }
 
                             versionStart = i;
-                            state = StartLineState.ExpectUnknownVersion;
-                            goto case StartLineState.ExpectUnknownVersion;
+                            state = StartLineState.UnknownVersion;
+                            goto case StartLineState.UnknownVersion;
 
-                        case StartLineState.ExpectUnknownVersion:
+                        case StartLineState.UnknownVersion:
                             if (ch == ByteCR)
                             {
                                 var versionSpan = span.Slice(versionStart, i - versionStart);
@@ -1172,7 +1179,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 }
                             }
                             break;
-                        case StartLineState.ExpectNewLine:
+                        case StartLineState.NewLine:
                             if (ch != ByteLF)
                             {
                                 RejectRequestLine(start, end);
@@ -1426,7 +1433,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     headerBuffer.CopyTo(span);
                 }
 
-                var state = HeaderState.ExpectName;
+                var state = HeaderState.Name;
                 var nameStart = 0;
                 var nameEnd = -1;
                 var valueStart = -1;
@@ -1443,7 +1450,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         switch (state)
                         {
-                            case HeaderState.ExpectName:
+                            case HeaderState.Name:
                                 if (ch == ByteColon)
                                 {
                                     if (nameHasWhitespace)
@@ -1451,7 +1458,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                         RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                                     }
 
-                                    state = HeaderState.ExpectWhitespace;
+                                    state = HeaderState.Whitespace;
                                     nameEnd = i;
                                 }
 
@@ -1460,7 +1467,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                     nameHasWhitespace = true;
                                 }
                                 break;
-                            case HeaderState.ExpectWhitespace:
+                            case HeaderState.Whitespace:
                                 {
                                     var whitespace = ch == ByteTab || ch == ByteSpace || ch == ByteCR;
 
@@ -1532,12 +1539,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
 
-                if (state == HeaderState.ExpectName)
+                if (state == HeaderState.Name)
                 {
                     RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
                 }
 
-                if (state == HeaderState.ExpectValue || state == HeaderState.ExpectWhitespace)
+                if (state == HeaderState.ExpectValue || state == HeaderState.Whitespace)
                 {
                     RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
                 }
@@ -1739,20 +1746,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private enum StartLineState
         {
-            ExpectKnownMethod,
-            ExpectUnknownMethod,
-            ExpectPath,
-            ExpectQueryString,
-            ExpectKnownVersion,
-            ExpectUnknownVersion,
-            ExpectNewLine,
+            KnownMethod,
+            UnknownMethod,
+            Path,
+            QueryString,
+            KnownVersion,
+            UnknownVersion,
+            NewLine,
             Complete
         }
 
         private enum HeaderState
         {
-            ExpectName,
-            ExpectWhitespace,
+            Name,
+            Whitespace,
             ExpectValue,
             ExpectNewLine,
             Complete
