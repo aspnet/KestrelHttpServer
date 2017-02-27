@@ -11,6 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
     public class InlineLoggingThreadPool : IThreadPool
     {
         private readonly IKestrelTrace _log;
+
         public InlineLoggingThreadPool(IKestrelTrace log)
         {
             _log = log;
