@@ -22,8 +22,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public async Task DoesNotEndConnectionOnZeroRead()
         {
             var mockLibuv = new MockLibuv();
+            var testContext = new TestServiceContext
+            {
+                InternalServerOptions =
+                {
+                    // Ensure ProcessRequestAsync runs inline with the ReadCallback
+                    ThreadPoolDispatching = false
+                }
+            };
 
-            using (var engine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var engine = new KestrelEngine(mockLibuv, testContext))
             {
                 engine.Start(count: 1);
 
@@ -48,16 +56,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                     Libuv.uv_buf_t ignored;
                     mockLibuv.AllocCallback(socket.InternalGetHandle(), 2048, out ignored);
+                    // This runs the ProcessRequestAsync inline
                     mockLibuv.ReadCallback(socket.InternalGetHandle(), 0, ref ignored);
-                    
-                }, (object)null);
 
-                // Wait until ProcessRequestAsync runs
-                // TODO: Remove when we get non dispatching support
-                await Task.Delay(1000);
-
-                await context.Thread.PostAsync(_ =>
-                {
                     var readAwaitable = connection.Input.Reader.ReadAsync();
 
                     Assert.False(readAwaitable.IsCompleted);
