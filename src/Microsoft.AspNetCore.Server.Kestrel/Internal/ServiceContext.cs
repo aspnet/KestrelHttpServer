@@ -21,7 +21,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public KestrelServerOptions ServerOptions { get; set; }
-
-        public InternalKestrelServerOptions InternalServerOptions { get; set; }
     }
 }

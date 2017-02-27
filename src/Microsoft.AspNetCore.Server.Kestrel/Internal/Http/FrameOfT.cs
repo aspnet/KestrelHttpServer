@@ -16,15 +16,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     public class Frame<TContext> : Frame
     {
         private readonly IHttpApplication<TContext> _application;
-        private readonly KestrelThread _thread;
-        private readonly bool _threadPoolDispatching;
 
         public Frame(IHttpApplication<TContext> application, ConnectionContext context)
             : base(context)
         {
             _application = application;
-            _thread = context.ListenerContext.Thread;
-            _threadPoolDispatching = context.ListenerContext.ServiceContext.InternalServerOptions.ThreadPoolDispatching;
         }
 
         /// <summary>
@@ -223,13 +219,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (!_requestProcessingStopping)
                     {
                         Reset();
-
-                        // REVIEW: If the appfunc/onstarting/oncompleted jump of the io thread, is it really our reponsibility to
-                        // to bring the next request back to the IO thread? I'm currently leaning towards no.
-                        if (!_threadPoolDispatching)
-                        {
-                            await ConnectionContext.ListenerContext.Thread;
-                        }
                     }
                 }
             }

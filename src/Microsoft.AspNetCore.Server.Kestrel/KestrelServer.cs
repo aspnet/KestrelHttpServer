@@ -51,6 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
             Features.Set<IServerAddressesFeature>(_serverAddresses);
+            Features.Set(InternalOptions);
         }
 
         public IFeatureCollection Features { get; }
@@ -100,8 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Log = trace,
                     ThreadPool = threadPool,
                     DateHeaderValueManager = dateHeaderValueManager,
-                    ServerOptions = Options,
-                    InternalServerOptions = InternalOptions
+                    ServerOptions = Options
                 });
 
                 _disposables.Push(engine);

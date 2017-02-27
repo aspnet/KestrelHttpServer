@@ -26,7 +26,6 @@ namespace Microsoft.AspNetCore.Testing
                 AddServerHeader = false,
                 ShutdownTimeout = TimeSpan.FromSeconds(5)
             };
-            InternalServerOptions = new InternalKestrelServerOptions();
         }
 
         public string DateHeaderValue { get; }

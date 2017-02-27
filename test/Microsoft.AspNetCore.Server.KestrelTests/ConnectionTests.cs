@@ -25,17 +25,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var mockLibuv = new MockLibuv();
             var serviceContext = new TestServiceContext
             {
-                InternalServerOptions =
-                {
-                    // Ensure ProcessRequestAsync runs inline with the ReadCallback
-                    ThreadPoolDispatching = false
-                },
                 FrameFactory = connectionContext => new Frame<HttpContext>(
                     new DummyApplication(httpContext => TaskCache.CompletedTask), connectionContext)
             };
 
-            // KestrelServer sets the threadpool normally. Since this tests creates KestrelEngine itself,
-            // it must do this manually.
+            // Ensure ProcessRequestAsync runs inline with the ReadCallback
             serviceContext.ThreadPool = new InlineLoggingThreadPool(serviceContext.Log);
 
             using (var engine = new KestrelEngine(mockLibuv, serviceContext))

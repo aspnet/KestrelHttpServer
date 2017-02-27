@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
             catch (Exception e)
             {
-                _log.LogError(0, e, "LoggingThreadPool.Cancel");
+                _log.LogError(0, e, "InlineLoggingThreadPool.Cancel");
             }
         }
 
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
             catch (Exception e)
             {
-                _log.LogError(0, e, "LoggingThreadPool.Error");
+                _log.LogError(0, e, "InlineLoggingThreadPool.Error");
             }
         }
 
