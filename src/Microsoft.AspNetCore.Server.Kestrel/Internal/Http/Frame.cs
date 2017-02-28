@@ -10,14 +10,12 @@ using System.IO.Pipelines.Text.Primitives;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Encodings.Web.Utf8;
 using System.Text.Utf8;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Adapter;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Internal;
@@ -77,6 +75,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         protected long _responseBytesWritten;
 
+        private readonly IHttpParser _parser;
+
         public Frame(ConnectionContext context)
         {
             ConnectionContext = context;
@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ServerOptions = context.ListenerContext.ServiceContext.ServerOptions;
 
             _pathBase = context.ListenerContext.ListenOptions.PathBase;
-            parser = new KestrelHttpParser(Log);
+            _parser = context.ListenerContext.ServiceContext.HttpParser;
 
             FrameControl = this;
             _keepAliveMilliseconds = (long)ServerOptions.Limits.KeepAliveTimeout.TotalMilliseconds;
@@ -194,6 +194,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         private string _reasonPhrase;
+
         public string ReasonPhrase
         {
             get
@@ -978,14 +979,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.ProducingComplete(end);
         }
 
-
-        KestrelHttpParser parser;
-
-        public unsafe bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
             var start = buffer.Start;
-            var end = buffer.Start;
-            var bufferEnd = buffer.End;
 
             if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
             {
@@ -998,19 +994,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (buffer.Length >= ServerOptions.Limits.MaxRequestLineSize)
             {
                 buffer = buffer.Slice(start, ServerOptions.Limits.MaxRequestLineSize);
-
                 overLength = true;
             }
 
-            var result = parser.ParseStartLine(this, buffer, out consumed, out examined);
+            var result = _parser.ParseStartLine(this, buffer, out consumed, out examined);
             if (!result && overLength)
             {
-                    RejectRequest(RequestRejectionReason.RequestLineTooLong);
-                }
-
-            return result;
+                RejectRequest(RequestRejectionReason.RequestLineTooLong);
             }
 
+            return result;
+        }
 
         private bool RequestUrlStartsWithPathBase(string requestUrl, out bool caseMatches)
         {
@@ -1057,20 +1051,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 overLength = true;
             }
 
-            var result = parser.ParseHeaders(this, buffer, out consumed, out examined);
+            var result = _parser.ParseHeaders(this, buffer, out consumed, out examined);
 
             if (!result && overLength)
-                {
+            {
                 RejectRequest(RequestRejectionReason.HeadersExceedMaxTotalSize);
-                }
+            }
             if (result)
-                {
+            {
                 // TODO: Faster
                 _remainingRequestHeadersBytesAllowed -= buffer.Slice(buffer.Start, consumed).Length;
-                        ConnectionControl.CancelTimeout();
-                    }
+                ConnectionControl.CancelTimeout();
+            }
             return result;
-                }
+        }
 
         public bool StatusCanHaveBody(int statusCode)
         {
@@ -1226,23 +1220,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // URI was encoded, unescape and then parse as utf8
                 int pathLength = UrlEncoder.Decode(path, path);
                 requestUrlPath = new Utf8String(path.Slice(0, pathLength)).ToString();
-        }
+            }
             else
             {
                 // URI wasn't encoded, parse as ASCII
                 requestUrlPath = path.GetAsciiString() ?? string.Empty;
 
                 if (query.Length == 0)
-        {
+                {
                     // No need to allocate an extra string if the path didn't need
                     // decoding and there's no query string following it.
                     rawTarget = requestUrlPath;
-        }
+                }
                 else
                 {
                     rawTarget = target.GetAsciiString() ?? string.Empty;
-    }
-}
+                }
+            }
 
             var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
             if (method != HttpMethod.Custom)
@@ -1253,7 +1247,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 Method = customMethod.GetAsciiString() ?? string.Empty;
             }
-            
+
             QueryString = query.GetAsciiString() ?? string.Empty;
             RawTarget = rawTarget;
             HttpVersion = MemoryPoolIteratorExtensions.VersionToString(version);
@@ -1280,7 +1274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _requestHeadersParsed++;
             if (_requestHeadersParsed > ServerOptions.Limits.MaxRequestHeaderCount)
             {
-                RejectRequest(RequestRejectionReason.TooManyHeaders);   
+                RejectRequest(RequestRejectionReason.TooManyHeaders);
             }
             var valueString = value.GetAsciiString() ?? string.Empty;
 
