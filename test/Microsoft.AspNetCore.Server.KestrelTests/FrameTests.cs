@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -175,115 +176,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("Header: line1\r\n line2\r\n\r\n")]
-        [InlineData("Header: line1\r\n\tline2\r\n\r\n")]
-        [InlineData("Header: line1\r\n  line2\r\n\r\n")]
-        [InlineData("Header: line1\r\n \tline2\r\n\r\n")]
-        [InlineData("Header: line1\r\n\t line2\r\n\r\n")]
-        [InlineData("Header: line1\r\n\t\tline2\r\n\r\n")]
-        [InlineData("Header: line1\r\n \t\t line2\r\n\r\n")]
-        [InlineData("Header: line1\r\n \t \t line2\r\n\r\n")]
-        public void TakeMessageHeadersThrowsOnHeaderValueWithLineFolding(string rawHeaders)
+        [MemberData(nameof(InvalidRequestHeaderData))]
+        public void TakeMessageHeadersThrowsOnHeaderValueWithLineFolding(string rawHeaders, string expectedExceptionMessage)
         {
             var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
             _socketInput.IncomingData(headerArray, 0, headerArray.Length);
 
             var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("Header value line folding not supported.", exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
-        }
 
-        [Fact]
-        public void TakeMessageHeadersThrowsOnHeaderValueWithLineFolding_CharacterNotAvailableOnFirstAttempt()
-        {
-            var headerArray = Encoding.ASCII.GetBytes("Header-1: value1\r\n");
-            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
-
-            Assert.False(_frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-
-            _socketInput.IncomingData(Encoding.ASCII.GetBytes(" "), 0, 1);
-
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("Header value line folding not supported.", exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
-        }
-
-        [Theory]
-        [InlineData("Header-1: value1\r\r\n")]
-        [InlineData("Header-1: val\rue1\r\n")]
-        [InlineData("Header-1: value1\rHeader-2: value2\r\n\r\n")]
-        [InlineData("Header-1: value1\r\nHeader-2: value2\r\r\n")]
-        [InlineData("Header-1: value1\r\nHeader-2: v\ralue2\r\n")]
-        public void TakeMessageHeadersThrowsOnHeaderValueContainingCR(string rawHeaders)
-        {
-
-            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
-
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("Header value must not contain CR characters.", exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
-        }
-
-        [Theory]
-        [InlineData("Header-1 value1\r\n\r\n")]
-        [InlineData("Header-1 value1\r\nHeader-2: value2\r\n\r\n")]
-        [InlineData("Header-1: value1\r\nHeader-2 value2\r\n\r\n")]
-        public void TakeMessageHeadersThrowsOnHeaderLineMissingColon(string rawHeaders)
-        {
-            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
-
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("No ':' character found in header line.", exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
-        }
-
-        [Theory]
-        [InlineData(" Header: value\r\n\r\n")]
-        [InlineData("\tHeader: value\r\n\r\n")]
-        [InlineData(" Header-1: value1\r\nHeader-2: value2\r\n\r\n")]
-        [InlineData("\tHeader-1: value1\r\nHeader-2: value2\r\n\r\n")]
-        public void TakeMessageHeadersThrowsOnHeaderLineStartingWithWhitespace(string rawHeaders)
-        {
-            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
-
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("Header line must not start with whitespace.", exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
-        }
-
-        [Theory]
-        [InlineData("Header : value\r\n\r\n")]
-        [InlineData("Header\t: value\r\n\r\n")]
-        [InlineData("Header 1: value1\r\nHeader-2: value2\r\n\r\n")]
-        [InlineData("Header 1 : value1\r\nHeader-2: value2\r\n\r\n")]
-        [InlineData("Header 1\t: value1\r\nHeader-2: value2\r\n\r\n")]
-        [InlineData("Header-1: value1\r\nHeader 2: value2\r\n\r\n")]
-        [InlineData("Header-1: value1\r\nHeader-2 : value2\r\n\r\n")]
-        [InlineData("Header-1: value1\r\nHeader-2\t: value2\r\n\r\n")]
-        public void TakeMessageHeadersThrowsOnWhitespaceInHeaderName(string rawHeaders)
-        {
-            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
-
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("Whitespace is not allowed in header name.", exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
-        }
-
-        [Theory]
-        [InlineData("Header-1: value1\r\nHeader-2: value2\r\n\r\r")]
-        [InlineData("Header-1: value1\r\nHeader-2: value2\r\n\r ")]
-        [InlineData("Header-1: value1\r\nHeader-2: value2\r\n\r \n")]
-        public void TakeMessageHeadersThrowsOnHeadersNotEndingInCRLFLine(string rawHeaders)
-        {
-            var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-            _socketInput.IncomingData(headerArray, 0, headerArray.Length);
-
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeMessageHeaders(_socketInput, (FrameRequestHeaders)_frame.RequestHeaders));
-            Assert.Equal("Headers corrupted, invalid header sequence.", exception.Message);
+            Assert.Equal(expectedExceptionMessage, exception.Message);
             Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
         }
 
@@ -461,6 +362,27 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Same(originalDuplexStream, _frame.DuplexStream);
         }
 
+        [Theory]
+        [MemberData(nameof(ValidRequestLineData))]
+        public void TakeStartLineSetsFrameProperties(
+            string requestLine,
+            string expectedMethod,
+            string expectedPath,
+            string expectedQueryString,
+            string expectedHttpVersion)
+        {
+            var requestLineBytes = Encoding.ASCII.GetBytes(requestLine);
+            _socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
+ 
+            var returnValue = _frame.TakeStartLine(_socketInput);
+ 
+            Assert.Equal(Frame.RequestLineStatus.Done, returnValue);
+            Assert.Equal(expectedMethod, _frame.Method);
+            Assert.Equal(expectedPath, _frame.Path);
+            Assert.Equal(expectedQueryString, _frame.QueryString);
+            Assert.Equal(expectedHttpVersion, _frame.HttpVersion);
+        }
+
         [Fact]
         public void TakeStartLineCallsConsumingCompleteWithFurthestExamined()
         {
@@ -539,46 +461,39 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("GET/HTTP/1.1\r\n", "Invalid request line: GET/HTTP/1.1<0x0D><0x0A>")]
-        [InlineData(" / HTTP/1.1\r\n", "Invalid request line:  / HTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET? / HTTP/1.1\r\n", "Invalid request line: GET? / HTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET /HTTP/1.1\r\n", "Invalid request line: GET /HTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET /a?b=cHTTP/1.1\r\n", "Invalid request line: GET /a?b=cHTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET /a%20bHTTP/1.1\r\n", "Invalid request line: GET /a%20bHTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET /a%20b?c=dHTTP/1.1\r\n", "Invalid request line: GET /a%20b?c=dHTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET  HTTP/1.1\r\n", "Invalid request line: GET  HTTP/1.1<0x0D><0x0A>")]
-        [InlineData("GET / HTTP/1.1\n", "Invalid request line: GET / HTTP/1.1<0x0A>")]
-        [InlineData("GET / \r\n", "Invalid request line: GET / <0x0D><0x0A>")]
-        [InlineData("GET / HTTP/1.1\ra\n", "Invalid request line: GET / HTTP/1.1<0x0D>a<0x0A>")]
-        public void TakeStartLineThrowsWhenInvalid(string requestLine, string expectedExceptionMessage)
+        [MemberData(nameof(InvalidRequestLineData))]
+        public void TakeStartLineThrowsOnInvalidRequestLine(string requestLine, Type expectedExceptionType, string expectedExceptionMessage)
         {
             var requestLineBytes = Encoding.ASCII.GetBytes(requestLine);
             _socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
 
             var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeStartLine(_socketInput));
             Assert.Equal(expectedExceptionMessage, exception.Message);
-            Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+
+            if (expectedExceptionType == typeof(BadHttpRequestException))
+            {
+                Assert.Equal(StatusCodes.Status400BadRequest, (exception as BadHttpRequestException).StatusCode);
+            }
         }
 
-        [Fact]
-        public void TakeStartLineThrowsOnUnsupportedHttpVersion()
+        [Theory]
+        [MemberData(nameof(UnrecognizedHttpVersionData))]
+        public void TakeStartLineThrowsOnUnrecognizedHttpVersion(string httpVersion)
         {
-            var requestLineBytes = Encoding.ASCII.GetBytes("GET / HTTP/1.2\r\n");
+            var requestLineBytes = Encoding.ASCII.GetBytes($"GET / {httpVersion}\r\n");
             _socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
 
             var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeStartLine(_socketInput));
-            Assert.Equal("Unrecognized HTTP version: HTTP/1.2", exception.Message);
-            Assert.Equal(StatusCodes.Status505HttpVersionNotsupported, exception.StatusCode);
-        }
 
-        [Fact]
-        public void TakeStartLineThrowsOnUnsupportedHttpVersionLongerThanEightCharacters()
-        {
-            var requestLineBytes = Encoding.ASCII.GetBytes("GET / HTTP/1.1ab\r\n");
-            _socketInput.IncomingData(requestLineBytes, 0, requestLineBytes.Length);
+            if (httpVersion.Length > 9)
+            {
+                Assert.Equal($"Unrecognized HTTP version: {httpVersion.Substring(0, 9)}...", exception.Message);
+            }
+            else
+            {
+                Assert.Equal($"Unrecognized HTTP version: {httpVersion}", exception.Message);
+            }
 
-            var exception = Assert.Throws<BadHttpRequestException>(() => _frame.TakeStartLine(_socketInput));
-            Assert.Equal("Unrecognized HTTP version: HTTP/1.1a...", exception.Message);
             Assert.Equal(StatusCodes.Status505HttpVersionNotsupported, exception.StatusCode);
         }
 
@@ -797,5 +712,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             await _frame.ProduceEndAsync();
             Assert.NotSame(original, _frame.RequestAborted.WaitHandle);
         }
+
+        public static IEnumerable<object> ValidRequestLineData => HttpParsingData.ValidRequestLineData;
+ 
+        public static IEnumerable<object> InvalidRequestLineData => HttpParsingData.InvalidRequestLineData;
+ 
+        public static TheoryData<string> UnrecognizedHttpVersionData => HttpParsingData.UnrecognizedHttpVersionData;
+ 
+        public static IEnumerable<object[]> InvalidRequestHeaderData => HttpParsingData.InvalidRequestHeaderData;
     }
 }

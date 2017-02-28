@@ -1095,8 +1095,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var queryEnd = scan;
 
-                if (pathBegin.Peek() == ByteSpace)
+                var pathBeginCh = pathBegin.Peek();
+                if (pathBeginCh == ByteSpace || pathBeginCh == ByteQuestionMark || pathBeginCh == BytePercentage)
                 {
+                    // Empty or malformed request line
                     RejectRequest(RequestRejectionReason.InvalidRequestLine,
                         Log.IsEnabled(LogLevel.Information) ? start.GetAsciiStringEscaped(end, MaxInvalidRequestLineChars) : string.Empty);
                 }
