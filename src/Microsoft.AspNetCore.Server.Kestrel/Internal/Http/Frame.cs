@@ -30,7 +30,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public abstract partial class Frame : IFrameControl, IHttpStartLineHandler, IHttpHeadersHandler
     {
-        private const byte ByteLF = (byte)'\n';
         private const byte BytePercentage = (byte)'%';
 
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");

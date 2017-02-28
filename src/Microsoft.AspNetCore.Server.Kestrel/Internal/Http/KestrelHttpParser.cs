@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private const byte ByteSpace = (byte)' ';
         private const byte ByteTab = (byte)'\t';
         private const byte ByteQuestionMark = (byte)'?';
+        private const byte BytePercentage = (byte)'%';
 
         private enum HeaderState
         {
@@ -163,12 +164,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 queryStart = i;
                                 state = StartLineState.QueryString;
                             }
+                            else if (ch == BytePercentage)
+                            {
+
+                            }
 
                             if (pathStart == -1)
                             {
                                 pathStart = i;
                             }
                             break;
+
                         case StartLineState.QueryString:
                             if (ch == ByteSpace)
                             {
