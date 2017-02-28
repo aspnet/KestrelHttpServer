@@ -549,6 +549,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("GET  HTTP/1.1\r\n", "Invalid request line: GET  HTTP/1.1<0x0D><0x0A>")]
         [InlineData("GET / HTTP/1.1\n", "Invalid request line: GET / HTTP/1.1<0x0A>")]
         [InlineData("GET / \r\n", "Invalid request line: GET / <0x0D><0x0A>")]
+        [InlineData("GET ? HTTP/1.1\r\n", "Invalid request line: GET ? HTTP/1.1<0x0D><0x0A>")]
         [InlineData("GET / HTTP/1.1\ra\n", "Invalid request line: GET / HTTP/1.1<0x0D>a<0x0A>")]
         public void TakeStartLineThrowsWhenInvalid(string requestLine, string expectedExceptionMessage)
         {
