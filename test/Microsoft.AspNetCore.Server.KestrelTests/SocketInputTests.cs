@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public async Task PeekAsyncRereturnsTheSameData()
         {
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, new SynchronousThreadPool()))
+            using (var socketInput = new SocketInput(memory, new InlineLoggingThreadPool(null)))
             {
                 socketInput.IncomingData(new byte[5], 0, 5);
 
@@ -190,7 +190,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public async Task CompleteAwaitingDoesNotCauseZeroLengthRead()
         {
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, new SynchronousThreadPool()))
+            using (var socketInput = new SocketInput(memory, new InlineLoggingThreadPool(null)))
             {
                 var readBuffer = new byte[20];
 
@@ -210,7 +210,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public async Task CompleteAwaitingDoesNotCauseZeroLengthPeek()
         {
             using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, new SynchronousThreadPool()))
+            using (var socketInput = new SocketInput(memory, new InlineLoggingThreadPool(null)))
             {
                 socketInput.IncomingData(new byte[5], 0, 5);
                 Assert.Equal(5, (await socketInput.PeekAsync()).Count);
