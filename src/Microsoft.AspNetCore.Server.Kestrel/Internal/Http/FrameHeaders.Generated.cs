@@ -754,7 +754,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 StringValues value;
                 if (_contentLength.HasValue)
                 {
-                    value = new StringValues(HeaderUtilities.FormatInt64(_contentLength.Value));
+                    value = new StringValues(HeaderUtilities.FormatNonNegativeInt64(_contentLength.Value));
                 }
                 return value;
             }
@@ -1120,7 +1120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (_contentLength.HasValue)
                             {
-                                value = HeaderUtilities.FormatInt64(_contentLength.Value);
+                                value = HeaderUtilities.FormatNonNegativeInt64(_contentLength.Value);
                                 return true;
                             }
                             return false;
@@ -3492,7 +3492,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         return false;
                     }
-                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_contentLength.Value));
+                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatNonNegativeInt64(_contentLength.Value));
                     ++arrayIndex;
                 }
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
@@ -4770,7 +4770,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 state44:
                     if (_collection._contentLength.HasValue)
                     {
-                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection._contentLength.Value));
+                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatNonNegativeInt64(_collection._contentLength.Value));
                         _state = 45;
                         return true;
                     }
@@ -5402,7 +5402,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 StringValues value;
                 if (_contentLength.HasValue)
                 {
-                    value = new StringValues(HeaderUtilities.FormatInt64(_contentLength.Value));
+                    value = new StringValues(HeaderUtilities.FormatNonNegativeInt64(_contentLength.Value));
                 }
                 return value;
             }
@@ -5838,7 +5838,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (_contentLength.HasValue)
                             {
-                                value = HeaderUtilities.FormatInt64(_contentLength.Value);
+                                value = HeaderUtilities.FormatNonNegativeInt64(_contentLength.Value);
                                 return true;
                             }
                             return false;
@@ -7747,7 +7747,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         return false;
                     }
-                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_contentLength.Value));
+                    array[arrayIndex] = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatNonNegativeInt64(_contentLength.Value));
                     ++arrayIndex;
                 }
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
@@ -8973,7 +8973,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 state36:
                     if (_collection._contentLength.HasValue)
                     {
-                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatInt64(_collection._contentLength.Value));
+                        _current = new KeyValuePair<string, StringValues>("Content-Length", HeaderUtilities.FormatNonNegativeInt64(_collection._contentLength.Value));
                         _state = 37;
                         return true;
                     }
