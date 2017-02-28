@@ -27,8 +27,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private readonly static ulong _httpOptionsMethodLong = GetAsciiStringAsLong("OPTIONS ");
         private readonly static ulong _httpTraceMethodLong = GetAsciiStringAsLong("TRACE \0\0");
 
-        private readonly static ulong _http10VersionLong = GetAsciiStringAsLong("HTTP/1.0");
-        private readonly static ulong _http11VersionLong = GetAsciiStringAsLong("HTTP/1.1");
+        private const ulong _http10VersionLong = 3471766442030158920; // GetAsciiStringAsLong("HTTP/1.0"); const results in better codegen
+        private const ulong _http11VersionLong = 3543824036068086856; // GetAsciiStringAsLong("HTTP/1.1"); const results in better codegen
 
         private readonly static ulong _mask8Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
         private readonly static ulong _mask7Chars = GetMaskAsLong(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 });
