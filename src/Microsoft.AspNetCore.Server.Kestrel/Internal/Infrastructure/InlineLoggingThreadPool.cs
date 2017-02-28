@@ -69,10 +69,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         {
             action(state);
         }
-
-        public void Schedule(Action action)
-        {
-            Run(action);
-        }
     }
 }
