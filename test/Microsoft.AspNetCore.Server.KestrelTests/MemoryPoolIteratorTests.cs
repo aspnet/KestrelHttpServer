@@ -7,6 +7,7 @@ using System.IO.Pipelines;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Xunit;
 using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
@@ -543,83 +544,45 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("CONNECT / HTTP/1.1", true, "CONNECT")]
-        [InlineData("DELETE / HTTP/1.1", true, "DELETE")]
-        [InlineData("GET / HTTP/1.1", true, "GET")]
-        [InlineData("HEAD / HTTP/1.1", true, "HEAD")]
-        [InlineData("PATCH / HTTP/1.1", true, "PATCH")]
-        [InlineData("POST / HTTP/1.1", true, "POST")]
-        [InlineData("PUT / HTTP/1.1", true, "PUT")]
-        [InlineData("OPTIONS / HTTP/1.1", true, "OPTIONS")]
-        [InlineData("TRACE / HTTP/1.1", true, "TRACE")]
-        [InlineData("GET/ HTTP/1.1", false, null)]
-        [InlineData("get / HTTP/1.1", false, null)]
-        [InlineData("GOT / HTTP/1.1", false, null)]
-        [InlineData("ABC / HTTP/1.1", false, null)]
-        [InlineData("PO / HTTP/1.1", false, null)]
-        [InlineData("PO ST / HTTP/1.1", false, null)]
-        [InlineData("short ", false, null)]
-        public void GetsKnownMethod(string input, bool expectedResult, string expectedKnownString)
+        [InlineData("CONNECT / HTTP/1.1", true, "CONNECT", HttpMethod.Connect)]
+        [InlineData("DELETE / HTTP/1.1", true, "DELETE", HttpMethod.Delete)]
+        [InlineData("GET / HTTP/1.1", true, "GET", HttpMethod.Get)]
+        [InlineData("HEAD / HTTP/1.1", true, "HEAD", HttpMethod.Head)]
+        [InlineData("PATCH / HTTP/1.1", true, "PATCH", HttpMethod.Patch)]
+        [InlineData("POST / HTTP/1.1", true, "POST", HttpMethod.Post)]
+        [InlineData("PUT / HTTP/1.1", true, "PUT", HttpMethod.Put)]
+        [InlineData("OPTIONS / HTTP/1.1", true, "OPTIONS", HttpMethod.Options)]
+        [InlineData("TRACE / HTTP/1.1", true, "TRACE", HttpMethod.Trace)]
+        [InlineData("GET/ HTTP/1.1", false, null, HttpMethod.Custom)]
+        [InlineData("get / HTTP/1.1", false, null, HttpMethod.Custom)]
+        [InlineData("GOT / HTTP/1.1", false, null, HttpMethod.Custom)]
+        [InlineData("ABC / HTTP/1.1", false, null, HttpMethod.Custom)]
+        [InlineData("PO / HTTP/1.1", false, null, HttpMethod.Custom)]
+        [InlineData("PO ST / HTTP/1.1", false, null, HttpMethod.Custom)]
+        [InlineData("short ", false, null, HttpMethod.Custom)]
+        public void GetsKnownMethod(string input, bool expectedResult, string expectedKnownString, HttpMethod expectedMethod)
         {
             // Arrange
-            var block = ReadableBuffer.Create(Encoding.ASCII.GetBytes(input));
+            var block = new Span<byte>(Encoding.ASCII.GetBytes(input));
 
             // Act
-            string knownString;
-            var result = block.GetKnownMethod(out knownString);
+            HttpMethod knownMethod;
+            var result = block.GetKnownMethod(out knownMethod, out var length);
+
+            string toString = null;
+            if (knownMethod != HttpMethod.Custom)
+            {
+                toString = MemoryPoolIteratorExtensions.MethodToString(knownMethod);
+            }
+
+
             // Assert
             Assert.Equal(expectedResult, result);
-            Assert.Equal(expectedKnownString, knownString);
+            Assert.Equal(expectedMethod, knownMethod);
+            Assert.Equal(toString, expectedKnownString);
+            Assert.Equal(length, expectedKnownString?.Length ?? 0);
         }
-
-
-        [Theory]
-        [InlineData("CONNECT / HTTP/1.1", true, "CONNECT")]
-        [InlineData("DELETE / HTTP/1.1", true, "DELETE")]
-        [InlineData("GET / HTTP/1.1", true, "GET")]
-        [InlineData("HEAD / HTTP/1.1", true, "HEAD")]
-        [InlineData("PATCH / HTTP/1.1", true, "PATCH")]
-        [InlineData("POST / HTTP/1.1", true, "POST")]
-        [InlineData("PUT / HTTP/1.1", true, "PUT")]
-        [InlineData("OPTIONS / HTTP/1.1", true, "OPTIONS")]
-        [InlineData("TRACE / HTTP/1.1", true, "TRACE")]
-        [InlineData("GET/ HTTP/1.1", false, null)]
-        [InlineData("get / HTTP/1.1", false, null)]
-        [InlineData("GOT / HTTP/1.1", false, null)]
-        [InlineData("ABC / HTTP/1.1", false, null)]
-        [InlineData("PO / HTTP/1.1", false, null)]
-        [InlineData("PO ST / HTTP/1.1", false, null)]
-        [InlineData("short ", false, null)]
-        public void GetsKnownMethodOnBoundary(string input, bool expectedResult, string expectedKnownString)
-        {
-            // Test at boundary
-            var maxSplit = Math.Min(input.Length, 8);
-
-            for (var split = 0; split <= maxSplit; split++)
-            {
-                using (var pipelineFactory = new PipeFactory())
-                {
-                    // Arrange
-                    var pipe = pipelineFactory.Create();
-                    var buffer = pipe.Writer.Alloc();
-                    var block1Input = input.Substring(0, split);
-                    var block2Input = input.Substring(split);
-                    buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block1Input)));
-                    buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block2Input)));
-                    buffer.FlushAsync().GetAwaiter().GetResult();
-
-                    var readResult = pipe.Reader.ReadAsync().GetAwaiter().GetResult();
-
-                    // Act
-                    string boundaryKnownString;
-                    var boundaryResult = readResult.Buffer.GetKnownMethod(out boundaryKnownString);
-
-                    // Assert
-                    Assert.Equal(expectedResult, boundaryResult);
-                    Assert.Equal(expectedKnownString, boundaryKnownString);
-                }
-            }
-        }
+        
 
         [Theory]
         [InlineData("HTTP/1.0\r", true, MemoryPoolIteratorExtensions.Http10Version)]
@@ -684,7 +647,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("HTTP/1.1\r", "HTTP/1.1")]
         public void KnownVersionsAreInterned(string input, string expected)
         {
-            TestKnownStringsInterning(input, expected, MemoryPoolIteratorExtensions.GetKnownVersion);
+            TestKnownStringsInterning(input, expected, span =>
+            {
+                span.GetKnownVersion(out var version, out var lenght);
+                return MemoryPoolIteratorExtensions.VersionToString(version);
+            });
         }
 
         [Theory]
@@ -732,7 +699,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("TRACE / HTTP/1.1", "TRACE")]
         public void KnownMethodsAreInterned(string input, string expected)
         {
-            TestKnownStringsInterning(input, expected, MemoryPoolIteratorExtensions.GetKnownMethod);
+            TestKnownStringsInterning(input, expected, span =>
+            {
+                span.GetKnownMethod(out var method, out var length);
+                return MemoryPoolIteratorExtensions.MethodToString(method);
+            });
         }
 
         [Theory]
@@ -1294,18 +1265,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        private delegate bool GetKnownString(ReadableBuffer iter, out string result);
-
-        private void TestKnownStringsInterning(string input, string expected, GetKnownString action)
+        private void TestKnownStringsInterning(string input, string expected, Func<Span<byte>, string> action)
         {
             // Act
-            string knownString1, knownString2;
-            var result1 = action(ReadableBuffer.Create(Encoding.ASCII.GetBytes(input)), out knownString1);
-            var result2 = action(ReadableBuffer.Create(Encoding.ASCII.GetBytes(input)), out knownString2);
+            var knownString1 = action(new Span<byte>(Encoding.ASCII.GetBytes(input)));
+            var knownString2 = action(new Span<byte>(Encoding.ASCII.GetBytes(input)));
 
             // Assert
-            Assert.True(result1);
-            Assert.True(result2);
             Assert.Equal(knownString1, expected);
             Assert.Same(knownString1, knownString2);
         }
