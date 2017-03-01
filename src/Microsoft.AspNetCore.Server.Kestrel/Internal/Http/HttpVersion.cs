@@ -5,7 +5,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public enum HttpVersion
     {
-        Unset = -1,
+        Unknown = -1,
         Http10 = 0,
         Http11 = 1
     }

@@ -90,7 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var pathEnd = -1;
             var versionStart = -1;
 
-            HttpVersion httpVersion = HttpVersion.Unset;
+            HttpVersion httpVersion = HttpVersion.Unknown;
             HttpMethod method = HttpMethod.Custom;
             Span<byte> customMethod;
             var state = StartLineState.KnownMethod;

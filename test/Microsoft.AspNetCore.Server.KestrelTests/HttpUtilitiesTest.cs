@@ -54,10 +54,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Theory]
         [InlineData("HTTP/1.0\r", true, HttpUtilities.Http10Version, HttpVersion.Http10)]
         [InlineData("HTTP/1.1\r", true, HttpUtilities.Http11Version, HttpVersion.Http11)]
-        [InlineData("HTTP/3.0\r", false, null, HttpVersion.Unset)]
-        [InlineData("http/1.0\r", false, null, HttpVersion.Unset)]
-        [InlineData("http/1.1\r", false, null, HttpVersion.Unset)]
-        [InlineData("short ", false, null, HttpVersion.Unset)]
+        [InlineData("HTTP/3.0\r", false, null, HttpVersion.Unknown)]
+        [InlineData("http/1.0\r", false, null, HttpVersion.Unknown)]
+        [InlineData("http/1.1\r", false, null, HttpVersion.Unknown)]
+        [InlineData("short ", false, null, HttpVersion.Unknown)]
         public void GetsKnownVersion(string input, bool expectedResult, string expectedKnownString, HttpVersion version)
         {
             // Arrange
@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             HttpVersion knownVersion;
             var result = block.GetKnownVersion(out knownVersion, out var length);
             string toString = null;
-            if (knownVersion != HttpVersion.Unset)
+            if (knownVersion != HttpVersion.Unknown)
             {
                 toString = HttpUtilities.VersionToString(knownVersion);
             }

@@ -173,7 +173,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 else
                 {
                     length = 0;
-                    knownVersion = HttpVersion.Unset;
+                    knownVersion = HttpVersion.Unknown;
                     return false;
                 }
 
@@ -183,7 +183,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 }
             }
 
-            knownVersion = HttpVersion.Unset;
+            knownVersion = HttpVersion.Unknown;
             length = 0;
             return false;
         }

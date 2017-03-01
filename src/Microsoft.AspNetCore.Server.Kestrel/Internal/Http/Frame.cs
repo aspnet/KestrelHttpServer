@@ -168,7 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else
             {
-                _httpVersion = Http.HttpVersion.Unset;
+                _httpVersion = Http.HttpVersion.Unknown;
             }
         }
 
@@ -345,7 +345,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             PathBase = null;
             Path = null;
             QueryString = null;
-            _httpVersion = Http.HttpVersion.Unset;
+            _httpVersion = Http.HttpVersion.Unknown;
             StatusCode = StatusCodes.Status200OK;
             ReasonPhrase = null;
 
