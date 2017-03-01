@@ -8,12 +8,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         Get,
         Put,
         Delete,
-        Custom,
         Post,
         Head,
         Trace,
         Patch,
         Connect,
-        Options
+        Options,
+
+        Custom,
     }
 }

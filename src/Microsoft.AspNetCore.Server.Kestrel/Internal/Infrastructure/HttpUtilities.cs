@@ -37,6 +37,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         private readonly static Tuple<ulong, ulong, HttpMethod, int>[] _knownMethods = new Tuple<ulong, ulong, HttpMethod, int>[8];
 
+        private readonly static string[] _methodNames = new string[9];
+
         static HttpUtilities()
         {
             _knownMethods[0] = Tuple.Create(_mask4Chars, _httpPutMethodLong, HttpMethod.Put, 3);
@@ -47,6 +49,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _knownMethods[5] = Tuple.Create(_mask7Chars, _httpDeleteMethodLong, HttpMethod.Delete, 6);
             _knownMethods[6] = Tuple.Create(_mask8Chars, _httpConnectMethodLong, HttpMethod.Connect, 7);
             _knownMethods[7] = Tuple.Create(_mask8Chars, _httpOptionsMethodLong, HttpMethod.Options, 7);
+            _methodNames[(byte)HttpMethod.Get] = HttpMethods.Get;
+            _methodNames[(byte)HttpMethod.Put] = HttpMethods.Put;
+            _methodNames[(byte)HttpMethod.Delete] = HttpMethods.Delete;
+            _methodNames[(byte)HttpMethod.Post] = HttpMethods.Post;
+            _methodNames[(byte)HttpMethod.Head] = HttpMethods.Head;
+            _methodNames[(byte)HttpMethod.Trace] = HttpMethods.Trace;
+            _methodNames[(byte)HttpMethod.Patch] = HttpMethods.Patch;
+            _methodNames[(byte)HttpMethod.Connect] = HttpMethods.Connect;
+            _methodNames[(byte)HttpMethod.Options] = HttpMethods.Options;
         }
 
         private unsafe static ulong GetAsciiStringAsLong(string str)
@@ -197,34 +208,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 case HttpVersion.Http11:
                     return Http11Version;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(httpVersion), httpVersion, null);
+                    return null;
             }
         }
         public static string MethodToString(HttpMethod method)
         {
-            switch (method)
+            int methodIndex = (int)method;
+            if (methodIndex >= 0 && methodIndex <= 8)
             {
-                case HttpMethod.Get:
-                    return HttpMethods.Get;
-                case HttpMethod.Put:
-                    return HttpMethods.Put;
-                case HttpMethod.Delete:
-                    return HttpMethods.Delete;
-                case HttpMethod.Post:
-                    return HttpMethods.Post;
-                case HttpMethod.Head:
-                    return HttpMethods.Head;
-                case HttpMethod.Trace:
-                    return HttpMethods.Trace;
-                case HttpMethod.Patch:
-                    return HttpMethods.Patch;
-                case HttpMethod.Connect:
-                    return HttpMethods.Connect;
-                case HttpMethod.Options:
-                    return HttpMethods.Options;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(method), method, null);
+                return _methodNames[methodIndex];
             }
+            return null;
         }
     }
 }
