@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -5,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public class KestrelHttpParser: IHttpParser
+    public class KestrelHttpParser : IHttpParser
     {
         public KestrelHttpParser(IKestrelTrace log)
         {
