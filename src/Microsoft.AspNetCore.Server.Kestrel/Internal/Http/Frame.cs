@@ -1240,7 +1240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
             if (method != HttpMethod.Custom)
             {
-                Method = MemoryPoolIteratorExtensions.MethodToString(method) ?? String.Empty;
+                Method = HttpUtilities.MethodToString(method) ?? String.Empty;
             }
             else
             {
@@ -1249,7 +1249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             QueryString = query.GetAsciiString() ?? string.Empty;
             RawTarget = rawTarget;
-            HttpVersion = MemoryPoolIteratorExtensions.VersionToString(version);
+            HttpVersion = HttpUtilities.VersionToString(version);
 
             if (RequestUrlStartsWithPathBase(normalizedTarget, out bool caseMatches))
             {

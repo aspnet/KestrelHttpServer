@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.AspNetCore.Http;
@@ -11,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 {
-    public static class MemoryPoolIteratorExtensions
+    public static class HttpUtilities
     {
         public const string Http10Version = "HTTP/1.0";
         public const string Http11Version = "HTTP/1.1";
@@ -19,7 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         // readonly primitive statics can be Jit'd to consts https://github.com/dotnet/coreclr/issues/1079
         private readonly static ulong _httpConnectMethodLong = GetAsciiStringAsLong("CONNECT ");
         private readonly static ulong _httpDeleteMethodLong = GetAsciiStringAsLong("DELETE \0");
-        private readonly static ulong _httpGetMethodLong = GetAsciiStringAsLong("GET \0\0\0\0");
         private const uint _httpGetMethodInt = 542393671; // retun of GetAsciiStringAsInt("GET "); const results in better codegen
         private readonly static ulong _httpHeadMethodLong = GetAsciiStringAsLong("HEAD \0\0\0");
         private readonly static ulong _httpPatchMethodLong = GetAsciiStringAsLong("PATCH \0\0");
@@ -39,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         private readonly static Tuple<ulong, ulong, HttpMethod, int>[] _knownMethods = new Tuple<ulong, ulong, HttpMethod, int>[8];
 
-        static MemoryPoolIteratorExtensions()
+        static HttpUtilities()
         {
             _knownMethods[0] = Tuple.Create(_mask4Chars, _httpPutMethodLong, HttpMethod.Put, 3);
             _knownMethods[1] = Tuple.Create(_mask5Chars, _httpPostMethodLong, HttpMethod.Post, 4);
@@ -85,67 +83,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
-        public static string GetAsciiStringEscaped(this ReadCursor start, ReadCursor end, int maxChars)
-        {
-            var sb = new StringBuilder();
-            var reader = new ReadableBufferReader(start, end);
-
-            while (maxChars > 0 && !reader.End)
-            {
-                var ch = reader.Take();
-                sb.Append(ch < 0x20 || ch >= 0x7F ? $"<0x{ch:X2}>" : ((char)ch).ToString());
-                maxChars--;
-            }
-
-            if (!reader.End)
-            {
-                sb.Append("...");
-            }
-
-            return sb.ToString();
-        }
-
         public static string GetAsciiStringEscaped(this Span<byte> span, int maxChars)
         {
             var sb = new StringBuilder();
 
-            for (var i = 0; i < span.Length; ++i)
+            int i;
+            for (i = 0; i < Math.Min(span.Length, maxChars); ++i)
             {
                 var ch = span[i];
                 sb.Append(ch < 0x20 || ch >= 0x7F ? $"<0x{ch:X2}>" : ((char)ch).ToString());
             }
 
+            if (span.Length > maxChars)
+            {
+                sb.Append("...");
+            }
             return sb.ToString();
         }
 
-        public static ArraySegment<byte> PeekArraySegment(this MemoryPoolIterator iter)
-        {
-            if (iter.IsDefault || iter.IsEnd)
-            {
-                return default(ArraySegment<byte>);
-            }
-
-            if (iter.Index < iter.Block.End)
-            {
-                return new ArraySegment<byte>(iter.Block.Array, iter.Index, iter.Block.End - iter.Index);
-            }
-
-            var block = iter.Block.Next;
-            while (block != null)
-            {
-                if (block.Start < block.End)
-                {
-                    return new ArraySegment<byte>(block.Array, block.Start, block.End - block.Start);
-                }
-                block = block.Next;
-            }
-
-            // The following should be unreachable due to the IsEnd check above.
-            throw new InvalidOperationException("This should be unreachable!");
-        }
-
         /// <summary>
-        /// Checks that up to 8 bytes from <paramref name="begin"/> correspond to a known HTTP method.
+        /// Checks that up to 8 bytes from <paramref name="span"/> correspond to a known HTTP method.
         /// </summary>
         /// <remarks>
         /// A "known HTTP method" can be an HTTP method name defined in the HTTP/1.1 RFC.
@@ -188,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         }
 
         /// <summary>
-        /// Checks 9 bytes from <paramref name="begin"/>  correspond to a known HTTP version.
+        /// Checks 9 bytes from <paramref name="span"/>  correspond to a known HTTP version.
         /// </summary>
         /// <remarks>
         /// A "known HTTP version" Is is either HTTP/1.0 or HTTP/1.1.
