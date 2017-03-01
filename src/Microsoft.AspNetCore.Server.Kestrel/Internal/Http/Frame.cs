@@ -981,8 +981,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
-            var start = buffer.Start;
-
             if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
             {
                 ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
@@ -993,7 +991,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var overLength = false;
             if (buffer.Length >= ServerOptions.Limits.MaxRequestLineSize)
             {
-                buffer = buffer.Slice(start, ServerOptions.Limits.MaxRequestLineSize);
+                buffer = buffer.Slice(buffer.Start, ServerOptions.Limits.MaxRequestLineSize);
                 overLength = true;
             }
 
@@ -1044,7 +1042,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             bool overLength = false;
             if (buffer.Length >= _remainingRequestHeadersBytesAllowed)
             {
-                buffer = buffer.Slice(0, _remainingRequestHeadersBytesAllowed);
+                buffer = buffer.Slice(buffer.Start, _remainingRequestHeadersBytesAllowed);
 
                 // If we sliced it means the current buffer bigger than what we're 
                 // allowed to look at
