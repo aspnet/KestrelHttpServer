@@ -197,39 +197,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// The Known versions will be checked with the required '\r'.
         /// To optimize performance the HTTP/1.1 will be checked first.
         /// </remarks>
-        /// <param name="begin">The iterator from which to start the known string lookup.</param>
-        /// <param name="knownVersion">A reference to a pre-allocated known string, if the input matches any.</param>
         /// <returns><c>true</c> if the input matches a known string, <c>false</c> otherwise.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool GetKnownVersion(this ReadableBuffer begin, out string knownVersion)
-        {
-            knownVersion = null;
-
-            if (begin.Length < sizeof(ulong))
-            {
-                return false;
-            }
-
-            var value = begin.ReadLittleEndian<ulong>();
-            if (value == _http11VersionLong)
-            {
-                knownVersion = Http11Version;
-            }
-            else if (value == _http10VersionLong)
-            {
-                knownVersion = Http10Version;
-            }
-
-            if (knownVersion != null)
-            {
-                if (begin.Slice(sizeof(ulong)).Peek() != '\r')
-                {
-                    knownVersion = null;
-                }
-            }
-
-            return knownVersion != null;
-        }
+        
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetKnownVersion(this Span<byte> span, out HttpVersion knownVersion, out byte length)

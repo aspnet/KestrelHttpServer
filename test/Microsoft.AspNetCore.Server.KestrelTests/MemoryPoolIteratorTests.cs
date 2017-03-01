@@ -585,61 +585,29 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         
 
         [Theory]
-        [InlineData("HTTP/1.0\r", true, MemoryPoolIteratorExtensions.Http10Version)]
-        [InlineData("HTTP/1.1\r", true, MemoryPoolIteratorExtensions.Http11Version)]
-        [InlineData("HTTP/3.0\r", false, null)]
-        [InlineData("http/1.0\r", false, null)]
-        [InlineData("http/1.1\r", false, null)]
-        [InlineData("short ", false, null)]
-        public void GetsKnownVersion(string input, bool expectedResult, string expectedKnownString)
+        [InlineData("HTTP/1.0\r", true, MemoryPoolIteratorExtensions.Http10Version, HttpVersion.Http10)]
+        [InlineData("HTTP/1.1\r", true, MemoryPoolIteratorExtensions.Http11Version, HttpVersion.Http11)]
+        [InlineData("HTTP/3.0\r", false, null, HttpVersion.Unset)]
+        [InlineData("http/1.0\r", false, null, HttpVersion.Unset)]
+        [InlineData("http/1.1\r", false, null, HttpVersion.Unset)]
+        [InlineData("short ", false, null, HttpVersion.Unset)]
+        public void GetsKnownVersion(string input, bool expectedResult, string expectedKnownString, HttpVersion version)
         {
             // Arrange
-            var block = ReadableBuffer.Create(Encoding.ASCII.GetBytes(input));
+            var block = new Span<byte>(Encoding.ASCII.GetBytes(input));
 
             // Act
-            string knownString;
-            var result = block.GetKnownVersion(out knownString);
+            HttpVersion knownVersion;
+            var result = block.GetKnownVersion(out knownVersion, out var length);
+            string toString = null;
+            if (knownVersion != HttpVersion.Unset)
+            {
+                toString = MemoryPoolIteratorExtensions.VersionToString(knownVersion);
+            }
             // Assert
             Assert.Equal(expectedResult, result);
-            Assert.Equal(expectedKnownString, knownString);
-        }
-
-        [Theory]
-        [InlineData("HTTP/1.0\r", true, MemoryPoolIteratorExtensions.Http10Version)]
-        [InlineData("HTTP/1.1\r", true, MemoryPoolIteratorExtensions.Http11Version)]
-        [InlineData("HTTP/3.0\r", false, null)]
-        [InlineData("http/1.0\r", false, null)]
-        [InlineData("http/1.1\r", false, null)]
-        [InlineData("short ", false, null)]
-        public void GetsKnownVersionOnBoundary(string input, bool expectedResult, string expectedKnownString)
-        {
-            // Test at boundary
-            var maxSplit = Math.Min(input.Length, 9);
-
-            for (var split = 0; split <= maxSplit; split++)
-            {
-                using (var pipelineFactory = new PipeFactory())
-                {
-                    // Arrange
-                    var pipe = pipelineFactory.Create();
-                    var buffer = pipe.Writer.Alloc();
-                    var block1Input = input.Substring(0, split);
-                    var block2Input = input.Substring(split);
-                    buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block1Input)));
-                    buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block2Input)));
-                    buffer.FlushAsync().GetAwaiter().GetResult();
-
-                    var readResult = pipe.Reader.ReadAsync().GetAwaiter().GetResult();
-
-                    // Act
-                    string boundaryKnownString;
-                    var boundaryResult = readResult.Buffer.GetKnownVersion(out boundaryKnownString);
-
-                    // Assert
-                    Assert.Equal(expectedResult, boundaryResult);
-                    Assert.Equal(expectedKnownString, boundaryKnownString);
-                }
-            }
+            Assert.Equal(expectedKnownString, toString);
+            Assert.Equal(expectedKnownString?.Length ?? 0, length);
         }
 
         [Theory]
@@ -653,39 +621,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 return MemoryPoolIteratorExtensions.VersionToString(version);
             });
         }
-
-        [Theory]
-        [InlineData("", "HTTP/1.1\r")]
-        [InlineData("H", "TTP/1.1\r")]
-        [InlineData("HT", "TP/1.1\r")]
-        [InlineData("HTT", "P/1.1\r")]
-        [InlineData("HTTP", "/1.1\r")]
-        [InlineData("HTTP/", "1.1\r")]
-        [InlineData("HTTP/1", ".1\r")]
-        [InlineData("HTTP/1.", "1\r")]
-        [InlineData("HTTP/1.1", "\r")]
-        [InlineData("HTTP/1.1\r", "")]
-        public void KnownVersionCanBeReadAtAnyBlockBoundary(string block1Input, string block2Input)
-        {
-            using (var pipelineFactory = new PipeFactory())
-            {
-                // Arrange
-                var pipe = pipelineFactory.Create();
-                var buffer = pipe.Writer.Alloc();
-                buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block1Input)));
-                buffer.Append(ReadableBuffer.Create(Encoding.ASCII.GetBytes(block2Input)));
-                buffer.FlushAsync().GetAwaiter().GetResult();
-
-                var readResult = pipe.Reader.ReadAsync().GetAwaiter().GetResult();
-                // Act
-                string knownVersion;
-                var result = readResult.Buffer.GetKnownVersion(out knownVersion);
-
-                // Assert
-                Assert.True(result);
-                Assert.Equal("HTTP/1.1", knownVersion);
-            }
-        }
+        
 
         [Theory]
         [InlineData("CONNECT / HTTP/1.1", "CONNECT")]

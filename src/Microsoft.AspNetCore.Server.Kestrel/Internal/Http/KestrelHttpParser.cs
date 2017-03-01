@@ -166,7 +166,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             }
                             else if (ch == BytePercentage)
                             {
-
+                                if (pathStart == -1)
+                                {
+                                    RejectRequestLine(span);
+                                }
                             }
 
                             if (pathStart == -1)
