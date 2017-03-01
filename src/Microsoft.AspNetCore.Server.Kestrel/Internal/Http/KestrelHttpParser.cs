@@ -15,6 +15,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Log = log;
         }
 
+        private IKestrelTrace Log { get; }
+
         // byte types don't have a data type annotation so we pre-cast them; to avoid in-place casts
         private const byte ByteCR = (byte)'\r';
         private const byte ByteLF = (byte)'\n';
@@ -23,27 +25,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private const byte ByteTab = (byte)'\t';
         private const byte ByteQuestionMark = (byte)'?';
         private const byte BytePercentage = (byte)'%';
-
-        private enum HeaderState
-        {
-            Name,
-            Whitespace,
-            ExpectValue,
-            ExpectNewLine,
-            Complete
-        }
-
-        private enum StartLineState
-        {
-            KnownMethod,
-            UnknownMethod,
-            Path,
-            QueryString,
-            KnownVersion,
-            UnknownVersion,
-            NewLine,
-            Complete
-        }
 
         public unsafe bool ParseRequestLine<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined) where T : IHttpRequestLineHandler
         {
@@ -544,6 +525,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 Log.IsEnabled(LogLevel.Information) ? span.GetAsciiStringEscaped(MaxRequestLineError) : string.Empty);
         }
 
-        IKestrelTrace Log { get; }
+        private enum HeaderState
+        {
+            Name,
+            Whitespace,
+            ExpectValue,
+            ExpectNewLine,
+            Complete
+        }
+
+        private enum StartLineState
+        {
+            KnownMethod,
+            UnknownMethod,
+            Path,
+            QueryString,
+            KnownVersion,
+            UnknownVersion,
+            NewLine,
+            Complete
+        }
     }
 }
