@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Complete
         }
 
-        public unsafe bool ParseStartLine<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined) where T : IHttpStartLineHandler
+        public unsafe bool ParseRequestLine<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined) where T : IHttpRequestLineHandler
         {
             consumed = buffer.Start;
             examined = buffer.End;
@@ -103,11 +103,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     switch (state)
                     {
                         case StartLineState.KnownMethod:
-                            if (span.GetKnownMethod(out method, out var methodLenght))
+                            if (span.GetKnownMethod(out method, out var methodLength))
                             {
                                 // Update the index, current char, state and jump directly
                                 // to the next state
-                                i += methodLenght + 1;
+                                i += methodLength + 1;
                                 ch = data[i];
                                 state = StartLineState.Path;
 
@@ -245,10 +245,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }
 
-        public unsafe bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined) where T : IHttpHeadersHandler
+        public unsafe bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes) where T : IHttpHeadersHandler
         {
             consumed = buffer.Start;
             examined = buffer.End;
+            consumedBytes = 0;
+
             var bufferEnd = buffer.End;
 
             var reader = new ReadableBufferReader(buffer);
@@ -482,7 +484,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
                 var valueBuffer = span.Slice(valueStart, valueEnd - valueStart);
-
+                consumedBytes = headerLineLength;
 
                 handler.OnHeader(nameBuffer, valueBuffer);
                 consumed = reader.Cursor;

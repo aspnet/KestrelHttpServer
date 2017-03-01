@@ -26,7 +26,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public abstract partial class Frame : IFrameControl, IHttpStartLineHandler, IHttpHeadersHandler
+    public abstract partial class Frame : IFrameControl, IHttpRequestLineHandler, IHttpHeadersHandler
     {
         private const byte BytePercentage = (byte)'%';
 
@@ -374,7 +374,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _manuallySetRequestAbortToken = null;
             _abortedCts = null;
 
-            // Alow to bytes for \r\n after headers
+            // Allow to bytes for \r\n after headers
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestHeadersParsed = 0;
 
@@ -997,7 +997,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 overLength = true;
             }
 
-            var result = _parser.ParseStartLine(this, buffer, out consumed, out examined);
+            var result = _parser.ParseRequestLine(this, buffer, out consumed, out examined);
             if (!result && overLength)
             {
                 RejectRequest(RequestRejectionReason.RequestLineTooLong);
@@ -1051,7 +1051,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 overLength = true;
             }
 
-            var result = _parser.ParseHeaders(this, buffer, out consumed, out examined);
+            var result = _parser.ParseHeaders(this, buffer, out consumed, out examined, out var consumedBytes);
 
             if (!result && overLength)
             {
@@ -1059,8 +1059,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             if (result)
             {
-                // TODO: Faster
-                _remainingRequestHeadersBytesAllowed -= buffer.Slice(buffer.Start, consumed).Length;
+                _remainingRequestHeadersBytesAllowed -= consumedBytes;
                 ConnectionControl.CancelTimeout();
             }
             return result;
