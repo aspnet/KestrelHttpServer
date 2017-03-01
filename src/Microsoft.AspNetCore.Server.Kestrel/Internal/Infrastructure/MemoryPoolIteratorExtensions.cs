@@ -198,8 +198,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// To optimize performance the HTTP/1.1 will be checked first.
         /// </remarks>
         /// <returns><c>true</c> if the input matches a known string, <c>false</c> otherwise.</returns>
-        
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetKnownVersion(this Span<byte> span, out HttpVersion knownVersion, out byte length)
         {
@@ -239,10 +237,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 case HttpVersion.Http10:
                     return Http10Version;
-                    break;
                 case HttpVersion.Http11:
                     return Http11Version;
-                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(httpVersion), httpVersion, null);
             }

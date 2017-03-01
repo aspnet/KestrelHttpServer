@@ -487,7 +487,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
                 var valueBuffer = span.Slice(valueStart, valueEnd - valueStart);
-                consumedBytes = headerLineLength;
+                consumedBytes += headerLineLength;
 
                 handler.OnHeader(nameBuffer, valueBuffer);
                 consumed = reader.Cursor;

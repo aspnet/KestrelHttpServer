@@ -1052,6 +1052,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             var result = _parser.ParseHeaders(this, buffer, out consumed, out examined, out var consumedBytes);
+            _remainingRequestHeadersBytesAllowed -= consumedBytes;
 
             if (!result && overLength)
             {
@@ -1059,7 +1060,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             if (result)
             {
-                _remainingRequestHeadersBytesAllowed -= consumedBytes;
                 ConnectionControl.CancelTimeout();
             }
             return result;
