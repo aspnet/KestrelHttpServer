@@ -381,7 +381,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _responseBytesWritten = 0;
 
             // When testing parser can be null
-            _parser?.Reset();
+            _parser.Reset();
         }
 
         /// <summary>
