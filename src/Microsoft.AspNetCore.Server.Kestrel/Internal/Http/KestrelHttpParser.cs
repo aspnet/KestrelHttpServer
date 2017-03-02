@@ -289,7 +289,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     else if (ch2 == ByteLF)
                     {
-                        consumed = reader.Cursor;
+                        // REVIEW: Removed usage of ReadableBufferReader.Cursor, because it's broken when the buffer is
+                        // sliced and doesn't start at the start of a segment. We should probably fix this.
+                        //consumed = reader.Cursor;
+                        consumed = buffer.Move(consumed, 2);
                         examined = consumed;
                         return true;
                     }
@@ -323,7 +326,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 // Skip the reader forward past the header line
                 reader.Skip(span.Length);
-                consumed = reader.Cursor;
+                // REVIEW: Removed usage of ReadableBufferReader.Cursor, because it's broken when the buffer is
+                // sliced and doesn't start at the start of a segment. We should probably fix this.
+                //consumed = reader.Cursor;
+                consumed = buffer.Move(consumed, headerLineLength);
                 consumedBytes += span.Length;
 
                 var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
