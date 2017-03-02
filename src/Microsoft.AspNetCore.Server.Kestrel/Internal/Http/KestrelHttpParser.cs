@@ -568,17 +568,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void RejectRequest(RequestRejectionReason reason)
         {
-            RejectRequest(BadHttpRequestException.GetException(reason));
+            throw BadHttpRequestException.GetException(reason);
         }
 
         public void RejectRequest(RequestRejectionReason reason, string value)
         {
-            RejectRequest(BadHttpRequestException.GetException(reason, value));
-        }
-
-        private void RejectRequest(BadHttpRequestException ex)
-        {
-            throw ex;
+            throw BadHttpRequestException.GetException(reason, value);
         }
 
         private void RejectRequestLine(Span<byte> span)

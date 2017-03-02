@@ -1172,18 +1172,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void RejectRequest(RequestRejectionReason reason)
         {
-            RejectRequest(BadHttpRequestException.GetException(reason));
+            throw BadHttpRequestException.GetException(reason);
         }
 
         public void RejectRequest(RequestRejectionReason reason, string value)
         {
-            RejectRequest(BadHttpRequestException.GetException(reason, value));
-        }
-
-        private void RejectRequest(BadHttpRequestException ex)
-        {
-            Log.ConnectionBadRequest(ConnectionId, ex);
-            throw ex;
+            throw BadHttpRequestException.GetException(reason, value);
         }
 
         public void SetBadRequestState(RequestRejectionReason reason)
@@ -1193,6 +1187,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void SetBadRequestState(BadHttpRequestException ex)
         {
+            Log.ConnectionBadRequest(ConnectionId, ex);
+
             if (!HasResponseStarted)
             {
                 SetErrorResponseHeaders(ex.StatusCode);
