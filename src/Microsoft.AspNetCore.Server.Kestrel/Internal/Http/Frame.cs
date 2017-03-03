@@ -998,7 +998,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 overLength = true;
             }
 
-            var result = _parser.ParseRequestLine(this, buffer, out consumed, out examined);
+            var result = _parser.ParseRequestLine(new FrameRequestLineHandler(this), buffer, out consumed, out examined);
             if (!result && overLength)
             {
                 RejectRequest(RequestRejectionReason.RequestLineTooLong);
@@ -1052,7 +1052,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 overLength = true;
             }
 
-            var result = _parser.ParseHeaders(this, buffer, out consumed, out examined, out var consumedBytes);
+            var result = _parser.ParseHeaders(new FrameHeadersHandler(this), buffer, out consumed, out examined, out var consumedBytes);
             _remainingRequestHeadersBytesAllowed -= consumedBytes;
 
             if (!result && overLength)
@@ -1279,6 +1279,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var valueString = value.GetAsciiString() ?? string.Empty;
 
             FrameRequestHeaders.Append(name, valueString);
+        }
+
+        private struct FrameRequestLineHandler : IHttpRequestLineHandler
+        {
+            private readonly Frame _frame;
+
+            public FrameRequestLineHandler(Frame frame)
+            {
+                _frame = frame;
+            }
+
+            public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod)
+                => _frame.OnStartLine(method, version, target, path, query, customMethod);
+        }
+
+        private struct FrameHeadersHandler : IHttpHeadersHandler
+        {
+            private readonly Frame _frame;
+
+            public FrameHeadersHandler(Frame frame)
+            {
+                _frame = frame;
+            }
+
+            public void OnHeader(Span<byte> name, Span<byte> value)
+                => _frame.OnHeader(name, value);
         }
     }
 }
