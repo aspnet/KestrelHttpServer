@@ -329,7 +329,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // REVIEW: Removed usage of ReadableBufferReader.Cursor, because it's broken when the buffer is
                 // sliced and doesn't start at the start of a segment. We should probably fix this.
                 //consumed = reader.Cursor;
-                consumed = buffer.Move(consumed, headerLineLength);
+                consumed = buffer.Move(consumed, span.Length);
                 consumedBytes += span.Length;
 
                 var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
