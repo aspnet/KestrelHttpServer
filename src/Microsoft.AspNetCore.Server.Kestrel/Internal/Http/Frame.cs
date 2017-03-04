@@ -1228,7 +1228,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (needDecode)
             {
                 // Read raw target before mutating memory.
-                rawTarget = target.GetAsciiString() ?? string.Empty;
+                rawTarget = target.GetAsciiStringNonNullCharacters() ?? string.Empty;
 
                 // URI was encoded, unescape and then parse as utf8
                 int pathLength = UrlEncoder.Decode(path, path);
@@ -1237,7 +1237,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else
             {
                 // URI wasn't encoded, parse as ASCII
-                requestUrlPath = path.GetAsciiString() ?? string.Empty;
+                requestUrlPath = path.GetAsciiStringNonNullCharacters() ?? string.Empty;
 
                 if (query.Length == 0)
                 {
@@ -1247,7 +1247,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else
                 {
-                    rawTarget = target.GetAsciiString() ?? string.Empty;
+                    rawTarget = target.GetAsciiStringNonNullCharacters() ?? string.Empty;
                 }
             }
 
@@ -1258,10 +1258,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else
             {
-                Method = customMethod.GetAsciiString() ?? string.Empty;
+                Method = customMethod.GetAsciiStringNonNullCharacters() ?? string.Empty;
             }
 
-            QueryString = query.GetAsciiString() ?? string.Empty;
+            QueryString = query.GetAsciiStringNonNullCharacters() ?? string.Empty;
             RawTarget = rawTarget;
             HttpVersion = HttpUtilities.VersionToString(version);
 
@@ -1289,7 +1289,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 RejectRequest(RequestRejectionReason.TooManyHeaders);
             }
-            var valueString = value.GetAsciiString() ?? string.Empty;
+            var valueString = value.GetAsciiStringNonNullCharacters() ?? string.Empty;
 
             FrameRequestHeaders.Append(name, valueString);
         }
