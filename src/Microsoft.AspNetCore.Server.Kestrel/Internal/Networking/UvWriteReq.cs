@@ -12,7 +12,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// <summary>
     /// Summary description for UvWriteRequest
     /// </summary>
-    public class UvWriteReq : UvRequest
+    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
+    public sealed class UvWriteReq : UvRequest
     {
         private readonly static Libuv.uv_write_cb _uv_write_cb = (IntPtr ptr, int status) => UvWriteCb(ptr, status);
 

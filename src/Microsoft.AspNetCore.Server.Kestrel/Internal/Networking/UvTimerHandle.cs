@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
-    public class UvTimerHandle : UvHandle
+    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
+    public sealed class UvTimerHandle : UvHandle
     {
         private readonly static Libuv.uv_timer_cb _uv_timer_cb = UvTimerCb;
 

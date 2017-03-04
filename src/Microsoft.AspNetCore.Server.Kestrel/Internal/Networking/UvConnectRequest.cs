@@ -10,7 +10,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// <summary>
     /// Summary description for UvWriteRequest
     /// </summary>
-    public class UvConnectRequest : UvRequest
+    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
+    public sealed class UvConnectRequest : UvRequest
     {
         private readonly static Libuv.uv_connect_cb _uv_connect_cb = (req, status) => UvConnectCb(req, status);
 

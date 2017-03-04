@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
-    public class UvAsyncHandle : UvHandle
+    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
+    public sealed class UvAsyncHandle : UvHandle
     {
         private static readonly Libuv.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
 
