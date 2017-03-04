@@ -8,8 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
-    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
-    public sealed class UvTcpHandle : UvStreamHandle
+    public class UvTcpHandle : UvStreamHandle
     {
         public UvTcpHandle(IKestrelTrace logger) : base(logger)
         {
