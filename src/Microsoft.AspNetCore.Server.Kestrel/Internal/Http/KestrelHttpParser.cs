@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var length = span.Length;
             var done = false;
 
-            fixed (byte* data = &span.DangerousGetPinnableReference())
+            fixed (byte* pBuffer = &span.DangerousGetPinnableReference())
             {
                 switch (StartLineState.KnownMethod)
                 {
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     case StartLineState.UnknownMethod:
                         for (; i < length; i++)
                         {
-                            var ch = data[i];
+                            var ch = pBuffer[i];
 
                             if (ch == ByteSpace)
                             {
@@ -122,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     case StartLineState.Path:
                         for (; i < length; i++)
                         {
-                            var ch = data[i];
+                            var ch = pBuffer[i];
                             if (ch == ByteSpace)
                             {
                                 pathEnd = i;
@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     case StartLineState.QueryString:
                         for (; i < length; i++)
                         {
-                            var ch = data[i];
+                            var ch = pBuffer[i];
                             if (ch == ByteSpace)
                             {
                                 queryEnd = i;
@@ -201,7 +201,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     case StartLineState.UnknownVersion:
                         for (; i < length; i++)
                         {
-                            var ch = data[i];
+                            var ch = pBuffer[i];
                             if (ch == ByteCR)
                             {
                                 var versionSpan = span.Slice(versionStart, i - versionStart);
@@ -219,7 +219,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         break;
                     case StartLineState.NewLine:
-                        if (data[i] != ByteLF)
+                        if (pBuffer[i] != ByteLF)
                         {
                             RejectRequestLine(span);
                         }
@@ -230,22 +230,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         done = true;
                         break;
                 }
+
+                if (!done)
+                {
+                    RejectRequestLine(span);
+                }
+
+                var pathBuffer = new Span<byte>(pBuffer + pathStart, pathEnd - pathStart);
+                var targetBuffer = new Span<byte>(pBuffer + pathStart, queryEnd - pathStart);
+                var query = new Span<byte>(pBuffer + queryStart, queryEnd - queryStart);
+
+                handler.OnStartLine(method, httpVersion, targetBuffer, pathBuffer, query, customMethod);
+
+                consumed = end;
+                examined = consumed;
+                return true;
             }
-
-            if (!done)
-            {
-                RejectRequestLine(span);
-            }
-
-            var pathBuffer = span.Slice(pathStart, pathEnd - pathStart);
-            var targetBuffer = span.Slice(pathStart, queryEnd - pathStart);
-            var query = span.Slice(queryStart, queryEnd - queryStart);
-
-            handler.OnStartLine(method, httpVersion, targetBuffer, pathBuffer, query, customMethod);
-
-            consumed = end;
-            examined = consumed;
-            return true;
         }
 
         public unsafe bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes) where T : IHttpHeadersHandler
@@ -319,24 +319,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var headerBuffer = buffer.Slice(consumed, lineEnd);
                 var span = headerBuffer.ToSpan();
+                var headerLength = span.Length;
 
                 fixed (byte* pHeader = &span.DangerousGetPinnableReference())
                 {
-                    if (!TakeSingleHeader(pHeader, span.Length, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
+                    if (!TakeSingleHeader(pHeader, headerLength, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
                     {
                         return false;
                     }
 
                     // Skip the reader forward past the header line
-                    reader.Skip(span.Length);
+                    reader.Skip(headerLength);
                     // REVIEW: Removed usage of ReadableBufferReader.Cursor, because it's broken when the buffer is
                     // sliced and doesn't start at the start of a segment. We should probably fix this.
                     //consumed = reader.Cursor;
-                    consumed = buffer.Move(consumed, span.Length);
-                    consumedBytes += span.Length;
+                    consumed = buffer.Move(consumed, headerLength);
+                    consumedBytes += headerLength;
 
-                    var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
-                    var valueBuffer = span.Slice(valueStart, valueEnd - valueStart);
+                    var nameBuffer = new Span<byte>(pHeader + nameStart, nameEnd - nameStart);
+                    var valueBuffer = new Span<byte>(pHeader + valueStart, valueEnd - valueStart);
 
                     handler.OnHeader(nameBuffer, valueBuffer);
                 }
