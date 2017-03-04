@@ -1228,7 +1228,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (needDecode)
             {
                 // Read raw target before mutating memory.
-                rawTarget = target.GetAsciiStringNonNullCharacters() ?? string.Empty;
+                rawTarget = target.GetAsciiStringNonNullCharacters();
 
                 // URI was encoded, unescape and then parse as utf8
                 int pathLength = UrlEncoder.Decode(path, path);
@@ -1237,7 +1237,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             else
             {
                 // URI wasn't encoded, parse as ASCII
-                requestUrlPath = path.GetAsciiStringNonNullCharacters() ?? string.Empty;
+                requestUrlPath = path.GetAsciiStringNonNullCharacters();
 
                 if (query.Length == 0)
                 {
@@ -1247,21 +1247,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else
                 {
-                    rawTarget = target.GetAsciiStringNonNullCharacters() ?? string.Empty;
+                    rawTarget = target.GetAsciiStringNonNullCharacters();
                 }
             }
 
             var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
             if (method != HttpMethod.Custom)
             {
-                Method = HttpUtilities.MethodToString(method) ?? String.Empty;
+                Method = HttpUtilities.MethodToString(method) ?? string.Empty;
             }
             else
             {
-                Method = customMethod.GetAsciiStringNonNullCharacters() ?? string.Empty;
+                Method = customMethod.GetAsciiStringNonNullCharacters();
             }
 
-            QueryString = query.GetAsciiStringNonNullCharacters() ?? string.Empty;
+            QueryString = query.GetAsciiStringNonNullCharacters();
             RawTarget = rawTarget;
             HttpVersion = HttpUtilities.VersionToString(version);
 
@@ -1289,7 +1289,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 RejectRequest(RequestRejectionReason.TooManyHeaders);
             }
-            var valueString = value.GetAsciiStringNonNullCharacters() ?? string.Empty;
+            var valueString = value.GetAsciiStringNonNullCharacters();
 
             FrameRequestHeaders.Append(name, valueString);
         }

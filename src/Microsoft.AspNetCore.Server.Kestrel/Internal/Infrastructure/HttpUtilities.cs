@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         {
             if (span.IsEmpty)
             {
-                return null;
+                return string.Empty;
             }
 
             var asciiString = new string('\0', span.Length);
