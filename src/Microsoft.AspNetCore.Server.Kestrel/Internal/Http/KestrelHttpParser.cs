@@ -253,107 +253,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             examined = buffer.End;
             consumedBytes = 0;
 
-            if (buffer.IsSingleSpan)
-            {
-                var result = TakeMessageHeadersSingleSpan(handler, buffer.First.Span, out consumedBytes);
-                consumed = buffer.Move(consumed, consumedBytes);
-
-                if (result)
-                {
-                    examined = consumed;
-                }
-
-                return result;
-            }
-
             var bufferEnd = buffer.End;
 
             var reader = new ReadableBufferReader(buffer);
             while (true)
             {
-                var start = reader;
-                int ch1 = reader.Take();
-                var ch2 = reader.Take();
+                var span = reader.Span;
+                var length = span.Length;
 
-                if (ch1 == -1)
+                fixed (byte* pBuffer = &span.DangerousGetPinnableReference())
                 {
-                    return false;
-                }
+                    var start = reader;
+                    int ch1 = reader.Take();
+                    var ch2 = reader.Take();
 
-                if (ch1 == ByteCR)
-                {
-                    // Check for final CRLF.
-                    if (ch2 == -1)
+                    if (ch1 == -1)
                     {
                         return false;
-                    }
-                    else if (ch2 == ByteLF)
-                    {
-                        // REVIEW: Removed usage of ReadableBufferReader.Cursor, because it's broken when the buffer is
-                        // sliced and doesn't start at the start of a segment. We should probably fix this.
-                        //consumed = reader.Cursor;
-                        consumed = buffer.Move(consumed, 2);
-                        examined = consumed;
-                        return true;
-                    }
-
-                    // Headers don't end in CRLF line.
-                    RejectRequest(RequestRejectionReason.HeadersCorruptedInvalidHeaderSequence);
-                }
-                else if (ch1 == ByteSpace || ch1 == ByteTab)
-                {
-                    RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
-                }
-
-                // Reset the reader since we're not at the end of headers
-                reader = start;
-
-                if (ReadCursorOperations.Seek(consumed, bufferEnd, out var lineEnd, ByteLF) == -1)
-                {
-                    return false;
-                }
-
-                // Make sure LF is included in lineEnd
-                lineEnd = buffer.Move(lineEnd, 1);
-
-                var headerBuffer = buffer.Slice(consumed, lineEnd);
-                var span = headerBuffer.ToSpan();
-
-                if (!TakeSingleHeader(span, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
-                {
-                    return false;
-                }
-
-                // Skip the reader forward past the header line
-                reader.Skip(span.Length);
-                // REVIEW: Removed usage of ReadableBufferReader.Cursor, because it's broken when the buffer is
-                // sliced and doesn't start at the start of a segment. We should probably fix this.
-                //consumed = reader.Cursor;
-                consumed = buffer.Move(consumed, span.Length);
-                consumedBytes += span.Length;
-
-                var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
-                var valueBuffer = span.Slice(valueStart, valueEnd - valueStart);
-
-                handler.OnHeader(nameBuffer, valueBuffer);
-            }
-        }
-
-        private unsafe bool TakeMessageHeadersSingleSpan<T>(T handler, Span<byte> headersSpan, out int consumedBytes) where T : IHttpHeadersHandler
-        {
-            consumedBytes = 0;
-            var length = headersSpan.Length;
-
-            fixed (byte* data = &headersSpan.DangerousGetPinnableReference())
-            {
-                while (consumedBytes < length)
-                {
-                    var ch1 = data[consumedBytes];
-                    var ch2 = -1;
-
-                    if (consumedBytes + 1 < length)
-                    {
-                        ch2 = data[consumedBytes + 1];
                     }
 
                     if (ch1 == ByteCR)
@@ -365,7 +281,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         else if (ch2 == ByteLF)
                         {
-                            consumedBytes += 2;
+                            consumed = reader.Cursor;
+                            consumedBytes = reader.ConsumedBytes;
+                            examined = consumed;
                             return true;
                         }
 
@@ -377,30 +295,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
                     }
 
-                    var lineEnd = IndexOf(data, consumedBytes, headersSpan.Length, ByteLF);
+                    // Reset the reader since we're not at the end of headers
+                    reader = start;
 
-                    if (lineEnd == -1)
+                    Span<byte> headerSpan;
+
+                    var endIndex = IndexOf(pBuffer, reader.Index, length, ByteLF);
+
+                    if (endIndex != -1)
+                    {
+                        headerSpan = new Span<byte>(pBuffer + reader.Index, (endIndex - reader.Index + 1));
+                    }
+                    else
+                    {
+                        // Split buffers
+                        if (ReadCursorOperations.Seek(consumed, bufferEnd, out var lineEnd, ByteLF) == -1)
+                        {
+                            // Not there
+                            return false;
+                        }
+
+                        // Make sure LF is included in lineEnd
+                        lineEnd = buffer.Move(lineEnd, 1);
+                        headerSpan = buffer.Slice(consumed, lineEnd).ToSpan();
+                    }
+
+                    if (!TakeSingleHeader(headerSpan, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
                     {
                         return false;
                     }
 
-                    var span = new Span<byte>(data + consumedBytes, (lineEnd - consumedBytes + 1));
+                    // Skip the reader forward past the header line
+                    reader.Skip(headerSpan.Length);
 
-                    if (!TakeSingleHeader(span, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
-                    {
-                        return false;
-                    }
+                    consumed = reader.Cursor;
+                    consumedBytes = reader.ConsumedBytes;
 
-                    consumedBytes += span.Length;
-
-                    var nameBuffer = span.Slice(nameStart, nameEnd - nameStart);
-                    var valueBuffer = span.Slice(valueStart, valueEnd - valueStart);
+                    var nameBuffer = headerSpan.Slice(nameStart, nameEnd - nameStart);
+                    var valueBuffer = headerSpan.Slice(valueStart, valueEnd - valueStart);
 
                     handler.OnHeader(nameBuffer, valueBuffer);
                 }
             }
-
-            return false;
         }
 
         private unsafe int IndexOf(byte* data, int index, int length, byte value)
