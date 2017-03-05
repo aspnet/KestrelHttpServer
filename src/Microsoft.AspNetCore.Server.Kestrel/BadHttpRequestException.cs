@@ -67,6 +67,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 case RequestRejectionReason.InvalidCharactersInHeaderName:
                     ex = new BadHttpRequestException("Invalid characters in header name.", StatusCodes.Status400BadRequest);
                     break;
+                case RequestRejectionReason.NonAsciiOrNullCharactersInHeader:
+                    ex = new BadHttpRequestException("Invalid characters in header.", StatusCodes.Status400BadRequest);
+                    break;
                 case RequestRejectionReason.NonAsciiOrNullCharactersInInputString:
                     ex = new BadHttpRequestException("The input string contains non-ASCII or null characters.", StatusCodes.Status400BadRequest);
                     break;

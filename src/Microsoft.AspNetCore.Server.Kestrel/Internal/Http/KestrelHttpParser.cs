@@ -4,6 +4,8 @@
 using System;
 using System.Buffers;
 using System.IO.Pipelines;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -331,7 +333,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                             Span<byte> headerSpan;
 
-                            var endIndex = IndexOf(pBuffer, index, remaining, ByteLF);
+                            var endIndex = IndexOfAsciiNonNullCharaters(pBuffer, index, remaining, ByteLF);
 
                             if (endIndex != -1)
                             {
@@ -390,19 +392,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private unsafe int IndexOf(byte* pBuffer, int index, int length, byte value)
-        {
-            for (int i = 0; i < length; i++, index++)
-            {
-                if (pBuffer[index] == value)
-                {
-                    return index;
-                }
-            }
-            return -1;
-        }
-
-        private unsafe bool TakeSingleHeader(Span<byte> span, out int nameStart, out int nameEnd, out int valueStart, out int valueEnd)
+        private static unsafe bool TakeSingleHeader(Span<byte> span, out int nameStart, out int nameEnd, out int valueStart, out int valueEnd)
         {
             nameStart = 0;
             nameEnd = -1;
@@ -528,6 +518,119 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return done;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe int IndexOfAsciiNonNullCharaters(byte* searchSpace, int start, int length, byte value)
+        {
+            var data = (sbyte*)searchSpace;
+            sbyte ch = 0;
+            var offset = start;
+            var end = start + length;
+
+            if (Vector.IsHardwareAccelerated)
+            {
+                // Check Vector lengths
+                if (end - Vector<sbyte>.Count >= offset)
+                {
+                    Vector<sbyte> values = GetVector(value);
+                    do
+                    {
+                        var vData = Unsafe.Read<Vector<sbyte>>(data + offset);
+                        var vMatches = Vector.BitwiseOr(
+                                            Vector.Equals(vData, values),
+                                            Vector.LessThanOrEqual(vData, Vector<sbyte>.Zero));
+                        if (!vMatches.Equals(Vector<sbyte>.Zero))
+                        {
+                            // Found match, reuse Vector values to keep register pressure low
+                            values = vMatches;
+                            break;
+                        }
+
+                        offset += Vector<sbyte>.Count;
+                    } while (end - Vector<sbyte>.Count >= offset);
+
+                    // Found match? Perform secondary search outside out of loop, so above loop body is small
+                    if (end - Vector<sbyte>.Count >= offset)
+                    {
+                        // Find offset of first match
+                        offset += LocateFirstFoundByte(values);
+                        ch = data[offset];
+                        // goto rather than inline return to keep function smaller
+                        goto exit;
+                    }
+                }
+            }
+
+            // Haven't found match, scan through remaining
+            for (; offset < end; offset++)
+            {
+                ch = data[offset];
+                if (ch == value || ch <= 0)
+                {
+                    // goto rather than inline return to keep loop body small
+                    goto exit;
+                }
+            }
+
+            // No Matches
+            return -1;
+        exit:
+            if (ch <= 0)
+            {
+                // Null char or Non-Ascii encountered, reject request
+                RejectRequestHeadersContainNonAsciiOrNull();
+            }
+            return offset;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Vector<sbyte> GetVector(byte vectorByte)
+        {
+            // Vector<sbyte> .ctor doesn't become an intrinsic due to detection issue
+            // However this does cause it to become an intrinsic (with additional multiply and reg->reg copy)
+            // https://github.com/dotnet/coreclr/issues/7459#issuecomment-253965670
+            return Vector.AsVectorSByte(new Vector<uint>(vectorByte * 0x01010101u));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int LocateFirstFoundByte(Vector<sbyte> match)
+        {
+            var vector64 = Vector.AsVectorUInt64(match);
+            ulong candidate = 0;
+            var i = 0;
+            // Pattern unrolled by jit https://github.com/dotnet/coreclr/pull/8001
+            for (; i < Vector<ulong>.Count; i++)
+            {
+                candidate = vector64[i];
+                if (candidate != 0)
+                {
+                    break;
+                }
+            }
+
+            // Single LEA instruction with jitted const (using function result)
+            return i * 8 + LocateFirstFoundByte(candidate);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int LocateFirstFoundByte(ulong match)
+        {
+            unchecked
+            {
+                // Flag least significant power of two bit
+                var powerOfTwoFlag = match ^ (match - 1);
+                // Shift all powers of two into the high byte and extract
+                return (int)((powerOfTwoFlag * xorPowerOfTwoToHighByte) >> 57);
+            }
+        }
+
+        private const ulong xorPowerOfTwoToHighByte = (0x07ul |
+                                                       0x06ul << 8 |
+                                                       0x05ul << 16 |
+                                                       0x04ul << 24 |
+                                                       0x03ul << 32 |
+                                                       0x02ul << 40 |
+                                                       0x01ul << 48) + 1;
+
         private static bool IsValidTokenChar(char c)
         {
             // Determines if a character is valid as a 'token' as defined in the
@@ -553,7 +656,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 c == '~';
         }
 
-        public void RejectRequest(RequestRejectionReason reason)
+        public static void RejectRequestHeadersContainNonAsciiOrNull()
+        {
+            throw BadHttpRequestException.GetException(RequestRejectionReason.NonAsciiOrNullCharactersInHeader);
+        }
+
+        public static void RejectRequest(RequestRejectionReason reason)
         {
             throw BadHttpRequestException.GetException(reason);
         }
@@ -565,8 +673,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void RejectRequestLine(Span<byte> span)
         {
+            throw GetRejectRequestLineException(span);
+        }
+
+        private BadHttpRequestException GetRejectRequestLineException(Span<byte> span)
+        {
             const int MaxRequestLineError = 32;
-            RejectRequest(RequestRejectionReason.InvalidRequestLine,
+            return BadHttpRequestException.GetException(RequestRejectionReason.InvalidRequestLine,
                 Log.IsEnabled(LogLevel.Information) ? span.GetAsciiStringEscaped(MaxRequestLineError) : string.Empty);
         }
 

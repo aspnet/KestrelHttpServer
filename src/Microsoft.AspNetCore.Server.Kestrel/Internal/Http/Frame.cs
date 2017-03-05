@@ -1289,7 +1289,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 RejectRequest(RequestRejectionReason.TooManyHeaders);
             }
-            var valueString = value.GetAsciiStringNonNullCharacters();
+            var valueString = value.GetPrevalidatedAsciiString();
 
             FrameRequestHeaders.Append(name, valueString);
         }

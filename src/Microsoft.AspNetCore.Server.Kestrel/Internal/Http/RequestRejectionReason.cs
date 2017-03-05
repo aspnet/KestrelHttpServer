@@ -23,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         PathContainsNullCharacters,
         InvalidCharactersInHeaderName,
         NonAsciiOrNullCharactersInInputString,
+        NonAsciiOrNullCharactersInHeader,
         RequestLineTooLong,
         HeadersExceedMaxTotalSize,
         MissingCRInHeaderLine,
