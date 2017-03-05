@@ -255,7 +255,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             int bytesProduced, buffersIncluded;
-            BytesBetween(_lastStart, end, out bytesProduced, out buffersIncluded);
+            BytesBetween(ref _lastStart, ref end, out bytesProduced, out buffersIncluded);
 
             lock (_contextLock)
             {
@@ -356,10 +356,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 ScheduleWrite();
             }
 
-            if (writingContext != null)
-            {
-                writingContext.DoWriteIfNeeded();
-            }
+            writingContext?.DoWriteIfNeeded();
         }
 
         // This may called on the libuv event loop
@@ -387,7 +384,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (error == null)
             {
-                CompleteFinishedWrites(status);
+                CompleteFinishedWrites();
                 _log.ConnectionWriteCallback(_connectionId, status);
             }
             else
@@ -452,7 +449,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private void CompleteFinishedWrites(int status)
+        private void CompleteFinishedWrites()
         {
             if (!_maxBytesPreCompleted.HasValue)
             {
@@ -554,7 +551,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return WriteAsync(_emptyData, cancellationToken);
         }
 
-        private static void BytesBetween(MemoryPoolIterator start, MemoryPoolIterator end, out int bytes, out int buffers)
+        private static void BytesBetween(ref MemoryPoolIterator start, ref MemoryPoolIterator end, out int bytes, out int buffers)
         {
             if (start.Block == end.Block)
             {
@@ -598,9 +595,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             
             private readonly SocketOutput Self;
             private SocketOutputWriteReq _writeReq;
-            private MemoryPoolIterator _lockedStart;
-            private MemoryPoolIterator _lockedEnd;
-            private int _bufferCount;
+            internal MemoryPoolIterator _lockedStart;
+            internal MemoryPoolIterator _lockedEnd;
+            internal int _bufferCount;
 
             public int ByteCount;
             public bool SocketShutdownSend;
@@ -634,7 +631,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 _writeReq = Self._writeReqPool.Allocate();
 
-                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, this);
+                _writeReq.Write(Self._socket, this);
             }
 
             public void WriteCallback(int status, Exception error)
@@ -793,7 +790,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _lockedStart = new MemoryPoolIterator(head, head.Start);
                 _lockedEnd = new MemoryPoolIterator(tail, tail.End);
 
-                BytesBetween(_lockedStart, _lockedEnd, out ByteCount, out _bufferCount);
+                BytesBetween(ref _lockedStart, ref _lockedEnd, out ByteCount, out _bufferCount);
             }
 
             public void Reset()

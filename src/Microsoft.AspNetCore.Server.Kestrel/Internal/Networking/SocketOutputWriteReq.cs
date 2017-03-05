@@ -42,31 +42,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public unsafe void Write(
             UvStreamHandle handle,
-            MemoryPoolIterator start,
-            MemoryPoolIterator end,
-            int nBuffers,
-            SocketOutput.WriteContext writeContext)
+            SocketOutput.WriteContext context)
         {
             try
             {
+                var bufferCount = context._bufferCount;
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
 
                 var pBuffers = (Libuv.uv_buf_t*)_bufs;
-                if (nBuffers > BUFFER_COUNT)
+                if (bufferCount > BUFFER_COUNT)
                 {
                     // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
+                    var bufArray = new Libuv.uv_buf_t[bufferCount];
                     var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
                     _pins.Add(gcHandle);
                     pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
                 }
 
-                var block = start.Block;
-                for (var index = 0; index < nBuffers; index++)
+                var block = context._lockedStart.Block;
+                for (var index = 0; index < bufferCount; index++)
                 {
-                    var blockStart = block == start.Block ? start.Index : block.Data.Offset;
-                    var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
+                    var blockStart = block == context._lockedStart.Block ? context._lockedStart.Index : block.Data.Offset;
+                    var blockEnd = block == context._lockedEnd.Block ? context._lockedEnd.Index : block.Data.Offset + block.Data.Count;
 
                     // create and pin each segment being written
                     pBuffers[index] = Libuv.buf_init(
@@ -76,8 +74,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                     block = block.Next;
                 }
 
-                _writeContext = writeContext;
-                _uv.write(this, handle, pBuffers, nBuffers, _uv_write_cb);
+                _writeContext = context;
+                _uv.write(this, handle, pBuffers, bufferCount, _uv_write_cb);
             }
             catch
             {
