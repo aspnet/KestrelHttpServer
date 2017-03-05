@@ -15,15 +15,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public class SocketOutputWriteReq : UvRequest
     {
+        private const int BUFFER_COUNT = 4;
         private readonly static Libuv.uv_write_cb _uv_write_cb = 
             (IntPtr ptr, int status) => FromIntPtr<SocketOutputWriteReq>(ptr).UvWriteCallback(status);
 
-        private IntPtr _bufs;
-
-        private SocketOutput.WriteContext _writeContext;
-        private const int BUFFER_COUNT = 4;
-
         private readonly List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
+
+        private IntPtr _bufs;
+        private SocketOutput.WriteContext _writeContext;
 
         public SocketOutputWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -42,11 +41,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public unsafe void Write(
             UvStreamHandle handle,
-            SocketOutput.WriteContext context)
+            SocketOutput.WriteContext context,
+            int bufferCount)
         {
             try
             {
-                var bufferCount = context._bufferCount;
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
 

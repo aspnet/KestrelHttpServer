@@ -597,7 +597,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             private SocketOutputWriteReq _writeReq;
             internal MemoryPoolIterator _lockedStart;
             internal MemoryPoolIterator _lockedEnd;
-            internal int _bufferCount;
+            private int _bufferCount;
 
             public int ByteCount;
             public bool SocketShutdownSend;
@@ -631,7 +631,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 _writeReq = Self._writeReqPool.Allocate();
 
-                _writeReq.Write(Self._socket, this);
+                _writeReq.Write(Self._socket, this, _bufferCount);
             }
 
             public void WriteCallback(int status, Exception error)
