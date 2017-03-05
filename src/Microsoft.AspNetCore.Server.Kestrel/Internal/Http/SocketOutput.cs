@@ -576,13 +576,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             buffers++;
         }
 
-        private class WriteContext
+        private void PoolWriteReq(SocketOutputWriteReq writeReq)
+        {
+            _writeReqPool.Return(writeReq);
+        }
+
+        private void DisconnectCleanup()
+        {
+            // Ensure all blocks are returned before calling OnSocketClosed
+            // to ensure the MemoryPool doesn't get disposed too soon.
+            ReturnAllBlocks();
+            _socket.Dispose();
+            _connection.OnSocketClosed();
+            _log.ConnectionStop(_connectionId);
+        }
+
+        public class WriteContext
         {
             private static readonly WaitCallback _returnWrittenBlocks = (state) => ReturnWrittenBlocks((MemoryPoolBlock)state);
             private static readonly WaitCallback _completeWrite = (state) => ((WriteContext)state).CompleteOnThreadPool();
-
-            private SocketOutput Self;
-            private UvWriteReq _writeReq;
+            
+            private readonly SocketOutput Self;
+            private SocketOutputWriteReq _writeReq;
             private MemoryPoolIterator _lockedStart;
             private MemoryPoolIterator _lockedEnd;
             private int _bufferCount;
@@ -619,22 +634,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 _writeReq = Self._writeReqPool.Allocate();
 
-                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (req, status, error, state) =>
+                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, this);
+            }
+
+            public void WriteCallback(int status, Exception error)
+            {
+                Self.PoolWriteReq(_writeReq);
+                _writeReq = null;
+                ScheduleReturnWrittenBlocks();
+                WriteStatus = status;
+                if (error != null)
                 {
-                    var writeContext = (WriteContext)state;
-                    writeContext.PoolWriteReq(writeContext._writeReq);
-                    writeContext._writeReq = null;
-                    writeContext.ScheduleReturnWrittenBlocks();
-                    writeContext.WriteStatus = status;
-                    writeContext.WriteError = error;
-                    writeContext.DoShutdownIfNeeded();
-                }, this);
+                    WriteError = error;
+                }
+                DoShutdownIfNeeded();
             }
 
             /// <summary>
             /// Second step: initiate async shutdown if needed, otherwise go to next step
             /// </summary>
-            public void DoShutdownIfNeeded()
+            private void DoShutdownIfNeeded()
             {
                 if (SocketShutdownSend == false || Self._socket.IsClosed)
                 {
@@ -667,12 +686,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return;
                 }
 
-                // Ensure all blocks are returned before calling OnSocketClosed
-                // to ensure the MemoryPool doesn't get disposed too soon.
-                Self.ReturnAllBlocks();
-                Self._socket.Dispose();
-                Self._connection.OnSocketClosed();
-                Self._log.ConnectionStop(Self._connectionId);
+                Self.DisconnectCleanup();
                 CompleteWithContextLock();
             }
 
@@ -708,11 +722,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         Self._log.LogError(0, ex, "SocketOutput.OnWriteCompleted");
                     }
                 }
-            }
-
-            private void PoolWriteReq(UvWriteReq writeReq)
-            {
-                Self._writeReqPool.Return(writeReq);
             }
 
             private void ScheduleReturnWrittenBlocks()

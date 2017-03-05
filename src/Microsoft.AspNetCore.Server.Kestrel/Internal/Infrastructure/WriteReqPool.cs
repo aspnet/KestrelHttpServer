@@ -9,7 +9,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private const int _maxPooledWriteReqs = 1024;
 
         private readonly KestrelThread _thread;
-        private readonly Queue<UvWriteReq> _pool = new Queue<UvWriteReq>(_maxPooledWriteReqs);
+        private readonly Queue<SocketOutputWriteReq> _pool = new Queue<SocketOutputWriteReq>(_maxPooledWriteReqs);
         private readonly IKestrelTrace _log;
         private bool _disposed;
 
@@ -19,28 +19,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _log = log;
         }
 
-        public UvWriteReq Allocate()
+        public SocketOutputWriteReq Allocate()
         {
             if (_disposed)
             {
                 throw new ObjectDisposedException(GetType().Name);
             }
 
-            UvWriteReq req;
+            SocketOutputWriteReq req;
             if (_pool.Count > 0)
             {
                 req = _pool.Dequeue();
             }
             else
             {
-                req = new UvWriteReq(_log);
+                req = new SocketOutputWriteReq(_log);
                 req.Init(_thread.Loop);
             }
 
             return req;
         }
 
-        public void Return(UvWriteReq req)
+        public void Return(SocketOutputWriteReq req)
         {
             if (_disposed)
             {
