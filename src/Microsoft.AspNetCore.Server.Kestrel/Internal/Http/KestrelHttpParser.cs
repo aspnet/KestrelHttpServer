@@ -256,6 +256,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var bufferEnd = buffer.End;
 
             var reader = new ReadableBufferReader(buffer);
+            var start = default(ReadableBufferReader);
             var done = false;
 
             try
@@ -270,8 +271,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         while (remaining > 0)
                         {
                             var index = reader.Index;
-                            var start = reader;
-
                             int ch1;
                             int ch2;
 
@@ -280,10 +279,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 ch1 = pBuffer[index];
                                 ch2 = pBuffer[index + 1];
-                                reader.Skip(2);
                             }
                             else
                             {
+                                // Store the reader before we look ahead 2 bytes (probably straddling
+                                // spans)
+                                start = reader;
+
                                 // Possibly split across spans
                                 ch1 = reader.Take();
                                 ch2 = reader.Take();
@@ -300,6 +302,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 }
                                 else if (ch2 == ByteLF)
                                 {
+                                    // If we got 2 bytes from the span directly so skip ahead 2 so that
+                                    // the reader's state matches what we expect
+                                    if (index == reader.Index)
+                                    {
+                                        reader.Skip(2);
+                                    }
+
                                     done = true;
                                     return true;
                                 }
@@ -312,9 +321,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
                             }
 
-                            // Reset the reader since we're not at the end of headers
-                            reader = start;
-                            index = reader.Index;
+                            // We moved the reader so look ahead 2 bytes so reset both the reader
+                            // and the index
+                            if (index != reader.Index)
+                            {
+                                reader = start;
+                                index = reader.Index;
+                            }
 
                             Span<byte> headerSpan;
 
