@@ -289,13 +289,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 ch2 = reader.Take();
                             }
 
-                            if (ch1 == -1)
-                            {
-                                // Reset the reader so we don't consume anything
-                                reader = start;
-                                return false;
-                            }
-
                             if (ch1 == ByteCR)
                             {
                                 // Check for final CRLF.
