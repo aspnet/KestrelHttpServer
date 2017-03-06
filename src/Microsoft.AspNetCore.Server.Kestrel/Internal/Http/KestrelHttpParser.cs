@@ -263,8 +263,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 while (!reader.End)
                 {
                     var span = reader.Span;
-                    var length = span.Length;
-                    var remaining = length;
+                    var remaining = span.Length;
 
                     fixed (byte* pBuffer = &span.DangerousGetPinnableReference())
                     {
@@ -292,6 +291,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                             if (ch1 == -1)
                             {
+                                // Reset the reader so we don't consume anything
+                                reader = start;
                                 return false;
                             }
 
@@ -300,6 +301,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 // Check for final CRLF.
                                 if (ch2 == -1)
                                 {
+                                    // Reset the reader so we don't consume anything
+                                    reader = start;
                                     return false;
                                 }
                                 else if (ch2 == ByteLF)
@@ -322,7 +325,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                             Span<byte> headerSpan;
 
-                            var endIndex = IndexOf(pBuffer, index, length, ByteLF);
+                            var endIndex = IndexOf(pBuffer, index, remaining, ByteLF);
 
                             if (endIndex != -1)
                             {
@@ -383,11 +386,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private unsafe int IndexOf(byte* pBuffer, int index, int length, byte value)
         {
-            for (int i = index; i < length; i++)
+            for (int i = 0; i < length; i++, index++)
             {
-                if (pBuffer[i] == value)
+                if (pBuffer[index] == value)
                 {
-                    return i;
+                    return index;
                 }
             }
             return -1;
