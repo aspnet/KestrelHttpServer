@@ -260,11 +260,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 var span = reader.Span;
                 var length = span.Length;
-                var nextSpan = false;
+                var remaining = length;
 
                 fixed (byte* pBuffer = &span.DangerousGetPinnableReference())
                 {
-                    while (!nextSpan && !reader.End)
+                    while (remaining > 0)
                     {
                         var index = reader.Index;
                         var start = reader;
@@ -273,7 +273,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         int ch2;
 
                         // Fast path, we're still looking at the same span
-                        if ((length - index) >= 2)
+                        if (remaining >= 2)
                         {
                             ch1 = pBuffer[index];
                             ch2 = pBuffer[index + 1];
@@ -339,7 +339,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             lineEnd = buffer.Move(lineEnd, 1);
                             headerSpan = buffer.Slice(consumed, lineEnd).ToSpan();
 
-                            nextSpan = true;
+                            // We're going to the next span after this since we know we crossed spans here
+                            // so mark the remaining as equal to the headerSpan so that we end up at 0
+                            // on the next iteration
+                            remaining = headerSpan.Length;
                         }
 
                         if (!TakeSingleHeader(headerSpan, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
@@ -352,6 +355,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         consumed = reader.Cursor;
                         consumedBytes = reader.ConsumedBytes;
+                        remaining -= headerSpan.Length;
 
                         var nameBuffer = headerSpan.Slice(nameStart, nameEnd - nameStart);
                         var valueBuffer = headerSpan.Slice(valueStart, valueEnd - valueStart);
