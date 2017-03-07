@@ -337,15 +337,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 length = (endIndex - index + 1);
                                 var pHeader = pBuffer + index;
 
-                                if (!TakeSingleHeader(pHeader, length, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
-                                {
-                                    return false;
-                                }
-
-                                var nameBuffer = new Span<byte>(pHeader + nameStart, nameEnd - nameStart);
-                                var valueBuffer = new Span<byte>(pHeader + valueStart, valueEnd - valueStart);
-
-                                handler.OnHeader(nameBuffer, valueBuffer);
+                                TakeSingleHeader(pHeader, length, handler);
                             }
                             else
                             {
@@ -364,15 +356,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                                 fixed (byte* pHeader = &headerSpan.DangerousGetPinnableReference())
                                 {
-                                    if (!TakeSingleHeader(pHeader, headerSpan.Length, out var nameStart, out var nameEnd, out var valueStart, out var valueEnd))
-                                    {
-                                        return false;
-                                    }
-
-                                    var nameBuffer = new Span<byte>(pHeader + nameStart, nameEnd - nameStart);
-                                    var valueBuffer = new Span<byte>(pHeader + valueStart, valueEnd - valueStart);
-
-                                    handler.OnHeader(nameBuffer, valueBuffer);
+                                    TakeSingleHeader(pHeader, headerSpan.Length, handler);
                                 }
 
                                 // We're going to the next span after this since we know we crossed spans here
@@ -440,12 +424,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return -1;
         }
 
-        private unsafe bool TakeSingleHeader(byte* pHeader, int headerLineLength, out int nameStart, out int nameEnd, out int valueStart, out int valueEnd)
+        private unsafe void TakeSingleHeader<T>(byte* pHeader, int headerLineLength, T handler) where T : IHttpHeadersHandler
         {
-            nameStart = 0;
-            nameEnd = -1;
-            valueStart = -1;
-            valueEnd = -1;
+            var nameStart = 0;
+            var nameEnd = -1;
+            var valueStart = -1;
+            var valueEnd = -1;
             var index = 0;
 
             var pCurrent = pHeader + index;
@@ -530,7 +514,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 valueEnd++;
             }
 
-            return true;
+
+            var nameBuffer = new Span<byte>(pHeader + nameStart, nameEnd - nameStart);
+            var valueBuffer = new Span<byte>(pHeader + valueStart, valueEnd - valueStart);
+
+            handler.OnHeader(nameBuffer, valueBuffer);
         }
 
         private static bool IsValidTokenChar(char c)
