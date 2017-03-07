@@ -389,124 +389,88 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe int IndexOfNameEnd(byte* pBuffer, int index, int length)
+        private static unsafe int IndexOfNameEnd(byte* pBuffer, int length)
         {
-            var pCurrent = pBuffer + index;
-            var pEnd = pBuffer + index + length;
-            var result = -1;
+            var index = 0;
             var sawWhitespace = false;
-
-            while (pCurrent < pEnd)
+            for (; index < length; index++)
             {
-                var ch = *pCurrent;
+                var ch = pBuffer[index];
                 if (ch == ByteColon)
                 {
-                    if (sawWhitespace)
-                    {
-                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
-                    }
-
-                    result = index;
                     break;
                 }
-
                 if (ch == ByteTab || ch == ByteSpace)
                 {
                     sawWhitespace = true;
                 }
-
-                index++;
-                pCurrent++;
             }
-            return result;
-        }
 
-        private unsafe void TakeSingleHeader<T>(byte* pHeader, int headerLineLength, T handler) where T : IHttpHeadersHandler
-        {
-            var nameEnd = -1;
-            var valueStart = -1;
-            var valueEnd = -1;
-            var index = 0;
-            var pCurrent = pHeader + index;
-            var pEnd = pHeader + headerLineLength;
-
-            nameEnd = IndexOfNameEnd(pHeader, index, headerLineLength);
-
-            if (nameEnd == -1)
+            if (index == length)
             {
                 RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
             }
-
-            // Skip colon
-            index += nameEnd + 1;
-            pCurrent += index;
-            valueStart = index;
-            var pValueStart = pCurrent;
-
-            while (pCurrent < pEnd)
+            if (sawWhitespace)
             {
-                var ch = *pCurrent;
-                if (ch != ByteTab && ch != ByteSpace && ch != ByteCR)
-                {
-                    valueStart = index;
-                    pValueStart = pCurrent;
-                    break;
-                }
-                else if (ch == ByteCR)
-                {
-                    break;
-                }
-                pCurrent++;
-                index++;
+                RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
             }
+            return index;
+        }
 
-            var endIndex = headerLineLength - 1;
-            pEnd--;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void TakeSingleHeader<T>(byte* headerStart, int length, T handler) where T : IHttpHeadersHandler
+        {
+            // Skip CR, LF from end position
+            var valueEnd = length - 3;
+            var nameEnd = IndexOfNameEnd(headerStart, length);
 
-            if (*pEnd != ByteLF)
+            if (headerStart[valueEnd + 2] != ByteLF)
             {
                 RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
             }
-
-            endIndex--;
-            pEnd--;
-
-            if (*pEnd != ByteCR)
+            if (headerStart[valueEnd + 1] != ByteCR)
             {
                 RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
             }
 
-            endIndex--;
-            pEnd--;
-
-            while (pEnd >= pValueStart)
+            // Skip colon from value start
+            var valueStart = nameEnd + 1;
+            // Ignore start whitespace
+            for(; valueStart < valueEnd; valueStart++)
             {
-                var ch = *pEnd;
-                if (ch != ByteTab && ch != ByteSpace && ch != ByteCR && valueEnd == -1)
+                var ch = headerStart[valueStart];
+                if (ch != ByteTab && ch != ByteSpace && ch != ByteCR)
                 {
-                    valueEnd = endIndex;
+                    break;
                 }
                 else if (ch == ByteCR)
                 {
                     RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
                 }
-
-                pEnd--;
-                endIndex--;
             }
 
-            if (valueEnd == -1)
+            // Check for CR in value
+            for (var i = valueStart + 1; i <= valueEnd; i++)
             {
-                valueEnd = valueStart;
+                var ch = headerStart[i];
+                if (ch == ByteCR)
+                {
+                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                }
             }
-            else
+
+            // Ignore end whitespace
+            for (; valueEnd > valueStart; valueEnd--)
             {
-                valueEnd++;
+                var ch = headerStart[valueEnd];
+                if (ch != ByteTab && ch != ByteSpace)
+                {
+                    break;
+                }
             }
 
-
-            var nameBuffer = new Span<byte>(pHeader, nameEnd);
-            var valueBuffer = new Span<byte>(pHeader + valueStart, valueEnd - valueStart);
+            var nameBuffer = new Span<byte>(headerStart, nameEnd);
+            var valueBuffer = new Span<byte>(headerStart + valueStart, valueEnd - valueStart + 1);
 
             handler.OnHeader(nameBuffer, valueBuffer);
         }
@@ -536,20 +500,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 c == '~';
         }
 
-        public void RejectRequest(RequestRejectionReason reason)
+        public static void RejectRequest(RequestRejectionReason reason)
         {
             throw BadHttpRequestException.GetException(reason);
         }
 
-        public void RejectRequest(RequestRejectionReason reason, string value)
+        public static void RejectRequest(RequestRejectionReason reason, string value)
         {
             throw BadHttpRequestException.GetException(reason, value);
         }
 
         private void RejectRequestLine(Span<byte> span)
         {
+            throw GetRejectRequestLineException(span);
+        }
+
+        private BadHttpRequestException GetRejectRequestLineException(Span<byte> span)
+        {
             const int MaxRequestLineError = 32;
-            RejectRequest(RequestRejectionReason.InvalidRequestLine,
+            return BadHttpRequestException.GetException(RequestRejectionReason.InvalidRequestLine,
                 Log.IsEnabled(LogLevel.Information) ? span.GetAsciiStringEscaped(MaxRequestLineError) : string.Empty);
         }
 
