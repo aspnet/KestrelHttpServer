@@ -236,9 +236,11 @@ namespace Microsoft.AspNetCore.Testing
                 {
                     "Header : value\r\n\r\n",
                     "Header\t: value\r\n\r\n",
+                    "Header\r: value\r\n\r\n",
                     "Header 1: value1\r\nHeader-2: value2\r\n\r\n",
                     "Header 1 : value1\r\nHeader-2: value2\r\n\r\n",
                     "Header 1\t: value1\r\nHeader-2: value2\r\n\r\n",
+                    "Header 1\r: value1\r\nHeader-2: value2\r\n\r\n",
                     "Header-1: value1\r\nHeader 2: value2\r\n\r\n",
                     "Header-1: value1\r\nHeader-2 : value2\r\n\r\n",
                     "Header-1: value1\r\nHeader-2\t: value2\r\n\r\n",

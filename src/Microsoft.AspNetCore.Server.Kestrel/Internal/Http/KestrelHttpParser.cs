@@ -390,7 +390,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe int IndexOfNameEnd(byte* headerLine, int length)
+        private static unsafe int FindEndOfName(byte* headerLine, int length)
         {
             var index = 0;
             var sawWhitespace = false;
@@ -401,7 +401,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     break;
                 }
-                if (ch == ByteTab || ch == ByteSpace)
+                if (ch == ByteTab || ch == ByteSpace || ch == ByteCR)
                 {
                     sawWhitespace = true;
                 }
@@ -423,7 +423,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             // Skip CR, LF from end position
             var valueEnd = length - 3;
-            var nameEnd = IndexOfNameEnd(headerLine, length);
+            var nameEnd = FindEndOfName(headerLine, length);
 
             if (headerLine[valueEnd + 2] != ByteLF)
             {
