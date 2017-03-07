@@ -334,8 +334,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                             if (endIndex != -1)
                             {
-                                endIndex += index;
-                                length = (endIndex - index + 1);
+                                length = endIndex + 1;
                                 var pHeader = pBuffer + index;
 
                                 TakeSingleHeader(pHeader, length, handler);
@@ -354,17 +353,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 // Make sure LF is included in lineEnd
                                 lineEnd = buffer.Move(lineEnd, 1);
                                 var headerSpan = buffer.Slice(current, lineEnd).ToSpan();
+                                length = headerSpan.Length;
 
                                 fixed (byte* pHeader = &headerSpan.DangerousGetPinnableReference())
                                 {
-                                    TakeSingleHeader(pHeader, headerSpan.Length, handler);
+                                    TakeSingleHeader(pHeader, length, handler);
                                 }
 
                                 // We're going to the next span after this since we know we crossed spans here
                                 // so mark the remaining as equal to the headerSpan so that we end up at 0
                                 // on the next iteration
-                                remaining = headerSpan.Length;
-                                length = headerSpan.Length;
+                                remaining = length;
                             }
 
                             // Skip the reader forward past the header line
@@ -388,7 +387,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private unsafe int IndexOf(byte* pBuffer, int index, int length, byte value)
+        private unsafe static int IndexOf(byte* pBuffer, int index, int length, byte value)
         {
             var pCurrent = pBuffer + index;
             var pEnd = pBuffer + index + length;
@@ -406,7 +405,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return -1;
         }
 
-        private unsafe int IndexOfAny(byte* pBuffer, int index, int length, byte value, byte value1)
+        private unsafe static int IndexOfAny(byte* pBuffer, int index, int length, byte value, byte value1)
         {
             var pCurrent = pBuffer + index;
             var pEnd = pBuffer + index + length;
