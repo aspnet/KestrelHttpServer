@@ -453,32 +453,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             // Check for CR in value
             var i = valueStart + 1;
-            if (Vector.IsHardwareAccelerated)
+            if (Contains(headerLine + i, valueEnd - i, ByteCR))
             {
-                // Check Vector lengths
-                if (valueEnd - Vector<byte>.Count >= i)
-                {
-                    var vByteCR = GetVector(ByteCR);
-                    do
-                    {
-                        if (!Vector<byte>.Zero.Equals(Vector.Equals(vByteCR, Unsafe.Read<Vector<byte>>(headerLine + i))))
-                        {
-                            RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
-                        }
-
-                        i += Vector<byte>.Count;
-                    } while (valueEnd - Vector<byte>.Count >= i);
-                }
-            }
-
-            // Check remaining for CR
-            for (; i <= valueEnd; i++)
-            {
-                var ch = headerLine[i];
-                if (ch == ByteCR)
-                {
-                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
-                }
+                RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
             }
 
             // Ignore end whitespace
@@ -495,6 +472,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var valueBuffer = new Span<byte>(headerLine + valueStart, valueEnd - valueStart + 1);
 
             handler.OnHeader(nameBuffer, valueBuffer);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe bool Contains(byte* searchSpace, int length, byte value)
+        {
+            var i = 0;
+            if (Vector.IsHardwareAccelerated)
+            {
+                // Check Vector lengths
+                if (length - Vector<byte>.Count >= i)
+                {
+                    var vValue = GetVector(value);
+                    do
+                    {
+                        if (!Vector<byte>.Zero.Equals(Vector.Equals(vValue, Unsafe.Read<Vector<byte>>(searchSpace + i))))
+                        {
+                            goto found;
+                        }
+
+                        i += Vector<byte>.Count;
+                    } while (length - Vector<byte>.Count >= i);
+                }
+            }
+
+            // Check remaining for CR
+            for (; i <= length; i++)
+            {
+                var ch = searchSpace[i];
+                if (ch == value)
+                {
+                    goto found;
+                }
+            }
+            return false;
+        found:
+            return true;
         }
 
         private static bool IsValidTokenChar(char c)
