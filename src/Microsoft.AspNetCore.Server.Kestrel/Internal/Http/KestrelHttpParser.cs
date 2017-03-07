@@ -329,11 +329,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 index = reader.Index;
                             }
 
-                            var endIndex = IndexOf(pBuffer, index, remaining, ByteLF);
+                            var endIndex = new Span<byte>(pBuffer + index, remaining).IndexOfVectorized(ByteLF);
                             var length = 0;
 
                             if (endIndex != -1)
                             {
+                                endIndex += index;
                                 length = (endIndex - index + 1);
                                 var pHeader = pBuffer + index;
 
