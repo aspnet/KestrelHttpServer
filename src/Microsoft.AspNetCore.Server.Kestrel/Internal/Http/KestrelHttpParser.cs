@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -316,9 +317,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 // Headers don't end in CRLF line.
                                 RejectRequest(RequestRejectionReason.HeadersCorruptedInvalidHeaderSequence);
                             }
-                            else if (ch1 == ByteSpace || ch1 == ByteTab)
+                            else if(ch1 == ByteSpace || ch1 == ByteTab)
                             {
-                                RejectRequest(RequestRejectionReason.HeaderLineMustNotStartWithWhitespace);
+                                RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
                             }
 
                             // We moved the reader so look ahead 2 bytes so reset both the reader
@@ -387,41 +388,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private unsafe static int IndexOf(byte* pBuffer, int index, int length, byte value)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe int IndexOfNameEnd(byte* pBuffer, int index, int length)
         {
             var pCurrent = pBuffer + index;
             var pEnd = pBuffer + index + length;
+            var result = -1;
+            var sawWhitespace = false;
 
             while (pCurrent < pEnd)
             {
                 var ch = *pCurrent;
-                if (ch == value)
+                if (ch == ByteColon)
                 {
-                    return index;
+                    if (sawWhitespace)
+                    {
+                        RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
+                    }
+
+                    result = index;
+                    break;
                 }
-                pCurrent++;
-                index++;
-            }
-            return -1;
-        }
 
-        private unsafe static int IndexOfAny(byte* pBuffer, int index, int length, byte value, byte value1)
-        {
-            var pCurrent = pBuffer + index;
-            var pEnd = pBuffer + index + length;
-
-            while (pCurrent < pEnd)
-            {
-                var ch = *pCurrent;
-                if (ch == value || ch == value1)
+                if (ch == ByteTab || ch == ByteSpace)
                 {
-                    return index;
+                    sawWhitespace = true;
                 }
-                pCurrent++;
-                index++;
-            }
 
-            return -1;
+                index++;
+                pCurrent++;
+            }
+            return result;
         }
 
         private unsafe void TakeSingleHeader<T>(byte* pHeader, int headerLineLength, T handler) where T : IHttpHeadersHandler
@@ -433,16 +430,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var pCurrent = pHeader + index;
             var pEnd = pHeader + headerLineLength;
 
-            nameEnd = IndexOf(pHeader, index, headerLineLength, ByteColon);
+            nameEnd = IndexOfNameEnd(pHeader, index, headerLineLength);
 
             if (nameEnd == -1)
             {
                 RejectRequest(RequestRejectionReason.NoColonCharacterFoundInHeaderLine);
-            }
-
-            if (IndexOfAny(pHeader, index, nameEnd, ByteTab, ByteSpace) != -1)
-            {
-                RejectRequest(RequestRejectionReason.WhitespaceIsNotAllowedInHeaderName);
             }
 
             // Skip colon
