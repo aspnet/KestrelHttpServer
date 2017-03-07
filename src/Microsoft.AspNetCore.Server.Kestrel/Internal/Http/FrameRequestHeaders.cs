@@ -41,18 +41,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         [MethodImpl(MethodImplOptions.NoInlining)]
         private unsafe void AppendUnknownHeaders(byte* pKeyBytes, int keyLength, string value)
         {
-            string key = new string('\0', keyLength);
-            fixed (char* keyBuffer = key)
-            {
-                if (!AsciiUtilities.TryGetAsciiString(pKeyBytes, keyBuffer, keyLength))
-                {
-                    throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidCharactersInHeaderName);
-                }
-            }
+            var key = new Span<byte>(pKeyBytes, keyLength).GetPrevalidatedAsciiString();
 
-            StringValues existing;
-            Unknown.TryGetValue(key, out existing);
-            Unknown[key] = AppendValue(existing, value);
+            if (Unknown.TryGetValue(key, out StringValues existing))
+            {
+                Unknown[key] = AppendValue(existing, value);
+            }
+            else
+            {
+                Unknown[key] = value;
+            }
         }
 
         private static void ThrowInvalidContentLengthException(string value)

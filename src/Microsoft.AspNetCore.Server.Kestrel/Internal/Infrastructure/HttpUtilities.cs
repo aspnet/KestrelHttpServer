@@ -94,6 +94,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
+        public unsafe static string GetPrevalidatedAsciiString(this Span<byte> span)
+        {
+            string asciiString;
+            if (span.IsEmpty)
+            {
+                asciiString = string.Empty;
+            }
+            else
+            {
+                asciiString = new string('\0', span.Length);
+
+                fixed (char* output = asciiString)
+                fixed (byte* buffer = &span.DangerousGetPinnableReference())
+                {
+                    // This version if AsciiUtilities is for where the string has been validated during scan
+                    AsciiUtilities.GetPrevalidatedAsciiString(buffer, output, span.Length);
+                }
+            }
+
+            return asciiString;
+        }
+
         public unsafe static string GetAsciiStringNonNullCharacters(this Span<byte> span)
         {
             if (span.IsEmpty)

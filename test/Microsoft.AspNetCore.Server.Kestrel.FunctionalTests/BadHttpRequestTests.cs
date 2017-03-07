@@ -47,10 +47,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Theory]
-        [InlineData("Hea\0der: value", "Invalid characters in header name.")]
-        [InlineData("Header: va\0lue", "Malformed request: invalid headers.")]
-        [InlineData("Head\x80r: value", "Invalid characters in header name.")]
-        [InlineData("Header: valu\x80", "Malformed request: invalid headers.")]
+        [InlineData("Hea\0der: value", "Invalid characters in header.")]
+        [InlineData("Header: va\0lue", "Invalid characters in header.")]
+        [InlineData("Head\x80r: value", "Invalid characters in header.")]
+        [InlineData("Header: valu\x80", "Invalid characters in header.")]
         public Task BadRequestWhenHeaderNameContainsNonASCIIOrNullCharacters(string header, string expectedExceptionMessage)
         {
             return TestBadRequest(
