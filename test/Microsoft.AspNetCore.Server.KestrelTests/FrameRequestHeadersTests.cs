@@ -3,10 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
+using System.Linq;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Primitives;
 using Xunit;
 
@@ -303,16 +306,111 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(new StringValues(), entries[4].Value);
         }
 
-        [Fact]
-        public void AppendThrowsWhenHeaderNameContainsNonASCIICharacters()
+        [Theory]
+        [MemberData(nameof(RequestsWithInvalidHeaders))]
+        public void ParseThrowsWhenHeadersContainNonAsciiCharacters(byte[] data)
         {
-            var headers = new FrameRequestHeaders();
-            const string key = "\u00141ód\017c";
+            SetupParser();
+            InsertData(data);
 
-            var encoding = Encoding.GetEncoding("iso-8859-1");
-            var exception = Assert.Throws<BadHttpRequestException>(
-                () => headers.Append(encoding.GetBytes(key), "value"));
+            var exception = Assert.Throws<BadHttpRequestException>(() => ParseData());
             Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+        }
+
+        public static TheoryData<byte[]> RequestsWithInvalidHeaders
+        {
+            get
+            {
+                var encoding = Encoding.GetEncoding("iso-8859-1");
+                var start = "GET /plaintext HTTP/1.1\r\n" +
+                                    "Host: localhost\r\n";
+                var end = "\r\nAccept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7\r\n" +
+                                    "Connection: keep-alive\r\n\r\n";
+
+                return new TheoryData<byte[]>
+                {
+                    encoding.GetBytes(start + "Name: \u00141ód\017c" + end),
+                    encoding.GetBytes(start + "\u00141ód\017c: Value" + end),
+                    encoding.GetBytes(start + "\u00141ód\017c: \u00141ód\017c" + end),
+                    encoding.GetBytes(start + "Name\u00141ód\017c: \u00141ód\017c" + end),
+                    encoding.GetBytes(start + "\u00141ód\017c: Value\u00141ód\017c" + end),
+                    encoding.GetBytes(start + "Name\u00141ód\017c: Value\u00141ód\017c" + end),
+                    encoding.GetBytes(start + "Name: 6789012345\u00141ód\017c" + end),
+                    encoding.GetBytes(start + "Name: 67890123456\u00141ód\017c" + end),
+                    encoding.GetBytes(start + "Name: 67890123456789012345678901\u00141ód\017c" + end),
+                    encoding.GetBytes(start + "Name: 678901234567890123456789012\u00141ód\017c" + end),
+                };
+            }
+        }
+
+        public void SetupParser()
+        {
+            var connectionContext = new MockConnection(new KestrelServerOptions());
+            connectionContext.ListenerContext.ServiceContext.HttpParserFactory = 
+                frame => (IHttpParser)Activator.CreateInstance(typeof(KestrelHttpParser), 
+                         frame.ConnectionContext.ListenerContext.ServiceContext.Log);
+
+            Frame = new Frame<object>(application: null, context: connectionContext);
+            PipelineFactory = new PipeFactory();
+            Pipe = PipelineFactory.Create();
+        }
+
+        private void InsertData(byte[] bytes)
+        {
+            // There should not be any backpressure and task completes immediately
+            Pipe.Writer.WriteAsync(bytes).GetAwaiter().GetResult();
+        }
+
+        private void ParseData()
+        {
+            do
+            {
+                var awaitable = Pipe.Reader.ReadAsync();
+                if (!awaitable.IsCompleted)
+                {
+                    // No more data
+                    return;
+                }
+
+                var result = awaitable.GetAwaiter().GetResult();
+                var readableBuffer = result.Buffer;
+
+                Frame.Reset();
+
+                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
+                {
+                    ThrowInvalidStartLine();
+                }
+                Pipe.Reader.Advance(consumed, examined);
+
+                result = Pipe.Reader.ReadAsync().GetAwaiter().GetResult();
+                readableBuffer = result.Buffer;
+
+                Frame.InitializeHeaders();
+
+                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
+                {
+                    ThrowInvalidMessageHeaders();
+                }
+                Pipe.Reader.Advance(consumed, examined);
+            }
+            while (true);
+        }
+
+        public IPipe Pipe { get; set; }
+
+        public Frame<object> Frame { get; set; }
+
+        public PipeFactory PipelineFactory { get; set; }
+
+        private void ThrowInvalidStartLine()
+        {
+            throw new InvalidOperationException("Invalid StartLine");
+        }
+
+        private void ThrowInvalidMessageHeaders()
+        {
+            throw new InvalidOperationException("Invalid MessageHeaders");
         }
     }
 }
