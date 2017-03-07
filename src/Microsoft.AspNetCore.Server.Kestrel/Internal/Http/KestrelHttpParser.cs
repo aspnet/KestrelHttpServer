@@ -427,7 +427,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (headerStart[valueEnd + 2] != ByteLF)
             {
-                RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                goto headerValueContainsCR;
             }
             if (headerStart[valueEnd + 1] != ByteCR)
             {
@@ -446,7 +446,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else if (ch == ByteCR)
                 {
-                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                    goto headerValueContainsCR;
                 }
             }
 
@@ -463,7 +463,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if (!Vector<byte>.Zero.Equals(Vector.Equals(vByteCR, Unsafe.Read<Vector<byte>>(headerStart + i))))
                         {
-                            RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                            goto headerValueContainsCR;
                         }
 
                         i += Vector<byte>.Count;
@@ -477,7 +477,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var ch = headerStart[i];
                 if (ch == ByteCR)
                 {
-                    RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                    goto headerValueContainsCR;
                 }
             }
 
@@ -495,6 +495,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var valueBuffer = new Span<byte>(headerStart + valueStart, valueEnd - valueStart + 1);
 
             handler.OnHeader(nameBuffer, valueBuffer);
+            return;
+        headerValueContainsCR:
+            RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
         }
 
         private static bool IsValidTokenChar(char c)
