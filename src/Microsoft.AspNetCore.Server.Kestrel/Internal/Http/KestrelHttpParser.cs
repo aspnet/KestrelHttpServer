@@ -426,12 +426,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private unsafe void TakeSingleHeader<T>(byte* pHeader, int headerLineLength, T handler) where T : IHttpHeadersHandler
         {
-            var nameStart = 0;
             var nameEnd = -1;
             var valueStart = -1;
             var valueEnd = -1;
             var index = 0;
-
             var pCurrent = pHeader + index;
             var pEnd = pHeader + headerLineLength;
 
@@ -515,7 +513,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
 
-            var nameBuffer = new Span<byte>(pHeader + nameStart, nameEnd - nameStart);
+            var nameBuffer = new Span<byte>(pHeader, nameEnd);
             var valueBuffer = new Span<byte>(pHeader + valueStart, valueEnd - valueStart);
 
             handler.OnHeader(nameBuffer, valueBuffer);
