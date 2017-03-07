@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.IO.Pipelines;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -449,8 +450,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
+
             // Check for CR in value
-            for (var i = valueStart + 1; i <= valueEnd; i++)
+            var i = valueStart + 1;
+            if (Vector.IsHardwareAccelerated)
+            {
+                // Check Vector lengths
+                if (valueEnd - Vector<byte>.Count >= i)
+                {
+                    var vByteCR = GetVector(ByteCR);
+                    do
+                    {
+                        if (!Vector<byte>.Zero.Equals(Vector.Equals(vByteCR, Unsafe.Read<Vector<byte>>(headerStart + i))))
+                        {
+                            RejectRequest(RequestRejectionReason.HeaderValueMustNotContainCR);
+                        }
+
+                        i += Vector<byte>.Count;
+                    } while (valueEnd - Vector<byte>.Count >= i);
+                }
+            }
+
+            // Check remaining for CR
+            for (; i <= valueEnd; i++)
             {
                 var ch = headerStart[i];
                 if (ch == ByteCR)
@@ -527,13 +549,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         }
 
-        private enum HeaderState
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector<byte> GetVector(byte vectorByte)
         {
-            Name,
-            Whitespace,
-            ExpectValue,
-            ExpectNewLine,
-            Complete
+            // Vector<byte> .ctor doesn't become an intrinsic due to detection issue
+            // However this does cause it to become an intrinsic (with additional multiply and reg->reg copy)
+            // https://github.com/dotnet/coreclr/issues/7459#issuecomment-253965670
+            return Vector.AsVectorByte(new Vector<uint>(vectorByte * 0x01010101u));
         }
 
         private enum StartLineState
