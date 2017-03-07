@@ -390,13 +390,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe int IndexOfNameEnd(byte* pBuffer, int length)
+        private static unsafe int IndexOfNameEnd(byte* headerLine, int length)
         {
             var index = 0;
             var sawWhitespace = false;
             for (; index < length; index++)
             {
-                var ch = pBuffer[index];
+                var ch = headerLine[index];
                 if (ch == ByteColon)
                 {
                     break;
@@ -419,17 +419,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void TakeSingleHeader<T>(byte* headerStart, int length, T handler) where T : IHttpHeadersHandler
+        private unsafe void TakeSingleHeader<T>(byte* headerLine, int length, T handler) where T : IHttpHeadersHandler
         {
             // Skip CR, LF from end position
             var valueEnd = length - 3;
-            var nameEnd = IndexOfNameEnd(headerStart, length);
+            var nameEnd = IndexOfNameEnd(headerLine, length);
 
-            if (headerStart[valueEnd + 2] != ByteLF)
+            if (headerLine[valueEnd + 2] != ByteLF)
             {
                 goto headerValueContainsCR;
             }
-            if (headerStart[valueEnd + 1] != ByteCR)
+            if (headerLine[valueEnd + 1] != ByteCR)
             {
                 RejectRequest(RequestRejectionReason.MissingCRInHeaderLine);
             }
@@ -439,7 +439,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Ignore start whitespace
             for(; valueStart < valueEnd; valueStart++)
             {
-                var ch = headerStart[valueStart];
+                var ch = headerLine[valueStart];
                 if (ch != ByteTab && ch != ByteSpace && ch != ByteCR)
                 {
                     break;
@@ -461,7 +461,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     var vByteCR = GetVector(ByteCR);
                     do
                     {
-                        if (!Vector<byte>.Zero.Equals(Vector.Equals(vByteCR, Unsafe.Read<Vector<byte>>(headerStart + i))))
+                        if (!Vector<byte>.Zero.Equals(Vector.Equals(vByteCR, Unsafe.Read<Vector<byte>>(headerLine + i))))
                         {
                             goto headerValueContainsCR;
                         }
@@ -474,7 +474,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Check remaining for CR
             for (; i <= valueEnd; i++)
             {
-                var ch = headerStart[i];
+                var ch = headerLine[i];
                 if (ch == ByteCR)
                 {
                     goto headerValueContainsCR;
@@ -484,15 +484,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Ignore end whitespace
             for (; valueEnd > valueStart; valueEnd--)
             {
-                var ch = headerStart[valueEnd];
+                var ch = headerLine[valueEnd];
                 if (ch != ByteTab && ch != ByteSpace)
                 {
                     break;
                 }
             }
 
-            var nameBuffer = new Span<byte>(headerStart, nameEnd);
-            var valueBuffer = new Span<byte>(headerStart + valueStart, valueEnd - valueStart + 1);
+            var nameBuffer = new Span<byte>(headerLine, nameEnd);
+            var valueBuffer = new Span<byte>(headerLine + valueStart, valueEnd - valueStart + 1);
 
             handler.OnHeader(nameBuffer, valueBuffer);
             return;
