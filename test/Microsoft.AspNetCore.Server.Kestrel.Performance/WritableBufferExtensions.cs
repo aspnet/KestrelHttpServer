@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private unsafe static void CopyToFast(this ReadOnlySpan<byte> source, Span<byte> destination)
         {
-            if (destination.Length >= source.Length)
+            if (destination.Length < source.Length)
             {
                 throw new InvalidOperationException();
             }
