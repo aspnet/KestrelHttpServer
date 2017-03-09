@@ -21,6 +21,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             "Connection: keep-alive\r\n" +
             "\r\n";
 
+        // edge-casey - client's don't normally send this
+        private const string _plaintextAbsoluteUriRequest =
+            "GET http://localhost/plaintext HTTP/1.1\r\n" +
+            "Host: localhost\r\n" +
+            "Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7\r\n" +
+            "Connection: keep-alive\r\n" +
+            "\r\n";
+
         private const string _liveaspnetRequest =
             "GET / HTTP/1.1\r\n" +
             "Host: live.asp.net\r\n" +
@@ -52,6 +60,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         public static readonly byte[] PlaintextTechEmpowerPipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(_plaintextTechEmpowerRequest, Pipelining)));
         public static readonly byte[] PlaintextTechEmpowerRequest = Encoding.ASCII.GetBytes(_plaintextTechEmpowerRequest);
+
+        public static readonly byte[] PlaintextAbsoluteUriRequest = Encoding.ASCII.GetBytes(_plaintextAbsoluteUriRequest);
 
         public static readonly byte[] LiveaspnetPipelinedRequests = Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat(_liveaspnetRequest, Pipelining)));
         public static readonly byte[] LiveaspnetRequest = Encoding.ASCII.GetBytes(_liveaspnetRequest);
