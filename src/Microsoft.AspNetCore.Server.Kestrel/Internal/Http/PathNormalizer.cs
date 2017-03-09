@@ -1,12 +1,86 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Buffers;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public static class PathNormalizer
     {
+        public static unsafe int RemoveDotSegments(Span<byte> span)
+        {
+            var length = span.Length;
+
+            fixed (byte* start = &span.DangerousGetPinnableReference())
+            {
+                var end = start + length;
+                var src = start;
+                var dst = start;
+
+                while (src < end)
+                {
+                    if (end - src >= 3 && *src == '.' && *(src + 1) == '.' && *(src + 2) == '/')
+                    {
+                        src += 3;
+                    }
+                    else if (end - src >= 2 && *src == '.' && *(src + 1) == '/')
+                    {
+                        src += 2;
+                    }
+                    else if (end - src >= 3 && *src == '/' && *(src + 1) == '.' && *(src + 2) == '/')
+                    {
+                        src += 2;
+                    }
+                    else if (end - src == 2 && *src == '/' && *(src + 1) == '.')
+                    {
+                        src += 2;
+                    }
+                    else if ((end - src >= 4 && *src == '/' && *(src + 1) == '.' && *(src + 2) == '.' && *(src + 3) == '/') ||
+                             (end - src == 3 && *src == '/' && *(src + 1) == '.' && *(src + 2) == '.'))
+                    {
+                        src += 3;
+
+                        if (dst > start)
+                        {
+                            do
+                            {
+                                dst--;
+                            } while (dst > start && *dst != '/');
+                        }
+                    }
+                    else if (end - src == 1 && *src == '.')
+                    {
+                        src += 1;
+                    }
+                    else if (end - src == 2 && *src == '.' && *(src + 1) == '.')
+                    {
+                        src += 2;
+                    }
+                    else
+                    {
+                        do
+                        {
+                            *dst++ = *src++;
+
+                            if (src >= end || *src == '/')
+                            {
+                                break;
+                            }
+                        } while (src < end);
+                    }
+                }
+
+                if (dst == start)
+                {
+                    *dst = (byte)'/';
+                    return 1;
+                }
+
+                return (int)(dst - start);
+            }
+        }
+
         public static string RemoveDotSegments(string path)
         {
             if (ContainsDotSegments(path))
