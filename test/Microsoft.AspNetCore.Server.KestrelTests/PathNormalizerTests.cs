@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO.Pipelines;
 using System.Text;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Xunit;
@@ -23,7 +22,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("/a/b", "/a/./b")]
         [InlineData("/b", "/a/../b")]
         [InlineData("/a/", "/a/./")]
-        [InlineData("/a", "/a/.")]
+        [InlineData("/a/", "/a/.")]
+        [InlineData("/", "/a/../")]
+        [InlineData("/", "/a/..")]
         [InlineData("/", "/a/../b/../")]
         [InlineData("/", "/a/../b/..")]
         [InlineData("/b", "/a/../../b")]
