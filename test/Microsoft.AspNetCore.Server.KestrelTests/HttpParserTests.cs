@@ -44,22 +44,18 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var requestLineHandler = new Mock<IHttpRequestLineHandler>();
             requestLineHandler
                 .Setup(handler => handler.OnStartLine(
-                    It.IsAny<HttpMethod>(),
-                    It.IsAny<HttpVersion>(),
+                    It.IsAny<HttpRequestLineParseInfo>(),
                     It.IsAny<Span<byte>>(),
-                    It.IsAny<Span<byte>>(),
-                    It.IsAny<Span<byte>>(),
-                    It.IsAny<Span<byte>>(),
-                    It.IsAny<Span<byte>>(),
-                    It.IsAny<bool>()))
-                .Callback<HttpMethod, HttpVersion, Span<byte>, Span<byte>, Span<byte>, Span<byte>, Span<byte>, bool>((method, version, target, path, query, customMethod, line, pathEncoded) =>
+                    It.IsAny<int>(),
+                    It.IsAny<Span<byte>>()))
+                .Callback<HttpRequestLineParseInfo, Span<byte>, int, Span<byte>> ((parseDetails, target, queryLength, customMethod) =>
                 {
+                    var method = parseDetails.HttpMethod;
                     parsedMethod = method != HttpMethod.Custom ? HttpUtilities.MethodToString(method) : customMethod.GetAsciiStringNonNullCharacters();
-                    parsedVersion = HttpUtilities.VersionToString(version);
+                    parsedVersion = HttpUtilities.VersionToString(parseDetails.HttpVersion);
                     parsedRawTarget = target.GetAsciiStringNonNullCharacters();
-                    parsedRawPath = path.GetAsciiStringNonNullCharacters();
-                    parsedQuery = query.GetAsciiStringNonNullCharacters();
-                    pathEncoded = false;
+                    parsedRawPath = target.Slice(0, target.Length - queryLength).GetAsciiStringNonNullCharacters();
+                    parsedQuery = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
                 });
 
             Assert.True(parser.ParseRequestLine(requestLineHandler.Object, buffer, out var consumed, out var examined));
