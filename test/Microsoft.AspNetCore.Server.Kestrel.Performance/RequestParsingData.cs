@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             "\r\n";
 
         private const string _liveaspnetRequest =
-            "GET https://live.asp.net/ HTTP/1.1\r\n" +
+            "GET / HTTP/1.1\r\n" +
             "Host: live.asp.net\r\n" +
             "Connection: keep-alive\r\n" +
             "Upgrade-Insecure-Requests: 1\r\n" +
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             "\r\n";
 
         private const string _unicodeRequest =
-            "GET http://stackoverflow.com/questions/40148683/why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric HTTP/1.1\r\n" +
+            "GET /questions/40148683/why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric HTTP/1.1\r\n" +
             "Accept: text/html, application/xhtml+xml, image/jxr, */*\r\n" +
             "Accept-Language: en-US,en-GB;q=0.7,en;q=0.3\r\n" +
             "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36 Edge/15.14965\r\n" +
