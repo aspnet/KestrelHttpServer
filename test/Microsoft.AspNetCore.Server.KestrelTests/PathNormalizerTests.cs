@@ -47,7 +47,19 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData("/a/b..", "/a/b..")]
         [InlineData("a/b", "a/b")]
         [InlineData("a/c", "a/b/../c")]
+        [InlineData("a", "./a")]
+        [InlineData("a", "../a")]
+        [InlineData("a/b", "./a/b")]
+        [InlineData("/b", "../a/../b")]
+        [InlineData("/", ".")]
+        [InlineData("/", "..")]
         [InlineData("*", "*")]
+        [InlineData("/short", "/longlong/../short")]
+        [InlineData("/longlong", "/short/../longlong")]
+        [InlineData("/", "/longlong/../short/..")]
+        [InlineData("/", "/short/../longlong/..")]
+        [InlineData("/", "/longlong/../short/../")]
+        [InlineData("/", "/short/../longlong/../")]
         public void RemovesDotSegmentsSpan(string expected, string input)
         {
             var data = Encoding.ASCII.GetBytes(input);
