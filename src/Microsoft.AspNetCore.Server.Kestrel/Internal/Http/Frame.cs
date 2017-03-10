@@ -481,15 +481,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        protected async Task FireOnStarting()
+        protected Task FireOnStarting()
         {
-            Stack<KeyValuePair<Func<object, Task>, object>> onStarting = null;
+            Stack<KeyValuePair<Func<object, Task>, object>> onStarting;
             lock (_onStartingSync)
             {
                 onStarting = _onStarting;
                 _onStarting = null;
             }
-            if (onStarting != null)
+
+            if (onStarting == null)
+            {
+                return TaskCache.CompletedTask;
+            }
+            else
+            {
+                return FireOnStartingAwaited();
+            }
+
+            async Task FireOnStartingAwaited()
             {
                 try
                 {
@@ -505,15 +515,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        protected async Task FireOnCompleted()
+        protected Task FireOnCompleted()
         {
-            Stack<KeyValuePair<Func<object, Task>, object>> onCompleted = null;
+            Stack<KeyValuePair<Func<object, Task>, object>> onCompleted;
             lock (_onCompletedSync)
             {
                 onCompleted = _onCompleted;
                 _onCompleted = null;
             }
-            if (onCompleted != null)
+
+            if (onCompleted == null)
+            {
+                return TaskCache.CompletedTask;
+            }
+            else
+            {
+                return FireOnCompletedAwaited();
+            }
+
+            async Task FireOnCompletedAwaited()
             {
                 foreach (var entry in onCompleted)
                 {
@@ -535,17 +555,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Output.Flush();
         }
 
-        public async Task FlushAsync(CancellationToken cancellationToken)
+        public Task FlushAsync(CancellationToken cancellationToken)
         {
-            await InitializeResponse(0);
-            await Output.FlushAsync(cancellationToken);
+            var initializeTask = InitializeResponse(0);
+            if (initializeTask.Status == TaskStatus.RanToCompletion)
+            {
+                return Output.FlushAsync(cancellationToken);
+            }
+
+            return FlushAsyncAwaited();
+
+            async Task FlushAsyncAwaited()
+            {
+                await initializeTask;
+                await Output.FlushAsync(cancellationToken);
+            }
         }
 
         public void Write(ArraySegment<byte> data)
         {
             // For the first write, ensure headers are flushed if Write(Chunked) isn't called.
             var firstWrite = !HasResponseStarted;
-
             if (firstWrite)
             {
                 InitializeResponse(data.Count).GetAwaiter().GetResult();
@@ -559,26 +589,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (_autoChunk)
                 {
-                    if (data.Count == 0)
-                    {
-                        if (firstWrite)
-                        {
-                            Flush();
-                        }
-                        return;
-                    }
-                    WriteChunked(data);
+                    WriteChunked();
                 }
                 else
                 {
-                    CheckLastWrite();
-                    Output.Write(data);
+                    Write();
                 }
             }
             else
             {
                 HandleNonBodyResponseWrite();
+                FlushIfNeeded();
+            }
 
+            void Write()
+            {
+                CheckLastWrite();
+                Output.Write(data);
+            }
+
+            void WriteChunked()
+            {
+                if (data.Count == 0)
+                {
+                    FlushIfNeeded();
+                }
+                else
+                {
+                    Output.Write(data, chunk: true);
+                }
+            }
+
+            void FlushIfNeeded()
+            {
                 if (firstWrite)
                 {
                     Flush();
@@ -588,64 +631,69 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            if (!HasResponseStarted)
+            // For the first write, ensure headers are flushed if Write(Chunked)Async isn't called.
+            var firstWrite = !HasResponseStarted;
+            if (firstWrite)
             {
-                return WriteAsyncAwaited(data, cancellationToken);
-            }
-
-            VerifyAndUpdateWrite(data.Count);
-
-            if (_canHaveBody)
-            {
-                if (_autoChunk)
-                {
-                    if (data.Count == 0)
-                    {
-                        return TaskCache.CompletedTask;
-                    }
-                    return WriteChunkedAsync(data, cancellationToken);
-                }
-                else
-                {
-                    CheckLastWrite();
-                    return Output.WriteAsync(data, cancellationToken: cancellationToken);
-                }
+                return WriteAsyncMayAwait();
             }
             else
             {
-                HandleNonBodyResponseWrite();
-                return TaskCache.CompletedTask;
+                VerifyAndUpdateWrite(data.Count);
+                return WriteAsync();
             }
-        }
 
-        public async Task WriteAsyncAwaited(ArraySegment<byte> data, CancellationToken cancellationToken)
-        {
-            await InitializeResponseAwaited(data.Count);
-
-            // WriteAsyncAwaited is only called for the first write to the body.
-            // Ensure headers are flushed if Write(Chunked)Async isn't called.
-            if (_canHaveBody)
+            Task WriteAsyncMayAwait()
             {
-                if (_autoChunk)
+                var initializeTask = InitializeResponseMayAwait(data.Count);
+                if (initializeTask.Status == TaskStatus.RanToCompletion)
                 {
-                    if (data.Count == 0)
-                    {
-                        await FlushAsync(cancellationToken);
-                        return;
-                    }
+                    return WriteAsync();
+                }
 
-                    await WriteChunkedAsync(data, cancellationToken);
+                return WriteAsyncAwaited();
+
+                async Task WriteAsyncAwaited()
+                {
+                    await initializeTask;
+                    await WriteAsync();
+                }
+            }
+
+            Task WriteAsync()
+            {
+                if (_canHaveBody)
+                {
+                    if (_autoChunk)
+                    {
+                        if (data.Count == 0)
+                        {
+                            return FlushIfNeeded();
+                        }
+
+                        return Output.WriteAsync(data, chunk: true, cancellationToken: cancellationToken);
+                    }
+                    else
+                    {
+                        CheckLastWrite();
+                        return Output.WriteAsync(data, cancellationToken: cancellationToken);
+                    }
                 }
                 else
                 {
-                    CheckLastWrite();
-                    await Output.WriteAsync(data, cancellationToken: cancellationToken);
+                    HandleNonBodyResponseWrite();
+                    return FlushIfNeeded();
                 }
             }
-            else
+
+            Task FlushIfNeeded()
             {
-                HandleNonBodyResponseWrite();
-                await FlushAsync(cancellationToken);
+                if (!firstWrite)
+                {
+                    return TaskCache.CompletedTask;
+                }
+
+                return FlushAsync(cancellationToken);
             }
         }
 
@@ -705,21 +753,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private void WriteChunked(ArraySegment<byte> data)
-        {
-            Output.Write(data, chunk: true);
-        }
-
-        private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
-        {
-            return Output.WriteAsync(data, chunk: true, cancellationToken: cancellationToken);
-        }
-
-        private Task WriteChunkedResponseSuffix()
-        {
-            return Output.WriteAsync(_endChunkedResponseBytes);
-        }
-
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
         {
             var bytes = Encoding.ASCII.GetBytes(text);
@@ -751,7 +784,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (_onStarting != null)
             {
-                return InitializeResponseAwaited(firstWriteByteCount);
+                return InitializeResponseMayAwait(firstWriteByteCount);
             }
 
             if (_applicationException != null)
@@ -765,17 +798,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return TaskCache.CompletedTask;
         }
 
-        private async Task InitializeResponseAwaited(int firstWriteByteCount)
+        private Task InitializeResponseMayAwait(int firstWriteByteCount)
         {
-            await FireOnStarting();
-
-            if (_applicationException != null)
+            var startingTask = FireOnStarting();
+            if (startingTask.Status == TaskStatus.RanToCompletion)
             {
-                ThrowResponseAbortedException();
+                InitializeResponse();
+                return TaskCache.CompletedTask;
             }
 
-            VerifyAndUpdateWrite(firstWriteByteCount);
-            ProduceStart(appCompleted: false);
+            return InitializeResponseAwaited();
+
+            void InitializeResponse()
+            {
+                if (_applicationException != null)
+                {
+                    ThrowResponseAbortedException();
+                }
+
+                VerifyAndUpdateWrite(firstWriteByteCount);
+                ProduceStart(appCompleted: false);
+            }
+
+            async Task InitializeResponseAwaited()
+            {
+                await startingTask;
+                InitializeResponse();
+            }
         }
 
         private void ProduceStart(bool appCompleted)
@@ -809,15 +858,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         protected Task ProduceEnd()
         {
-            if (_requestRejectedException != null || _applicationException != null)
+            var hasResponseStarted = HasResponseStarted;
+            if (_requestRejectedException == null && _applicationException == null)
             {
-                if (HasResponseStarted)
+                // No exceptions
+                if (!hasResponseStarted)
                 {
-                    // We can no longer change the response, so we simply close the connection.
-                    _requestProcessingStopping = true;
-                    return TaskCache.CompletedTask;
+                    return ProduceEndMayAwait();
                 }
 
+                return WriteSuffix();
+            }
+            else if (!hasResponseStarted)
+            {
                 // If the request was rejected, the error state has already been set by SetBadRequestState and
                 // that should take precedence.
                 if (_requestRejectedException != null)
@@ -829,58 +882,86 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // 500 Internal Server Error
                     SetErrorResponseHeaders(statusCode: StatusCodes.Status500InternalServerError);
                 }
+
+                return ProduceEndMayAwait();
+            }
+            else
+            {
+                // We can no longer change the response, so we simply close the connection.
+                _requestProcessingStopping = true;
+                return TaskCache.CompletedTask;
             }
 
-            if (!HasResponseStarted)
+            Task ProduceEndMayAwait()
             {
-                return ProduceEndAwaited();
+                ProduceStart(appCompleted: true);
+
+                // Force flush
+                var flushTask = Output.FlushAsync();
+                if (flushTask.Status == TaskStatus.RanToCompletion)
+                {
+                    return WriteSuffix();
+                }
+                else
+                {
+                    return ProduceEndAwaited();
+                }
+
+                async Task ProduceEndAwaited()
+                {
+                    await flushTask;
+                    await WriteSuffix();
+                }
             }
 
-            return WriteSuffix();
-        }
-
-        private async Task ProduceEndAwaited()
-        {
-            ProduceStart(appCompleted: true);
-
-            // Force flush
-            await Output.FlushAsync();
-
-            await WriteSuffix();
-        }
-
-        private Task WriteSuffix()
-        {
-            // _autoChunk should be checked after we are sure ProduceStart() has been called
-            // since ProduceStart() may set _autoChunk to true.
-            if (_autoChunk)
+            Task WriteSuffix()
             {
-                return WriteAutoChunkSuffixAwaited();
-            }
+                // _autoChunk should be checked after we are sure ProduceStart() has been called
+                // since ProduceStart() may set _autoChunk to true.
+                if (_autoChunk)
+                {
+                    return WriteAutoChunkSuffixMayAwait();
+                }
 
-            if (_keepAlive)
-            {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
-            }
+                ProcessKeepAlive();
 
-            if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
-            {
-                Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
-            }
+                if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
+                {
+                    Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
+                }
 
-            return TaskCache.CompletedTask;
-        }
+                return TaskCache.CompletedTask;
 
-        private async Task WriteAutoChunkSuffixAwaited()
-        {
-            // For the same reason we call CheckLastWrite() in Content-Length responses.
-            _abortedCts = null;
+                Task WriteAutoChunkSuffixMayAwait()
+                {
+                    // For the same reason we call CheckLastWrite() in Content-Length responses.
+                    _abortedCts = null;
 
-            await WriteChunkedResponseSuffix();
+                    var responseSuffixTask = Output.WriteAsync(_endChunkedResponseBytes);
+                    if (responseSuffixTask.Status == TaskStatus.RanToCompletion)
+                    {
+                        ProcessKeepAlive();
+                        return TaskCache.CompletedTask;
+                    }
+                    else
+                    {
+                        return WriteAutoChunkSuffixAwaited();
+                    }
 
-            if (_keepAlive)
-            {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                    async Task WriteAutoChunkSuffixAwaited()
+                    {
+                        await responseSuffixTask;
+                        ProcessKeepAlive();
+                    }
+                }
+
+                void ProcessKeepAlive()
+                {
+                    if (_keepAlive)
+                    {
+                        ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                    }
+                }
             }
         }
 

@@ -500,24 +500,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public async Task RequestAbortedTokenIsResetBeforeLastWriteAsyncAwaitedWithContentLength()
-        {
-            _frame.ResponseHeaders["Content-Length"] = "12";
-
-            // Need to compare WaitHandle ref since CancellationToken is struct
-            var original = _frame.RequestAborted.WaitHandle;
-
-            foreach (var ch in "hello, worl")
-            {
-                await _frame.WriteAsyncAwaited(new ArraySegment<byte>(new[] { (byte)ch }), default(CancellationToken));
-                Assert.Same(original, _frame.RequestAborted.WaitHandle);
-            }
-
-            await _frame.WriteAsyncAwaited(new ArraySegment<byte>(new[] { (byte)'d' }), default(CancellationToken));
-            Assert.NotSame(original, _frame.RequestAborted.WaitHandle);
-        }
-
-        [Fact]
         public async Task RequestAbortedTokenIsResetBeforeLastWriteWithChunkedEncoding()
         {
             // Need to compare WaitHandle ref since CancellationToken is struct
