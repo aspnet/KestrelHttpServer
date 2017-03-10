@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public unsafe void Write(
             UvStreamHandle handle,
-            MemoryPoolIterator start,
-            MemoryPoolIterator end,
+            ReadableBuffer buffer,
             int nBuffers,
             Action<UvWriteReq, int, Exception, object> callback,
             object state)
@@ -61,19 +61,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                     _pins.Add(gcHandle);
                     pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
                 }
-
-                var block = start.Block;
-                for (var index = 0; index < nBuffers; index++)
+                var index = 0;
+                foreach (var memory in buffer)
                 {
-                    var blockStart = block == start.Block ? start.Index : block.Data.Offset;
-                    var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
+                    memory.TryGetPointer(out var pointer);
 
                     // create and pin each segment being written
                     pBuffers[index] = Libuv.buf_init(
-                        block.DataArrayPtr + blockStart,
-                        blockEnd - blockStart);
-
-                    block = block.Next;
+                        (IntPtr) pointer,
+                        memory.Length);
+                    index++;
                 }
 
                 _callback = callback;

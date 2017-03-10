@@ -49,12 +49,12 @@ namespace SampleApp
                         // Uncomment the following to enable Nagle's algorithm for this endpoint.
                         //listenOptions.NoDelay = false;
 
-                        listenOptions.UseConnectionLogging();
+                        //listenOptions.UseConnectionLogging();
                     });
                     options.Listen(IPAddress.Loopback, 5001, listenOptions =>
                     {
-                        listenOptions.UseHttps("testCert.pfx", "testPassword");
-                        listenOptions.UseConnectionLogging();
+                        //listenOptions.UseHttps("testCert.pfx", "testPassword");
+                        //listenOptions.UseConnectionLogging();
                     });
 
                     options.UseSystemd();

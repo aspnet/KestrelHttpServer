@@ -3,11 +3,14 @@
 
 using System;
 using System.IO;
+using System.IO.Pipelines;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
+using MemoryPoolBlock = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPoolBlock;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
@@ -121,6 +124,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         public Task FlushAsync(CancellationToken cancellationToken)
         {
             return _outputStream.FlushAsync(cancellationToken);
+        }
+
+        public WritableBuffer Alloc()
+        {
+            return default(WritableBuffer);
         }
     }
 }

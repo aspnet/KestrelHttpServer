@@ -59,7 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
             Input = Thread.PipelineFactory.Create(ListenerContext.LibuvPipeOptions);
-            Output = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
+            var outputPipe = Thread.PipelineFactory.Create(ListenerContext.LibuvOutputPipeOptions);
+            Output = new SocketOutput(outputPipe, Thread, _socket, this, ConnectionId, Log, ThreadPool);
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)

@@ -50,6 +50,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
         };
 
+        public PipeOptions LibuvOutputPipeOptions => new PipeOptions
+        {
+            ReaderScheduler = ServiceContext.ThreadPool,
+            WriterScheduler = Thread,
+            MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
+            MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+        };
+
         public PipeOptions AdaptedPipeOptions => new PipeOptions
         {
             ReaderScheduler = InlineScheduler.Default,
