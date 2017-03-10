@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Internal;
@@ -37,6 +38,11 @@ namespace Microsoft.AspNetCore.Testing
         public Task FlushAsync(CancellationToken cancellationToken = new CancellationToken())
         {
             return TaskCache.CompletedTask;
+        }
+
+        public WritableBuffer Alloc()
+        {
+            return default(WritableBuffer);
         }
     }
 }

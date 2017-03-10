@@ -118,11 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         _numBytesPreCompleted += 2;
                     }
                     // TODO: No backpressure
-                    var result = tail.FlushAsync();
-                    if (!result.IsCompleted)
-                    {
-                        
-                    }
+                    tail.FlushAsync();
                 }
 
                 if (_nextWriteContext == null)

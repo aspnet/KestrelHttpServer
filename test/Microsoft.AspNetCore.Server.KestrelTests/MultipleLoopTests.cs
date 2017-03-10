@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
+using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
@@ -72,25 +74,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 var writeRequest = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                 writeRequest.Init(loop);
-
-                var pool = new MemoryPool();
-                var block = pool.Lease();
-                block.GetIterator().CopyFrom(new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }));
-
-                var start = new MemoryPoolIterator(block, 0);
-                var end = new MemoryPoolIterator(block, block.Data.Count);
+                
                 writeRequest.Write(
                     serverConnectionPipe,
-                    start,
-                    end,
+                    ReadableBuffer.Create(new byte[] { 1, 2, 3, 4 }), 
                     1,
                     (handle, status2, error2, state2) =>
                     {
                         writeRequest.Dispose();
                         serverConnectionPipe.Dispose();
                         serverListenPipe.Dispose();
-                        pool.Return(block);
-                        pool.Dispose();
                     },
                     null);
             }, null);

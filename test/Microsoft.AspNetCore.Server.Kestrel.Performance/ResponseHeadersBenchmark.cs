@@ -49,18 +49,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             }
         }
 
-        [Benchmark(OperationsPerInvoke = InnerLoopCount)]
-        public void OutputHeaders()
-        {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                var block = _memoryPool.Lease();
-                var iter = new MemoryPoolIterator(block);
-                _responseHeadersDirect.CopyTo(ref iter);
+        // TODO: this is very slow anyway
+        //[Benchmark(OperationsPerInvoke = InnerLoopCount)]
+        //public void OutputHeaders()
+        //{
+        //    for (var i = 0; i < InnerLoopCount; i++)
+        //    {
+        //        var block = _memoryPool.Lease();
+        //        var iter = new MemoryPoolIterator(block);
+        //        _responseHeadersDirect.CopyTo(ref iter);
 
-                ReturnBlocks(block);
-            }
-        }
+        //        ReturnBlocks(block);
+        //    }
+        //}
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void ContentLengthNumeric(int count)
