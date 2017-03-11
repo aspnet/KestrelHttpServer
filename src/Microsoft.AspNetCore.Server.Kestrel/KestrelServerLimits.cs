@@ -96,6 +96,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     throw new ArgumentOutOfRangeException(nameof(value), "Value must be a positive integer.");
                 }
+                // See HttpRequestLineParseInfo QueryLength
+                if (value > 0x1ffffff)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), "Value must be less than 32 MB.");
+                }
                 _maxRequestLineSize = value;
             }
         }

@@ -1249,7 +1249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Log.ApplicationError(ConnectionId, ex);
         }
 
-        public void OnRequestLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength, Span<byte> customMethod)
+        public void OnRequestLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, Span<byte> customMethod)
         {
             Debug.Assert(target.Length != 0, "Request target must be non-zero length");
 
@@ -1259,14 +1259,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 : customMethod.GetAsciiStringNonNullCharacters();
 
             HttpVersion = HttpUtilities.VersionToString(parseInfo.HttpVersion);
-
             var ch = target[0];
             if (ch == ByteForwardSlash)
             {
                 // origin-form.
                 // The most common form of request-target.
                 // https://tools.ietf.org/html/rfc7230#section-5.3.1
-                OnOriginFormTarget(parseInfo, target, queryLength);
+                OnOriginFormTarget(parseInfo, target);
             }
             else if (ch == ByteAsterisk && target.Length == 1)
             {
@@ -1274,7 +1273,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else if (target.GetKnownHttpScheme(out var scheme))
             {
-                OnAbsoluteFormTarget(target, queryLength, parseInfo.DoesPathContainDots);
+                OnAbsoluteFormTarget(parseInfo, target);
             }
             else
             {
@@ -1292,10 +1291,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Debug.Assert(HttpVersion != "HttpVersion was not set");
         }
 
-        private void OnOriginFormTarget(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength)
+        private void OnOriginFormTarget(HttpRequestLineParseInfo parseInfo, Span<byte> target)
         {
             Debug.Assert(target[0] == ByteForwardSlash, "Should only be called when path starts with /");
-
+            var queryLength = parseInfo.QueryLength;
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
@@ -1388,7 +1387,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             QueryString = string.Empty;
         }
 
-        private void OnAbsoluteFormTarget(Span<byte> target, int queryLength, bool doesPathContainDots)
+        private void OnAbsoluteFormTarget(HttpRequestLineParseInfo parseInfo, Span<byte> target)
         {
             // absolute-form
             // https://tools.ietf.org/html/rfc7230#section-5.3.2
@@ -1410,8 +1409,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectRequestLine(target);
             }
 
-            SetNormalizedPath(uri.LocalPath, doesPathContainDots);
+            SetNormalizedPath(uri.LocalPath, parseInfo.DoesPathContainDots);
             // don't use uri.Query because we need the unescaped version
+            var queryLength = parseInfo.QueryLength;
             QueryString = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
         }
 

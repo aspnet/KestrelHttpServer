@@ -46,14 +46,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 .Setup(handler => handler.OnRequestLine(
                     It.IsAny<HttpRequestLineParseInfo>(),
                     It.IsAny<Span<byte>>(),
-                    It.IsAny<int>(),
                     It.IsAny<Span<byte>>()))
-                .Callback<HttpRequestLineParseInfo, Span<byte>, int, Span<byte>> ((parseDetails, target, queryLength, customMethod) =>
+                .Callback<HttpRequestLineParseInfo, Span<byte>, Span<byte>> ((parseDetails, target, customMethod) =>
                 {
                     var method = parseDetails.HttpMethod;
                     parsedMethod = method != HttpMethod.Custom ? HttpUtilities.MethodToString(method) : customMethod.GetAsciiStringNonNullCharacters();
                     parsedVersion = HttpUtilities.VersionToString(parseDetails.HttpVersion);
                     parsedRawTarget = target.GetAsciiStringNonNullCharacters();
+                    var queryLength = parseDetails.QueryLength;
                     parsedRawPath = target.Slice(0, target.Length - queryLength).GetAsciiStringNonNullCharacters();
                     parsedQuery = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
                 });

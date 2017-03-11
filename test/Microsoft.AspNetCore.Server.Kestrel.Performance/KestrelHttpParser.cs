@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             }
         }
 
-        public void OnRequestLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength, Span<byte> customMethod)
+        public void OnRequestLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, Span<byte> customMethod)
         {
         }
 

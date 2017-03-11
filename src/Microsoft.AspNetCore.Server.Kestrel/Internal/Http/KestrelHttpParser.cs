@@ -138,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             var targetBuffer = new Span<byte>(data + pathStart, offset - pathStart);
-            var queryLength = offset - queryStart;
+            parseInfo.QueryLength = offset - queryStart;
 
             // Consume space
             offset++;
@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectRequestLine(data, length);
             }
 
-            handler.OnRequestLine(parseInfo, targetBuffer, queryLength, customMethod);
+            handler.OnRequestLine(parseInfo, targetBuffer, customMethod);
         }
 
         public unsafe bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes) where T : IHttpHeadersHandler

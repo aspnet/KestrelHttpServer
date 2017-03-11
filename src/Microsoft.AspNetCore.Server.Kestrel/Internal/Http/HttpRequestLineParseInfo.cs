@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Runtime.CompilerServices;
@@ -7,17 +7,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public struct HttpRequestLineParseInfo
     {
-        // Http10 = 0,
-        // Http11 = 1,
-        // HttpMethod: 2 - 32
-        private const int PathEncoded = 64;
-        private const int PathContainsDots = 128;
+        // ** Bit usage
+        // Http10 =                                              0b0000_0000_0000_0000
+        // Http11 =                                              0b0000_0000_0000_0001
+        private const uint HttpMethodGetMask =                                  0b1111; // 0 - 15
+        private const uint HttpMethodSetMask =                   0b0000_0000_0001_1110; // >> 1 = 0 - 15
+        private const uint PathEncodedFlag =                     0b0000_0000_0010_0000; // 32
+        private const uint PathContainsDotsFlag =                0b0000_0000_0100_0000; // 64
+        private const uint QueryLengthMask = 0b1111_1111_1111_1111_1111_1111_1000_0000; // Max size 33,554,431‬ bytes (32MB)
 
-        private int _details;
+        private uint _details;
 
         public HttpRequestLineParseInfo(HttpMethod method)
         {
-            _details = ((int)method << 1);
+            _details = ((uint)method << 1);
         }
 
         public HttpVersion HttpVersion
@@ -25,16 +28,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                // Get version (Note does not work with Unknown version; which is -1)
-                // The parser should throw for Unknown. Could throw in the set
-                // but the parser's throw will contain more context.
-                return (HttpVersion)(_details & 1);
+                return (HttpVersion)(_details & 1u);
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
+                if (((uint)value & 1u) != (uint)value)
+                {
+                    RejectRequestUnrecognizedHTTPVersion();
+                }
                 // Clear and set version
-                _details = (_details & ~1) | (int)value;
+                _details = (_details & ~1u) | (uint)value;
             }
         }
 
@@ -44,13 +48,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 // HttpMethod is shifted up one bit; shift down and mask
-                return (HttpMethod)((_details >> 1) & 0xF);
+                return (HttpMethod)((_details >> 1) & HttpMethodGetMask);
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 // HttpMethod is shifted up one bit; clear and shift up and set
-                _details = (_details & ~0x1E) | (int)value << 1;
+                _details = (_details & ~HttpMethodSetMask) | (uint)value << 1;
             }
         }
         public bool IsPathEncoded
@@ -59,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 // Check flag
-                return (_details & PathEncoded) != 0;
+                return (_details & PathEncodedFlag) != 0;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
@@ -67,12 +71,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (value)
                 {
                     // Set flag
-                    _details |= PathEncoded;
+                    _details |= PathEncodedFlag;
                 }
                 else
                 {
                     // Clear flag
-                    _details &= ~PathEncoded;
+                    _details &= ~PathEncodedFlag;
                 }
             }
         }
@@ -82,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             get
             {
                 // Check flag
-                return (_details & PathContainsDots) != 0;
+                return (_details & PathContainsDotsFlag) != 0;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
@@ -90,14 +94,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (value)
                 {
                     // Set flag
-                    _details |= PathContainsDots;
+                    _details |= PathContainsDotsFlag;
                 }
                 else
                 {
                     // Clear flag
-                    _details &= ~PathContainsDots;
+                    _details &= ~PathContainsDotsFlag;
                 }
             }
+        }
+
+        public int QueryLength
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return (int)((_details & QueryLengthMask) >> 7);
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set
+            {
+                var val = (uint)value;
+                if (val > 0x1ffffff)
+                {
+                    // Definately too long
+                    RejectRequestRequestLineTooLong();
+                }
+                _details = (_details & ~QueryLengthMask) | val << 7;
+            }
+        }
+
+        private static void RejectRequestRequestLineTooLong()
+        {
+            throw RejectRequest(RequestRejectionReason.RequestLineTooLong);
+        }
+
+        private static void RejectRequestUnrecognizedHTTPVersion()
+        {
+            throw RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion);
+        }
+
+        private static BadHttpRequestException RejectRequest(RequestRejectionReason reason)
+        {
+            return BadHttpRequestException.GetException(reason);
         }
     }
 }

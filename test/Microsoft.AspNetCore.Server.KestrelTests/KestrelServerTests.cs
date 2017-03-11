@@ -69,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         [Theory]
         [InlineData(1, 2)]
-        [InlineData(int.MaxValue - 1, int.MaxValue)]
+        [InlineData(0x1ffffff - 1, 0x1ffffff)]
         public void StartWithMaxRequestBufferSizeLessThanMaxRequestLineSizeThrows(long maxRequestBufferSize, int maxRequestLineSize)
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };

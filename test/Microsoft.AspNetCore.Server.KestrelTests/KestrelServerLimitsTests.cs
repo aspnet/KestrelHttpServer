@@ -75,6 +75,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [InlineData(int.MinValue)]
         [InlineData(-1)]
         [InlineData(0)]
+        [InlineData(0x1ffffff + 1)]
+        [InlineData(int.MaxValue)]
         public void MaxRequestLineSizeInvalid(int value)
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -85,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         [Theory]
         [InlineData(1)]
-        [InlineData(int.MaxValue)]
+        [InlineData(0x1ffffff)]
         public void MaxRequestLineSizeValid(int value)
         {
             var o = new KestrelServerLimits();
