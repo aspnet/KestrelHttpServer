@@ -102,19 +102,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public unsafe static string GetAsciiStringNonNullCharacters(this Span<byte> span)
         {
-            if (span.IsEmpty)
+            var length = span.Length;
+            if (length == 0)
             {
                 return string.Empty;
             }
 
-            var asciiString = new string('\0', span.Length);
+            var asciiString = new string('\0', length);
 
             fixed (char* output = asciiString)
             fixed (byte* buffer = &span.DangerousGetPinnableReference())
             {
                 // This version if AsciiUtilities returns null if there are any null (0 byte) characters
                 // in the string
-                if (!AsciiUtilities.TryGetAsciiString(buffer, output, span.Length))
+                if (!AsciiUtilities.TryGetAsciiString(buffer, output, length))
                 {
                     throw new InvalidOperationException();
                 }
@@ -353,7 +354,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param name="span">The span</param>
         /// <param name="knownScheme">A reference to the known scheme, if the input matches any</param>
         /// <returns>True when memory starts with known http or https schema</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetKnownHttpScheme(this Span<byte> span, out HttpScheme knownScheme)
         {
             if (span.TryRead<ulong>(out var value))
@@ -375,6 +375,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return false;
         }
 
+        /// <summary>
+        /// Checks 8 bytes from <paramref name="span"/> that correspond to 'http://' or 'https://'
+        /// </summary>
+        /// <param name="span">The span</param>
+        /// <returns>True when memory starts with known http or https schema</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool HasKnownHttpScheme(this Span<byte> span)
+        {
+            if (span.TryRead<ulong>(out var value) &&
+                ((value & _mask7Chars) == _httpSchemeLong) || 
+                 (value == _httpsSchemeLong))
+            {
+                return true;
+            }
+            return false;
+        }
+
         public static string VersionToString(HttpVersion httpVersion)
         {
             switch (httpVersion)
@@ -387,12 +404,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     return null;
             }
         }
+
         public static string MethodToString(HttpMethod method)
         {
-            int methodIndex = (int)method;
-            if (methodIndex >= 0 && methodIndex <= 8)
+            // Pattern to avoid addtional range check since we are prechecking
+            // https://github.com/dotnet/coreclr/pull/9773
+            var methodNames = _methodNames;
+            var methodIndex = (uint)method;
+            if (methodIndex < methodNames.Length)
             {
-                return _methodNames[methodIndex];
+                return methodNames[methodIndex];
             }
             return null;
         }

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -33,10 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                if (((uint)value & 1u) != (uint)value)
-                {
-                    RejectRequestUnrecognizedHTTPVersion();
-                }
+                Debug.Assert(((uint)value & 1u) == (uint)value);
                 // Clear and set version
                 _details = (_details & ~1u) | (uint)value;
             }
@@ -114,29 +112,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                var val = (uint)value;
-                if (val > 0x1ffffff)
-                {
-                    // Definately too long
-                    RejectRequestRequestLineTooLong();
-                }
-                _details = (_details & ~QueryLengthMask) | val << 7;
+                Debug.Assert((uint)value <= 0x1ffffff);
+                _details = (_details & ~QueryLengthMask) | ((uint)value) << 7;
             }
-        }
-
-        private static void RejectRequestRequestLineTooLong()
-        {
-            throw RejectRequest(RequestRejectionReason.RequestLineTooLong);
-        }
-
-        private static void RejectRequestUnrecognizedHTTPVersion()
-        {
-            throw RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion);
-        }
-
-        private static BadHttpRequestException RejectRequest(RequestRejectionReason reason)
-        {
-            return BadHttpRequestException.GetException(reason);
         }
     }
 }

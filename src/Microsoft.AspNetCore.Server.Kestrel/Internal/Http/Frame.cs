@@ -1254,11 +1254,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Debug.Assert(target.Length != 0, "Request target must be non-zero length");
 
             var method = parseInfo.HttpMethod;
-            Method = method != HttpMethod.Custom
-                ? HttpUtilities.MethodToString(method)
-                : customMethod.GetAsciiStringNonNullCharacters();
-
-            Debug.Assert(Method != null, "Non-custom method invalid enum value");
+            Method = HttpUtilities.MethodToString(method) ?? GetCustomMethodString(customMethod);
 
             HttpVersion = HttpUtilities.VersionToString(parseInfo.HttpVersion);
             var ch = target[0];
@@ -1273,7 +1269,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 OnAsteriskFormTarget(method);
             }
-            else if (target.GetKnownHttpScheme(out var scheme))
+            else if (target.HasKnownHttpScheme())
             {
                 OnAbsoluteFormTarget(parseInfo, target);
             }
@@ -1289,52 +1285,60 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Debug.Assert(RawTarget != null, "RawTarget was not set");
             Debug.Assert(Method != null, "Method was not set");
             Debug.Assert(Path != null, "Path was not set");
-            Debug.Assert(QueryString != "QueryString was not set");
-            Debug.Assert(HttpVersion != "HttpVersion was not set");
+            Debug.Assert(QueryString != null, "QueryString was not set");
+            Debug.Assert(HttpVersion != null, "HttpVersion was not set");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void OnOriginFormTarget(HttpRequestLineParseInfo parseInfo, Span<byte> target)
         {
             Debug.Assert(target[0] == ByteForwardSlash, "Should only be called when path starts with /");
             var queryLength = parseInfo.QueryLength;
+            string requestUrlPath;
+            // Set RawTarget and start with requestUrlPath as same
+            RawTarget = requestUrlPath = target.GetAsciiStringNonNullCharacters();
+
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-            string requestUrlPath;
             if (parseInfo.IsPathEncoded)
             {
-                // Read raw target before mutating memory.
-                RawTarget = target.GetAsciiStringNonNullCharacters();
-
                 // URI was encoded, unescape and then parse as utf8
-                requestUrlPath = GetUtf8String(target, target.Length - queryLength);
-            }
-            else
-            {
                 if (queryLength == 0)
                 {
-                    // No query, don't slice - raw target same
-                    // No need to allocate an extra string if the path didn't need
-                    // decoding and there's no query string following it.
-                    RawTarget = requestUrlPath = target.GetAsciiStringNonNullCharacters();
+                    requestUrlPath = GetUtf8String(target, target.Length);
+                    QueryString = String.Empty;
                 }
                 else
                 {
-                    RawTarget = target.GetAsciiStringNonNullCharacters();
-                    requestUrlPath = target.Slice(0, target.Length - queryLength).GetAsciiStringNonNullCharacters();
+                    var pathLength = target.Length - queryLength;
+                    requestUrlPath = GetUtf8String(target, pathLength);
+                    QueryString = target.Slice(pathLength, queryLength).GetAsciiStringNonNullCharacters();
                 }
             }
-
-            if (queryLength == 0)
+            else if (queryLength > 0)
             {
-                QueryString = String.Empty;
+                // Need to slice off the query string to get the path and query string
+                var pathLength = target.Length - queryLength;
+                requestUrlPath = target.Slice(0, pathLength).GetAsciiStringNonNullCharacters();
+                QueryString = target.Slice(pathLength, queryLength).GetAsciiStringNonNullCharacters();
             }
             else
             {
-                QueryString = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
+                // No query string requestUrlPath remains same as RawTarget
+                QueryString = String.Empty;
             }
 
-            SetNormalizedPath(requestUrlPath, parseInfo.DoesPathContainDots);
+
+            var doesPathContainDots = parseInfo.DoesPathContainDots;
+            if (string.IsNullOrEmpty(_pathBase) && !doesPathContainDots)
+            {
+                Path = requestUrlPath;
+            }
+            else
+            {
+                SetNormalizedPath(requestUrlPath, doesPathContainDots);
+            }
         }
 
         private void OnAuthorityFormTarget(HttpMethod method, Span<byte> target)
@@ -1425,6 +1429,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             SetNormalizedPath(uri.LocalPath, parseInfo.DoesPathContainDots);
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private void SetNormalizedPath(string requestPath, bool doesPathContainDots)
         {
             var normalizedTarget = !doesPathContainDots ? requestPath : PathNormalizer.RemoveDotSegments(requestPath);
@@ -1466,6 +1471,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var valueString = value.GetAsciiStringNonNullCharacters();
 
             FrameRequestHeaders.Append(name, valueString);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static string GetCustomMethodString(Span<byte> customMethod)
+        {
+            return customMethod.GetAsciiStringNonNullCharacters();
         }
     }
 }

@@ -61,10 +61,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private unsafe void ParseRequestLine<T>(T handler, byte* data, int length) where T : IHttpRequestLineHandler
         {
-            int offset;
             Span<byte> customMethod;
             // Get Method and set the offset
-            var method = HttpUtilities.GetKnownMethod(data, length, out offset);
+            var method = HttpUtilities.GetKnownMethod(data, length, out int offset);
             if (method == HttpMethod.Custom)
             {
                 customMethod = GetUnknownMethod(data, length, out offset);
