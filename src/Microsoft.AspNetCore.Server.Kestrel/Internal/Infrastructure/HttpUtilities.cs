@@ -392,19 +392,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string VersionToString(HttpVersion httpVersion)
         {
-            switch (httpVersion)
+            Debug.Assert(httpVersion == HttpVersion.Http11 || httpVersion == HttpVersion.Http10);
+
+            if (httpVersion == HttpVersion.Http11)
             {
-                case HttpVersion.Http10:
-                    return Http10Version;
-                case HttpVersion.Http11:
-                    return Http11Version;
-                default:
-                    return null;
+                return Http11Version;
             }
+            return Http10Version;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string MethodToString(HttpMethod method)
         {
             // Pattern to avoid addtional range check since we are prechecking

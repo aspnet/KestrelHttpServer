@@ -1257,6 +1257,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Method = HttpUtilities.MethodToString(method) ?? GetCustomMethodString(customMethod);
 
             HttpVersion = HttpUtilities.VersionToString(parseInfo.HttpVersion);
+
             var ch = target[0];
             if (ch == ByteForwardSlash)
             {
