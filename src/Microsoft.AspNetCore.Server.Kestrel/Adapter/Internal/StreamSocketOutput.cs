@@ -8,10 +8,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
-using MemoryPoolBlock = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPoolBlock;
-
 namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
     public class StreamSocketOutput : ISocketOutput
@@ -19,116 +15,98 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         private static readonly byte[] _endChunkBytes = Encoding.ASCII.GetBytes("\r\n");
         private static readonly byte[] _nullBuffer = new byte[0];
 
-        private readonly string _connectionId;
         private readonly Stream _outputStream;
-        private readonly MemoryPool _memory;
-        private readonly IKestrelTrace _logger;
-        private MemoryPoolBlock _producingBlock;
+        private readonly IPipe _pipe;
 
-        private bool _canWrite = true;
-
-        public StreamSocketOutput(string connectionId, Stream outputStream, MemoryPool memory, IKestrelTrace logger)
+        public StreamSocketOutput(Stream outputStream, IPipe pipe)
         {
-            _connectionId = connectionId;
             _outputStream = outputStream;
-            _memory = memory;
-            _logger = logger;
+            _pipe = pipe;
         }
 
         public void Write(ArraySegment<byte> buffer, bool chunk)
         {
+            var writableBuffer = _pipe.Writer.Alloc();
             if (chunk && buffer.Array != null)
             {
                 var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count);
-                _outputStream.Write(beginChunkBytes.Array, beginChunkBytes.Offset, beginChunkBytes.Count);
+                writableBuffer.Write(beginChunkBytes.Array);
             }
 
-            _outputStream.Write(buffer.Array ?? _nullBuffer, buffer.Offset, buffer.Count);
+            writableBuffer.Write(buffer.Array ?? _nullBuffer);
 
             if (chunk && buffer.Array != null)
             {
-                _outputStream.Write(_endChunkBytes, 0, _endChunkBytes.Length);
+                writableBuffer.Write(_endChunkBytes);
             }
+
+            writableBuffer.FlushAsync().GetAwaiter().GetResult();
         }
 
-        public Task WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
+        public async Task WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
         {
             if (chunk && buffer.Array != null)
             {
-                return WriteAsyncChunked(buffer, cancellationToken);
+                await WriteAsyncChunked(buffer, cancellationToken);
             }
 
-            return _outputStream.WriteAsync(buffer.Array ?? _nullBuffer, buffer.Offset, buffer.Count, cancellationToken);
+            var writableBuffer = _pipe.Writer.Alloc();
+
+            writableBuffer.Write(buffer.Array ?? _nullBuffer);
+            await writableBuffer.FlushAsync();
         }
 
         private async Task WriteAsyncChunked(ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
+            var writableBuffer = _pipe.Writer.Alloc();
+
             var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count);
 
-            await _outputStream.WriteAsync(beginChunkBytes.Array, beginChunkBytes.Offset, beginChunkBytes.Count, cancellationToken);
-            await _outputStream.WriteAsync(buffer.Array, buffer.Offset, buffer.Count, cancellationToken);
-            await _outputStream.WriteAsync(_endChunkBytes, 0, _endChunkBytes.Length, cancellationToken);
+            writableBuffer.Write(beginChunkBytes.Array);
+            writableBuffer.Write(buffer.Array);
+            writableBuffer.Write(_endChunkBytes);
+            //TODO: cancellationToken
+            await writableBuffer.FlushAsync();
         }
-
-        public MemoryPoolIterator ProducingStart()
-        {
-            _producingBlock = _memory.Lease();
-            return new MemoryPoolIterator(_producingBlock);
-        }
-
-        public void ProducingComplete(MemoryPoolIterator end)
-        {
-            var block = _producingBlock;
-            while (block != end.Block)
-            {
-                // If we don't handle an exception from _outputStream.Write() here, we'll leak memory blocks.
-                if (_canWrite)
-                {
-                    try
-                    {
-                         _outputStream.Write(block.Data.Array, block.Data.Offset, block.Data.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _canWrite = false;
-                        _logger.ConnectionError(_connectionId, ex);
-                    }
-                }
-
-                var returnBlock = block;
-                block = block.Next;
-                returnBlock.Pool.Return(returnBlock);
-            }
-            
-            if (_canWrite)
-            {
-                try
-                {
-                    _outputStream.Write(end.Block.Array, end.Block.Data.Offset, end.Index - end.Block.Data.Offset);
-                }
-                catch (Exception ex)
-                {
-                    _canWrite = false;
-                    _logger.ConnectionError(_connectionId, ex);
-                }
-            }
-
-            end.Block.Pool.Return(end.Block);
-        }
-
+        
         public void Flush()
         {
-            _outputStream.Flush();
+            //_outputStream.Flush();
         }
 
         public Task FlushAsync(CancellationToken cancellationToken)
         {
-            return _outputStream.FlushAsync(cancellationToken);
+            //return _outputStream.FlushAsync(cancellationToken);
+            return Task.FromResult(0);
         }
 
         public WritableBuffer Alloc()
         {
-            return default(WritableBuffer);
+            return _pipe.Writer.Alloc();
         }
+
+        public async Task WriteOutputAsync()
+        {
+            while (true)
+            {
+                var readResult = await _pipe.Reader.ReadAsync();
+                foreach (var memory in readResult.Buffer)
+                {
+                    var array = memory.GetArray();
+                    _outputStream.Write(array.Array, array.Offset, array.Count);
+                }
+                _pipe.Reader.Advance(readResult.Buffer.End);
+                if (readResult.Buffer.IsEmpty && readResult.IsCompleted)
+                {
+                    return;
+                }
+            }
+        }
+
+        public void Complete()
+        {
+            _pipe.Writer.Complete();
+        }
+
     }
 }

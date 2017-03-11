@@ -16,27 +16,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         private const int MinAllocBufferSize = 2048;
 
         private readonly Stream _filteredStream;
+        private StreamSocketOutput _output;
 
         public AdaptedPipeline(
-            string connectionId,
             Stream filteredStream,
             IPipe pipe,
-            MemoryPool memory,
-            IKestrelTrace logger)
+            IPipe pipe2)
         {
             Input = pipe;
-            Output = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
+            _output = new StreamSocketOutput(filteredStream, pipe2);
 
             _filteredStream = filteredStream;
         }
 
         public IPipe Input { get; }
 
-        public ISocketOutput Output { get; }
+        public ISocketOutput Output => _output;
 
         public void Dispose()
         {
             Input.Writer.Complete();
+        }
+
+        public Task WriteOutputAsync()
+        {
+            return _output.WriteOutputAsync();
         }
 
         public async Task ReadInputAsync()

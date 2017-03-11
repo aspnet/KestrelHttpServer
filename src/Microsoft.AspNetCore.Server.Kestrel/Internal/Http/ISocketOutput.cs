@@ -25,5 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         /// Be careful to ensure all appended blocks are backed by a <see cref="MemoryPoolSlab"/>. 
         /// </summary>
         WritableBuffer Alloc();
+
+        void Complete();
     }
 }

@@ -18,8 +18,8 @@
     <PackageReference Include="Microsoft.Extensions.TaskCache.Sources" Version="$(AspNetCoreVersion)" PrivateAssets="All" />
     <PackageReference Include="System.Numerics.Vectors" Version="$(CoreFxVersion)" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(CoreFxVersion)" />
-    <PackageReference Include="System.IO.Pipelines" Version="$(CoreFxLabsPipelinesVersion)" />
-    <PackageReference Include="System.Text.Encodings.Web.Utf8" Version="$(CoreFxLabsVersion)" />
+    <ProjectReference Include="D:\github\corefxlab\src\System.IO.Pipelines\System.IO.Pipelines.csproj" Version="$(CoreFxLabsPipelinesVersion)" />
+    <ProjectReference Include="D:\github\corefxlab\src\System.Text.Encodings.Web.Utf8\System.Text.Encodings.Web.Utf8.csproj" Version="$(CoreFxLabsVersion)" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">

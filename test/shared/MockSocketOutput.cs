@@ -44,5 +44,10 @@ namespace Microsoft.AspNetCore.Testing
         {
             return default(WritableBuffer);
         }
+
+        public void Complete()
+        {
+            
+        }
     }
 }

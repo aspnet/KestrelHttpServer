@@ -569,6 +569,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return _pipe.Writer.Alloc(1);
         }
 
+        public void Complete()
+        {
+            _pipe.Writer.Complete();
+        }
+
         private class WriteContext
         {
             private static readonly WaitCallback _completeWrite = (state) => ((WriteContext)state).CompleteOnThreadPool();

@@ -41,6 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private AdaptedPipeline _adaptedPipeline;
         private Stream _filteredStream;
         private Task _readInputTask;
+        private Task _writeOutputTask;
 
         private TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
 
@@ -198,11 +199,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 {
                     _filteredStream = adapterContext.ConnectionStream;
                     _adaptedPipeline = new AdaptedPipeline(
-                        ConnectionId,
                         adapterContext.ConnectionStream,
                         Thread.PipelineFactory.Create(ListenerContext.AdaptedPipeOptions),
-                        Thread.Memory,
-                        Log);
+                        Thread.PipelineFactory.Create(ListenerContext.AdaptedPipeOptions));
 
                     _frame.Input = _adaptedPipeline.Input;
                     _frame.Output = _adaptedPipeline.Output;
@@ -211,6 +210,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // This can happen if a client opens a connection and immediately closes it.
                     _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
                         ? _adaptedPipeline.ReadInputAsync()
+                        : TaskCache.CompletedTask;
+
+                    _writeOutputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
+                        ? _adaptedPipeline.WriteOutputAsync()
                         : TaskCache.CompletedTask;
                 }
 
