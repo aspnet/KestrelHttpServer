@@ -397,11 +397,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         {
             Debug.Assert(httpVersion == HttpVersion.Http11 || httpVersion == HttpVersion.Http10);
 
-            if (httpVersion == HttpVersion.Http11)
-            {
-                return Http11Version;
-            }
-            return Http10Version;
+            return (httpVersion == HttpVersion.Http11) ? Http11Version : Http10Version;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
