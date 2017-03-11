@@ -126,7 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                     HttpVersion = HttpVersion.Http11
                 };
 
-                handler.OnStartLine(parseInfo, new Span<byte>(_target), 0, Span<byte>.Empty);
+                handler.OnRequestLine(parseInfo, new Span<byte>(_target), 0, Span<byte>.Empty);
 
                 consumed = buffer.Start;
                 examined = buffer.End;

@@ -1249,7 +1249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Log.ApplicationError(ConnectionId, ex);
         }
 
-        public void OnStartLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength, Span<byte> customMethod)
+        public void OnRequestLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength, Span<byte> customMethod)
         {
             Debug.Assert(target.Length != 0, "Request target must be non-zero length");
 

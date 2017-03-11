@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectRequestLine(data, length);
             }
 
-            handler.OnStartLine(parseInfo, targetBuffer, queryLength, customMethod);
+            handler.OnRequestLine(parseInfo, targetBuffer, queryLength, customMethod);
         }
 
         public unsafe bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes) where T : IHttpHeadersHandler

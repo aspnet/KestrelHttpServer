@@ -7,6 +7,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public interface IHttpRequestLineHandler
     {
-        void OnStartLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength, Span<byte> customMethod);
+        void OnRequestLine(HttpRequestLineParseInfo parseInfo, Span<byte> target, int queryLength, Span<byte> customMethod);
     }
 }

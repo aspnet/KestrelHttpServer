@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             string parsedQuery = null;
             var requestLineHandler = new Mock<IHttpRequestLineHandler>();
             requestLineHandler
-                .Setup(handler => handler.OnStartLine(
+                .Setup(handler => handler.OnRequestLine(
                     It.IsAny<HttpRequestLineParseInfo>(),
                     It.IsAny<Span<byte>>(),
                     It.IsAny<int>(),
