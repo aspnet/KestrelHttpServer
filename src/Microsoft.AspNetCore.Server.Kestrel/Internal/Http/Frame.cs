@@ -1255,8 +1255,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var method = parseInfo.HttpMethod;
             Method = method != HttpMethod.Custom
-                ? HttpUtilities.MethodToString(method) ?? string.Empty
+                ? HttpUtilities.MethodToString(method)
                 : customMethod.GetAsciiStringNonNullCharacters();
+
+            Debug.Assert(Method != null, "Non-custom method invalid enum value");
 
             HttpVersion = HttpUtilities.VersionToString(parseInfo.HttpVersion);
             var ch = target[0];
@@ -1323,13 +1325,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            if (queryLength >= 0)
+            if (queryLength == 0)
             {
-                QueryString = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
+                QueryString = String.Empty;
             }
             else
             {
-                QueryString = String.Empty;
+                QueryString = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
             }
 
             SetNormalizedPath(requestUrlPath, parseInfo.DoesPathContainDots);
@@ -1409,10 +1411,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectRequestLine(target);
             }
 
-            SetNormalizedPath(uri.LocalPath, parseInfo.DoesPathContainDots);
             // don't use uri.Query because we need the unescaped version
             var queryLength = parseInfo.QueryLength;
-            QueryString = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
+            if (queryLength == 0)
+            {
+                QueryString = string.Empty;
+            }
+            else
+            {
+                QueryString = target.Slice(target.Length - queryLength, queryLength).GetAsciiStringNonNullCharacters();
+            }
+
+            SetNormalizedPath(uri.LocalPath, parseInfo.DoesPathContainDots);
         }
 
         private void SetNormalizedPath(string requestPath, bool doesPathContainDots)
