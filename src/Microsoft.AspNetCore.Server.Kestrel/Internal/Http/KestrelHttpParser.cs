@@ -24,6 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private const byte ByteCR = (byte)'\r';
         private const byte ByteLF = (byte)'\n';
         private const byte ByteColon = (byte)':';
+        private const byte ByteDot = (byte)'.';
         private const byte ByteSpace = (byte)' ';
         private const byte ByteTab = (byte)'\t';
         private const byte ByteQuestionMark = (byte)'?';
@@ -69,34 +70,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 customMethod = GetUnknownMethod(data, length, out offset);
             }
 
+            var parseInfo = new HttpRequestLineParseInfo(method);
+
             // Skip space
             offset++;
 
             byte ch = 0;
             // Target = Path and Query
-            var pathEncoded = false;
             var pathStart = -1;
             for (; offset < length; offset++)
             {
                 ch = data[offset];
                 if (ch == ByteSpace)
                 {
-                    if (pathStart == -1)
-                    {
-                        // Empty path is illegal
-                        RejectRequestLine(data, length);
-                    }
-
                     break;
                 }
                 else if (ch == ByteQuestionMark)
                 {
-                    if (pathStart == -1)
-                    {
-                        // Empty path is illegal
-                        RejectRequestLine(data, length);
-                    }
-
                     break;
                 }
                 else if (ch == BytePercentage)
@@ -104,10 +94,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (pathStart == -1)
                     {
                         // Path starting with % is illegal
-                        RejectRequestLine(data, length);
+                        break;
                     }
 
-                    pathEncoded = true;
+                    parseInfo.IsPathEncoded = true;
+                }
+                else if (ch == ByteDot)
+                {
+                    if (pathStart == -1)
+                    {
+                        pathStart = offset;
+                    }
+
+                    parseInfo.DoesPathContainDots = true;
                 }
                 else if (pathStart == -1)
                 {
@@ -117,11 +116,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (pathStart == -1)
             {
-                // End of path not found
+                // Start of path not found, or empty path
                 RejectRequestLine(data, length);
             }
 
-            var pathBuffer = new Span<byte>(data + pathStart, offset - pathStart);
+            var pathLength = offset - pathStart;
 
             var queryStart = offset;
             // Query string
@@ -139,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             var targetBuffer = new Span<byte>(data + pathStart, offset - pathStart);
-            var query = new Span<byte>(data + queryStart, offset - queryStart);
+            var queryLength = offset - queryStart;
 
             // Consume space
             offset++;
@@ -151,15 +150,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectUnknownVersion(data, length, offset);
             }
 
+            parseInfo.HttpVersion = httpVersion;
+
             //  After version 8 bytes and cr 1 byte, expect lf
             if (data[offset + 8 + 1] != ByteLF)
             {
                 RejectRequestLine(data, length);
             }
 
-            var line = new Span<byte>(data, length);
-
-            handler.OnStartLine(method, httpVersion, targetBuffer, pathBuffer, query, customMethod, line, pathEncoded);
+            handler.OnRequestLine(parseInfo, targetBuffer, queryLength, customMethod);
         }
 
         public unsafe bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes) where T : IHttpHeadersHandler

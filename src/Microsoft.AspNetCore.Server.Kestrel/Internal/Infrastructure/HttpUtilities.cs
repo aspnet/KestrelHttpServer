@@ -127,16 +127,104 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             var sb = new StringBuilder();
 
             int i;
-            for (i = 0; i < Math.Min(span.Length, maxChars); ++i)
+            int length = Math.Min(span.Length, maxChars);
+            for (i = 0; i < length; i++)
             {
                 var ch = span[i];
-                sb.Append(ch < 0x20 || ch >= 0x7F ? $"\\x{ch:X2}" : ((char)ch).ToString());
+                if (ch < 0x20 || ch >= 0x7F)
+                {
+                    sb.Append($"\\x{ch:X2}");
+                }
+                else
+                {
+                    sb.Append((char)ch);
+                }
             }
 
             if (span.Length > maxChars)
             {
                 sb.Append("...");
             }
+            return sb.ToString();
+        }
+
+        public static string GetRequestLineAsciiStringEscaped(this Span<byte> target, string method, string httpVersion, int maxChars)
+        {
+            // Reconstruct line for detailed exception
+            var sb = new StringBuilder();
+
+            int i = 0;
+
+            if (method.Length < maxChars)
+            {
+                i += method.Length;
+                sb.Append(method);
+            }
+            else
+            {
+                i += maxChars;
+                sb.Append(method.Substring(0, maxChars));
+            }
+
+            if (i < maxChars)
+            {
+                i++;
+                sb.Append(" ");
+            }
+
+            var methodLength = i;
+
+            var length = Math.Min(target.Length, maxChars - methodLength);
+            for (i = 0; i < length; i++)
+            {
+                var ch = target[i];
+                if (ch < 0x20 || ch >= 0x7F)
+                {
+                    sb.Append($"\\x{ch:X2}");
+                }
+                else
+                {
+                    sb.Append((char)ch);
+                }
+            }
+
+            i += methodLength;
+
+            if (i < maxChars)
+            {
+                sb.Append(" ");
+                i++;
+            }
+
+            if (i <= maxChars - httpVersion.Length)
+            {
+                sb.Append(httpVersion);
+                i += httpVersion.Length;
+            }
+            else
+            {
+                length = maxChars - i;
+                i += length;
+                sb.Append(httpVersion.Substring(0, length));
+            }
+
+            if (i < maxChars)
+            {
+                i++;
+                sb.Append(@"\x0D"); // CR
+            }
+
+            if (i < maxChars)
+            {
+                i++;
+                sb.Append(@"\x0A"); // LF
+            }
+
+            if (method.Length + httpVersion.Length + target.Length + 1 + 1 + 2 > maxChars)
+            {
+                sb.Append("...");
+            }
+
             return sb.ToString();
         }
 
