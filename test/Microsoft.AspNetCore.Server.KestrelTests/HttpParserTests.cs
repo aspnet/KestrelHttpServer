@@ -17,10 +17,13 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
-    public class HttpParserTests
+    public abstract class HttpParserTests<TParser>
+        where TParser : IHttpParser
     {
         // Returns true when all headers parsed
         // Return false otherwise
+
+        protected abstract IHttpParser CreateParser(object state);
 
         [Theory]
         [MemberData(nameof(RequestLineValidData))]
@@ -375,8 +378,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(buffer.End, consumed);
             Assert.Equal(buffer.End, examined);
         }
-
-        private IHttpParser CreateParser(IKestrelTrace log) => new KestrelHttpParser(log);
 
         public static IEnumerable<string[]> RequestLineValidData => HttpParsingData.RequestLineValidData;
 
