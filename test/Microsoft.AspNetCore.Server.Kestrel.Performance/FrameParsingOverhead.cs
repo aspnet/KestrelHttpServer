@@ -120,14 +120,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             public bool ParseRequestLine<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined) where T : IHttpRequestLineHandler
             {
-                handler.OnStartLine(HttpMethod.Get,
-                    HttpVersion.Http11,
-                    new Span<byte>(_target),
-                    new Span<byte>(_target),
-                    Span<byte>.Empty,
-                    Span<byte>.Empty,
-                    new Span<byte>(_startLine),
-                    false);
+                var parseInfo = new HttpRequestLineParseInfo()
+                {
+                    HttpMethod = HttpMethod.Get,
+                    HttpVersion = HttpVersion.Http11
+                };
+
+                handler.OnRequestLine(parseInfo, new Span<byte>(_target), Span<byte>.Empty);
 
                 consumed = buffer.Start;
                 examined = buffer.End;

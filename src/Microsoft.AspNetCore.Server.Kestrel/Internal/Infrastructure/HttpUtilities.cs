@@ -102,19 +102,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public unsafe static string GetAsciiStringNonNullCharacters(this Span<byte> span)
         {
-            if (span.IsEmpty)
+            var length = span.Length;
+            if (length == 0)
             {
                 return string.Empty;
             }
 
-            var asciiString = new string('\0', span.Length);
+            var asciiString = new string('\0', length);
 
             fixed (char* output = asciiString)
             fixed (byte* buffer = &span.DangerousGetPinnableReference())
             {
                 // This version if AsciiUtilities returns null if there are any null (0 byte) characters
                 // in the string
-                if (!AsciiUtilities.TryGetAsciiString(buffer, output, span.Length))
+                if (!AsciiUtilities.TryGetAsciiString(buffer, output, length))
                 {
                     throw new InvalidOperationException();
                 }
@@ -127,16 +128,104 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             var sb = new StringBuilder();
 
             int i;
-            for (i = 0; i < Math.Min(span.Length, maxChars); ++i)
+            int length = Math.Min(span.Length, maxChars);
+            for (i = 0; i < length; i++)
             {
                 var ch = span[i];
-                sb.Append(ch < 0x20 || ch >= 0x7F ? $"\\x{ch:X2}" : ((char)ch).ToString());
+                if (ch < 0x20 || ch >= 0x7F)
+                {
+                    sb.Append($"\\x{ch:X2}");
+                }
+                else
+                {
+                    sb.Append((char)ch);
+                }
             }
 
             if (span.Length > maxChars)
             {
                 sb.Append("...");
             }
+            return sb.ToString();
+        }
+
+        public static string GetRequestLineAsciiStringEscaped(this Span<byte> target, string method, string httpVersion, int maxChars)
+        {
+            // Reconstruct line for detailed exception
+            var sb = new StringBuilder();
+
+            int i = 0;
+
+            if (method.Length < maxChars)
+            {
+                i += method.Length;
+                sb.Append(method);
+            }
+            else
+            {
+                i += maxChars;
+                sb.Append(method.Substring(0, maxChars));
+            }
+
+            if (i < maxChars)
+            {
+                i++;
+                sb.Append(" ");
+            }
+
+            var methodLength = i;
+
+            var length = Math.Min(target.Length, maxChars - methodLength);
+            for (i = 0; i < length; i++)
+            {
+                var ch = target[i];
+                if (ch < 0x20 || ch >= 0x7F)
+                {
+                    sb.Append($"\\x{ch:X2}");
+                }
+                else
+                {
+                    sb.Append((char)ch);
+                }
+            }
+
+            i += methodLength;
+
+            if (i < maxChars)
+            {
+                sb.Append(" ");
+                i++;
+            }
+
+            if (i <= maxChars - httpVersion.Length)
+            {
+                sb.Append(httpVersion);
+                i += httpVersion.Length;
+            }
+            else
+            {
+                length = maxChars - i;
+                i += length;
+                sb.Append(httpVersion.Substring(0, length));
+            }
+
+            if (i < maxChars)
+            {
+                i++;
+                sb.Append(@"\x0D"); // CR
+            }
+
+            if (i < maxChars)
+            {
+                i++;
+                sb.Append(@"\x0A"); // LF
+            }
+
+            if (method.Length + httpVersion.Length + target.Length + 1 + 1 + 2 > maxChars)
+            {
+                sb.Append("...");
+            }
+
             return sb.ToString();
         }
 
@@ -265,7 +354,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param name="span">The span</param>
         /// <param name="knownScheme">A reference to the known scheme, if the input matches any</param>
         /// <returns>True when memory starts with known http or https schema</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetKnownHttpScheme(this Span<byte> span, out HttpScheme knownScheme)
         {
             if (span.TryRead<ulong>(out var value))
@@ -287,24 +375,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return false;
         }
 
+        /// <summary>
+        /// Checks 8 bytes from <paramref name="span"/> that correspond to 'http://' or 'https://'
+        /// </summary>
+        /// <param name="span">The span</param>
+        /// <returns>True when memory starts with known http or https schema</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool HasKnownHttpScheme(this Span<byte> span)
+        {
+            if (span.TryRead<ulong>(out var value) &&
+                ((value & _mask7Chars) == _httpSchemeLong) || 
+                 (value == _httpsSchemeLong))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string VersionToString(HttpVersion httpVersion)
         {
-            switch (httpVersion)
-            {
-                case HttpVersion.Http10:
-                    return Http10Version;
-                case HttpVersion.Http11:
-                    return Http11Version;
-                default:
-                    return null;
-            }
+            Debug.Assert(httpVersion == HttpVersion.Http11 || httpVersion == HttpVersion.Http10);
+
+            return (httpVersion == HttpVersion.Http11) ? Http11Version : Http10Version;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string MethodToString(HttpMethod method)
         {
-            int methodIndex = (int)method;
-            if (methodIndex >= 0 && methodIndex <= 8)
+            // Pattern to avoid addtional range check since we are prechecking
+            // https://github.com/dotnet/coreclr/pull/9773
+            var methodNames = _methodNames;
+            var methodIndex = (uint)method;
+            if (methodIndex < methodNames.Length)
             {
-                return _methodNames[methodIndex];
+                return methodNames[methodIndex];
             }
             return null;
         }
