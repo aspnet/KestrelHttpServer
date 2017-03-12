@@ -8,7 +8,7 @@ using BenchmarkDotNet.Attributes;
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
     [Config(typeof(CoreConfig))]
-    public class RequestParsingData
+    public class RequestParsingDataBenchmark
     {
         public const int InnerLoopCount = 512;
 

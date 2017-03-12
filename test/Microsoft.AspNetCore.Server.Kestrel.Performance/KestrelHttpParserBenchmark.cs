@@ -10,38 +10,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
     [Config(typeof(CoreConfig))]
 
-    public class KestrelHttpParser : IHttpRequestLineHandler, IHttpHeadersHandler
+    public class KestrelHttpParserBenchmark : IHttpRequestLineHandler, IHttpHeadersHandler
     {
-        private readonly Internal.Http.KestrelHttpParser _parser = new Internal.Http.KestrelHttpParser(log: null);
+        private readonly KestrelHttpParser _parser = new KestrelHttpParser(log: null);
 
         private ReadableBuffer _buffer;
 
-        [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
+        [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
         public void PlaintextTechEmpower()
         {
-            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingData.PlaintextTechEmpowerRequest);
+                InsertData(RequestParsingDataBenchmark.PlaintextTechEmpowerRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
         public void LiveAspNet()
         {
-            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingData.LiveaspnetRequest);
+                InsertData(RequestParsingDataBenchmark.LiveaspnetRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
         public void Unicode()
         {
-            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingData.UnicodeRequest);
+                InsertData(RequestParsingDataBenchmark.UnicodeRequest);
                 ParseData();
             }
         }
@@ -55,14 +55,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             if (!_parser.ParseRequestLine(this, _buffer, out var consumed, out var examined))
             {
-                RequestParsing.ThrowInvalidRequestHeaders();
+                RequestParsingBenchmark.ThrowInvalidRequestHeaders();
             }
 
             _buffer = _buffer.Slice(consumed, _buffer.End);
 
             if (!_parser.ParseHeaders(this, _buffer, out consumed, out examined, out var consumedBytes))
             {
-                RequestParsing.ThrowInvalidRequestHeaders();
+                RequestParsingBenchmark.ThrowInvalidRequestHeaders();
             }
         }
 
