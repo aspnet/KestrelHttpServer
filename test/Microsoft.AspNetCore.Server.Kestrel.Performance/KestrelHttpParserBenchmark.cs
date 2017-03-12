@@ -16,32 +16,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private ReadableBuffer _buffer;
 
-        [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void PlaintextTechEmpower()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.PlaintextTechEmpowerRequest);
+                InsertData(RequestParsingData.PlaintextTechEmpowerRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void LiveAspNet()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.LiveaspnetRequest);
+                InsertData(RequestParsingData.LiveaspnetRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void Unicode()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.UnicodeRequest);
+                InsertData(RequestParsingData.UnicodeRequest);
                 ParseData();
             }
         }
@@ -55,14 +55,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             if (!_parser.ParseRequestLine(this, _buffer, out var consumed, out var examined))
             {
-                RequestParsingBenchmark.ThrowInvalidRequestHeaders();
+                ErrorUtilities.ThrowInvalidRequestHeaders();
             }
 
             _buffer = _buffer.Slice(consumed, _buffer.End);
 
             if (!_parser.ParseHeaders(this, _buffer, out consumed, out examined, out var consumedBytes))
             {
-                RequestParsingBenchmark.ThrowInvalidRequestHeaders();
+                ErrorUtilities.ThrowInvalidRequestHeaders();
             }
         }
 

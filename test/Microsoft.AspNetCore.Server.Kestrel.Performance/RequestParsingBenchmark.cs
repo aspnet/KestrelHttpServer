@@ -29,72 +29,72 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             Pipe = PipelineFactory.Create();
         }
 
-        [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void PlaintextTechEmpower()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.PlaintextTechEmpowerRequest);
+                InsertData(RequestParsingData.PlaintextTechEmpowerRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void PlaintextAbsoluteUri()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.PlaintextAbsoluteUriRequest);
+                InsertData(RequestParsingData.PlaintextAbsoluteUriRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount * RequestParsingDataBenchmark.Pipelining)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
         public void PipelinedPlaintextTechEmpower()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.PlaintextTechEmpowerPipelinedRequests);
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void LiveAspNet()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.LiveaspnetRequest);
+                InsertData(RequestParsingData.LiveaspnetRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount * RequestParsingDataBenchmark.Pipelining)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
         public void PipelinedLiveAspNet()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.LiveaspnetPipelinedRequests);
+                InsertData(RequestParsingData.LiveaspnetPipelinedRequests);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void Unicode()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.UnicodeRequest);
+                InsertData(RequestParsingData.UnicodeRequest);
                 ParseData();
             }
         }
 
-        [Benchmark(OperationsPerInvoke = RequestParsingDataBenchmark.InnerLoopCount * RequestParsingDataBenchmark.Pipelining)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
         public void UnicodePipelined()
         {
-            for (var i = 0; i < RequestParsingDataBenchmark.InnerLoopCount; i++)
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
-                InsertData(RequestParsingDataBenchmark.UnicodePipelinedRequests);
+                InsertData(RequestParsingData.UnicodePipelinedRequests);
                 ParseData();
             }
         }
@@ -125,7 +125,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
                 {
-                    ThrowInvalidRequestLine();
+                    ErrorUtilities.ThrowInvalidRequestLine();
                 }
                 Pipe.Reader.Advance(consumed, examined);
 
@@ -136,21 +136,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
                 {
-                    ThrowInvalidRequestHeaders();
+                    ErrorUtilities.ThrowInvalidRequestHeaders();
                 }
                 Pipe.Reader.Advance(consumed, examined);
             }
             while (true);
-        }
-
-        public static void ThrowInvalidRequestLine()
-        {
-            throw new InvalidOperationException("Invalid request line");
-        }
-
-        public static void ThrowInvalidRequestHeaders()
-        {
-            throw new InvalidOperationException("Invalid request headers");
         }
     }
 }

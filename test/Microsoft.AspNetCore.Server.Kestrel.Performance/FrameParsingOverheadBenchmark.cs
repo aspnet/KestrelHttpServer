@@ -60,14 +60,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             if (!_frame.TakeStartLine(_buffer, out var consumed, out var examined))
             {
-                RequestParsingBenchmark.ThrowInvalidRequestLine();
+                ErrorUtilities.ThrowInvalidRequestLine();
             }
 
             _frame.InitializeHeaders();
 
             if (!_frame.TakeMessageHeaders(_buffer, out consumed, out examined))
             {
-                RequestParsingBenchmark.ThrowInvalidRequestHeaders();
+                ErrorUtilities.ThrowInvalidRequestHeaders();
             }
         }
 
@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             if (!_frame.TakeStartLine(_buffer, out var consumed, out var examined))
             {
-                RequestParsingBenchmark.ThrowInvalidRequestLine();
+                ErrorUtilities.ThrowInvalidRequestLine();
             }
         }
 
@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             if (!_frame.TakeMessageHeaders(_buffer, out var consumed, out var examined))
             {
-                RequestParsingBenchmark.ThrowInvalidRequestHeaders();
+                ErrorUtilities.ThrowInvalidRequestHeaders();
             }
         }
 
