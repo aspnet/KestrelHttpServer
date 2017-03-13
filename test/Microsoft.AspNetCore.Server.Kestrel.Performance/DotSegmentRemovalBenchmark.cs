@@ -19,12 +19,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private readonly byte[] _noSegmentsBytes = Encoding.ASCII.GetBytes(_noSegments);
         private readonly byte[] _segmentsBytes = Encoding.ASCII.GetBytes(_segments);
 
+        private string _stringResult;
+        private int _spanResult;
+
         [Benchmark(Baseline = true, OperationsPerInvoke = InnerLoopCount)]
         public void StringNoSegments()
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                var result = PathNormalizer.RemoveDotSegments(_noSegments);
+                _stringResult = PathNormalizer.RemoveDotSegments(_noSegments);
             }
         }
 
@@ -33,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                var result = PathNormalizer.RemoveDotSegments(_segments);
+                _stringResult = PathNormalizer.RemoveDotSegments(_segments);
             }
         }
 
@@ -42,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                var result = PathNormalizer.RemoveDotSegments(new Span<byte>(_noSegmentsBytes, _noSegmentsBytes.Length));
+                _spanResult = PathNormalizer.RemoveDotSegments(_noSegmentsBytes);
             }
         }
 
@@ -51,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             for (var i = 0; i < InnerLoopCount; i++)
             {
-                var result = PathNormalizer.RemoveDotSegments(new Span<byte>(_segmentsBytes, _segmentsBytes.Length));
+                _spanResult = PathNormalizer.RemoveDotSegments(_segmentsBytes);
             }
         }
     }
