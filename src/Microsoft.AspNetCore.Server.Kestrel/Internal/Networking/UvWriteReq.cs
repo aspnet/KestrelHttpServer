@@ -3,8 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -15,12 +18,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public class UvWriteReq : UvRequest
     {
-        private readonly static Libuv.uv_write_cb _uv_write_cb = (IntPtr ptr, int status) => UvWriteCb(ptr, status);
+        private static readonly Libuv.uv_write_cb _uv_write_cb = (IntPtr ptr, int status) => UvWriteCb(ptr, status);
 
         private IntPtr _bufs;
 
-        private Action<UvWriteReq, int, Exception, object> _callback;
-        private object _state;
         private const int BUFFER_COUNT = 4;
 
         private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
@@ -38,19 +39,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                 loop.ThreadId,
                 requestSize + bufferSize);
             _bufs = handle + requestSize;
+            _state = _awaitableIsNotCompleted;
         }
 
-        public unsafe void Write(
+        public unsafe UvWriteReqAwaiter Write(
             UvStreamHandle handle,
-            ReadableBuffer buffer,
-            int nBuffers,
-            Action<UvWriteReq, int, Exception, object> callback,
-            object state)
+            ReadableBuffer buffer)
         {
             try
             {
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
+
+                var nBuffers = 0;
+                foreach (var _ in buffer)
+                {
+                    nBuffers++;
+                }
 
                 var pBuffers = (Libuv.uv_buf_t*)_bufs;
                 if (nBuffers > BUFFER_COUNT)
@@ -64,7 +69,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                 var index = 0;
                 foreach (var memory in buffer)
                 {
-                    memory.TryGetPointer(out var pointer);
+                    var tryGetPointerResult = memory.TryGetPointer(out var pointer);
+                    Debug.Assert(tryGetPointerResult);
 
                     // create and pin each segment being written
                     pBuffers[index] = Libuv.buf_init(
@@ -72,45 +78,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                         memory.Length);
                     index++;
                 }
-
-                _callback = callback;
-                _state = state;
+                
                 _uv.write(this, handle, pBuffers, nBuffers, _uv_write_cb);
             }
             catch
             {
-                _callback = null;
-                _state = null;
                 Unpin(this);
                 throw;
             }
+            return new UvWriteReqAwaiter(this);
         }
 
-        public void Write(
+        public UvWriteReqAwaiter Write(
             UvStreamHandle handle,
-            ArraySegment<ArraySegment<byte>> bufs,
-            Action<UvWriteReq, int, Exception, object> callback,
-            object state)
+            ArraySegment<ArraySegment<byte>> bufs)
         {
-            WriteArraySegmentInternal(handle, bufs, sendHandle: null, callback: callback, state: state);
+            return WriteArraySegmentInternal(handle, bufs, sendHandle: null);
         }
 
-        public void Write2(
+        public UvWriteReqAwaiter Write2(
             UvStreamHandle handle,
             ArraySegment<ArraySegment<byte>> bufs,
             UvStreamHandle sendHandle,
             Action<UvWriteReq, int, Exception, object> callback,
             object state)
         {
-            WriteArraySegmentInternal(handle, bufs, sendHandle, callback, state);
+            return WriteArraySegmentInternal(handle, bufs, sendHandle);
         }
 
-        private unsafe void WriteArraySegmentInternal(
+        private unsafe UvWriteReqAwaiter WriteArraySegmentInternal(
             UvStreamHandle handle,
             ArraySegment<ArraySegment<byte>> bufs,
-            UvStreamHandle sendHandle,
-            Action<UvWriteReq, int, Exception, object> callback,
-            object state)
+            UvStreamHandle sendHandle)
         {
             try
             {
@@ -140,9 +139,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                         buf.Count);
                 }
 
-                _callback = callback;
-                _state = state;
-
                 if (sendHandle == null)
                 {
                     _uv.write(this, handle, pBuffers, nBuffers, _uv_write_cb);
@@ -154,11 +150,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             }
             catch
             {
-                _callback = null;
-                _state = null;
                 Unpin(this);
                 throw;
             }
+            return new UvWriteReqAwaiter(this);
         }
 
         private static void Unpin(UvWriteReq req)
@@ -174,13 +169,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         {
             var req = FromIntPtr<UvWriteReq>(ptr);
             Unpin(req);
-
-            var callback = req._callback;
-            req._callback = null;
-
-            var state = req._state;
-            req._state = null;
-
+            
             Exception error = null;
             if (status < 0)
             {
@@ -189,13 +178,94 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
             try
             {
-                callback(req, status, error, state);
+                 req._error = error;
+                 req._status = status;
+                 req.Complete();
             }
             catch (Exception ex)
             {
                 req._log.LogError(0, ex, "UvWriteCb");
                 throw;
             }
+        }
+
+        public void Complete()
+        {
+            var awaitableState = _state;
+            _state = _awaitableIsCompleted;
+
+            if (!ReferenceEquals(awaitableState, _awaitableIsCompleted) &&
+                !ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
+            {
+                awaitableState();
+            }
+        }
+
+        public void OnCompleted(Action continuation)
+        {
+            var awaitableState = _state;
+            if (_state == _awaitableIsNotCompleted)
+            {
+                _state = continuation;
+            }
+
+            if (ReferenceEquals(awaitableState, _awaitableIsCompleted))
+            {
+                continuation();
+            }
+            else if (!ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
+            {
+                _state = _awaitableIsCompleted;
+
+                Task.Run(continuation);
+                Task.Run(awaitableState);
+            }
+        }
+
+
+        private static readonly Action _awaitableIsCompleted = () => { };
+        private static readonly Action _awaitableIsNotCompleted = () => { };
+        
+        private Action _state;
+        private Exception _error;
+        private int _status;
+
+        public UvWriteResult GetResult()
+        {
+            return new UvWriteResult(_status, _error);
+        }
+    }
+
+    public struct UvWriteReqAwaiter: ICriticalNotifyCompletion
+    {
+        private readonly UvWriteReq _req;
+
+        public UvWriteReqAwaiter(UvWriteReq req)
+        {
+            _req = req;
+        }
+        
+
+        public bool IsCompleted => false;
+
+        public UvWriteResult GetResult() => _req.GetResult();
+
+        public UvWriteReqAwaiter GetAwaiter() => this;
+
+        public void UnsafeOnCompleted(Action continuation) => _req.OnCompleted(continuation);
+
+        public void OnCompleted(Action continuation) => _req.OnCompleted(continuation);
+    }
+
+    public struct UvWriteResult
+    {
+        public int Status;
+        public Exception Error;
+
+        public UvWriteResult(int status, Exception error)
+        {
+            Status = status;
+            Error = error;
         }
     }
 }

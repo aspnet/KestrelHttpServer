@@ -181,17 +181,12 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                             for (var x = 0; x < 2; x++)
                             {
                                 var req = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
-                                req.Init(loop); var pool = new MemoryPool();
+                                req.Init(loop);
                                 var block = ReadableBuffer.Create(new byte[] { 65, 66, 67, 68, 69 });
                 
                                 req.Write(
                                     tcp2,
-                                    block,
-                                    1,
-                                    (_1, _2, _3, _4) =>
-                                    {
-                                    },
-                                    null);
+                                    block);
                             }
                         }
                     },

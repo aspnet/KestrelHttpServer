@@ -204,7 +204,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 try
                 {
                     Input.Reader.Complete();
-                    Output.Complete();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {

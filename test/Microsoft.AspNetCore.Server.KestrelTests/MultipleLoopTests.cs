@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             loop.Init(_uv);
             serverListenPipe.Init(loop, (a, b) => { }, false);
             serverListenPipe.Bind(pipeName);
-            serverListenPipe.Listen(128, (backlog, status, error, state) =>
+            serverListenPipe.Listen(128, async (backlog, status, error, state) =>
             {
                 var serverConnectionPipe = new UvPipeHandle(_logger);
                 serverConnectionPipe.Init(loop, (a, b) => { }, true);
@@ -75,17 +75,14 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var writeRequest = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                 writeRequest.Init(loop);
                 
-                writeRequest.Write(
+                await writeRequest.Write(
                     serverConnectionPipe,
-                    ReadableBuffer.Create(new byte[] { 1, 2, 3, 4 }), 
-                    1,
-                    (handle, status2, error2, state2) =>
-                    {
-                        writeRequest.Dispose();
-                        serverConnectionPipe.Dispose();
-                        serverListenPipe.Dispose();
-                    },
-                    null);
+                    ReadableBuffer.Create(new byte[] { 1, 2, 3, 4 }));
+
+                writeRequest.Dispose();
+                serverConnectionPipe.Dispose();
+                serverListenPipe.Dispose();
+
             }, null);
 
             var worker = new Thread(() =>
