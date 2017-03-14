@@ -11,6 +11,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         // In-place implementation of the algorithm from https://tools.ietf.org/html/rfc3986#section-5.2.4
         public static unsafe int RemoveDotSegments(Span<byte> span)
         {
+            const byte Slash = (byte)'/';
+            const byte Dot = (byte)'.';
+
             var length = span.Length;
 
             fixed (byte* start = &span.DangerousGetPinnableReference())
@@ -21,101 +24,165 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 while (src < end)
                 {
-                    if (end - src >= 3 && *src == '.' && *(src + 1) == '.' && *(src + 2) == '/')
-                    {
-                        // A.  If the input buffer begins with a prefix of "../" or "./",
-                        //     then remove that prefix from the input buffer; otherwise,
-                        src += 3;
-                    }
-                    else if (end - src >= 2 && *src == '.' && *(src + 1) == '/')
-                    {
-                        // A.  If the input buffer begins with a prefix of "../" or "./",
-                        //     then remove that prefix from the input buffer; otherwise,
-                        src += 2;
-                    }
-                    else if (end - src >= 3 && *src == '/' && *(src + 1) == '.' && *(src + 2) == '/')
-                    {
-                        // B.  if the input buffer begins with a prefix of "/./" or "/.",
-                        //     where "." is a complete path segment, then replace that
-                        //     prefix with "/" in the input buffer; otherwise,
-                        src += 2;
-                    }
-                    else if (end - src == 2 && *src == '/' && *(src + 1) == '.')
-                    {
-                        // B.  if the input buffer begins with a prefix of "/./" or "/.",
-                        //     where "." is a complete path segment, then replace that
-                        //     prefix with "/" in the input buffer; otherwise,
-                        src += 1;
-                        *src = (byte)'/';
-                    }
-                    else if (end - src >= 4 && *src == '/' && *(src + 1) == '.' && *(src + 2) == '.' && *(src + 3) == '/')
-                    {
-                        // C.  if the input buffer begins with a prefix of "/../" or "/..",
-                        //     where ".." is a complete path segment, then replace that
-                        //     prefix with "/" in the input buffer and remove the last
-                        //     segment and its preceding "/" (if any) from the output
-                        //     buffer; otherwise,
-                        src += 3;
+                    var ch1 = *src;
+                    byte ch2, ch3, ch4;
 
-                        if (dst > start)
-                        {
-                            do
+                    switch (end - src)
+                    {
+                        case 1:
+                            if (ch1 == Dot)
                             {
-                                dst--;
-                            } while (dst > start && *dst != '/');
-                        }
-                    }
-                    else if (end - src == 3 && *src == '/' && *(src + 1) == '.' && *(src + 2) == '.')
-                    {
-                        // C.  if the input buffer begins with a prefix of "/../" or "/..",
-                        //     where ".." is a complete path segment, then replace that
-                        //     prefix with "/" in the input buffer and remove the last
-                        //     segment and its preceding "/" (if any) from the output
-                        //     buffer; otherwise,
-                        src += 2;
-                        *src = (byte)'/';
-
-                        if (dst > start)
-                        {
-                            do
-                            {
-                                dst--;
-                            } while (dst > start && *dst != '/');
-                        }
-                    }
-                    else if (end - src == 1 && *src == '.')
-                    {
-                        // D.  if the input buffer consists only of "." or "..", then remove
-                        //     that from the input buffer; otherwise,
-                        src += 1;
-                    }
-                    else if (end - src == 2 && *src == '.' && *(src + 1) == '.')
-                    {
-                        // D.  if the input buffer consists only of "." or "..", then remove
-                        //     that from the input buffer; otherwise,
-                        src += 2;
-                    }
-                    else
-                    {
-                        // E.  move the first path segment in the input buffer to the end of
-                        //     the output buffer, including the initial "/" character (if
-                        //     any) and any subsequent characters up to, but not including,
-                        //     the next "/" character or the end of the input buffer.
-                        do
-                        {
-                            *dst++ = *src++;
-
-                            if (src >= end || *src == '/')
-                            {
-                                break;
+                                // D.  if the input buffer consists only of "." or "..", then remove
+                                //     that from the input buffer; otherwise,
+                                src += 1;
+                                continue;
                             }
-                        } while (src < end);
+
+                            break;
+                        case 2:
+                            ch2 = *(src + 1);
+
+                            if (ch1 == Dot && ch2 == Slash)
+                            {
+                                // A.  If the input buffer begins with a prefix of "../" or "./",
+                                //     then remove that prefix from the input buffer; otherwise,
+                                src += 2;
+                                continue;
+                            }
+                            else if (ch1 == Slash && ch2 == Dot)
+                            {
+                                // B.  if the input buffer begins with a prefix of "/./" or "/.",
+                                //     where "." is a complete path segment, then replace that
+                                //     prefix with "/" in the input buffer; otherwise,
+                                src += 1;
+                                *src = Slash;
+                                continue;
+                            }
+                            else if (ch1 == Dot && ch2 == Dot)
+                            {
+                                // D.  if the input buffer consists only of "." or "..", then remove
+                                //     that from the input buffer; otherwise,
+                                src += 2;
+                                continue;
+                            }
+
+                            break;
+                        case 3:
+                            ch2 = *(src + 1);
+                            ch3 = *(src + 2);
+
+                            if (ch1 == Dot && ch2 == Slash)
+                            {
+                                // A.  If the input buffer begins with a prefix of "../" or "./",
+                                //     then remove that prefix from the input buffer; otherwise,
+                                src += 2;
+                                continue;
+                            }
+                            else if (ch1 == Dot && ch2 == Dot && ch3 == Slash)
+                            {
+                                // A.  If the input buffer begins with a prefix of "../" or "./",
+                                //     then remove that prefix from the input buffer; otherwise,
+                                src += 3;
+                                continue;
+                            }
+                            else if (ch1 == Slash && ch2 == Dot && ch3 == Slash)
+                            {
+                                // B.  if the input buffer begins with a prefix of "/./" or "/.",
+                                //     where "." is a complete path segment, then replace that
+                                //     prefix with "/" in the input buffer; otherwise,
+                                src += 2;
+                                continue;
+                            }
+                            else if (ch1 == Slash && ch2 == Dot && ch3 == Dot)
+                            {
+                                // C.  if the input buffer begins with a prefix of "/../" or "/..",
+                                //     where ".." is a complete path segment, then replace that
+                                //     prefix with "/" in the input buffer and remove the last
+                                //     segment and its preceding "/" (if any) from the output
+                                //     buffer; otherwise,
+                                src += 2;
+                                *src = Slash;
+
+                                if (dst > start)
+                                {
+                                    do
+                                    {
+                                        dst--;
+                                    } while (dst > start && *dst != Slash);
+                                }
+
+                                continue;
+                            }
+
+                            break;
+                        default:
+                            ch2 = *(src + 1);
+                            ch3 = *(src + 2);
+                            ch4 = *(src + 3);
+
+                            if (ch1 == Dot && ch2 == Slash)
+                            {
+                                // A.  If the input buffer begins with a prefix of "../" or "./",
+                                //     then remove that prefix from the input buffer; otherwise,
+                                src += 2;
+                                continue;
+                            }
+                            else if (ch1 == Dot && ch2 == Dot && ch3 == Slash)
+                            {
+                                // A.  If the input buffer begins with a prefix of "../" or "./",
+                                //     then remove that prefix from the input buffer; otherwise,
+                                src += 3;
+                                continue;
+                            }
+                            else if (ch1 == Slash && ch2 == Dot && ch3 == Slash)
+                            {
+                                // B.  if the input buffer begins with a prefix of "/./" or "/.",
+                                //     where "." is a complete path segment, then replace that
+                                //     prefix with "/" in the input buffer; otherwise,
+                                src += 2;
+                                continue;
+                            }
+                            else if (ch1 == Slash && ch2 == Dot && ch3 == Dot && ch4 == Slash)
+                            {
+                                // C.  if the input buffer begins with a prefix of "/../" or "/..",
+                                //     where ".." is a complete path segment, then replace that
+                                //     prefix with "/" in the input buffer and remove the last
+                                //     segment and its preceding "/" (if any) from the output
+                                //     buffer; otherwise,
+                                src += 3;
+
+                                if (dst > start)
+                                {
+                                    do
+                                    {
+                                        dst--;
+                                    } while (dst > start && *dst != Slash);
+                                }
+
+                                continue;
+                            }
+
+                            break;
                     }
+
+                    // E.  move the first path segment in the input buffer to the end of
+                    //     the output buffer, including the initial "/" character (if
+                    //     any) and any subsequent characters up to, but not including,
+                    //     the next "/" character or the end of the input buffer.
+                    do
+                    {
+                        *dst++ = *src++;
+
+                        if (*src == Slash)
+                        {
+                            break;
+                        }
+                    } while (src < end);
                 }
 
                 if (dst == start)
                 {
-                    *dst = (byte)'/';
+                    *dst = Slash;
                     return 1;
                 }
 
