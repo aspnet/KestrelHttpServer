@@ -10,52 +10,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     [Config(typeof(CoreConfig))]
     public class DotSegmentRemovalBenchmark
     {
-        private const int InnerLoopCount = 512;
-
-        private const string _noSegments = "/request/target";
-        private const string _segments = "/request/./target/../other";
+        private const string _noSegments = "/long/request/target/for/benchmarking/what/else/can/we/put/here";
+        private const string _singleDotSegments = "/long/./request/./target/./for/./benchmarking/./what/./else/./can/./we/./put/./here";
+        private const string _doubleDotSegments = "/long/../request/../target/../for/../benchmarking/../what/../else/../can/../we/../put/../here";
 
         private readonly byte[] _noSegmentsBytes = Encoding.ASCII.GetBytes(_noSegments);
-        private readonly byte[] _segmentsBytes = Encoding.ASCII.GetBytes(_segments);
+        private readonly byte[] _singleDotSegmentsBytes = Encoding.ASCII.GetBytes(_singleDotSegments);
+        private readonly byte[] _doubleDotSegmentsBytes = Encoding.ASCII.GetBytes(_doubleDotSegments);
 
-        // Assign results to these member variables so code is not optimized away
-        private string _stringResult;
-        private int _spanResult;
+        [Benchmark(Baseline = true)]
+        public string StringNoSegments()
+            => PathNormalizer.RemoveDotSegments(_noSegments);
 
-        [Benchmark(Baseline = true, OperationsPerInvoke = InnerLoopCount)]
-        public void StringNoSegments()
-        {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                _stringResult = PathNormalizer.RemoveDotSegments(_noSegments);
-            }
-        }
+        [Benchmark]
+        public string StringSingleDotSegments()
+            => PathNormalizer.RemoveDotSegments(_singleDotSegments);
 
-        [Benchmark(OperationsPerInvoke = InnerLoopCount)]
-        public void StringSegments()
-        {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                _stringResult = PathNormalizer.RemoveDotSegments(_segments);
-            }
-        }
+        [Benchmark]
+        public string StringDoubleDotSegments()
+            => PathNormalizer.RemoveDotSegments(_doubleDotSegments);
 
-        [Benchmark(OperationsPerInvoke = InnerLoopCount)]
-        public void SpanNoSegments()
-        {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                _spanResult = PathNormalizer.RemoveDotSegments(_noSegmentsBytes);
-            }
-        }
+        [Benchmark]
+        public int SpanNoSegments()
+            => PathNormalizer.RemoveDotSegments(_noSegmentsBytes);
 
-        [Benchmark(OperationsPerInvoke = InnerLoopCount)]
-        public void SpanSegments()
-        {
-            for (var i = 0; i < InnerLoopCount; i++)
-            {
-                _spanResult = PathNormalizer.RemoveDotSegments(_segmentsBytes);
-            }
-        }
+        [Benchmark]
+        public int SpanSingleDotSegments()
+            => PathNormalizer.RemoveDotSegments(_singleDotSegmentsBytes);
+
+        [Benchmark]
+        public int SpanDoubleDotSegments()
+            => PathNormalizer.RemoveDotSegments(_doubleDotSegmentsBytes);
     }
 }
