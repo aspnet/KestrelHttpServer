@@ -105,12 +105,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             switch (endType)
             {
                 case ProduceEndType.SocketShutdown:
-                    // Yield the reader so that they it can observe the flags that were set
+                    // Cancelling the pending read is how we communicate a socket shutdown
                     _pipe.Reader.CancelPendingRead();
                     break;
                 case ProduceEndType.SocketDisconnect:
-                    // We're done writing
-                    _pipe.Writer.Complete();
+                    // Locking here because Alloc will throw if we writer after completing the writer
+                    lock (_contextLock)
+                    {
+                        _completed = true;
+                        // We're done writing
+                        _pipe.Writer.Complete();
+                    }
                     break;
             }
         }
@@ -221,6 +226,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var writeResult = await writeReq.Write(_socket, buffer);
                         _writeReqPool.Return(writeReq);
 
+                        // REVIEW: Locking here
                         OnWriteCompleted(writeResult.Status, writeResult.Error);
                     }
                     else if (result.IsCancelled)
@@ -235,12 +241,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
+            // We're done reading
             _pipe.Reader.Complete();
-
-            // Ensure all blocks are returned before calling OnSocketClosed
-            // to ensure the MemoryPool doesn't get disposed too soon.
-            _completed = true;
-            _pipe.Writer.Complete();
 
             _socket.Dispose();
             _connection.OnSocketClosed();

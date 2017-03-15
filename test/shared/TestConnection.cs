@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Testing
         private Socket _socket;
         private NetworkStream _stream;
         private StreamReader _reader;
-        private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(1);
 
         public TestConnection(int port)
             : this(port, AddressFamily.InterNetwork)
