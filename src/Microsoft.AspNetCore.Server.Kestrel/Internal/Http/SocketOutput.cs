@@ -215,7 +215,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 try
                 {
-                    if (result.IsCompleted)
+                    if (buffer.IsEmpty && result.IsCompleted)
                     {
                         break;
                     }
@@ -229,7 +229,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         // REVIEW: Locking here
                         OnWriteCompleted(writeResult.Status, writeResult.Error);
                     }
-                    else if (result.IsCancelled)
+
+                    if (result.IsCancelled)
                     {
                         // Send a FIN
                         await ShutdownAsync();
