@@ -2,15 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
-using System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -24,12 +23,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly string _connectionId;
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
-        
+
         // This locks access to to all of the below fields
         private readonly object _contextLock = new object();
-        
 
         private bool _cancelled = false;
+        private bool _completed = false;
         private Exception _lastWriteError;
         private readonly WriteReqPool _writeReqPool;
         private readonly IPipe _pipe;
@@ -60,12 +59,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public async Task WriteAsync(
             ArraySegment<byte> buffer,
             CancellationToken cancellationToken,
-            bool chunk = false,
-            bool socketShutdownSend = false,
-            bool socketDisconnect = false,
-            bool isSync = false)
+            bool chunk = false)
         {
-            WritableBufferAwaitable? flushAwaiter = null;
+            var flushAwaiter = default(WritableBufferAwaitable);
 
             lock (_contextLock)
             {
@@ -76,70 +72,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return;
                 }
 
+                if (_completed)
+                {
+                    return;
+                }
+
+                var writableBuffer = _pipe.Writer.Alloc();
+
                 if (buffer.Count > 0)
                 {
-                    var tail = _pipe.Writer.Alloc();
-                    
                     if (chunk)
                     {
-                        ChunkWriter.WriteBeginChunkBytes(ref tail, buffer.Count);
+                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
                     }
 
-                    tail.Write(buffer);
+                    writableBuffer.Write(buffer);
 
                     if (chunk)
                     {
-                        ChunkWriter.WriteEndChunkBytes(ref tail);
+                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
                     }
-
-                    flushAwaiter = tail.FlushAsync();
                 }
 
-                if (socketShutdownSend)
-                {
-                    SocketShutdownSend = true;
-                }
-                if (socketDisconnect)
-                {
-                    SocketDisconnect = true;
-                }
-
-                if (socketDisconnect || socketShutdownSend)
-                {
-                    _pipe.Writer.Complete();
-                }
+                flushAwaiter = writableBuffer.FlushAsync();
             }
-            if (flushAwaiter != null)
-            {
-                await flushAwaiter.Value;
-            }
+
+            await flushAwaiter;
         }
-
-        public bool SocketDisconnect { get; set; }
-
-        public bool SocketShutdownSend { get; set; }
 
         public void End(ProduceEndType endType)
         {
-#pragma warning disable 4014
             switch (endType)
             {
                 case ProduceEndType.SocketShutdown:
-                    WriteAsync(default(ArraySegment<byte>),
-                        default(CancellationToken),
-                        socketShutdownSend: true,
-                        socketDisconnect: true,
-                        isSync: true);
+                    // Yield the reader so that they it can observe the flags that were set
+                    _pipe.Reader.CancelPendingRead();
                     break;
                 case ProduceEndType.SocketDisconnect:
-                    WriteAsync(default(ArraySegment<byte>),
-                        default(CancellationToken),
-                        socketShutdownSend: false,
-                        socketDisconnect: true,
-                        isSync: true);
+                    // We're done writing
+                    _pipe.Writer.Complete();
                     break;
             }
-#pragma warning restore 4014
         }
 
         private void CancellationTriggered()
@@ -194,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool chunk)
         {
-            WriteAsync(buffer, default(CancellationToken), chunk, isSync: true).GetAwaiter().GetResult();
+            WriteAsync(buffer, default(CancellationToken), chunk).GetAwaiter().GetResult();
         }
 
         Task ISocketOutput.WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
@@ -215,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         void ISocketOutput.Flush()
         {
-            WriteAsync(_emptyData, default(CancellationToken), isSync: true).GetAwaiter().GetResult();
+            WriteAsync(_emptyData, default(CancellationToken)).GetAwaiter().GetResult();
         }
 
         Task ISocketOutput.FlushAsync(CancellationToken cancellationToken)
@@ -228,16 +201,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return _pipe.Writer.Alloc(1);
         }
 
-        public void Complete()
-        {
-            _pipe.Writer.Complete();
-        }
-        
         public async Task StartWrites()
         {
             while (true)
             {
                 var result = await _pipe.Reader.ReadAsync();
+                var buffer = result.Buffer;
+
                 try
                 {
                     if (result.IsCompleted)
@@ -245,10 +215,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         break;
                     }
 
-                    var writeReq = _writeReqPool.Allocate();
-                    var writeResult = await writeReq.Write(_socket, result.Buffer);
-                    _writeReqPool.Return(writeReq);
-                    DoShutdownIfNeeded(writeResult.Status, writeResult.Error);
+                    if (!buffer.IsEmpty)
+                    {
+                        var writeReq = _writeReqPool.Allocate();
+                        var writeResult = await writeReq.Write(_socket, buffer);
+                        _writeReqPool.Return(writeReq);
+
+                        OnWriteCompleted(writeResult.Status, writeResult.Error);
+                    }
+                    else if (result.IsCancelled)
+                    {
+                        // Send a FIN
+                        await ShutdownAsync();
+                    }
                 }
                 finally
                 {
@@ -256,18 +235,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            DoShutdownIfNeeded(0, null);
             _pipe.Reader.Complete();
+
+            // Ensure all blocks are returned before calling OnSocketClosed
+            // to ensure the MemoryPool doesn't get disposed too soon.
+            _completed = true;
+            _pipe.Writer.Complete();
+
+            _socket.Dispose();
+            _connection.OnSocketClosed();
+            _log.ConnectionStop(_connectionId);
         }
 
-        public void DoShutdownIfNeeded(int writeStatus, Exception writeError)
+        private Task ShutdownAsync()
         {
-            if (SocketShutdownSend == false || _socket.IsClosed)
-            {
-                DoDisconnectIfNeeded(writeStatus, writeError);
-                return;
-            }
-
+            var tcs = new TaskCompletionSource<object>();
             _log.ConnectionWriteFin(_connectionId);
 
             var shutdownReq = new UvShutdownReq(_log);
@@ -276,62 +258,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 req.Dispose();
                 _log.ConnectionWroteFin(_connectionId, status);
-                DoDisconnectIfNeeded(writeStatus, writeError);
-            }, this);
-        }
 
-        /// <summary>
-        /// Third step: disconnect socket if needed, otherwise this work item is complete
-        /// </summary>
-        private void DoDisconnectIfNeeded(int writeStatus, Exception writeError)
-        {
-            if (SocketDisconnect == false || _socket.IsClosed)
-            {
-                CompleteWithContextLock(writeStatus, writeError);
-                return;
-            }
+                tcs.TrySetResult(null);
+            },
+            this);
 
-            // Ensure all blocks are returned before calling OnSocketClosed
-            // to ensure the MemoryPool doesn't get disposed too soon.
-            _pipe.Writer.Complete();
-            _socket.Dispose();
-            _connection.OnSocketClosed();
-            _log.ConnectionStop(_connectionId);
-            CompleteWithContextLock(writeStatus, writeError);
-        }
-
-        private void CompleteWithContextLock(int writeStatus, Exception writeError)
-        {
-            if (Monitor.TryEnter(_contextLock))
-            {
-                try
-                {
-                    OnWriteCompleted(writeStatus, writeError);
-                }
-                finally
-                {
-                    Monitor.Exit(_contextLock);
-                }
-            }
-            else
-            {
-                _threadPool.UnsafeRun((state)=> CompleteOnThreadPool(writeStatus, writeError), this);
-            }
-        }
-
-        private void CompleteOnThreadPool(int writeStatus, Exception writeError)
-        {
-            lock (_contextLock)
-            {
-                try
-                {
-                    OnWriteCompleted(writeStatus, writeError);
-                }
-                catch (Exception ex)
-                {
-                    _log.LogError(0, ex, "SocketOutput.OnWriteCompleted");
-                }
-            }
+            return tcs.Task;
         }
     }
 }

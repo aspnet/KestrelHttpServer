@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public PipeOptions LibuvPipeOptions => new PipeOptions
+        public PipeOptions LibuvInputPipeOptions => new PipeOptions
         {
             ReaderScheduler = ServiceContext.ThreadPool,
             WriterScheduler = Thread,
@@ -52,10 +52,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public PipeOptions LibuvOutputPipeOptions => new PipeOptions
         {
-            ReaderScheduler = ServiceContext.ThreadPool,
-            WriterScheduler = Thread,
-            MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
-            MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            ReaderScheduler = Thread,
+            WriterScheduler = ServiceContext.ThreadPool,
+            MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0,
+            MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0
         };
 
         public PipeOptions AdaptedPipeOptions => new PipeOptions

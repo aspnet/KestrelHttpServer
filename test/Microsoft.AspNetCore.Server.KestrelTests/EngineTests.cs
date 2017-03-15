@@ -31,10 +31,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
             new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
-            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
-            {
-                ConnectionAdapters = { new PassThroughConnectionAdapter() }
-            }
+            //new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
+            //{
+            //    ConnectionAdapters = { new PassThroughConnectionAdapter() }
+            //}
         };
 
         [Fact]
