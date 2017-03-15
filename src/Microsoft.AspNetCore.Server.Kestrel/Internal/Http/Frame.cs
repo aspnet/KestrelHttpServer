@@ -1248,35 +1248,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-            string requestUrlPath = null;
             string rawTarget = null;
+            var pathLength = path.Length;
 
             try
             {
+                // Read raw target before mutating memory.
+                rawTarget = target.GetAsciiStringNonNullCharacters();
+
                 if (pathEncoded)
                 {
-                    // Read raw target before mutating memory.
-                    rawTarget = target.GetAsciiStringNonNullCharacters();
-
                     // URI was encoded, unescape and then parse as utf8
-                    int pathLength = UrlEncoder.Decode(path, path);
-                    requestUrlPath = GetUtf8String(path.Slice(0, pathLength));
+                    pathLength = UrlEncoder.Decode(path, path);
+                    pathLength = PathNormalizer.RemoveDotSegments(path.Slice(0, pathLength));
                 }
                 else
                 {
-                    // URI wasn't encoded, parse as ASCII
-                    requestUrlPath = path.GetAsciiStringNonNullCharacters();
-
-                    if (query.Length == 0)
-                    {
-                        // No need to allocate an extra string if the path didn't need
-                        // decoding and there's no query string following it.
-                        rawTarget = requestUrlPath;
-                    }
-                    else
-                    {
-                        rawTarget = target.GetAsciiStringNonNullCharacters();
-                    }
+                    pathLength = PathNormalizer.RemoveDotSegments(path);
                 }
             }
             catch (InvalidOperationException)
@@ -1286,7 +1274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             QueryString = query.GetAsciiStringNonNullCharacters();
             RawTarget = rawTarget;
-            Path = PathNormalizer.RemoveDotSegments(requestUrlPath);
+            Path = pathEncoded ? GetUtf8String(path.Slice(0, pathLength)) : path.Slice(0, pathLength).GetAsciiStringNonNullCharacters();
         }
 
         private void OnAuthorityFormTarget(HttpMethod method, Span<byte> target)
