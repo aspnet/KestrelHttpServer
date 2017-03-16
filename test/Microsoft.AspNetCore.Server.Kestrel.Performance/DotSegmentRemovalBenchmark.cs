@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private readonly byte[] _singleDotSegmentsBytes = Encoding.ASCII.GetBytes(_singleDotSegments);
         private readonly byte[] _doubleDotSegmentsBytes = Encoding.ASCII.GetBytes(_doubleDotSegments);
 
-        [Benchmark(Baseline = true)]
+        [Benchmark]
         public string StringNoSegments()
             => PathNormalizer.RemoveDotSegments(_noSegments);
 
