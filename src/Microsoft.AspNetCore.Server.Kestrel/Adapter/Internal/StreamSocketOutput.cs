@@ -26,52 +26,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         public void Write(ArraySegment<byte> buffer, bool chunk)
         {
-            var writableBuffer = _pipe.Writer.Alloc();
-            if (chunk && buffer.Array != null)
-            {
-                var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count);
-                writableBuffer.Write(beginChunkBytes.Array);
-            }
-
-            writableBuffer.Write(buffer.Array ?? _nullBuffer);
-
-            if (chunk && buffer.Array != null)
-            {
-                writableBuffer.Write(_endChunkBytes);
-            }
-
-            writableBuffer.FlushAsync().GetAwaiter().GetResult();
+            WriteAsync(buffer, chunk, default(CancellationToken)).GetAwaiter().GetResult();
         }
 
         public async Task WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
         {
+            var writableBuffer = _pipe.Writer.Alloc();
+
             if (chunk && buffer.Array != null)
             {
-                await WriteAsyncChunked(buffer, cancellationToken);
+                writableBuffer.Write(ChunkWriter.BeginChunkBytes(buffer.Count));
+                writableBuffer.Write(buffer.Array);
+                writableBuffer.Write(_endChunkBytes);
+            }
+            else
+            {
+                writableBuffer.Write(buffer.Array ?? _nullBuffer);
             }
 
-            var writableBuffer = _pipe.Writer.Alloc();
-
-            writableBuffer.Write(buffer.Array ?? _nullBuffer);
-            await writableBuffer.FlushAsync();
-        }
-
-        private async Task WriteAsyncChunked(ArraySegment<byte> buffer, CancellationToken cancellationToken)
-        {
-            var writableBuffer = _pipe.Writer.Alloc();
-
-            var beginChunkBytes = ChunkWriter.BeginChunkBytes(buffer.Count);
-
-            writableBuffer.Write(beginChunkBytes.Array);
-            writableBuffer.Write(buffer.Array);
-            writableBuffer.Write(_endChunkBytes);
-            //TODO: cancellationToken
             await writableBuffer.FlushAsync();
         }
         
         public void Flush()
         {
-            //_outputStream.Flush();
         }
 
         public Task FlushAsync(CancellationToken cancellationToken)

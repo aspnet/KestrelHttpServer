@@ -202,7 +202,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public WritableBuffer Alloc()
         {
-            return _pipe.Writer.Alloc(1);
+            return _pipe.Writer.Alloc();
         }
 
         public async Task StartWrites()
