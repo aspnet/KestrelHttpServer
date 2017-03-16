@@ -3,6 +3,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -22,25 +23,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 while (src < end)
                 {
-                    var ch1 = *src; // Always '/'
+                    var ch1 = *src;
+                    Debug.Assert(ch1 == '/', "Path segment must always start with a '/'");
+
                     byte ch2, ch3, ch4;
 
                     switch (end - src)
                     {
                         case 1:
-                            //if (ch1 == Dot)
-                            //{
-                            //    // D.  if the input buffer consists only of "." or "..", then remove
-                            //    //     that from the input buffer; otherwise,
-                            //    src += 1;
-                            //    continue;
-                            //}
-
                             break;
                         case 2:
                             ch2 = *(src + 1);
 
-                            if (/*ch1 == Slash &&*/ ch2 == Dot)
+                            if (ch2 == Dot)
                             {
                                 // B.  if the input buffer begins with a prefix of "/./" or "/.",
                                 //     where "." is a complete path segment, then replace that
@@ -49,27 +44,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 *src = Slash;
                                 continue;
                             }
-                            //else if (ch1 == Dot && ch2 == Slash)
-                            //{
-                            //    // A.  If the input buffer begins with a prefix of "../" or "./",
-                            //    //     then remove that prefix from the input buffer; otherwise,
-                            //    src += 2;
-                            //    continue;
-                            //}
-                            //else if (ch1 == Dot && ch2 == Dot)
-                            //{
-                            //    // D.  if the input buffer consists only of "." or "..", then remove
-                            //    //     that from the input buffer; otherwise,
-                            //    src += 2;
-                            //    continue;
-                            //}
 
                             break;
                         case 3:
                             ch2 = *(src + 1);
                             ch3 = *(src + 2);
 
-                            if (/*ch1 == Slash &&*/ ch2 == Dot && ch3 == Dot)
+                            if (ch2 == Dot && ch3 == Dot)
                             {
                                 // C.  if the input buffer begins with a prefix of "/../" or "/..",
                                 //     where ".." is a complete path segment, then replace that
@@ -89,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                                 continue;
                             }
-                            else if (/*ch1 == Slash &&*/ ch2 == Dot && ch3 == Slash)
+                            else if (ch2 == Dot && ch3 == Slash)
                             {
                                 // B.  if the input buffer begins with a prefix of "/./" or "/.",
                                 //     where "." is a complete path segment, then replace that
@@ -97,20 +78,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 src += 2;
                                 continue;
                             }
-                            //else if (ch1 == Dot && ch2 == Slash)
-                            //{
-                            //    // A.  If the input buffer begins with a prefix of "../" or "./",
-                            //    //     then remove that prefix from the input buffer; otherwise,
-                            //    src += 2;
-                            //    continue;
-                            //}
-                            //else if (ch1 == Dot && ch2 == Dot && ch3 == Slash)
-                            //{
-                            //    // A.  If the input buffer begins with a prefix of "../" or "./",
-                            //    //     then remove that prefix from the input buffer; otherwise,
-                            //    src += 3;
-                            //    continue;
-                            //}
 
                             break;
                         default:
@@ -118,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             ch3 = *(src + 2);
                             ch4 = *(src + 3);
 
-                            if (/*ch1 == Slash &&*/ ch2 == Dot && ch3 == Dot && ch4 == Slash)
+                            if (ch2 == Dot && ch3 == Dot && ch4 == Slash)
                             {
                                 // C.  if the input buffer begins with a prefix of "/../" or "/..",
                                 //     where ".." is a complete path segment, then replace that
@@ -137,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                                 continue;
                             }
-                            else if (/*ch1 == Slash &&*/ ch2 == Dot && ch3 == Slash)
+                            else if (ch2 == Dot && ch3 == Slash)
                             {
                                 // B.  if the input buffer begins with a prefix of "/./" or "/.",
                                 //     where "." is a complete path segment, then replace that
@@ -145,20 +112,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 src += 2;
                                 continue;
                             }
-                            //else if (ch1 == Dot && ch2 == Slash)
-                            //{
-                            //    // A.  If the input buffer begins with a prefix of "../" or "./",
-                            //    //     then remove that prefix from the input buffer; otherwise,
-                            //    src += 2;
-                            //    continue;
-                            //}
-                            //else if (ch1 == Dot && ch2 == Dot && ch3 == Slash)
-                            //{
-                            //    // A.  If the input buffer begins with a prefix of "../" or "./",
-                            //    //     then remove that prefix from the input buffer; otherwise,
-                            //    src += 3;
-                            //    continue;
-                            //}
 
                             break;
                     }
