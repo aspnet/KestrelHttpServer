@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.Extensions.Logging;
@@ -17,7 +16,7 @@ namespace Microsoft.AspNetCore.Testing
 
         public bool ThrowOnCriticalErrors { get; set; } = true;
 
-        public List<LogMessage> Messages { get; } = new List<LogMessage>();
+        public ConcurrentBag<LogMessage> Messages { get; } = new ConcurrentBag<LogMessage>();
 
         public int TotalErrorsLogged => Messages.Count(message => message.LogLevel == LogLevel.Error);
 
@@ -49,16 +48,13 @@ namespace Microsoft.AspNetCore.Testing
                 }
             }
 
-            lock (Messages)
+            Messages.Add(new LogMessage
             {
-                Messages.Add(new LogMessage
-                {
-                    LogLevel = logLevel,
-                    EventId = eventId,
-                    Exception = exception,
-                    Message = formatter(state, exception)
-                });
-            }
+                LogLevel = logLevel,
+                EventId = eventId,
+                Exception = exception,
+                Message = formatter(state, exception)
+            });
         }
 
         public class LogMessage
