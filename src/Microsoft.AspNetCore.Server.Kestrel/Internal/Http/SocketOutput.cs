@@ -102,20 +102,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void End(ProduceEndType endType)
         {
-            lock (_contextLock)
+            switch (endType)
             {
-                switch (endType)
-                {
-                    case ProduceEndType.SocketShutdown:
-                        // Cancelling the pending read is how we communicate a socket shutdown
-                        _pipe.Reader.CancelPendingRead();
-                        break;
-                    case ProduceEndType.SocketDisconnect:
+                case ProduceEndType.SocketShutdown:
+                    // Cancelling the pending read is how we communicate a socket shutdown
+                    _pipe.Reader.CancelPendingRead();
+                    break;
+                case ProduceEndType.SocketDisconnect:
+                    lock (_contextLock)
+                    {
                         _completed = true;
-                        // We're done writing
-                        _pipe.Writer.Complete();
-                        break;
-                }
+                    }
+
+                    // We're done writing
+                    _pipe.Writer.Complete();
+                    break;
             }
         }
 

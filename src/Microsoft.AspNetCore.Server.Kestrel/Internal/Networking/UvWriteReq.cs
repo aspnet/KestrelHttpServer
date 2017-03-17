@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Pipelines;
@@ -26,6 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         private LibuvAwaitable<UvWriteReq> _awaitable = new LibuvAwaitable<UvWriteReq>();
         private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
+        private List<MemoryHandle> _handles = new List<MemoryHandle>(BUFFER_COUNT + 1);
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -83,12 +85,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                 var index = 0;
                 foreach (var memory in buffer)
                 {
-                    var tryGetPointerResult = memory.TryGetPointer(out var pointer);
-                    Debug.Assert(tryGetPointerResult);
+                    // REVIEW: This isn't necessary for our default pool since the memory is 
+                    // already pinned but it also makes tests pass
+                    var memoryHandle = memory.Pin();
+                    _handles.Add(memoryHandle);
 
                     // create and pin each segment being written
                     pBuffers[index] = Libuv.buf_init(
-                        (IntPtr)pointer,
+                        (IntPtr)memoryHandle.PinnedPointer,
                         memory.Length);
                     index++;
                 }
@@ -187,7 +191,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             {
                 pin.Free();
             }
+
+            foreach (var handle in req._handles)
+            {
+                handle.Free();
+            }
+
             req._pins.Clear();
+            req._handles.Clear();
         }
 
         private static void UvWriteCb(IntPtr ptr, int status)
