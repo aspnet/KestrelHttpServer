@@ -105,19 +105,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             switch (endType)
             {
                 case ProduceEndType.SocketShutdown:
-                    // Cancelling the pending read is how we communicate a socket shutdown
+                    // Graceful shutdown
                     _pipe.Reader.CancelPendingRead();
                     break;
                 case ProduceEndType.SocketDisconnect:
-                    lock (_contextLock)
-                    {
-                        _completed = true;
-                    }
-
-                    // We're done writing
-                    _pipe.Writer.Complete();
+                    // Not graceful
                     break;
             }
+
+            lock (_contextLock)
+            {
+                _completed = true;
+            }
+
+            // We're done writing
+            _pipe.Writer.Complete();
         }
 
         private void CancellationTriggered()
@@ -215,11 +217,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 try
                 {
-                    if (buffer.IsEmpty && result.IsCompleted)
-                    {
-                        break;
-                    }
-
                     if (!buffer.IsEmpty)
                     {
                         var writeReq = _writeReqPool.Allocate();
@@ -234,6 +231,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         // Send a FIN
                         await ShutdownAsync();
+                    }
+
+                    if (buffer.IsEmpty && result.IsCompleted)
+                    {
+                        break;
                     }
                 }
                 finally
