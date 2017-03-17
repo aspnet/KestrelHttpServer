@@ -12,73 +12,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     public class DotSegmentRemovalBenchmark
     {
         // Immutable
-        private const string _noSegments = "/long/request/target/for/benchmarking/what/else/can/we/put/here";
+        private const string _noDotSegments = "/long/request/target/for/benchmarking/what/else/can/we/put/here";
         private const string _singleDotSegments = "/long/./request/./target/./for/./benchmarking/./what/./else/./can/./we/./put/./here";
         private const string _doubleDotSegments = "/long/../request/../target/../for/../benchmarking/../what/../else/../can/../we/../put/../here";
 
-        private readonly char[] _noSegmentsChars = _noSegments.ToCharArray();
-        private readonly char[] _singleDotSegmentsChars = _singleDotSegments.ToCharArray();
-        private readonly char[] _doubleDotSegmentsChars = _doubleDotSegments.ToCharArray();
-
-        private readonly byte[] _noSegmentsAscii = Encoding.ASCII.GetBytes(_noSegments);
+        private readonly byte[] _noDotSegmentsAscii = Encoding.ASCII.GetBytes(_noDotSegments);
         private readonly byte[] _singleDotSegmentsAscii = Encoding.ASCII.GetBytes(_singleDotSegments);
         private readonly byte[] _doubleDotSegmentsAscii = Encoding.ASCII.GetBytes(_doubleDotSegments);
 
-        // Mutable
-        private readonly char[] _noSegmentsString = new char[_noSegments.Length];
-        private readonly char[] _singleDotSegmentsString = new char[_singleDotSegments.Length];
-        private readonly char[] _doubleDotSegmentsString = new char[_doubleDotSegments.Length];
-
-        private readonly byte[] _noSegmentsBytes = new byte[_noSegments.Length];
+        private readonly byte[] _noDotSegmentsBytes = new byte[_noDotSegments.Length];
         private readonly byte[] _singleDotSegmentsBytes = new byte[_singleDotSegments.Length];
         private readonly byte[] _doubleDotSegmentsBytes = new byte[_doubleDotSegments.Length];
 
         [Benchmark(Baseline = true)]
-        public unsafe int StringNoSegments()
+        public unsafe int NoDotSegments()
         {
-            _noSegmentsChars.CopyTo(_noSegmentsString);
+            _noDotSegmentsAscii.CopyTo(_noDotSegmentsBytes);
 
-            fixed (char* start = _noSegmentsString)
+            fixed (byte* start = _noDotSegmentsBytes)
             {
-                return PathNormalizer.RemoveDotSegments(start, start + _noSegments.Length);
+                return PathNormalizer.RemoveDotSegments(start, start + _noDotSegments.Length);
             }
         }
 
         [Benchmark]
-        public unsafe int StringSingleDotSegments()
-        {
-            _singleDotSegmentsChars.CopyTo(_singleDotSegmentsString);
-
-            fixed (char* start = _singleDotSegmentsString)
-            {
-                return PathNormalizer.RemoveDotSegments(start, start + _noSegments.Length);
-            }
-        }
-
-        [Benchmark]
-        public unsafe int StringDoubleDotSegments()
-        {
-            _doubleDotSegmentsChars.CopyTo(_doubleDotSegmentsString);
-
-            fixed (char* start = _doubleDotSegmentsString)
-            {
-                return PathNormalizer.RemoveDotSegments(start, start + _doubleDotSegments.Length);
-            }
-        }
-
-        [Benchmark]
-        public unsafe int SpanNoSegments()
-        {
-            _noSegmentsAscii.CopyTo(_noSegmentsBytes);
-
-            fixed (byte* start = _noSegmentsBytes)
-            {
-                return PathNormalizer.RemoveDotSegments(start, start + _noSegments.Length);
-            }
-        }
-
-        [Benchmark]
-        public unsafe int SpanSingleDotSegments()
+        public unsafe int SingleDotSegments()
         {
             _singleDotSegmentsAscii.CopyTo(_singleDotSegmentsBytes);
 
@@ -89,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Benchmark]
-        public unsafe int SpanDoubleDotSegments()
+        public unsafe int DoubleDotSegments()
         {
             _doubleDotSegmentsAscii.CopyTo(_doubleDotSegmentsBytes);
 
