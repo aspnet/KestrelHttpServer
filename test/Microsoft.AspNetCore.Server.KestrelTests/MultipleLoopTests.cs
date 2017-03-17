@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var writeRequest = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
                 writeRequest.Init(loop);
                 
-                await writeRequest.Write(
+                await writeRequest.WriteAsync(
                     serverConnectionPipe,
                     ReadableBuffer.Create(new byte[] { 1, 2, 3, 4 }));
 
