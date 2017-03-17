@@ -11,118 +11,69 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     public class PathNormalizerTests
     {
         [Theory]
-        [InlineData("/a", "/a")]
-        [InlineData("/a/", "/a/")]
-        [InlineData("/a/b", "/a/b")]
-        [InlineData("/a/b/", "/a/b/")]
-        [InlineData("/./a", "/a")]
-        [InlineData("/././a", "/a")]
-        [InlineData("/../a", "/a")]
-        [InlineData("/../../a", "/a")]
-        [InlineData("/a/./b", "/a/b")]
-        [InlineData("/a/../b", "/b")]
-        [InlineData("/a/./", "/a/")]
-        [InlineData("/a/.", "/a/")]
-        [InlineData("/a/../", "/")]
-        [InlineData("/a/..", "/")]
-        [InlineData("/a/../b/../", "/")]
-        [InlineData("/a/../b/..", "/")]
-        [InlineData("/a/../../b", "/b")]
-        [InlineData("/a/../../b/", "/b/")]
-        [InlineData("/a/.././../b", "/b")]
-        [InlineData("/a/.././../b/", "/b/")]
-        [InlineData("/a/b/c/./../../d", "/a/d")]
-        [InlineData("/./a/b/c/./../../d", "/a/d")]
-        [InlineData("/../a/b/c/./../../d", "/a/d")]
-        [InlineData("/./../a/b/c/./../../d", "/a/d")]
-        [InlineData("/.././a/b/c/./../../d", "/a/d")]
-        [InlineData("/.a", "/.a")]
-        [InlineData("/..a", "/..a")]
-        [InlineData("/...", "/...")]
-        [InlineData("/a/.../b", "/a/.../b")]
-        [InlineData("/a/../.../../b", "/b")]
-        [InlineData("/a/.b", "/a/.b")]
-        [InlineData("/a/..b", "/a/..b")]
-        [InlineData("/a/b.", "/a/b.")]
-        [InlineData("/a/b..", "/a/b..")]
-        [InlineData("/longlong/../short", "/short")]
-        [InlineData("/short/../longlong", "/longlong")]
-        [InlineData("/longlong/../short/..", "/")]
-        [InlineData("/short/../longlong/..", "/")]
-        [InlineData("/longlong/../short/../", "/")]
-        [InlineData("/short/../longlong/../", "/")]
-        [InlineData("/", "/")]
-        [InlineData("/no/segments", "/no/segments")]
-        [InlineData("/no/segments/", "/no/segments/")]
+        [MemberData(nameof(DotSegmentData))]
         public void RemovesDotSegmentsSpan(string input, string expected)
         {
             var data = Encoding.ASCII.GetBytes(input);
-            var finalLength = PathNormalizer.RemoveDotSegments(new Span<byte>(data));
-            Assert.True(finalLength >= 1);
-            Assert.Equal(expected, Encoding.ASCII.GetString(data, 0, finalLength));
+            var length = PathNormalizer.RemoveDotSegments(new Span<byte>(data));
+            Assert.True(length >= 1);
+            Assert.Equal(expected, Encoding.ASCII.GetString(data, 0, length));
         }
 
         [Theory]
-        [InlineData("/a", "/a")]
-        [InlineData("/a/", "/a/")]
-        [InlineData("/a/b", "/a/b")]
-        [InlineData("/a/b/", "/a/b/")]
-        [InlineData("/./a", "/a")]
-        [InlineData("/././a", "/a")]
-        [InlineData("/../a", "/a")]
-        [InlineData("/../../a", "/a")]
-        [InlineData("/a/./b", "/a/b")]
-        [InlineData("/a/../b", "/b")]
-        [InlineData("/a/./", "/a/")]
-        [InlineData("/a/.", "/a/")]
-        [InlineData("/a/../b/../", "/")]
-        [InlineData("/a/../b/..", "/")]
-        [InlineData("/a/../../b", "/b")]
-        [InlineData("/a/../../b/", "/b/")]
-        [InlineData("/a/.././../b", "/b")]
-        [InlineData("/a/.././../b/", "/b/")]
-        [InlineData("/a/b/c/./../../d", "/a/d")]
-        [InlineData("/./a/b/c/./../../d", "/a/d")]
-        [InlineData("/../a/b/c/./../../d", "/a/d")]
-        [InlineData("/./../a/b/c/./../../d", "/a/d")]
-        [InlineData("/.././a/b/c/./../../d", "/a/d")]
-        [InlineData("/.a", "/.a")]
-        [InlineData("/..a", "/..a")]
-        [InlineData("/...", "/...")]
-        [InlineData("/a/.../b", "/a/.../b")]
-        [InlineData("/a/../.../../b", "/b")]
-        [InlineData("/a/.b", "/a/.b")]
-        [InlineData("/a/..b", "/a/..b")]
-        [InlineData("/a/b.", "/a/b.")]
-        [InlineData("/a/b..", "/a/b..")]
-        [InlineData("a/b", "a/b")]
-        [InlineData("a/b/../c", "a/c")]
-        [InlineData("*", "*")]
-        [InlineData("/longlong/../short", "/short")]
-        [InlineData("/short/../longlong", "/longlong")]
-        [InlineData("/longlong/../short/..", "/")]
-        [InlineData("/short/../longlong/..", "/")]
-        [InlineData("/longlong/../short/../", "/")]
-        [InlineData("/short/../longlong/../", "/")]
-        [InlineData("/", "/")]
-        [InlineData("/no/segments", "/no/segments")]
-        [InlineData("/no/segments/", "/no/segments/")]
-        // Not handled by Span version
-        [InlineData("", "")]
-        [InlineData("./a", "a")]
-        [InlineData("../a", "a")]
-        [InlineData("./a/b", "a/b")]
-        [InlineData("./a/./b", "a/b")]
-        [InlineData("./a/../b", "/b")]
-        [InlineData("../a/./b", "a/b")]
-        [InlineData("../a/../b", "/b")]
-        [InlineData(".", "/")]
-        [InlineData("..", "/")]
-        [InlineData("*", "*")]
+        [MemberData(nameof(DotSegmentData))]
         public void RemovesDotSegmentsString(string input, string expected)
         {
-            var result = PathNormalizer.RemoveDotSegments(input);
-            Assert.Equal(expected, result);
+            var length = PathNormalizer.RemoveDotSegments(input);
+            Assert.True(length >= 1);
+            Assert.Equal(expected, input.Substring(0, length));
         }
+
+        public static TheoryData<string, string> DotSegmentData = new TheoryData<string, string>
+        {
+            { "/a", "/a" },
+            { "/a/", "/a/" },
+            { "/a/b", "/a/b" },
+            { "/a/b/", "/a/b/" },
+            { "/./a", "/a" },
+            { "/././a", "/a" },
+            { "/../a", "/a" },
+            { "/../../a", "/a" },
+            { "/a/./b", "/a/b" },
+            { "/a/../b", "/b" },
+            { "/a/./", "/a/" },
+            { "/a/.", "/a/" },
+            { "/a/../", "/" },
+            { "/a/..", "/" },
+            { "/a/../b/../", "/" },
+            { "/a/../b/..", "/" },
+            { "/a/../../b", "/b" },
+            { "/a/../../b/", "/b/" },
+            { "/a/.././../b", "/b" },
+            { "/a/.././../b/", "/b/" },
+            { "/a/b/c/./../../d", "/a/d" },
+            { "/./a/b/c/./../../d", "/a/d" },
+            { "/../a/b/c/./../../d", "/a/d" },
+            { "/./../a/b/c/./../../d", "/a/d" },
+            { "/.././a/b/c/./../../d", "/a/d" },
+            { "/.a", "/.a" },
+            { "/..a", "/..a" },
+            { "/...", "/..." },
+            { "/a/.../b", "/a/.../b" },
+            { "/a/../.../../b", "/b" },
+            { "/a/.b", "/a/.b" },
+            { "/a/..b", "/a/..b" },
+            { "/a/b.", "/a/b." },
+            { "/a/b..", "/a/b.." },
+            { "/longlong/../short", "/short" },
+            { "/short/../longlong", "/longlong" },
+            { "/longlong/../short/..", "/" },
+            { "/short/../longlong/..", "/" },
+            { "/longlong/../short/../", "/" },
+            { "/short/../longlong/../", "/" },
+            { "/", "/" },
+            { "/no/segments", "/no/segments" },
+            { "/no/segments/", "/no/segments/" },
+        };
     }
 }
