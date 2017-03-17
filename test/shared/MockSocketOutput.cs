@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Testing
 
         public WritableBuffer Alloc()
         {
-            return _writer.Alloc(1);
+            return _writer.Alloc();
         }
     }
 }
