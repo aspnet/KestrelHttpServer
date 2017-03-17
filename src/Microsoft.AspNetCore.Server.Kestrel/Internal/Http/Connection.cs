@@ -41,7 +41,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private AdaptedPipeline _adaptedPipeline;
         private Stream _filteredStream;
         private Task _readInputTask;
-        private Task _writeOutputTask;
 
         private TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
 
@@ -209,11 +208,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     // Don't attempt to read input if connection has already closed.
                     // This can happen if a client opens a connection and immediately closes it.
                     _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
-                        ? _adaptedPipeline.ReadInputAsync()
-                        : TaskCache.CompletedTask;
-
-                    _writeOutputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
-                        ? _adaptedPipeline.WriteOutputAsync()
+                        ? _adaptedPipeline.StartAsync()
                         : TaskCache.CompletedTask;
                 }
 

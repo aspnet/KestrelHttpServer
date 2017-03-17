@@ -4,19 +4,20 @@
 using System;
 using System.IO;
 using System.IO.Pipelines;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+
 namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
     public class StreamSocketOutput : ISocketOutput
     {
-        private static readonly byte[] _endChunkBytes = Encoding.ASCII.GetBytes("\r\n");
-        private static readonly byte[] _nullBuffer = new byte[0];
+        private static readonly ArraySegment<byte> _nullBuffer = new ArraySegment<byte>(new byte[0]);
 
         private readonly Stream _outputStream;
         private readonly IPipe _pipe;
+        private object _sync = new object();
+        private bool _completed;
 
         public StreamSocketOutput(Stream outputStream, IPipe pipe)
         {
@@ -31,30 +32,55 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         public async Task WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
         {
-            var writableBuffer = _pipe.Writer.Alloc();
+            var flushAwaiter = default(WritableBufferAwaitable);
 
-            if (chunk && buffer.Array != null)
+            lock (_sync)
             {
-                writableBuffer.Write(ChunkWriter.BeginChunkBytes(buffer.Count));
-                writableBuffer.Write(buffer.Array);
-                writableBuffer.Write(_endChunkBytes);
-            }
-            else
-            {
-                writableBuffer.Write(buffer.Array ?? _nullBuffer);
+                if (_completed)
+                {
+                    return;
+                }
+
+                var writableBuffer = _pipe.Writer.Alloc();
+
+                if (buffer.Count > 0)
+                {
+                    if (chunk)
+                    {
+                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
+                        writableBuffer.Write(buffer);
+                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
+                    }
+                    else
+                    {
+                        writableBuffer.Write(buffer);
+                    }
+                }
+
+                flushAwaiter = writableBuffer.FlushAsync();
             }
 
-            await writableBuffer.FlushAsync();
+            await flushAwaiter;
         }
-        
+
+        public void Dispose()
+        {
+            lock (_sync)
+            {
+                _completed = true;
+            }
+
+            _pipe.Writer.Complete();
+        }
+
         public void Flush()
         {
+            FlushAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
         public Task FlushAsync(CancellationToken cancellationToken)
         {
-            //return _outputStream.FlushAsync(cancellationToken);
-            return Task.FromResult(0);
+            return WriteAsync(default(ArraySegment<byte>), chunk: false, cancellationToken: cancellationToken);
         }
 
         public WritableBuffer Alloc()
@@ -64,26 +90,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         public async Task WriteOutputAsync()
         {
-            while (true)
+            try
             {
-                var readResult = await _pipe.Reader.ReadAsync();
-                foreach (var memory in readResult.Buffer)
+                while (true)
                 {
-                    var array = memory.GetArray();
-                    _outputStream.Write(array.Array, array.Offset, array.Count);
-                }
-                _pipe.Reader.Advance(readResult.Buffer.End);
-                if (readResult.Buffer.IsEmpty && readResult.IsCompleted)
-                {
-                    return;
+                    var readResult = await _pipe.Reader.ReadAsync();
+                    var buffer = readResult.Buffer;
+
+                    try
+                    {
+                        if (buffer.IsEmpty && readResult.IsCompleted)
+                        {
+                            break;
+                        }
+
+                        if (buffer.IsEmpty)
+                        {
+                            await _outputStream.FlushAsync();
+                        }
+
+                        foreach (var memory in buffer)
+                        {
+                            var array = memory.GetArray();
+                            await _outputStream.WriteAsync(array.Array, array.Offset, array.Count);
+                        }
+                    }
+                    finally
+                    {
+                        _pipe.Reader.Advance(readResult.Buffer.End);
+                    }
+
+                    // REVIEW: Should we flush here?
                 }
             }
+            finally
+            {
+                _pipe.Reader.Complete();
+            }
         }
-
-        public void Complete()
-        {
-            _pipe.Writer.Complete();
-        }
-
     }
 }

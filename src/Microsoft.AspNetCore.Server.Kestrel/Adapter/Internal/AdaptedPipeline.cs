@@ -6,8 +6,6 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
@@ -16,15 +14,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         private const int MinAllocBufferSize = 2048;
 
         private readonly Stream _filteredStream;
-        private StreamSocketOutput _output;
+        private readonly StreamSocketOutput _output;
 
         public AdaptedPipeline(
             Stream filteredStream,
-            IPipe pipe,
-            IPipe pipe2)
+            IPipe inputPipe,
+            IPipe outputPipe)
         {
-            Input = pipe;
-            _output = new StreamSocketOutput(filteredStream, pipe2);
+            Input = inputPipe;
+            _output = new StreamSocketOutput(filteredStream, outputPipe);
 
             _filteredStream = filteredStream;
         }
@@ -38,12 +36,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
             Input.Writer.Complete();
         }
 
-        public Task WriteOutputAsync()
+        public async Task StartAsync()
         {
-            return _output.WriteOutputAsync();
+            var inputTask = ReadInputAsync();
+            var outputTask = _output.WriteOutputAsync();
+
+            var result = await Task.WhenAny(inputTask, outputTask);
+
+            if (result == inputTask)
+            {
+                // Close output
+                _output.Dispose();
+            }
+            else
+            {
+                // Close input
+                Input.Writer.Complete();
+            }
+
+            await Task.WhenAll(inputTask, outputTask);
         }
 
-        public async Task ReadInputAsync()
+        private async Task ReadInputAsync()
         {
             int bytesRead;
 

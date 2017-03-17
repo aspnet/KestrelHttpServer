@@ -82,7 +82,7 @@ namespace Microsoft.AspNetCore.Testing
                 var task = _reader.ReadAsync(actual, offset, actual.Length - offset);
                 if (!Debugger.IsAttached)
                 {
-                    Assert.True(await Task.WhenAny(task, Task.Delay(Timeout)) == task, "TestConnection.Receive timed out.");
+                    task = task.TimeoutAfter(Timeout);
                 }
                 var count = await task;
                 if (count == 0)
