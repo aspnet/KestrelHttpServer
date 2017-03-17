@@ -102,7 +102,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     this);
 
                 writeReq.Init(Thread.Loop);
-               var result = await writeReq.Write(
+               var result = await writeReq.WriteAsync(
                     DispatchPipe,
                     new ArraySegment<ArraySegment<byte>>(new [] { new ArraySegment<byte>(_pipeMessage) }));
                 

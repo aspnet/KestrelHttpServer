@@ -37,10 +37,6 @@ namespace Microsoft.AspNetCore.Testing
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (exception != null)
-            {
-                Console.WriteLine(exception);
-            }
 #if true
             if (logLevel == LogLevel.Critical && ThrowOnCriticalErrors)
 #endif

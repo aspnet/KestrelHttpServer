@@ -222,7 +222,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (!buffer.IsEmpty)
                     {
                         var writeReq = _writeReqPool.Allocate();
-                        var writeResult = await writeReq.Write(_socket, buffer);
+                        var writeResult = await writeReq.WriteAsync(_socket, buffer);
                         _writeReqPool.Return(writeReq);
 
                         // REVIEW: Locking here

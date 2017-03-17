@@ -170,7 +170,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var data = Marshal.AllocCoTaskMem(500);
                 tcp2.ReadStart(
                     (a, b, c) => tcp2.Libuv.buf_init(data, 500),
-                    (__, nread, state2) =>
+                    async (__, nread, state2) =>
                     {
                         if (nread <= 0)
                         {
@@ -184,7 +184,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                                 req.Init(loop);
                                 var block = ReadableBuffer.Create(new byte[] { 65, 66, 67, 68, 69 });
                 
-                                req.Write(
+                                await req.WriteAsync(
                                     tcp2,
                                     block);
                             }
