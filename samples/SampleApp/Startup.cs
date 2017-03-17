@@ -47,7 +47,7 @@ namespace SampleApp
                     options.Listen(IPAddress.Loopback, 5000, listenOptions =>
                     {
                         // Uncomment the following to enable Nagle's algorithm for this endpoint.
-                        // listenOptions.NoDelay = false;
+                        //listenOptions.NoDelay = false;
 
                         listenOptions.UseConnectionLogging();
                     });
