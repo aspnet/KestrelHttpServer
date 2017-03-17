@@ -109,6 +109,10 @@ namespace Microsoft.AspNetCore.Testing
             new[] { "GET http://example.com/a?p=/a/%2E%2E/b HTTP/1.1\r\n", "http://example.com/a?p=/a/%2E%2E/b", "/a", "?p=/a/%2E%2E/b" },
             new[] { "GET http://example.com?p=/a/../b HTTP/1.1\r\n", "http://example.com?p=/a/../b", "/", "?p=/a/../b" },
             new[] { "GET http://example.com?p=/a/%2E%2E/b HTTP/1.1\r\n", "http://example.com?p=/a/%2E%2E/b", "/", "?p=/a/%2E%2E/b" },
+
+            // Asterisk-form and authority-form should be unaffected and cause no issues
+            new[] { "OPTIONS * HTTP/1.1\r\n", "*", "", "" },
+            new[] { "CONNECT www.example.com HTTP/1.1\r\n", "www.example.com", "", "" },
         };
 
         public static IEnumerable<string> RequestLineIncompleteData => new[]
