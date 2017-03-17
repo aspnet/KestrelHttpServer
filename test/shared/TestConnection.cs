@@ -27,6 +27,8 @@ namespace Microsoft.AspNetCore.Testing
             Create(port);
         }
 
+        public Socket Socket => _socket;
+
         public void Create(int port)
         {
             _socket = CreateConnectedLoopbackSocket(port);
