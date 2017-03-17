@@ -1373,9 +1373,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RejectRequestTarget(target);
             }
 
-            // WARNING: PathNormalizer.RemoveDotSegments mutates uri.LocalPath if there are dot segments in the path!
-            var length = PathNormalizer.RemoveDotSegments(uri.LocalPath);
-            Path = length == uri.LocalPath.Length ? uri.LocalPath : uri.LocalPath.Substring(0, length);
+            Path = uri.LocalPath;
             // don't use uri.Query because we need the unescaped version
             QueryString = query.GetAsciiStringNonNullCharacters();
         }
