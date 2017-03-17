@@ -14,7 +14,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public class UvWriteReq : UvRequest
     {
-        private readonly static Libuv.uv_write_cb _uv_write_cb = (IntPtr ptr, int status) => UvWriteCb(ptr, status);
+        private readonly static Libuv.uv_write_cb _uv_write_cb = 
+            (IntPtr ptr, int status) => FromIntPtr<UvWriteReq>(ptr).UvWriteCb(status);
 
         private IntPtr _bufs;
 
@@ -22,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         private object _state;
         private const int BUFFER_COUNT = 4;
 
-        private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
+        private readonly List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -84,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             {
                 _callback = null;
                 _state = null;
-                Unpin(this);
+                UnpinGcHandles();
                 throw;
             }
         }
@@ -159,44 +160,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             {
                 _callback = null;
                 _state = null;
-                Unpin(this);
+                UnpinGcHandles();
                 throw;
             }
         }
 
-        private static void Unpin(UvWriteReq req)
+        private void UnpinGcHandles()
         {
-            foreach (var pin in req._pins)
+            var count = _pins.Count;
+            for (var i = 0; i < count; i++)
             {
-                pin.Free();
+                _pins[i].Free();
             }
-            req._pins.Clear();
+            _pins.Clear();
         }
 
-        private static void UvWriteCb(IntPtr ptr, int status)
+        private void UvWriteCb(int status)
         {
-            var req = FromIntPtr<UvWriteReq>(ptr);
-            Unpin(req);
+            UnpinGcHandles();
 
-            var callback = req._callback;
-            req._callback = null;
+            var callback = _callback;
+            _callback = null;
 
-            var state = req._state;
-            req._state = null;
+            var state = _state;
+            _state = null;
 
             Exception error = null;
             if (status < 0)
             {
-                req.Libuv.Check(status, out error);
+                Libuv.Check(status, out error);
             }
 
             try
             {
-                callback(req, status, error, state);
+                callback(this, status, error, state);
             }
             catch (Exception ex)
             {
-                req._log.LogError(0, ex, "UvWriteCb");
+                _log.LogError(0, ex, "UvWriteCb");
                 throw;
             }
         }
