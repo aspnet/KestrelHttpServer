@@ -127,6 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             buffer.Write(number.ToString());
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private unsafe static void WriteAsciiMultiWrite(this WritableBuffer buffer, string data)
         {
             var remaining = data.Length;
