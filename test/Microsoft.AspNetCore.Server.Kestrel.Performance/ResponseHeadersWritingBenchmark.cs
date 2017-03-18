@@ -2,15 +2,17 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
+using Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
-using BenchmarkDotNet.Attributes;
 using Moq;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
@@ -20,21 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     {
         private static readonly byte[] _helloWorldPayload = Encoding.ASCII.GetBytes("Hello, World!");
 
-        private readonly TestFrame<object> _frame;
-
-        public ResponseHeadersWritingBenchmark()
-        {
-            _frame = MakeFrame();
-        }
-
-        public enum BenchmarkTypes
-        {
-            TechEmpowerPlaintext,
-            PlaintextChunked,
-            PlaintextWithCookie,
-            PlaintextChunkedWithCookie,
-            LiveAspNet
-        }
+        private TestFrame<object> _frame;
+        private MemoryPool _memoryPool;
 
         [Params(
             BenchmarkTypes.TechEmpowerPlaintext,
@@ -118,22 +107,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             return _frame.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default(CancellationToken));
         }
 
-        private TestFrame<object> MakeFrame()
+        [Setup]
+        public void Setup()
         {
+            _memoryPool = new MemoryPool();
+            var trace = Mock.Of<IKestrelTrace>();
+            var threadPool = new LoggingThreadPool(trace);
+            var socketOutput = new StreamSocketOutput("", Stream.Null, _memoryPool, trace);
 
             var serviceContext = new ServiceContext
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerOptions = new KestrelServerOptions(),
-                Log = Mock.Of<IKestrelTrace>()
+                Log = trace
             };
+
             var listenerContext = new ListenerContext(serviceContext)
             {
                 ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 5000))
             };
+
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                Output = new MockSocketOutput(),
+                Input = new SocketInput(_memoryPool, threadPool),
+                Output = socketOutput,
                 ConnectionControl = Mock.Of<IConnectionControl>()
             };
 
@@ -141,7 +138,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             frame.Reset();
             frame.InitializeHeaders();
 
-            return frame;
+            // Start writing
+            var ignore = socketOutput.WriteAsync(default(ArraySegment<byte>), false, default(CancellationToken));
+
+            _frame = frame;
+        }
+
+        [Cleanup]
+        public void Cleanup()
+        {
+            _memoryPool.Dispose();
+        }
+
+        public enum BenchmarkTypes
+        {
+            TechEmpowerPlaintext,
+            PlaintextChunked,
+            PlaintextWithCookie,
+            PlaintextChunkedWithCookie,
+            LiveAspNet
         }
     }
 }
+
