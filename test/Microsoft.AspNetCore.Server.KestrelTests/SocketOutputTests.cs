@@ -139,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 // Assert
                 await writeTask.TimeoutAfter(TimeSpan.FromSeconds(5));
-                
+
                 // Cleanup
                 socketOutput.End(ProduceEndType.SocketDisconnect);
 
@@ -364,7 +364,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 await writeTask2.TimeoutAfter(timeout);
                 await writeTask3.TimeoutAfter(timeout);
-                
+
                 Assert.Empty(completeQueue);
 
                 // Cleanup
@@ -372,394 +372,268 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        //    [Theory]
-        //    [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
-        //    public async Task FailedWriteCompletesOrCancelsAllPendingTasks(KestrelServerOptions options)
-        //    {
-        //        var maxBytesPreCompleted = (int)options.Limits.MaxResponseBufferSize.Value;
-        //        var completeQueue = new ConcurrentQueue<Action<int>>();
-
-        //        // Arrange
-        //        var mockLibuv = new MockLibuv
-        //        {
-        //            OnWrite = (socket, buffers, triggerCompleted) =>
-        //            {
-        //                completeQueue.Enqueue(triggerCompleted);
-        //                return 0;
-        //            }
-        //        };
-
-        //        using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-        //        {
-        //            var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
-        //            kestrelEngine.Threads.Add(kestrelThread);
-        //            await kestrelThread.StartAsync();
-
-        //            var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
-        //            var trace = new KestrelTrace(new TestKestrelTrace());
-        //            var ltp = new InlineLoggingThreadPool(trace);
-
-        //            using (var mockConnection = new MockConnection(options))
-        //            {
-        //                var abortedSource = mockConnection.RequestAbortedSource;
-        //                ISocketOutput socketOutput = new SocketOutput(kestrelThread, socket, mockConnection, "0", trace, ltp);
-
-        //                var bufferSize = maxBytesPreCompleted;
-
-        //                var data = new byte[bufferSize];
-        //                var fullBuffer = new ArraySegment<byte>(data, 0, bufferSize);
-
-        //                // Act 
-        //                var task1Success = socketOutput.WriteAsync(fullBuffer, cancellationToken: abortedSource.Token);
-        //                // task1 should complete successfully as < _maxBytesPreCompleted
-
-        //                // First task is completed and successful
-        //                Assert.True(task1Success.IsCompleted);
-        //                Assert.False(task1Success.IsCanceled);
-        //                Assert.False(task1Success.IsFaulted);
-
-        //                // following tasks should wait.
-        //                var task2Success = socketOutput.WriteAsync(fullBuffer, cancellationToken: default(CancellationToken));
-        //                var task3Canceled = socketOutput.WriteAsync(fullBuffer, cancellationToken: abortedSource.Token);
-
-        //                // Give time for tasks to percolate
-        //                await mockLibuv.OnPostTask;
-
-        //                // Second task is not completed
-        //                Assert.False(task2Success.IsCompleted);
-        //                Assert.False(task2Success.IsCanceled);
-        //                Assert.False(task2Success.IsFaulted);
-
-        //                // Third task is not completed 
-        //                Assert.False(task3Canceled.IsCompleted);
-        //                Assert.False(task3Canceled.IsCanceled);
-        //                Assert.False(task3Canceled.IsFaulted);
-
-        //                // Cause the first write to fail.
-        //                Action<int> triggerNextCompleted;
-        //                Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-        //                triggerNextCompleted(-1);
-
-        //                // Second task is now completed
-        //                await task2Success;
-
-        //                // Third task is now canceled
-        //                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
-        //                Assert.True(task3Canceled.IsCanceled);
-
-        //                // Cleanup
-        //                var cleanupTask = ((SocketOutput)socketOutput).WriteAsync(
-        //                    default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-        //                // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-        //                await mockLibuv.OnPostTask;
-
-        //                foreach (var triggerCompleted in completeQueue)
-        //                {
-        //                    triggerCompleted(0);
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    [Theory]
-        //    [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
-        //    public async Task WritesDontGetCompletedTooQuickly(KestrelServerOptions options)
-        //    {
-        //        var maxBytesPreCompleted = (int)options.Limits.MaxResponseBufferSize.Value;
-        //        var completeQueue = new ConcurrentQueue<Action<int>>();
-        //        var writeCalled = false;
-
-        //        // Arrange
-        //        var mockLibuv = new MockLibuv
-        //        {
-        //            OnWrite = (socket, buffers, triggerCompleted) =>
-        //            {
-        //                completeQueue.Enqueue(triggerCompleted);
-        //                writeCalled = true;
-
-        //                return 0;
-        //            }
-        //        };
-
-        //        using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-        //        {
-        //            var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
-        //            kestrelEngine.Threads.Add(kestrelThread);
-        //            await kestrelThread.StartAsync();
-
-        //            var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
-        //            var trace = new KestrelTrace(new TestKestrelTrace());
-        //            var ltp = new InlineLoggingThreadPool(trace);
-        //            var mockConnection = new MockConnection(options);
-        //            var socketOutput = new SocketOutput(kestrelThread, socket, mockConnection, "0", trace, ltp);
-
-        //            var bufferSize = maxBytesPreCompleted;
-        //            var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
-
-        //            // Act (Pre-complete the maximum number of bytes in preparation for the rest of the test)
-        //            var writeTask1 = socketOutput.WriteAsync(buffer, default(CancellationToken));
-
-        //            // Assert
-        //            // The first write should pre-complete since it is <= _maxBytesPreCompleted.
-        //            await mockLibuv.OnPostTask;
-        //            Assert.Equal(TaskStatus.RanToCompletion, writeTask1.Status);
-        //            Assert.True(writeCalled);
-        //            // Arrange
-        //            writeCalled = false;
-
-        //            // Act
-        //            var writeTask2 = socketOutput.WriteAsync(buffer, default(CancellationToken));
-        //            var writeTask3 = socketOutput.WriteAsync(buffer, default(CancellationToken));
-
-        //            await mockLibuv.OnPostTask;
-        //            Assert.True(writeCalled);
-        //            Action<int> triggerNextCompleted;
-        //            Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-        //            triggerNextCompleted(0);
-
-        //            // Assert 
-        //            // Too many bytes are already pre-completed for the third but not the second write to pre-complete.
-        //            // https://github.com/aspnet/KestrelHttpServer/issues/356
-        //            Assert.Equal(TaskStatus.RanToCompletion, writeTask2.Status);
-        //            Assert.False(writeTask3.IsCompleted);
-
-        //            // Act
-        //            Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-        //            triggerNextCompleted(0);
-
-        //            // Assert
-        //            // Finishing the first write should allow the third write to pre-complete.
-        //            Assert.Equal(TaskStatus.RanToCompletion, writeTask3.Status);
-
-        //            // Cleanup
-        //            var cleanupTask = ((SocketOutput)socketOutput).WriteAsync(
-        //                default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-        //            // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-        //            await mockLibuv.OnPostTask;
-
-        //            foreach (var triggerCompleted in completeQueue)
-        //            {
-        //                triggerCompleted(0);
-        //            }
-        //        }
-        //    }
-
-        //    [Theory]
-        //    [MemberData(nameof(MaxResponseBufferSizeData))]
-        //    public async Task ProducingStartAndProducingCompleteCanBeUsedDirectly(KestrelServerOptions options)
-        //    {
-        //        int nBuffers = 0;
-
-        //        var mockLibuv = new MockLibuv
-        //        {
-        //            OnWrite = (socket, buffers, triggerCompleted) =>
-        //            {
-        //                nBuffers = buffers;
-        //                triggerCompleted(0);
-        //                return 0;
-        //            }
-        //        };
-
-        //        using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-        //        {
-        //            var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
-        //            kestrelEngine.Threads.Add(kestrelThread);
-        //            await kestrelThread.StartAsync();
-
-        //            var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
-        //            var trace = new KestrelTrace(new TestKestrelTrace());
-        //            var ltp = new InlineLoggingThreadPool(trace);
-        //            var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(options), "0", trace, ltp);
-
-        //            // block 1
-        //            var start = socketOutput.ProducingStart();
-        //            start.Block.End = start.Block.Data.Offset + start.Block.Data.Count;
-
-        //            // block 2
-        //            var block2 = kestrelThread.Memory.Lease();
-        //            block2.End = block2.Data.Offset + block2.Data.Count;
-        //            start.Block.Next = block2;
-
-        //            var end = new MemoryPoolIterator(block2, block2.End);
-
-        //            socketOutput.ProducingComplete(end);
-
-        //            // A call to Write is required to ensure a write is scheduled
-        //            var ignore = socketOutput.WriteAsync(default(ArraySegment<byte>), default(CancellationToken));
-
-        //            await mockLibuv.OnPostTask;
-        //            Assert.Equal(2, nBuffers);
-
-        //            // Cleanup
-        //            var cleanupTask = socketOutput.WriteAsync(
-        //                default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-        //        }
-        //    }
-
-        //    [Theory]
-        //    [MemberData(nameof(MaxResponseBufferSizeData))]
-        //    public async Task OnlyAllowsUpToThreeConcurrentWrites(KestrelServerOptions options)
-        //    {
-        //        var writeCalled = false;
-        //        var completeQueue = new ConcurrentQueue<Action<int>>();
-
-        //        var mockLibuv = new MockLibuv
-        //        {
-        //            OnWrite = (socket, buffers, triggerCompleted) =>
-        //            {
-        //                writeCalled = true;
-        //                completeQueue.Enqueue(triggerCompleted);
-        //                return 0;
-        //            }
-        //        };
-
-        //        using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-        //        {
-        //            var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
-        //            kestrelEngine.Threads.Add(kestrelThread);
-        //            await kestrelThread.StartAsync();
-
-        //            var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
-        //            var trace = new KestrelTrace(new TestKestrelTrace());
-        //            var ltp = new InlineLoggingThreadPool(trace);
-        //            var mockConnection = new MockConnection(options);
-        //            var socketOutput = new SocketOutput(kestrelThread, socket, mockConnection, "0", trace, ltp);
-
-        //            var buffer = new ArraySegment<byte>(new byte[1]);
-
-        //            // First three writes trigger uv_write
-        //            var ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
-        //            await mockLibuv.OnPostTask;
-        //            Assert.True(writeCalled);
-        //            writeCalled = false;
-        //            ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
-        //            await mockLibuv.OnPostTask;
-        //            Assert.True(writeCalled);
-        //            writeCalled = false;
-        //            ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
-        //            await mockLibuv.OnPostTask;
-        //            Assert.True(writeCalled);
-        //            writeCalled = false;
-
-        //            // The fourth write won't trigger uv_write since the first three haven't completed
-        //            ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
-        //            await mockLibuv.OnPostTask;
-        //            Assert.False(writeCalled);
-
-        //            // Complete 1st write allowing uv_write to be triggered again
-        //            Action<int> triggerNextCompleted;
-        //            Assert.True(completeQueue.TryDequeue(out triggerNextCompleted));
-        //            triggerNextCompleted(0);
-        //            await mockLibuv.OnPostTask;
-        //            Assert.True(writeCalled);
-
-        //            // Cleanup
-        //            var cleanupTask = socketOutput.WriteAsync(
-        //                default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-        //            // Wait for all writes to complete so the completeQueue isn't modified during enumeration.
-        //            await mockLibuv.OnPostTask;
-
-        //            foreach (var triggerCompleted in completeQueue)
-        //            {
-        //                triggerCompleted(0);
-        //            }
-        //        }
-        //    }
-
-        //    [Theory]
-        //    [MemberData(nameof(MaxResponseBufferSizeData))]
-        //    public async Task WritesAreAggregated(KestrelServerOptions options)
-        //    {
-        //        var writeCalled = false;
-        //        var writeCount = 0;
-
-        //        var mockLibuv = new MockLibuv
-        //        {
-        //            OnWrite = (socket, buffers, triggerCompleted) =>
-        //            {
-        //                writeCount++;
-        //                triggerCompleted(0);
-        //                writeCalled = true;
-        //                return 0;
-        //            }
-        //        };
-
-        //        using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-        //        {
-        //            var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
-        //            kestrelEngine.Threads.Add(kestrelThread);
-        //            await kestrelThread.StartAsync();
-
-        //            var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
-        //            var trace = new KestrelTrace(new TestKestrelTrace());
-        //            var ltp = new InlineLoggingThreadPool(trace);
-        //            var socketOutput = new SocketOutput(kestrelThread, socket, new MockConnection(new KestrelServerOptions()), "0", trace, ltp);
-
-        //            mockLibuv.KestrelThreadBlocker.Reset();
-
-        //            var buffer = new ArraySegment<byte>(new byte[1]);
-
-        //            // Two calls to WriteAsync trigger uv_write once if both calls
-        //            // are made before write is scheduled
-        //            var ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
-        //            ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
-
-        //            mockLibuv.KestrelThreadBlocker.Set();
-
-        //            await mockLibuv.OnPostTask;
-
-        //            Assert.True(writeCalled);
-        //            writeCalled = false;
-
-        //            // Write isn't called twice after the thread is unblocked
-        //            await mockLibuv.OnPostTask;
-        //            Assert.False(writeCalled);
-        //            // One call to ScheduleWrite
-        //            Assert.Equal(1, mockLibuv.PostCount);
-        //            // One call to uv_write
-        //            Assert.Equal(1, writeCount);
-
-        //            // Cleanup
-        //            var cleanupTask = socketOutput.WriteAsync(
-        //                default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-        //        }
-        //    }
-
-        //    [Fact]
-        //    public async Task ProducingStartAndProducingCompleteCanBeCalledAfterConnectionClose()
-        //    {
-        //        var mockLibuv = new MockLibuv();
-
-        //        using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
-        //        {
-        //            var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
-        //            kestrelEngine.Threads.Add(kestrelThread);
-        //            await kestrelThread.StartAsync();
-
-        //            var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
-        //            var trace = new KestrelTrace(new TestKestrelTrace());
-        //            var ltp = new InlineLoggingThreadPool(trace);
-        //            var connection = new MockConnection(new KestrelServerOptions());
-        //            var socketOutput = new SocketOutput(kestrelThread, socket, connection, "0", trace, ltp);
-
-        //            // Close SocketOutput
-        //            var cleanupTask = socketOutput.WriteAsync(
-        //                default(ArraySegment<byte>), default(CancellationToken), socketDisconnect: true);
-
-        //            await mockLibuv.OnPostTask;
-
-        //            Assert.Equal(TaskStatus.RanToCompletion, connection.SocketClosed.Status);
-
-        //            var start = socketOutput.ProducingStart();
-
-        //            Assert.True(start.IsDefault);
-        //            // ProducingComplete should not throw given a default iterator
-        //            socketOutput.ProducingComplete(start);
-        //        }
-        //    }
-        //}
+        [Theory]
+        [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
+        public async Task FailedWriteCompletesOrCancelsAllPendingTasks(KestrelServerOptions options)
+        {
+            var maxBytesPreCompleted = (int)options.Limits.MaxResponseBufferSize.Value;
+            var completeQueue = new ConcurrentQueue<Action<int>>();
+
+            // Arrange
+            var mockLibuv = new MockLibuv
+            {
+                OnWrite = (socket, buffers, triggerCompleted) =>
+                {
+                    completeQueue.Enqueue(triggerCompleted);
+                    return 0;
+                }
+            };
+
+            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var factory = new PipeFactory())
+            {
+                var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
+                kestrelEngine.Threads.Add(kestrelThread);
+                await kestrelThread.StartAsync();
+
+                var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
+                var trace = new KestrelTrace(new TestKestrelTrace());
+
+                using (var mockConnection = new MockConnection(options))
+                {
+                    var pipeOptions = new PipeOptions
+                    {
+                        ReaderScheduler = kestrelThread,
+                        MaximumSizeHigh = options.Limits.MaxResponseBufferSize ?? 0,
+                        MaximumSizeLow = options.Limits.MaxResponseBufferSize ?? 0,
+                    };
+                    var pipe = factory.Create(pipeOptions);
+                    var abortedSource = mockConnection.RequestAbortedSource;
+                    var socketOutput = new SocketOutput(pipe, kestrelThread, socket, mockConnection, "0", trace);
+
+                    var bufferSize = maxBytesPreCompleted - 1;
+
+                    var data = new byte[bufferSize];
+                    var fullBuffer = new ArraySegment<byte>(data, 0, bufferSize);
+
+                    // Act 
+                    var task1Success = socketOutput.WriteAsync(fullBuffer, cancellationToken: abortedSource.Token);
+                    // task1 should complete successfully as < _maxBytesPreCompleted
+
+                    // First task is completed and successful
+                    Assert.True(task1Success.IsCompleted);
+                    Assert.False(task1Success.IsCanceled);
+                    Assert.False(task1Success.IsFaulted);
+
+                    // following tasks should wait.
+                    var task2Success = socketOutput.WriteAsync(fullBuffer, cancellationToken: default(CancellationToken));
+                    var task3Canceled = socketOutput.WriteAsync(fullBuffer, cancellationToken: abortedSource.Token);
+
+                    // Give time for tasks to percolate
+                    await mockLibuv.OnPostTask;
+
+                    // Second task is not completed
+                    Assert.False(task2Success.IsCompleted);
+                    Assert.False(task2Success.IsCanceled);
+                    Assert.False(task2Success.IsFaulted);
+
+                    // Third task is not completed 
+                    Assert.False(task3Canceled.IsCompleted);
+                    Assert.False(task3Canceled.IsCanceled);
+                    Assert.False(task3Canceled.IsFaulted);
+
+
+                    // Cause all writes to fail
+                    while (completeQueue.TryDequeue(out var triggerNextCompleted))
+                    {
+                        await kestrelThread.PostAsync(cb => cb(-1), triggerNextCompleted);
+                    }
+
+                    // Second task is now completed
+                    await task2Success.TimeoutAfter(TimeSpan.FromSeconds(5));
+
+                    // Third task is now canceled
+                    // TODO: Cancellation isn't supported right now
+                    // await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                    // Assert.True(task3Canceled.IsCanceled);
+
+                    Assert.True(abortedSource.IsCancellationRequested);
+
+                    // Cleanup
+                    socketOutput.End(ProduceEndType.SocketDisconnect);
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
+        public async Task WritesDontGetCompletedTooQuickly(KestrelServerOptions options)
+        {
+            var maxBytesPreCompleted = (int)options.Limits.MaxResponseBufferSize.Value;
+            var completeQueue = new ConcurrentQueue<Action<int>>();
+
+            // Arrange
+            var mockLibuv = new MockLibuv
+            {
+                OnWrite = (socket, buffers, triggerCompleted) =>
+                {
+                    completeQueue.Enqueue(triggerCompleted);
+                    return 0;
+                }
+            };
+
+            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var factory = new PipeFactory())
+            {
+                var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
+                kestrelEngine.Threads.Add(kestrelThread);
+                await kestrelThread.StartAsync();
+
+                var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
+                var trace = new KestrelTrace(new TestKestrelTrace());
+                var mockConnection = new MockConnection(options);
+                var pipeOptions = new PipeOptions
+                {
+                    ReaderScheduler = kestrelThread,
+                    MaximumSizeHigh = options.Limits.MaxResponseBufferSize ?? 0,
+                    MaximumSizeLow = options.Limits.MaxResponseBufferSize ?? 0,
+                };
+                var pipe = factory.Create(pipeOptions);
+                var socketOutput = new SocketOutput(pipe, kestrelThread, socket, mockConnection, "0", trace);
+
+                var bufferSize = maxBytesPreCompleted - 1;
+                var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
+
+                // Act (Pre-complete the maximum number of bytes in preparation for the rest of the test)
+                var writeTask1 = socketOutput.WriteAsync(buffer, default(CancellationToken));
+
+                // Assert
+                // The first write should pre-complete since it is < _maxBytesPreCompleted.
+                await mockLibuv.OnPostTask;
+                Assert.Equal(TaskStatus.RanToCompletion, writeTask1.Status);
+                Assert.NotEmpty(completeQueue);
+
+                // Act
+                var writeTask2 = socketOutput.WriteAsync(buffer, default(CancellationToken));
+                var writeTask3 = socketOutput.WriteAsync(buffer, default(CancellationToken));
+
+                // Drain the write queue
+                while (completeQueue.TryDequeue(out var triggerNextCompleted))
+                {
+                    await kestrelThread.PostAsync(cb => cb(0), triggerNextCompleted);
+                }
+
+                var timeout = TimeSpan.FromSeconds(5);
+
+                // Assert 
+                // Too many bytes are already pre-completed for the third but not the second write to pre-complete.
+                // https://github.com/aspnet/KestrelHttpServer/issues/356
+                await writeTask2.TimeoutAfter(timeout);
+                await writeTask3.TimeoutAfter(timeout);
+
+                // Cleanup
+                socketOutput.End(ProduceEndType.SocketDisconnect);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(MaxResponseBufferSizeData))]
+        public async Task WritesAreAggregated(KestrelServerOptions options)
+        {
+            var writeCalled = false;
+            var writeCount = 0;
+
+            var mockLibuv = new MockLibuv
+            {
+                OnWrite = (socket, buffers, triggerCompleted) =>
+                {
+                    writeCount++;
+                    triggerCompleted(0);
+                    writeCalled = true;
+                    return 0;
+                }
+            };
+
+            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var factory = new PipeFactory())
+            {
+                var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
+                kestrelEngine.Threads.Add(kestrelThread);
+                await kestrelThread.StartAsync();
+
+                var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
+                var trace = new KestrelTrace(new TestKestrelTrace());
+                var pipeOptions = new PipeOptions
+                {
+                    ReaderScheduler = kestrelThread,
+                    MaximumSizeHigh = options.Limits.MaxResponseBufferSize ?? 0,
+                    MaximumSizeLow = options.Limits.MaxResponseBufferSize ?? 0,
+                };
+                var pipe = factory.Create(pipeOptions);
+                var socketOutput = new SocketOutput(pipe, kestrelThread, socket, new MockConnection(new KestrelServerOptions()), "0", trace);
+
+                mockLibuv.KestrelThreadBlocker.Reset();
+
+                var buffer = new ArraySegment<byte>(new byte[1]);
+
+                // Two calls to WriteAsync trigger uv_write once if both calls
+                // are made before write is scheduled
+                var ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
+                ignore = socketOutput.WriteAsync(buffer, CancellationToken.None);
+
+                mockLibuv.KestrelThreadBlocker.Set();
+
+                await mockLibuv.OnPostTask;
+
+                Assert.True(writeCalled);
+                writeCalled = false;
+
+                // Write isn't called twice after the thread is unblocked
+                await mockLibuv.OnPostTask;
+
+                Assert.False(writeCalled);
+                // One call to ScheduleWrite
+                Assert.Equal(1, mockLibuv.PostCount);
+                // One call to uv_write
+                Assert.Equal(1, writeCount);
+
+                // Cleanup
+                socketOutput.End(ProduceEndType.SocketDisconnect);
+            }
+        }
+
+        [Fact(Skip = "Commit throws with a non channel backed writable buffer")]
+        public async Task AllocCommitCanBeCalledAfterConnectionClose()
+        {
+            var mockLibuv = new MockLibuv();
+
+            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var factory = new PipeFactory())
+            {
+                var kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
+                kestrelEngine.Threads.Add(kestrelThread);
+                await kestrelThread.StartAsync();
+
+                var socket = new MockSocket(mockLibuv, kestrelThread.Loop.ThreadId, new TestKestrelTrace());
+                var trace = new KestrelTrace(new TestKestrelTrace());
+                var connection = new MockConnection(new KestrelServerOptions());
+                var pipeOptions = new PipeOptions
+                {
+                    ReaderScheduler = kestrelThread,
+                };
+                var pipe = factory.Create(pipeOptions);
+                var socketOutput = new SocketOutput(pipe, kestrelThread, socket, connection, "0", trace);
+
+                // Close SocketOutput
+                socketOutput.End(ProduceEndType.SocketDisconnect);
+
+                await mockLibuv.OnPostTask;
+
+                Assert.Equal(TaskStatus.RanToCompletion, connection.SocketClosed.Status);
+
+                var start = socketOutput.Alloc();
+                start.Commit();
+            }
+        }
     }
 }

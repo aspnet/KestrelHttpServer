@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +31,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly IPipe _pipe;
         private Task _writingTask;
 
+        // https://github.com/dotnet/corefxlab/issues/1334 
+        // Pipelines don't support multiple awaiters on flush
+        // this is temporary until it does
         private TaskCompletionSource<object> _flushTcs;
         private readonly object _flushLock = new object();
         private readonly Action _onFlushCallback;
@@ -136,6 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private Task FlushAsyncAwaited(WritableBufferAwaitable awaitable)
         {
+            // https://github.com/dotnet/corefxlab/issues/1334 
             // Since the flush awaitable doesn't currently support multiple awaiters
             // we need to use a task to track the callbacks.
             // All awaiters get the same task
@@ -155,55 +158,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private void OnFlush()
         {
             _flushTcs.TrySetResult(null);
-        }
-
-        private void CancellationTriggered()
-        {
-            lock (_contextLock)
-            {
-                if (!_cancelled)
-                {
-                    // Abort the connection for any failed write
-                    // Queued on threadpool so get it in as first op.
-                    _connection.AbortAsync();
-                    _cancelled = true;
-
-                    _log.ConnectionError(_connectionId, new TaskCanceledException("Write operation canceled. Aborting connection."));
-                }
-            }
-        }
-
-        private void OnWriteCompleted(int writeStatus, Exception writeError)
-        {
-            // Called inside _contextLock
-            var status = writeStatus;
-            var error = writeError;
-
-            if (error != null)
-            {
-                // Abort the connection for any failed write
-                // Queued on threadpool so get it in as first op.
-                _connection.AbortAsync();
-                _cancelled = true;
-                _lastWriteError = error;
-            }
-
-            if (error == null)
-            {
-                _log.ConnectionWriteCallback(_connectionId, status);
-            }
-            else
-            {
-                // Log connection resets at a lower (Debug) level.
-                if (status == Constants.ECONNRESET)
-                {
-                    _log.ConnectionReset(_connectionId);
-                }
-                else
-                {
-                    _log.ConnectionError(_connectionId, error);
-                }
-            }
         }
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool chunk)
@@ -239,7 +193,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public WritableBuffer Alloc()
         {
-            return _pipe.Writer.Alloc();
+            lock (_contextLock)
+            {
+                if (_completed)
+                {
+                    // This is broken
+                    return default(WritableBuffer);
+                }
+
+                return _pipe.Writer.Alloc();
+            }
         }
 
         public async Task StartWrites()
@@ -257,7 +220,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         var writeResult = await writeReq.WriteAsync(_socket, buffer);
                         _writeReqPool.Return(writeReq);
 
-                        // REVIEW: Locking here
+                        // REVIEW: Locking here, do we need to take the context lock?
                         OnWriteCompleted(writeResult.Status, writeResult.Error);
                     }
 
@@ -284,6 +247,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _socket.Dispose();
             _connection.OnSocketClosed();
             _log.ConnectionStop(_connectionId);
+        }
+
+        private void OnWriteCompleted(int writeStatus, Exception writeError)
+        {
+            // Called inside _contextLock
+            var status = writeStatus;
+            var error = writeError;
+
+            if (error != null)
+            {
+                // Abort the connection for any failed write
+                // Queued on threadpool so get it in as first op.
+                _connection.AbortAsync();
+                _cancelled = true;
+                _lastWriteError = error;
+            }
+
+            if (error == null)
+            {
+                _log.ConnectionWriteCallback(_connectionId, status);
+            }
+            else
+            {
+                // Log connection resets at a lower (Debug) level.
+                if (status == Constants.ECONNRESET)
+                {
+                    _log.ConnectionReset(_connectionId);
+                }
+                else
+                {
+                    _log.ConnectionError(_connectionId, error);
+                }
+            }
         }
 
         private Task ShutdownAsync()
