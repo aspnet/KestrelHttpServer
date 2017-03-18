@@ -974,10 +974,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
-            end.Write(_bytesHttpVersion11);
-            end.Write(statusBytes);
+            end.WriteFast(_bytesHttpVersion11);
+            end.WriteFast(statusBytes);
             responseHeaders.CopyTo(ref end);
-            end.Write(_bytesEndHeaders);
+            end.WriteFast(_bytesEndHeaders);
 
             end.Commit();
         }

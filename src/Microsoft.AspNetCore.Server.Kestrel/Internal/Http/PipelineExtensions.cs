@@ -95,6 +95,60 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return result;
         }
 
+        // Temporary until the fast write implementation propagates from corefx
+        public static void WriteFast(this WritableBuffer buffer, ReadOnlySpan<byte> source)
+        {
+            if (buffer.Memory.IsEmpty)
+            {
+                buffer.Ensure();
+            }
+
+            // Fast path, try copying to the available memory directly
+            if (source.Length <= buffer.Memory.Length)
+            {
+                source.CopyToFast(buffer.Memory.Span);
+                buffer.Advance(source.Length);
+                return;
+            }
+
+            var remaining = source.Length;
+            var offset = 0;
+
+            while (remaining > 0)
+            {
+                var writable = Math.Min(remaining, buffer.Memory.Length);
+
+                buffer.Ensure(writable);
+
+                if (writable == 0)
+                {
+                    continue;
+                }
+
+                source.Slice(offset, writable).CopyToFast(buffer.Memory.Span);
+
+                remaining -= writable;
+                offset += writable;
+
+                buffer.Advance(writable);
+            }
+        }
+
+        private unsafe static void CopyToFast(this ReadOnlySpan<byte> source, Span<byte> destination)
+        {
+            if (destination.Length < source.Length)
+            {
+                throw new InvalidOperationException();
+            }
+
+            // Assume it fits
+            fixed (byte* pSource = &source.DangerousGetPinnableReference())
+            fixed (byte* pDest = &destination.DangerousGetPinnableReference())
+            {
+                Unsafe.CopyBlockUnaligned(pDest, pSource, (uint)source.Length);
+            }
+        }
+
         public unsafe static void WriteAscii(this WritableBuffer buffer, string data)
         {
             if (!string.IsNullOrEmpty(data))
