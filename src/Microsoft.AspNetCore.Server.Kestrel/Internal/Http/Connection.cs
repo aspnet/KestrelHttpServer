@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             Input = Thread.PipelineFactory.Create(ListenerContext.LibuvInputPipeOptions);
             var outputPipe = Thread.PipelineFactory.Create(ListenerContext.LibuvOutputPipeOptions);
-            Output = new SocketOutput(outputPipe, Thread, _socket, this, ConnectionId, Log, ThreadPool);
+            Output = new SocketOutput(outputPipe, Thread, _socket, this, ConnectionId, Log);
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)

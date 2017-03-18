@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.Extensions.Internal;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -22,7 +21,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly Connection _connection;
         private readonly string _connectionId;
         private readonly IKestrelTrace _log;
-        private readonly IThreadPool _threadPool;
 
         // This locks access to to all of the below fields
         private readonly object _contextLock = new object();
@@ -34,14 +32,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly IPipe _pipe;
         private Task _writingTask;
 
+        private TaskCompletionSource<object> _flushTcs;
+        private readonly object _flushLock = new object();
+        private readonly Action _onFlushCallback;
+
         public SocketOutput(
             IPipe pipe,
             KestrelThread thread,
             UvStreamHandle socket,
             Connection connection,
             string connectionId,
-            IKestrelTrace log,
-            IThreadPool threadPool)
+            IKestrelTrace log)
         {
             _pipe = pipe;
             // We need to have empty pipe at this moment so callback
@@ -52,8 +53,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _connection = connection;
             _connectionId = connectionId;
             _log = log;
-            _threadPool = threadPool;
             _writeReqPool = thread.WriteReqPool;
+            _onFlushCallback = OnFlush;
         }
 
         public async Task WriteAsync(
@@ -61,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             CancellationToken cancellationToken,
             bool chunk = false)
         {
-            var flushAwaiter = default(WritableBufferAwaitable);
+            var writableBuffer = default(WritableBuffer);
 
             lock (_contextLock)
             {
@@ -77,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return;
                 }
 
-                var writableBuffer = _pipe.Writer.Alloc();
+                writableBuffer = _pipe.Writer.Alloc();
 
                 if (buffer.Count > 0)
                 {
@@ -94,10 +95,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
 
-                flushAwaiter = writableBuffer.FlushAsync();
+                writableBuffer.Commit();
             }
 
-            await flushAwaiter;
+            await FlushAsync(writableBuffer);
         }
 
         public void End(ProduceEndType endType)
@@ -122,6 +123,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _pipe.Writer.Complete();
         }
 
+        private Task FlushAsync(WritableBuffer writableBuffer)
+        {
+            var awaitable = writableBuffer.FlushAsync();
+            if (awaitable.IsCompleted)
+            {
+                // The flush task can't fail today
+                return TaskCache.CompletedTask;
+            }
+            return FlushAsyncAwaited(awaitable);
+        }
+
+        private Task FlushAsyncAwaited(WritableBufferAwaitable awaitable)
+        {
+            // Since the flush awaitable doesn't currently support multiple awaiters
+            // we need to use a task to track the callbacks.
+            // All awaiters get the same task
+            lock (_flushLock)
+            {
+                if (_flushTcs == null || _flushTcs.Task.IsCompleted)
+                {
+                    _flushTcs = new TaskCompletionSource<object>();
+
+                    awaitable.OnCompleted(_onFlushCallback);
+                }
+            }
+
+            return _flushTcs.Task;
+        }
+
+        private void OnFlush()
+        {
+            _flushTcs.TrySetResult(null);
+        }
+
         private void CancellationTriggered()
         {
             lock (_contextLock)
@@ -138,7 +173,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        // This may called on the libuv event loop
         private void OnWriteCompleted(int writeStatus, Exception writeError)
         {
             // Called inside _contextLock
