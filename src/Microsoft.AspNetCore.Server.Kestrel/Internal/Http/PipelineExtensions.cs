@@ -194,7 +194,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var length = _maxULongByteLength - position;
             buffer.Write(new ReadOnlySpan<byte>(byteBuffer, position, length));
-            buffer.Advance(length);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
