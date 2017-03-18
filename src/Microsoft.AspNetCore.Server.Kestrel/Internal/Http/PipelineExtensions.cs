@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         // Temporary until the fast write implementation propagates from corefx
-        public static void WriteFast(this WritableBuffer buffer, ReadOnlySpan<byte> source)
+        public unsafe static void WriteFast(this WritableBuffer buffer, ReadOnlySpan<byte> source)
         {
             if (buffer.Memory.IsEmpty)
             {
@@ -114,23 +114,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var remaining = source.Length;
             var offset = 0;
 
-            while (remaining > 0)
+            fixed (byte* pSource = &source.DangerousGetPinnableReference())
             {
-                var writable = Math.Min(remaining, buffer.Memory.Length);
-
-                buffer.Ensure(writable);
-
-                if (writable == 0)
+                while (remaining > 0)
                 {
-                    continue;
+                    var writable = Math.Min(remaining, buffer.Memory.Length);
+
+                    buffer.Ensure(writable);
+
+                    if (writable == 0)
+                    {
+                        continue;
+                    }
+
+                    fixed (byte* pDest = &buffer.Memory.Span.DangerousGetPinnableReference())
+                    {
+                        Unsafe.CopyBlockUnaligned(pDest, pSource + offset, (uint)writable);
+                    }
+
+                    remaining -= writable;
+                    offset += writable;
+
+                    buffer.Advance(writable);
                 }
-
-                source.Slice(offset, writable).CopyToFast(buffer.Memory.Span);
-
-                remaining -= writable;
-                offset += writable;
-
-                buffer.Advance(writable);
             }
         }
 
