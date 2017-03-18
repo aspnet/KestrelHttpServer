@@ -13,6 +13,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public static class PipelineExtensions
     {
+        private const int _maxULongByteLength = 20;
+
+        [ThreadStatic]
+        private static byte[] _numericBytesScratch;
+
         public static ValueTask<ArraySegment<byte>> PeekAsync(this IPipeReader pipelineReader)
         {
             var input = pipelineReader.ReadAsync();
@@ -117,14 +122,79 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static void Write(this WritableBuffer buffer, string data)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe static void WriteNumeric(this WritableBuffer buffer, ulong number)
         {
-            buffer.Write(Encoding.UTF8.GetBytes(data));
+            const byte AsciiDigitStart = (byte)'0';
+
+            if (buffer.Memory.IsEmpty)
+            {
+                buffer.Ensure();
+            }
+
+            // Fast path, try copying to the available memory directly
+            var bytesLeftInBlock = buffer.Memory.Length;
+            var simpleWrite = true;
+            fixed (byte* output = &buffer.Memory.Span.DangerousGetPinnableReference())
+            {
+                var start = output;
+                if (number < 10 && bytesLeftInBlock >= 1)
+                {
+                    *(start) = (byte)(((uint)number) + AsciiDigitStart);
+                    buffer.Advance(1);
+                }
+                else if (number < 100 && bytesLeftInBlock >= 2)
+                {
+                    var val = (uint)number;
+                    var tens = (byte)((val * 205u) >> 11); // div10, valid to 1028
+
+                    *(start) = (byte)(tens + AsciiDigitStart);
+                    *(start + 1) = (byte)(val - (tens * 10) + AsciiDigitStart);
+                    buffer.Advance(2);
+                }
+                else if (number < 1000 && bytesLeftInBlock >= 3)
+                {
+                    var val = (uint)number;
+                    var digit0 = (byte)((val * 41u) >> 12); // div100, valid to 1098
+                    var digits01 = (byte)((val * 205u) >> 11); // div10, valid to 1028
+
+                    *(start) = (byte)(digit0 + AsciiDigitStart);
+                    *(start + 1) = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
+                    *(start + 2) = (byte)(val - (digits01 * 10) + AsciiDigitStart);
+                    buffer.Advance(3);
+                }
+                else
+                {
+                    simpleWrite = false;
+                }
+            }
+
+            if (!simpleWrite)
+            {
+                buffer.WriteNumericMultiWrite(number);
+            }
         }
 
-        public static void WriteNumeric(this WritableBuffer buffer, ulong number)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static unsafe void WriteNumericMultiWrite(this WritableBuffer buffer, ulong number)
         {
-            buffer.Write(number.ToString());
+            const byte AsciiDigitStart = (byte)'0';
+
+            var value = number;
+            var position = _maxULongByteLength;
+            var byteBuffer = NumericBytesScratch;
+            do
+            {
+                // Consider using Math.DivRem() if available
+                var quotient = value / 10;
+                byteBuffer[--position] = (byte)(AsciiDigitStart + (value - quotient * 10)); // 0x30 = '0'
+                value = quotient;
+            }
+            while (value != 0);
+
+            var length = _maxULongByteLength - position;
+            buffer.Write(new ReadOnlySpan<byte>(byteBuffer, position, length));
+            buffer.Advance(length);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -247,6 +317,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     i = length;
                 }
             }
+        }
+
+        private static byte[] NumericBytesScratch => _numericBytesScratch ?? CreateNumericBytesScratch();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static byte[] CreateNumericBytesScratch()
+        {
+            var bytes = new byte[_maxULongByteLength];
+            _numericBytesScratch = bytes;
+            return bytes;
         }
     }
 }
