@@ -11,6 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BenchmarkDotNet.Artifacts\**" />
+    <EmbeddedResource Remove="BenchmarkDotNet.Artifacts\**" />
+    <None Remove="BenchmarkDotNet.Artifacts\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\shared\TestApplicationErrorLogger.cs" />
     <Compile Include="..\shared\TestFrame.cs" />
     <Compile Include="..\shared\TestKestrelTrace.cs" />
