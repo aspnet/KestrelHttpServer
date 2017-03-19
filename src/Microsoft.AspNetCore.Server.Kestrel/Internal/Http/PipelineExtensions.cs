@@ -98,19 +98,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         // Temporary until the fast write implementation propagates from corefx
         public unsafe static void WriteFast(this WritableBuffer buffer, ReadOnlySpan<byte> source)
         {
-            if (buffer.Memory.IsEmpty)
+            var dest = buffer.Memory.Span;
+            var destLength = dest.Length;
+
+            if (destLength == 0)
             {
                 buffer.Ensure();
+
+                // Get the new span and length
+                dest = buffer.Memory.Span;
+                destLength = dest.Length;
             }
 
-            // Fast path, try copying to the available memory directly
-            if (source.Length <= buffer.Memory.Length)
+            var sourceLength = source.Length;
+            if (sourceLength <= destLength)
             {
-                source.CopyToFast(buffer.Memory.Span);
-                buffer.Advance(source.Length);
+                fixed (byte* pSource = &source.DangerousGetPinnableReference())
+                fixed (byte* pDest = &dest.DangerousGetPinnableReference())
+                {
+                    Unsafe.CopyBlockUnaligned(pDest, pSource, (uint)sourceLength);
+                }
+                buffer.Advance(sourceLength);
                 return;
             }
 
+            buffer.WriteMultiBuffer(source);
+        }
+
+        private static unsafe void WriteMultiBuffer(this WritableBuffer buffer, ReadOnlySpan<byte> source)
+        {
             var remaining = source.Length;
             var offset = 0;
 
@@ -137,21 +153,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     buffer.Advance(writable);
                 }
-            }
-        }
-
-        private unsafe static void CopyToFast(this ReadOnlySpan<byte> source, Span<byte> destination)
-        {
-            if (destination.Length < source.Length)
-            {
-                throw new InvalidOperationException();
-            }
-
-            // Assume it fits
-            fixed (byte* pSource = &source.DangerousGetPinnableReference())
-            fixed (byte* pDest = &destination.DangerousGetPinnableReference())
-            {
-                Unsafe.CopyBlockUnaligned(pDest, pSource, (uint)source.Length);
             }
         }
 
@@ -334,7 +335,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     i += 4;
                 }
 
-            trailing:
+                trailing:
                 for (; i < length; i++)
                 {
                     char ch = *(input + i);
