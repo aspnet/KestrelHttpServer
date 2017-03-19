@@ -113,11 +113,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var sourceLength = source.Length;
             if (sourceLength <= destLength)
             {
-                fixed (byte* pSource = &source.DangerousGetPinnableReference())
-                fixed (byte* pDest = &dest.DangerousGetPinnableReference())
-                {
-                    Unsafe.CopyBlockUnaligned(pDest, pSource, (uint)sourceLength);
-                }
+                ref byte pSource = ref source.DangerousGetPinnableReference();
+                ref byte pDest = ref dest.DangerousGetPinnableReference();
+                Unsafe.CopyBlockUnaligned(ref pDest, ref pSource, (uint)sourceLength);
                 buffer.Advance(sourceLength);
                 return;
             }
