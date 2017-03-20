@@ -3,16 +3,19 @@
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <Description>ASP.NET Core Kestrel cross-platform web server.</Description>
-    <TargetFrameworks>netstandard1.3;net46</TargetFrameworks>
+    <Description>Libuv transport for the ASP.NET Core Kestrel cross-platform web server.</Description>
+    <TargetFrameworks>net451;netstandard1.3</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>aspnetcore;kestrel</PackageTags>
     <NoWarn>CS1591;$(NoWarn)</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Libuv" Version="$(LibUvVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Core\Microsoft.AspNetCore.Server.Kestrel.Core.csproj" />
-    <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Libuv\Microsoft.AspNetCore.Server.Kestrel.Libuv.csproj" />
   </ItemGroup>
 
 </Project>
