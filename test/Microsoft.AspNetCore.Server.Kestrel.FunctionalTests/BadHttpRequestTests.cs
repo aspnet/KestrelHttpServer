@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
@@ -127,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async context =>
             {
                 await context.Request.Body.ReadAsync(new byte[1], 0, 1);
-            }, new TestServiceContext { Log = new TestKestrelTrace(mockLogger.Object) }))
+            }, new TestServiceContext { Log = new KestrelTrace(mockLogger.Object) }))
             {
                 using (var connection = new TestConnection(server.Port))
                 {

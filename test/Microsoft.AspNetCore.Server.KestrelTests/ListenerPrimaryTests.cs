@@ -196,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 await kestrelThreadPrimary.PostAsync(_ => pipe.Dispose(), (object)null);
 
                 // Wait up to 10 seconds for error to be logged
-                for (var i = 0; i < 10 && primaryTrace.TestApplicationErrorLogger.TotalErrorsLogged == 0; i++)
+                for (var i = 0; i < 10 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
                 {
                     await Task.Delay(100);
                 }
@@ -213,8 +213,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 await kestrelThreadPrimary.StopAsync(TimeSpan.FromSeconds(1));
             }
 
-            Assert.Equal(1, primaryTrace.TestApplicationErrorLogger.TotalErrorsLogged);
-            var errorMessage = primaryTrace.TestApplicationErrorLogger.Messages.First(m => m.LogLevel == LogLevel.Error);
+            Assert.Equal(1, primaryTrace.Logger.TotalErrorsLogged);
+            var errorMessage = primaryTrace.Logger.Messages.First(m => m.LogLevel == LogLevel.Error);
             Assert.Equal(Constants.EOF, Assert.IsType<UvException>(errorMessage.Exception).StatusCode);
         }
 
@@ -275,7 +275,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 await listenerSecondary.StartAsync(pipeName, Guid.NewGuid().ToByteArray(), listenOptions, kestrelThreadSecondary);
 
                 // Wait up to 10 seconds for error to be logged
-                for (var i = 0; i < 10 && primaryTrace.TestApplicationErrorLogger.TotalErrorsLogged == 0; i++)
+                for (var i = 0; i < 10 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
                 {
                     await Task.Delay(100);
                 }
@@ -292,8 +292,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 await kestrelThreadPrimary.StopAsync(TimeSpan.FromSeconds(1));
             }
 
-            Assert.Equal(1, primaryTrace.TestApplicationErrorLogger.TotalErrorsLogged);
-            var errorMessage = primaryTrace.TestApplicationErrorLogger.Messages.First(m => m.LogLevel == LogLevel.Error);
+            Assert.Equal(1, primaryTrace.Logger.TotalErrorsLogged);
+            var errorMessage = primaryTrace.Logger.Messages.First(m => m.LogLevel == LogLevel.Error);
             Assert.IsType<IOException>(errorMessage.Exception);
             Assert.Contains("Bad data", errorMessage.Exception.ToString());
         }
