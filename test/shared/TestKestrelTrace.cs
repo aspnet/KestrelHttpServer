@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Testing
 {
@@ -11,12 +12,14 @@ namespace Microsoft.AspNetCore.Testing
         {
         }
 
-        public TestKestrelTrace(TestApplicationErrorLogger testLogger) : base(testLogger)
+        public TestKestrelTrace(ILogger logger) : base(logger)
         {
-            Logger = testLogger;
+            Logger = logger;
         }
 
-        public TestApplicationErrorLogger Logger { get; private set; }
+        public ILogger Logger { get; private set; }
+
+        public TestApplicationErrorLogger TestApplicationErrorLogger => (TestApplicationErrorLogger)Logger;
 
         public override void ConnectionRead(string connectionId, int count)
         {
