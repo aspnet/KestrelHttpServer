@@ -882,37 +882,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void CreateResponseHeader(bool appCompleted)
         {
+            var keepAlive = _keepAlive;
             var responseHeaders = FrameResponseHeaders;
             var hasConnection = responseHeaders.HasConnection;
-            var connectionOptions = FrameHeaders.ParseConnection(responseHeaders.HeaderConnection);
             var hasTransferEncoding = responseHeaders.HasTransferEncoding;
-            var transferCoding = FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding);
 
-            if (_keepAlive && hasConnection)
+            if (keepAlive)
             {
-                _keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
+                if (hasConnection && (FrameHeaders.ParseConnection(responseHeaders.HeaderConnection) & ConnectionOptions.KeepAlive) != ConnectionOptions.KeepAlive)
+                {
+                    keepAlive = false;
+                }
+                else if (hasTransferEncoding && FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding) != TransferCoding.Chunked)
+                {
+                    // https://tools.ietf.org/html/rfc7230#section-3.3.1
+                    // If any transfer coding other than
+                    // chunked is applied to a response payload body, the sender MUST either
+                    // apply chunked as the final transfer coding or terminate the message
+                    // by closing the connection.
+                    keepAlive = false;
+                }
             }
 
-            // https://tools.ietf.org/html/rfc7230#section-3.3.1
-            // If any transfer coding other than
-            // chunked is applied to a response payload body, the sender MUST either
-            // apply chunked as the final transfer coding or terminate the message
-            // by closing the connection.
-            if (hasTransferEncoding && transferCoding != TransferCoding.Chunked)
+            var statusCode = StatusCode;
+            var httpVersion = _httpVersion;
+            if (StatusCanHaveBody(statusCode) && !ReferenceEquals(HttpMethods.Head, Method))
             {
-                _keepAlive = false;
-            }
-
-            // Set whether response can have body
-            _canHaveBody = StatusCanHaveBody(StatusCode) && Method != "HEAD";
-
-            // Don't set the Content-Length or Transfer-Encoding headers
-            // automatically for HEAD requests or 204, 205, 304 responses.
-            if (_canHaveBody)
-            {
+                // Response can have body
+                _canHaveBody = true;
+                // Don't set the Content-Length or Transfer-Encoding headers
+                // automatically for HEAD requests or 204, 205, 304 responses.
                 if (!hasTransferEncoding && !responseHeaders.ContentLength.HasValue)
                 {
-                    if (appCompleted && StatusCode != StatusCodes.Status101SwitchingProtocols)
+                    if (appCompleted && statusCode != StatusCodes.Status101SwitchingProtocols)
                     {
                         // Since the app has completed and we are only now generating
                         // the headers we can safely set the Content-Length to 0.
@@ -927,14 +929,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         //
                         // A server MUST NOT send a response containing Transfer-Encoding unless the corresponding
                         // request indicates HTTP/1.1 (or later).
-                        if (_httpVersion == Http.HttpVersion.Http11 && StatusCode != StatusCodes.Status101SwitchingProtocols)
+                        if (statusCode != StatusCodes.Status101SwitchingProtocols && httpVersion == Http.HttpVersion.Http11)
                         {
                             _autoChunk = true;
                             responseHeaders.SetRawTransferEncoding("chunked", _bytesTransferEncodingChunked);
                         }
                         else
                         {
-                            _keepAlive = false;
+                            keepAlive = false;
                         }
                     }
                 }
@@ -943,16 +945,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 RejectNonBodyTransferEncodingResponse(appCompleted);
             }
+            else
+            {
+                // Response can't have body
+                _canHaveBody = false;
+            }
 
             responseHeaders.SetReadOnly();
 
             if (!hasConnection)
             {
-                if (!_keepAlive)
+                if (!keepAlive)
                 {
                     responseHeaders.SetRawConnection("close", _bytesConnectionClose);
                 }
-                else if (_httpVersion == Http.HttpVersion.Http10)
+                else if (httpVersion == Http.HttpVersion.Http10)
                 {
                     responseHeaders.SetRawConnection("keep-alive", _bytesConnectionKeepAlive);
                 }
@@ -968,6 +975,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
+
+            _keepAlive = keepAlive;
 
             Output.Write(_writeHeaders, this);
         }
@@ -1066,6 +1075,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         public bool StatusCanHaveBody(int statusCode)
+        {
+            return statusCode == StatusCodes.Status200OK || StatusNot200OKCanHaveBody(statusCode);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public bool StatusNot200OKCanHaveBody(int statusCode)
         {
             // List of status codes taken from Microsoft.Net.Http.Server.Response
             return statusCode != StatusCodes.Status204NoContent &&
