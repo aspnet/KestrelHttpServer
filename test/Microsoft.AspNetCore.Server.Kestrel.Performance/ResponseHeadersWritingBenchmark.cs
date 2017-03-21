@@ -12,7 +12,6 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
@@ -38,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             _frame.Reset();
             _frame.StatusCode = 200;
-            _frame.HttpVersionEnum = HttpVersion.Http11;
+            _frame.HttpVersionEnum = Internal.Http.HttpVersion.Http11;
             _frame.KeepAlive = true;
 
             Task writeTask = Task.CompletedTask;
