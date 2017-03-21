@@ -784,9 +784,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             _requestProcessingStatus = RequestProcessingStatus.ResponseStarted;
 
-            var statusBytes = ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase);
-
-            CreateResponseHeader(statusBytes, appCompleted);
+            CreateResponseHeader(appCompleted);
         }
 
         protected Task TryProduceInvalidRequestResponse()
@@ -881,9 +879,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private void CreateResponseHeader(
-            byte[] statusBytes,
-            bool appCompleted)
+        private void CreateResponseHeader(bool appCompleted)
         {
             var responseHeaders = FrameResponseHeaders;
             var hasConnection = responseHeaders.HasConnection;
@@ -974,7 +970,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             var writableBuffer = Output.Alloc();
             writableBuffer.WriteFast(_bytesHttpVersion11);
-            writableBuffer.WriteFast(statusBytes);
+            writableBuffer.WriteFast(ReasonPhrases.ToStatusBytes(StatusCode, ReasonPhrase));
             responseHeaders.CopyTo(ref writableBuffer);
             writableBuffer.WriteFast(_bytesEndHeaders);
             writableBuffer.Commit();
