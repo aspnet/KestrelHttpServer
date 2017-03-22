@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -451,7 +452,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // Dynamic port
                 var ipv6Addresses = GetIPAddresses()
                     .Where(ip => ip.AddressFamily == AddressFamily.InterNetworkV6)
-                    .Where(ip => ip.ScopeId != 0);
+                    .Where(ip => ip.ScopeId != 0)
+                    .Where(ip => CanBindAndConnectToEndpoint(new IPEndPoint(ip, 0)));
+
                 foreach (var ip in ipv6Addresses)
                 {
                     dataset.Add($"http://[{ip}]:0/", GetTestUrls);
@@ -528,6 +531,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         }
                     }
                 }
+            }
+        }
+
+        private static bool CanBindAndConnectToEndpoint(IPEndPoint endPoint)
+        {
+            try
+            {
+                using (var serverSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    serverSocket.Bind(endPoint);
+                    serverSocket.Listen(1);
+
+                    var socketArgs = new SocketAsyncEventArgs
+                    {
+                        RemoteEndPoint = serverSocket.LocalEndPoint
+                    };
+
+                    var mre = new ManualResetEventSlim();
+                    socketArgs.Completed += (s, e) =>
+                    {
+                        mre.Set();
+                        e.ConnectSocket.Dispose();
+                    };
+
+                    // Connect can take a couple minutes to time out.
+                    return Socket.ConnectAsync(SocketType.Stream, ProtocolType.Tcp, socketArgs) && mre.Wait(5000);
+                }
+            }
+            catch (SocketException)
+            {
+                return false;
             }
         }
 
