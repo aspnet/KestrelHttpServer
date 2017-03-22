@@ -236,9 +236,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
             var keepAlive = httpVersion != HttpVersion.Http10;
 
-            var connection = headers.HeaderConnection;
-            if (connection.Count > 0)
+            if (headers.HasConnection)
             {
+                var connection = headers.HeaderConnection;
                 var connectionOptions = FrameHeaders.ParseConnection(connection);
 
                 if ((connectionOptions & ConnectionOptions.Upgrade) == ConnectionOptions.Upgrade)
@@ -249,9 +249,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
             }
 
-            var transferEncoding = headers.HeaderTransferEncoding;
-            if (transferEncoding.Count > 0)
+            if (headers.HasTransferEncoding)
             {
+                var transferEncoding = headers.HeaderTransferEncoding;
                 var transferCoding = FrameHeaders.GetFinalTransferCoding(headers.HeaderTransferEncoding);
 
                 // https://tools.ietf.org/html/rfc7230#section-3.3.3

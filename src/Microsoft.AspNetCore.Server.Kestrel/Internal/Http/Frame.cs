@@ -34,8 +34,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
         private static readonly Action<WritableBuffer, Frame> _writeHeaders = WriteResponseHeaders;
 
-        private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("\r\nConnection: close");
-        private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
         private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
         private static readonly byte[] _bytesHttpVersion11 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
         private static readonly byte[] _bytesEndHeaders = Encoding.ASCII.GetBytes("\r\n\r\n");
@@ -882,38 +880,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void CreateResponseHeader(bool appCompleted)
         {
-            // Take multi-use state into function locals rather than use the class members directly
-            // This allows them to be in registers rather than via memory access as we aren't
-            // concerned with other code modifying them while we are processing this function
-            var keepAlive = _keepAlive;
             var responseHeaders = FrameResponseHeaders;
             var hasConnection = responseHeaders.HasConnection;
             var hasTransferEncoding = responseHeaders.HasTransferEncoding;
 
-            if (keepAlive)
+            if (hasConnection || hasTransferEncoding)
             {
-                if (hasConnection && (FrameHeaders.ParseConnection(responseHeaders.HeaderConnection) & ConnectionOptions.KeepAlive) != ConnectionOptions.KeepAlive)
-                {
-                    keepAlive = false;
-                }
-                else if (hasTransferEncoding && FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding) != TransferCoding.Chunked)
-                {
-                    // https://tools.ietf.org/html/rfc7230#section-3.3.1
-                    // If any transfer coding other than
-                    // chunked is applied to a response payload body, the sender MUST either
-                    // apply chunked as the final transfer coding or terminate the message
-                    // by closing the connection.
-                    keepAlive = false;
-                }
+                SetConnectionOrTransferEncodingKeepAlive(hasConnection, hasTransferEncoding);
             }
 
-            // Read the values into function locals; so they will be promoted to registers as they are multi-use
-            // Scope just before use so lifetime doesn't overlap unnecessarily and registers are free for other uses 
+            // Take multi-use state of common path into function locals rather than use the class members directly
+            // This allows them to be in registers rather than via memory access as
+            // we aren't concerned with other code modifying them while we are processing this function
             var statusCode = StatusCode;
             var httpVersion = _httpVersion;
             if (StatusCanHaveBody(statusCode) && !ReferenceEquals(HttpMethods.Head, Method))
             {
-                // Response can have body
+                // Common path, response can have body
                 _canHaveBody = true;
                 // Don't set the Content-Length or Transfer-Encoding headers
                 // automatically for HEAD requests or 204, 205, 304 responses.
@@ -936,25 +919,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         // request indicates HTTP/1.1 (or later).
                         if (httpVersion == Http.HttpVersion.Http11 && statusCode != StatusCodes.Status101SwitchingProtocols)
                         {
+                            // Common path
                             _autoChunk = true;
                             responseHeaders.SetRawTransferEncoding("chunked", _bytesTransferEncodingChunked);
                         }
                         else
                         {
-                            keepAlive = false;
+                            _keepAlive = false;
                         }
                     }
                 }
             }
             else if (hasTransferEncoding)
             {
-                // Update _keepAlive in case of exception
-                _keepAlive = keepAlive;
+                // Uncommon path
                 RejectNonBodyTransferEncodingResponse(appCompleted);
             }
             else
             {
-                // Response can't have body
+                // Uncommon path, response can't have body
                 _canHaveBody = false;
             }
 
@@ -962,30 +945,55 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!hasConnection)
             {
-                if (!keepAlive)
+                // Common path
+                if (!_keepAlive)
                 {
-                    responseHeaders.SetRawConnection("close", _bytesConnectionClose);
+                    // Uncommon path
+                    responseHeaders.SetConnectionClose();
                 }
                 else if (httpVersion == Http.HttpVersion.Http10)
                 {
-                    responseHeaders.SetRawConnection("keep-alive", _bytesConnectionKeepAlive);
+                    // Uncommon path
+                    responseHeaders.SetConnectionKeepAlive();
                 }
             }
 
             if (ServerOptions.AddServerHeader && !responseHeaders.HasServer)
             {
+                // Common path
                 responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
             }
 
             if (!responseHeaders.HasDate)
             {
+                // Common path
                 var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
-            _keepAlive = keepAlive;
-
             Output.Write(_writeHeaders, this);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SetConnectionOrTransferEncodingKeepAlive(bool hasConnection, bool hasTransferEncoding)
+        {
+            var responseHeaders = FrameResponseHeaders;
+            if (_keepAlive)
+            {
+                if (hasConnection && (FrameHeaders.ParseConnection(responseHeaders.HeaderConnection) & ConnectionOptions.KeepAlive) == 0)
+                {
+                    _keepAlive = false;
+                }
+                else if (hasTransferEncoding && FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding) != TransferCoding.Chunked)
+                {
+                    // https://tools.ietf.org/html/rfc7230#section-3.3.1
+                    // If any transfer coding other than
+                    // chunked is applied to a response payload body, the sender MUST either
+                    // apply chunked as the final transfer coding or terminate the message
+                    // by closing the connection.
+                    _keepAlive = false;
+                }
+            }
         }
 
         private static void WriteResponseHeaders(WritableBuffer writableBuffer, Frame frame)
@@ -1081,13 +1089,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return result;
         }
 
-        public bool StatusCanHaveBody(int statusCode)
+        public static bool StatusCanHaveBody(int statusCode)
         {
             return statusCode == StatusCodes.Status200OK || StatusNot200OKCanHaveBody(statusCode);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public bool StatusNot200OKCanHaveBody(int statusCode)
+        public static bool StatusNot200OKCanHaveBody(int statusCode)
         {
             // List of status codes taken from Microsoft.Net.Http.Server.Response
             return statusCode != StatusCodes.Status204NoContent &&

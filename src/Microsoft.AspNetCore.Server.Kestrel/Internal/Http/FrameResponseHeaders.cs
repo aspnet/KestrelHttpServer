@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using System.Text;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
@@ -16,6 +16,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     {
         private static readonly byte[] _CrLf = new[] { (byte)'\r', (byte)'\n' };
         private static readonly byte[] _colonSpace = new[] { (byte)':', (byte)' ' };
+        private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("\r\nConnection: close");
+        private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
 
         public bool HasConnection => HeaderConnection.Count != 0;
 
@@ -24,6 +26,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public bool HasServer => HeaderServer.Count != 0;
 
         public bool HasDate => HeaderDate.Count != 0;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void SetConnectionClose()
+        {
+            SetRawConnection("close", _bytesConnectionClose);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void SetConnectionKeepAlive()
+        {
+            SetRawConnection("keep-alive", _bytesConnectionKeepAlive);
+        }
 
         public Enumerator GetEnumerator()
         {

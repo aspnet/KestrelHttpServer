@@ -5410,25 +5410,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public void SetRawConnection(StringValues value, byte[] raw)
+        public void SetRawConnection(string value, byte[] raw)
         {
             _bits |= 2L;
             _headers._Connection = value;
             _headers._rawConnection = raw;
         }
-        public void SetRawDate(StringValues value, byte[] raw)
+        public void SetRawDate(string value, byte[] raw)
         {
             _bits |= 4L;
             _headers._Date = value;
             _headers._rawDate = raw;
         }
-        public void SetRawTransferEncoding(StringValues value, byte[] raw)
+        public void SetRawTransferEncoding(string value, byte[] raw)
         {
             _bits |= 64L;
             _headers._TransferEncoding = value;
             _headers._rawTransferEncoding = raw;
         }
-        public void SetRawServer(StringValues value, byte[] raw)
+        public void SetRawServer(string value, byte[] raw)
         {
             _bits |= 33554432L;
             _headers._Server = value;
