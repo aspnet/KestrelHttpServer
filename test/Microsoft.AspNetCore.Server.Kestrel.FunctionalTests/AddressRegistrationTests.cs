@@ -552,11 +552,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     socketArgs.Completed += (s, e) =>
                     {
                         mre.Set();
-                        e.ConnectSocket.Dispose();
+                        e.ConnectSocket?.Dispose();
                     };
 
                     // Connect can take a couple minutes to time out.
-                    return Socket.ConnectAsync(SocketType.Stream, ProtocolType.Tcp, socketArgs) && mre.Wait(5000);
+                    if (Socket.ConnectAsync(SocketType.Stream, ProtocolType.Tcp, socketArgs))
+                    {
+                        return mre.Wait(5000) && socketArgs.SocketError == SocketError.Success;
+                    }
+                    else
+                    {
+                        return socketArgs.SocketError == SocketError.Success;
+                    }
                 }
             }
             catch (SocketException)
