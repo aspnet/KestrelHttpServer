@@ -882,6 +882,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void CreateResponseHeader(bool appCompleted)
         {
+            // Take multi-use state into function locals rather than use the class members directly
+            // This allows them to be in registers rather than via memory access as we aren't
+            // concerned with other code modifying them while we are processing this function
             var keepAlive = _keepAlive;
             var responseHeaders = FrameResponseHeaders;
             var hasConnection = responseHeaders.HasConnection;
@@ -904,6 +907,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
+            // Read the values into function locals; so they will be promoted to registers as they are multi-use
+            // Scope just before use so lifetime doesn't overlap unnecessarily and registers are free for other uses 
             var statusCode = StatusCode;
             var httpVersion = _httpVersion;
             if (StatusCanHaveBody(statusCode) && !ReferenceEquals(HttpMethods.Head, Method))
@@ -929,7 +934,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         //
                         // A server MUST NOT send a response containing Transfer-Encoding unless the corresponding
                         // request indicates HTTP/1.1 (or later).
-                        if (statusCode != StatusCodes.Status101SwitchingProtocols && httpVersion == Http.HttpVersion.Http11)
+                        if (httpVersion == Http.HttpVersion.Http11 && statusCode != StatusCodes.Status101SwitchingProtocols)
                         {
                             _autoChunk = true;
                             responseHeaders.SetRawTransferEncoding("chunked", _bytesTransferEncodingChunked);
@@ -943,6 +948,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             else if (hasTransferEncoding)
             {
+                // Update _keepAlive in case of exception
+                _keepAlive = keepAlive;
                 RejectNonBodyTransferEncodingResponse(appCompleted);
             }
             else
