@@ -39,6 +39,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             _frame.Reset();
             _frame.StatusCode = 200;
+            _frame.HttpVersionEnum = HttpVersion.Http11;
+            _frame.KeepAlive = true;
 
             Task writeTask = Task.CompletedTask;
             switch (Type)
@@ -135,6 +137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             };
 
             connectionContext.ListenerContext.ServiceContext.HttpParserFactory = f => new KestrelHttpParser(log: null);
+            connectionContext.ListenerContext.ServiceContext.ServerOptions = new KestrelServerOptions();
 
             var frame = new TestFrame<object>(application: null, context: connectionContext);
             frame.Reset();
