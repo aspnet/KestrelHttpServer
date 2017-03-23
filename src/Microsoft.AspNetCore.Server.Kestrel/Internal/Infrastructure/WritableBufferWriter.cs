@@ -24,17 +24,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             _length = _span.Length;
         }
 
-        public unsafe void WriteFast(byte[] source)
+        public void WriteFast(byte[] source)
         {
             WriteFast(source, 0, source.Length);
         }
 
-        public unsafe void WriteFast(ArraySegment<byte> source)
+        public void WriteFast(ArraySegment<byte> source)
         {
             WriteFast(source.Array, source.Offset, source.Count);
         }
 
-        public unsafe void WriteFast(byte[] source, int offset, int length)
+        public void WriteFast(byte[] source, int offset, int length)
         {
             var dest = _span;
             var index = _index;
@@ -79,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
-        private unsafe void WriteMultiBuffer(byte[] source, int offset, int length)
+        private void WriteMultiBuffer(byte[] source, int offset, int length)
         {
             var remaining = length;
             var span = _span;
