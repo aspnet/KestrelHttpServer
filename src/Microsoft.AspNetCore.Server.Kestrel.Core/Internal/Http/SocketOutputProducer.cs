@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         // TODO: Set _lastWriteError
         //private Exception _lastWriteError;
         private readonly IPipeWriter _pipe;
-        private readonly Frame _frame;
+        private readonly ConnectionLifetime _connection;
 
         // https://github.com/dotnet/corefxlab/issues/1334 
         // Pipelines don't support multiple awaiters on flush
@@ -37,10 +37,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly object _flushLock = new object();
         private readonly Action _onFlushCallback;
 
-        public SocketOutputProducer(IPipeWriter pipe, Frame frame, string connectionId, IKestrelTrace log)
+        public SocketOutputProducer(IPipeWriter pipe, ConnectionLifetime connection, string connectionId, IKestrelTrace log)
         {
             _pipe = pipe;
-            _frame = frame;
+            _connection = connection;
             _connectionId = connectionId;
             _log = log;
             _onFlushCallback = OnFlush;
@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                _frame.Abort();
+                _connection.Abort(ex: null);
                 _cancelled = true;
                 return Task.FromCanceled(cancellationToken);
             }
@@ -156,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return WriteAsync(_emptyData, cancellationToken);
         }
 
-        public void Write<T>(Action<WritableBuffer, T> callback, T state)
+        void ISocketOutput.Write<T>(Action<WritableBuffer, T> callback, T state)
         {
             lock (_contextLock)
             {
@@ -168,6 +168,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var buffer = _pipe.Alloc();
                 callback(buffer, state);
                 buffer.Commit();
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_contextLock)
+            {
+                _isSocketClosed = false;
+                _pipe.Complete();
             }
         }
     }

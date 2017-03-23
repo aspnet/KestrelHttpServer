@@ -37,11 +37,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
         /// </remarks>
         public TimeSpan ShutdownTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
-        /// <summary>
-        /// Provides access to request and response buffer size limits.
-        /// </summary>
-        public LibuvTransportLimits Limits { get; } = new LibuvTransportLimits();
-
         private static int ProcessorThreadCount
         {
             get

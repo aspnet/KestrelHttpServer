@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         private readonly Stream _outputStream;
         private readonly IPipe _pipe;
-        private object _sync = new object();
+        private readonly object _sync = new object();
         private bool _completed;
 
         public StreamSocketOutput(Stream outputStream, IPipe pipe)

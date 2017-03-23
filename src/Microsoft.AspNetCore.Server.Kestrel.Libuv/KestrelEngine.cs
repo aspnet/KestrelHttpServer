@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public async Task BindAsync()
         {
             // TODO: Move thread management to LibuvTransportFactory
-            // TODO: Split connection management from thread management
+            // TODO: Split endpoint management from thread management
             for (var index = 0; index < TransportOptions.ThreadCount; index++)
             {
                 Threads.Add(new KestrelThread(this));

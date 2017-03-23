@@ -53,7 +53,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
 
-        private TaskCompletionSource<object> _frameStartedTcs = new TaskCompletionSource<object>();
         private Task _requestProcessingTask;
         protected volatile bool _requestProcessingStopping; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
         protected int _requestAborted;
@@ -84,7 +83,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Frame(FrameContext frameContext)
         {
             _frameContext = frameContext;
-            Output = new SocketOutputProducer(frameContext.Output, this, ConnectionId, Log);
 
             ServerOptions = ServiceContext.ServerOptions;
 
@@ -98,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
         public IConnectionInformation ConnectionInformation => _frameContext.ConnectionInformation;
 
-        public IPipeReader Input => _frameContext.Input;
+        public IPipeReader Input { get; set; }
         public ISocketOutput Output { get; set; }
         public IEnumerable<IAdaptedConnection> AdaptedConnections { get; set; }
 
@@ -220,8 +218,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Stream ResponseBody { get; set; }
 
         public Stream DuplexStream { get; set; }
-
-        public Task FrameStartedTask => _frameStartedTcs.Task;
 
         public CancellationToken RequestAborted
         {
@@ -395,7 +391,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             Reset();
             _requestProcessingTask = RequestProcessingAsync();
-            _frameStartedTcs.SetResult(null);
         }
 
         /// <summary>
@@ -433,16 +428,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     Log.LogError(0, ex, "Abort");
                 }
 
-                try
-                {
-                    RequestAbortedSource.Cancel();
-                }
-                catch (Exception ex)
-                {
-                    Log.LogError(0, ex, "Abort");
-                }
+                // Potentially calling user code. ThreadPool will catch and log any errors.
+                ServiceContext.ThreadPool.Run(() => RequestAbortedSource.Cancel());
+
                 _abortedCts = null;
             }
+        }
+
+        protected void End(ProduceEndType endType)
+        {
+            ConnectionControl.End(endType);
+            Output.Dispose();
         }
 
         /// <summary>
@@ -1202,12 +1198,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             Log.ApplicationError(ConnectionId, ex);
-        }
-
-        protected void End(ProduceEndType endType)
-        {
-            ConnectionControl.End(endType);
-            _frameContext.Output.Complete();
         }
 
         public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)

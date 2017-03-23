@@ -18,6 +18,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport
         Task StopAsync();
         void Abort(Exception ex);
         void SetBadRequestState(RequestRejectionReason reason);
-        Task FrameStartedTask { get; }
     }
 }

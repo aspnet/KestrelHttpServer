@@ -36,25 +36,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
             Input.Writer.Complete();
         }
 
-        public async Task StartAsync()
+        public async Task RunAsync()
         {
             var inputTask = ReadInputAsync();
             var outputTask = _output.WriteOutputAsync();
 
-            var result = await Task.WhenAny(inputTask, outputTask);
-
-            if (result == inputTask)
-            {
-                // Close output
-                _output.Dispose();
-            }
-            else
-            {
-                // Close input
-                Input.Writer.Complete();
-            }
-
-            await Task.WhenAll(inputTask, outputTask);
+            await inputTask;
+            await outputTask;
         }
 
         private async Task ReadInputAsync()

@@ -8,6 +8,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport
 {
     public interface IConnectionInformation
     {
+        ListenOptions ListenOptions { get; }
+
         IPEndPoint RemoteEndPoint { get; }
         IPEndPoint LocalEndPoint { get; }
 

@@ -4,7 +4,6 @@
 using System;
 using System.IO.Pipelines;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
@@ -32,10 +31,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _pipeFactory = new PipeFactory();
         }
 
-        public IConnectionContext OnConnection(IConnectionInformation connectionInfo, PipeOptions inputOptions, PipeOptions outputOptions)
+        public IConnectionContext OnConnection(IConnectionInformation connectionInfo, IScheduler inputWriterScheduler, IScheduler outputReaderScheduler)
         {
-            var inputPipe = _pipeFactory.Create(inputOptions);
-            var outputPipe = _pipeFactory.Create(outputOptions);
+            var inputPipe = _pipeFactory.Create(GetInputPipeOptions(inputWriterScheduler));
+            var outputPipe = _pipeFactory.Create(GetOutputPipeOptions(outputReaderScheduler));
 
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
@@ -43,83 +42,60 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             {
                 ConnectionId = connectionId,
                 ConnectionInformation = connectionInfo,
-                ServiceContext = _serviceContext,
-                Input = inputPipe.Reader,
-                Output = outputPipe.Writer
+                ServiceContext = _serviceContext
             };
 
-            var frame = new Frame<TContext>(_application, frameContext);
-            frame.Start();
-
-            return new ConnectionContext(frame)
+            var connection = new ConnectionLifetime(new ConnectionLifetimeContext
             {
                 ConnectionId = connectionId,
-                Input = inputPipe.Writer,
-                Output = outputPipe.Reader,
-            };
+                ServiceContext = _serviceContext,
+                PipeFactory = _pipeFactory,
+                ConnectionAdapters = connectionInfo.ListenOptions.ConnectionAdapters,
+                Frame = new Frame<TContext>(_application, frameContext),
+                Input = inputPipe,
+                Output = outputPipe
+            });
+
+            // Since data cannot be added to the inputPipe by the transport until OnConnection returns,
+            // Frame.RequestProcessingAsync is guaranteed to unblock the transport thread before calling
+            // application code.
+            connection.StartRequestProcessing();
+
+            return connection;
         }
-
-        //private void StartFrame()
-        //{
-        //    if (_connectionAdapters.Count == 0)
-        //    {
-        //        _frame.Start();
-        //    }
-        //    else
-        //    {
-        //        // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
-        //        // Otherwise, it will close the connection.
-        //        var ignore = ApplyConnectionAdaptersAsync();
-        //    }
-        //}
-
-        //private async Task ApplyConnectionAdaptersAsync(ConnectionContext connectionContext, FrameContext frameContext)
-        //{
-        //    try
-        //    {
-        //        var rawStream = new RawStream(Input.Reader, Output);
-        //        var adapterContext = new ConnectionAdapterContext(rawStream);
-        //        var adaptedConnections = new IAdaptedConnection[_connectionAdapters.Count];
-
-        //        for (var i = 0; i < _connectionAdapters.Count; i++)
-        //        {
-        //            var adaptedConnection = await _connectionAdapters[i].OnConnectionAsync(adapterContext);
-        //            adaptedConnections[i] = adaptedConnection;
-        //            adapterContext = new ConnectionAdapterContext(adaptedConnection.ConnectionStream);
-        //        }
-
-        //        if (adapterContext.ConnectionStream != rawStream)
-        //        {
-        //            _filteredStream = adapterContext.ConnectionStream;
-        //            _adaptedPipeline = new AdaptedPipeline(
-        //                adapterContext.ConnectionStream,
-        //                Thread.PipelineFactory.Create(ListenerContext.AdaptedPipeOptions),
-        //                Thread.PipelineFactory.Create(ListenerContext.AdaptedPipeOptions));
-
-        //            _frame.Input = _adaptedPipeline.Input;
-        //            _frame.Output = _adaptedPipeline.Output;
-
-        //            // Don't attempt to read input if connection has already closed.
-        //            // This can happen if a client opens a connection and immediately closes it.
-        //            _readInputTask = _socketClosedTcs.Task.Status == TaskStatus.WaitingForActivation
-        //                ? _adaptedPipeline.StartAsync()
-        //                : TaskCache.CompletedTask;
-        //        }
-
-        //        _frame.AdaptedConnections = adaptedConnections;
-        //        _frame.Start();
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
-        //        Input.Reader.Complete();
-        //        ConnectionControl.End(ProduceEndType.SocketDisconnect);
-        //    }
-        //}
 
         public void Dispose()
         {
             _pipeFactory.Dispose();
+        }
+
+        private PipeOptions GetInputPipeOptions(IScheduler scheduler) => new PipeOptions
+        {
+            ReaderScheduler = _serviceContext.ThreadPool,
+            WriterScheduler = scheduler,
+            MaximumSizeHigh = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
+            MaximumSizeLow = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+        };
+
+        private PipeOptions GetOutputPipeOptions(IScheduler scheduler) => new PipeOptions
+        {
+            ReaderScheduler = scheduler,
+            WriterScheduler = _serviceContext.ThreadPool,
+            MaximumSizeHigh = GetOutputResponseBufferSize(),
+            MaximumSizeLow = GetOutputResponseBufferSize()
+        };
+
+        private long GetOutputResponseBufferSize()
+        {
+            var bufferSize = _serviceContext.ServerOptions.Limits.MaxResponseBufferSize;
+            if (bufferSize == 0)
+            {
+                // 0 = no buffering so we need to configure the pipe so the the writer waits on the reader directly
+                return 1;
+            }
+
+            // null means that we have no back pressure
+            return bufferSize ?? 0;
         }
 
         private static unsafe string GenerateConnectionId(long id)
@@ -147,37 +123,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
             // string ctor overload that takes char*
             return new string(charBuffer, 0, 13);
-        }
-
-        private class ConnectionContext : IConnectionContext
-        {
-            private readonly Frame _frame;
-
-            public ConnectionContext(Frame frame)
-            {
-                _frame = frame;
-            }
-
-            public string ConnectionId { get; set; }
-            public IPipeWriter Input { get; set; }
-            public IPipeReader Output { get; set; }
-
-            public Task StopAsync()
-            {
-                return _frame.StopAsync();
-            }
-
-            public void Abort(Exception ex)
-            {
-                _frame.Abort(ex);
-            }
-
-            public void SetBadRequestState(RequestRejectionReason reason)
-            {
-                _frame.SetBadRequestState(reason);
-            }
-
-            public Task FrameStartedTask => _frame.FrameStartedTask;
         }
     }
 }

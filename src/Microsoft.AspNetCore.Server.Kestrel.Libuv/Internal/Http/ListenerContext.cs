@@ -43,42 +43,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     throw new InvalidOperationException();
             }
         }
-
-        public PipeOptions LibuvInputPipeOptions => new PipeOptions
-        {
-            ReaderScheduler = TransportContext.ThreadPool,
-            WriterScheduler = Thread,
-            MaximumSizeHigh = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0,
-            MaximumSizeLow = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0
-        };
-
-        public PipeOptions LibuvOutputPipeOptions => new PipeOptions
-        {
-            ReaderScheduler = Thread,
-            WriterScheduler = TransportContext.ThreadPool,
-            MaximumSizeHigh = GetOutputResponseBufferSize(),
-            MaximumSizeLow = GetOutputResponseBufferSize()
-        };
-
-        public PipeOptions AdaptedPipeOptions => new PipeOptions
-        {
-            ReaderScheduler = InlineScheduler.Default,
-            WriterScheduler = InlineScheduler.Default,
-            MaximumSizeHigh = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0,
-            MaximumSizeLow = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0
-        };
-
-        private long GetOutputResponseBufferSize()
-        {
-            var bufferSize = TransportContext.Options.Limits.MaxResponseBufferSize;
-            if (bufferSize == 0)
-            {
-                // 0 = no buffering so we need to configure the pipe so the the writer waits on the reader directly
-                return 1;
-            }
-
-            // null means that we have no back pressure
-            return bufferSize ?? 0;
-        }
     }
 }

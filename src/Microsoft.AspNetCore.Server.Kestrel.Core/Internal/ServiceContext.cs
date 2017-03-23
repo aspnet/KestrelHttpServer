@@ -11,6 +11,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     {
         public IKestrelTrace Log { get; set; }
 
+        public IThreadPool ThreadPool { get; set; }
+
         public Func<Frame, IHttpParser> HttpParserFactory { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }

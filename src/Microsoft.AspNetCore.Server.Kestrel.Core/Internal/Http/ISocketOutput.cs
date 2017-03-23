@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     /// <summary>
     ///   Operations performed for buffered socket output
     /// </summary>
-    public interface ISocketOutput
+    public interface ISocketOutput : IDisposable
     {
         void Write(ArraySegment<byte> buffer, bool chunk = false);
         Task WriteAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken));

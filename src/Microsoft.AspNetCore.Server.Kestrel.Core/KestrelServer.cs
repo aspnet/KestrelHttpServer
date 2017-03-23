@@ -92,10 +92,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 _dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
 
+                IThreadPool threadPool;
+                if (InternalOptions.ThreadPoolDispatching)
+                {
+                    threadPool = new LoggingThreadPool(trace);
+                }
+                else
+                {
+                    threadPool = new InlineLoggingThreadPool(trace);
+                }
+
                 var serviceContext = new ServiceContext
                 {
                     Log = trace,
                     HttpParserFactory = frame => new KestrelHttpParser(frame.ServiceContext.Log),
+                    ThreadPool = threadPool,
                     DateHeaderValueManager = _dateHeaderValueManager,
                     ServerOptions = Options
                 };
