@@ -124,37 +124,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
             // Fast path, try copying to the available memory directly
             var simpleWrite = true;
-            fixed (byte* output = &span[index])
+
+            if (remainingInSpan > 0)
             {
-                var start = output;
-                if (number < 10 && remainingInSpan >= 1)
+                fixed (byte* output = &span[index])
                 {
-                    *(start) = (byte)(((uint)number) + AsciiDigitStart);
-                    Advance(1);
-                }
-                else if (number < 100 && remainingInSpan >= 2)
-                {
-                    var val = (uint)number;
-                    var tens = (byte)((val * 205u) >> 11); // div10, valid to 1028
+                    var start = output;
+                    if (number < 10 && remainingInSpan >= 1)
+                    {
+                        *(start) = (byte)(((uint)number) + AsciiDigitStart);
+                        Advance(1);
+                    }
+                    else if (number < 100 && remainingInSpan >= 2)
+                    {
+                        var val = (uint)number;
+                        var tens = (byte)((val * 205u) >> 11); // div10, valid to 1028
 
-                    *(start) = (byte)(tens + AsciiDigitStart);
-                    *(start + 1) = (byte)(val - (tens * 10) + AsciiDigitStart);
-                    Advance(2);
-                }
-                else if (number < 1000 && remainingInSpan >= 3)
-                {
-                    var val = (uint)number;
-                    var digit0 = (byte)((val * 41u) >> 12); // div100, valid to 1098
-                    var digits01 = (byte)((val * 205u) >> 11); // div10, valid to 1028
+                        *(start) = (byte)(tens + AsciiDigitStart);
+                        *(start + 1) = (byte)(val - (tens * 10) + AsciiDigitStart);
+                        Advance(2);
+                    }
+                    else if (number < 1000 && remainingInSpan >= 3)
+                    {
+                        var val = (uint)number;
+                        var digit0 = (byte)((val * 41u) >> 12); // div100, valid to 1098
+                        var digits01 = (byte)((val * 205u) >> 11); // div10, valid to 1028
 
-                    *(start) = (byte)(digit0 + AsciiDigitStart);
-                    *(start + 1) = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
-                    *(start + 2) = (byte)(val - (digits01 * 10) + AsciiDigitStart);
-                    Advance(3);
-                }
-                else
-                {
-                    simpleWrite = false;
+                        *(start) = (byte)(digit0 + AsciiDigitStart);
+                        *(start + 1) = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
+                        *(start + 2) = (byte)(val - (digits01 * 10) + AsciiDigitStart);
+                        Advance(3);
+                    }
+                    else
+                    {
+                        simpleWrite = false;
+                    }
                 }
             }
 
