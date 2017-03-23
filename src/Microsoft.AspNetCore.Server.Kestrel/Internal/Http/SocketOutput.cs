@@ -195,7 +195,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return;
                 }
 
-                var buffer = _pipe.Writer.Alloc();
+                var buffer = _pipe.Writer.Alloc(1);
                 callback(buffer, state);
                 buffer.Commit();
             }
