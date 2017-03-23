@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private void GrowSpan()
+        private void Grow()
         {
             // Advance the buffer to what we've written for this block
             _buffer.Advance(_index);
@@ -90,7 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (remainingInSpan == 0)
                 {
-                    GrowSpan();
+                    Grow();
 
                     span = _span;
                     index = _index;
@@ -234,7 +234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 {
                     if (remainingInSpan == 0)
                     {
-                        GrowSpan();
+                        Grow();
 
                         index = _index;
                         span = _span;

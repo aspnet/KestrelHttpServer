@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO.Pipelines;
 using System.Text;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
@@ -48,16 +47,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return new ArraySegment<byte>(bytes, offset, 10 - offset);
         }
 
-        public static int WriteBeginChunkBytes(ref WritableBuffer start, int dataCount)
+        public static int WriteBeginChunkBytes(ref WritableBufferWriter writer, int dataCount)
         {
             var chunkSegment = BeginChunkBytes(dataCount);
-            start.WriteFast(chunkSegment);
+            writer.WriteFast(chunkSegment);
             return chunkSegment.Count;
         }
 
-        public static void WriteEndChunkBytes(ref WritableBuffer start)
+        public static void WriteEndChunkBytes(ref WritableBufferWriter writer)
         {
-            start.WriteFast(_endChunkBytes);
+            writer.WriteFast(_endChunkBytes);
         }
     }
 }
