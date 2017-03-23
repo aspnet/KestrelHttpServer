@@ -194,7 +194,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
             var dest = _span;
             var index = _index;
-            var destLength = dest.Length;
+            var destLength = _length;
             var sourceLength = data.Length;
 
             // Fast path, try copying to the available memory directly
