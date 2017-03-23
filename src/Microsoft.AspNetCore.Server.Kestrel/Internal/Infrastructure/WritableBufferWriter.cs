@@ -73,7 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public void Commit()
         {
-            if (_index < _length)
+            if (_length > 0)
             {
                 _buffer.Advance(_index);
             }
