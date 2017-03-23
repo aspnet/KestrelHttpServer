@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         private static byte[] _numericBytesScratch;
 
         private int _index;
-        private readonly WritableBuffer _buffer;
+        private WritableBuffer _buffer;
         private int _length;
         private Span<byte> _span;
 
