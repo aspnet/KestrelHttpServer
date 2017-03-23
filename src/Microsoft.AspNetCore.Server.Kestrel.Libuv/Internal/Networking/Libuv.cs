@@ -7,9 +7,9 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
-    public class Libuv
+    public class LibuvFunctions
     {
-        public Libuv()
+        public LibuvFunctions()
         {
             IsWindows = PlatformApis.IsWindows;
 
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         }
 
         // Second ctor that doesn't set any fields only to be used by MockLibuv
-        internal Libuv(bool onlyForTesting)
+        internal LibuvFunctions(bool onlyForTesting)
         {
         }
 
@@ -305,7 +305,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         unsafe protected delegate int uv_write2_func(UvRequest req, UvStreamHandle handle, uv_buf_t* bufs, int nbufs, UvStreamHandle sendHandle, uv_write_cb cb);
         protected uv_write2_func _uv_write2;
-        unsafe public void write2(UvRequest req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, UvStreamHandle sendHandle, uv_write_cb cb)
+        unsafe public void write2(UvRequest req, UvStreamHandle handle, uv_buf_t* bufs, int nbufs, UvStreamHandle sendHandle, uv_write_cb cb)
         {
             req.Validate();
             handle.Validate();

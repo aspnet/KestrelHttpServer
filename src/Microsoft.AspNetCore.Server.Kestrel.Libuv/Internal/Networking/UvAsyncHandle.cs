@@ -10,9 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
     public class UvAsyncHandle : UvHandle
     {
-        private static readonly Libuv.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
+        private static readonly LibuvFunctions.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
 
-        private static readonly Libuv.uv_async_cb _uv_async_cb = (handle) => AsyncCb(handle);
+        private static readonly LibuvFunctions.uv_async_cb _uv_async_cb = (handle) => AsyncCb(handle);
         private Action _callback;
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
-                loop.Libuv.handle_size(Libuv.HandleType.ASYNC));
+                loop.Libuv.handle_size(LibuvFunctions.HandleType.ASYNC));
 
             _callback = callback;
             _queueCloseHandle = queueCloseHandle;

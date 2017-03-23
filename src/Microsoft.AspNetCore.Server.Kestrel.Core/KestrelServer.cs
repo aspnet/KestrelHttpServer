@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -15,7 +16,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Transport;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -23,21 +24,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public class KestrelServer : IServer
     {
-        private Stack<IDisposable> _disposables;
-        private readonly IApplicationLifetime _applicationLifetime;
+        //private Stack<IDisposable> _disposables;
+        private readonly List<ITransport> _transports = new List<ITransport>();
+
         private readonly ILogger _logger;
         private readonly IServerAddressesFeature _serverAddresses;
+        private readonly ITransportFactory _transportFactory;
 
-        public KestrelServer(IOptions<KestrelServerOptions> options, IApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)
+        private bool _isRunning;
+        private IDisposable _connectionHandlerDisposable;
+        private DateHeaderValueManager _dateHeaderValueManager;
+
+        public KestrelServer(
+            IOptions<KestrelServerOptions> options,
+            ITransportFactory transportFactory,
+            ILoggerFactory loggerFactory)
         {
             if (options == null)
             {
                 throw new ArgumentNullException(nameof(options));
             }
 
-            if (applicationLifetime == null)
+            if (transportFactory == null)
             {
-                throw new ArgumentNullException(nameof(applicationLifetime));
+                throw new ArgumentNullException(nameof(transportFactory));
             }
 
             if (loggerFactory == null)
@@ -47,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             Options = options.Value ?? new KestrelServerOptions();
             InternalOptions = new InternalKestrelServerOptions();
-            _applicationLifetime = applicationLifetime;
+            _transportFactory = transportFactory;
             _logger = loggerFactory.CreateLogger(typeof(KestrelServer).GetTypeInfo().Namespace);
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
@@ -72,63 +82,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 ValidateOptions();
 
-                if (_disposables != null)
+                if (_isRunning)
                 {
                     // The server has already started and/or has not been cleaned up yet
                     throw new InvalidOperationException("Server has already started.");
                 }
-                _disposables = new Stack<IDisposable>();
+                _isRunning = true;
 
-                var dateHeaderValueManager = new DateHeaderValueManager();
+                _dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
 
-                IThreadPool threadPool;
-                if (InternalOptions.ThreadPoolDispatching)
+                var serviceContext = new ServiceContext
                 {
-                    threadPool = new LoggingThreadPool(trace);
-                }
-                else
-                {
-                    threadPool = new InlineLoggingThreadPool(trace);
-                }
-
-                var engine = new KestrelEngine(new ServiceContext
-                {
-                    FrameFactory = context =>
-                    {
-                        return new Frame<TContext>(application, context);
-                    },
-                    AppLifetime = _applicationLifetime,
                     Log = trace,
-                    HttpParserFactory = frame => new KestrelHttpParser(frame.ConnectionContext.ListenerContext.ServiceContext.Log),
-                    ThreadPool = threadPool,
-                    DateHeaderValueManager = dateHeaderValueManager,
+                    HttpParserFactory = frame => new KestrelHttpParser(frame.ServiceContext.Log),
+                    DateHeaderValueManager = _dateHeaderValueManager,
                     ServerOptions = Options
-                });
+                };
 
-                _disposables.Push(engine);
-                _disposables.Push(dateHeaderValueManager);
+                var connectionHandler = new ConnectionHandler<TContext>(serviceContext, application);
+                _connectionHandlerDisposable = connectionHandler;
 
-                var threadCount = Options.ThreadCount;
+                //var engine = new KestrelEngine();
 
-                if (threadCount <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(threadCount),
-                        threadCount,
-                        "ThreadCount must be positive.");
-                }
+                //_disposables.Push(engine);
+                //_disposables.Push(dateHeaderValueManager);
 
-                if (!Constants.ECONNRESET.HasValue)
-                {
-                    _logger.LogWarning("Unable to determine ECONNRESET value on this platform.");
-                }
+                //var threadCount = Options.ThreadCount;
 
-                if (!Constants.EADDRINUSE.HasValue)
-                {
-                    _logger.LogWarning("Unable to determine EADDRINUSE value on this platform.");
-                }
+                //if (threadCount <= 0)
+                //{
+                //    throw new ArgumentOutOfRangeException(nameof(threadCount),
+                //        threadCount,
+                //        "ThreadCount must be positive.");
+                //}
 
-                engine.Start(threadCount);
+                //if (!Constants.ECONNRESET.HasValue)
+                //{
+                //    _logger.LogWarning("Unable to determine ECONNRESET value on this platform.");
+                //}
+
+                //if (!Constants.EADDRINUSE.HasValue)
+                //{
+                //    _logger.LogWarning("Unable to determine EADDRINUSE value on this platform.");
+                //}
+
+                //engine.Start(threadCount);
 
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
@@ -137,7 +136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 if (hasListenOptions && hasServerAddresses)
                 {
                     var joined = string.Join(", ", _serverAddresses.Addresses);
-                    _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in {nameof(WebHostBuilderKestrelExtensions.UseKestrel)}() instead.");
+                    _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
 
                     _serverAddresses.Addresses.Clear();
                 }
@@ -145,14 +144,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
-                    // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                    StartLocalhost(engine, ServerAddress.FromUrl(Constants.DefaultServerAddress));
+                    //// "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
+                    //StartLocalhost(engine, ServerAddress.FromUrl(Constants.DefaultServerAddress));
 
-                    // If StartLocalhost doesn't throw, there is at least one listener.
-                    // The port cannot change for "localhost".
-                    _serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
+                    //// If StartLocalhost doesn't throw, there is at least one listener.
+                    //// The port cannot change for "localhost".
+                    //_serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
 
-                    return;
+                    //return;
+                    listenOptions.Add(new ListenOptions(new IPEndPoint(IPAddress.Loopback, 5000)));
                 }
                 else if (!hasListenOptions)
                 {
@@ -180,12 +180,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         {
                             if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
                             {
-                                // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                                StartLocalhost(engine, parsedAddress);
+                                //// "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
+                                //StartLocalhost(engine, parsedAddress);
 
-                                // If StartLocalhost doesn't throw, there is at least one listener.
-                                // The port cannot change for "localhost".
-                                _serverAddresses.Addresses.Add(parsedAddress.ToString());
+                                //// If StartLocalhost doesn't throw, there is at least one listener.
+                                //// The port cannot change for "localhost".
+                                //_serverAddresses.Addresses.Add(parsedAddress.ToString());
+                                listenOptions.Add(new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
+                                {
+                                    Scheme = parsedAddress.Scheme,
+                                });
                             }
                             else
                             {
@@ -201,23 +205,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 foreach (var endPoint in listenOptions)
                 {
-                    try
-                    {
-                        _disposables.Push(engine.CreateServer(endPoint));
-                    }
-                    catch (AggregateException ex)
-                    {
-                        if ((ex.InnerException as UvException)?.StatusCode == Constants.EADDRINUSE)
-                        {
-                            throw new IOException($"Failed to bind to address {endPoint}: address already in use.", ex);
-                        }
+                    _transports.Add(_transportFactory.Create(endPoint, connectionHandler));
 
-                        throw;
-                    }
+                    //try
+                    //{
+                    //    _disposables.Push(engine.CreateServer(endPoint));
+                    //}
+                    //catch (AggregateException ex)
+                    //{
+                    //    if ((ex.InnerException as UvException)?.StatusCode == Constants.EADDRINUSE)
+                    //    {
+                    //        throw new IOException($"Failed to bind to address {endPoint}: address already in use.", ex);
+                    //    }
+
+                    //    throw;
+                    //}
 
                     // If requested port was "0", replace with assigned dynamic port.
                     _serverAddresses.Addresses.Add(endPoint.ToString());
                 }
+
+                var tasks = new Task[_transports.Count];
+                for (int i = 0; i < _transports.Count; i++)
+                {
+                    tasks[i] = _transports[i].BindAsync();
+                }
+
+                Task.WaitAll(tasks);
             }
             catch (Exception ex)
             {
@@ -229,14 +243,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Dispose()
         {
-            if (_disposables != null)
+            var tasks = new Task[_transports.Count];
+            for (int i = 0; i < _transports.Count; i++)
             {
-                while (_disposables.Count > 0)
-                {
-                    _disposables.Pop().Dispose();
-                }
-                _disposables = null;
+                tasks[i] = _transports[i].UnbindAsync();
             }
+
+            // REVIEW: Is it OK to rely on transports to timeout?
+            Task.WaitAll(tasks);
+
+            _connectionHandlerDisposable.Dispose();
+
+            // TODO: Do transport-agnostic connection management/shutdown.
+            for (int i = 0; i < _transports.Count; i++)
+            {
+                tasks[i] = _transports[i].StopAsync();
+            }
+            Task.WaitAll(tasks);
+
+            _dateHeaderValueManager.Dispose();
         }
 
         private void ValidateOptions()
@@ -256,66 +281,66 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        private void StartLocalhost(KestrelEngine engine, ServerAddress parsedAddress)
-        {
-            if (parsedAddress.Port == 0)
-            {
-                throw new InvalidOperationException("Dynamic port binding is not supported when binding to localhost. You must either bind to 127.0.0.1:0 or [::1]:0, or both.");
-            }
+        //private void StartLocalhost(KestrelEngine engine, ServerAddress parsedAddress)
+        //{
+        //    if (parsedAddress.Port == 0)
+        //    {
+        //        throw new InvalidOperationException("Dynamic port binding is not supported when binding to localhost. You must either bind to 127.0.0.1:0 or [::1]:0, or both.");
+        //    }
 
-            var exceptions = new List<Exception>();
+        //    var exceptions = new List<Exception>();
 
-            try
-            {
-                var ipv4ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
-                {
-                    Scheme = parsedAddress.Scheme,
-                };
+        //    try
+        //    {
+        //        var ipv4ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
+        //        {
+        //            Scheme = parsedAddress.Scheme,
+        //        };
 
-                _disposables.Push(engine.CreateServer(ipv4ListenOptions));
-            }
-            catch (AggregateException ex) when (ex.InnerException is UvException)
-            {
-                var uvEx = (UvException)ex.InnerException;
-                if (uvEx.StatusCode == Constants.EADDRINUSE)
-                {
-                    throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
-                }
-                else
-                {
-                    _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({uvEx.Message})");
-                    exceptions.Add(uvEx);
-                }
-            }
+        //        _disposables.Push(engine.CreateServer(ipv4ListenOptions));
+        //    }
+        //    catch (AggregateException ex) when (ex.InnerException is UvException)
+        //    {
+        //        var uvEx = (UvException)ex.InnerException;
+        //        if (uvEx.StatusCode == Constants.EADDRINUSE)
+        //        {
+        //            throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
+        //        }
+        //        else
+        //        {
+        //            _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({uvEx.Message})");
+        //            exceptions.Add(uvEx);
+        //        }
+        //    }
 
-            try
-            {
-                var ipv6ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, parsedAddress.Port))
-                {
-                    Scheme = parsedAddress.Scheme,
-                };
+        //    try
+        //    {
+        //        var ipv6ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, parsedAddress.Port))
+        //        {
+        //            Scheme = parsedAddress.Scheme,
+        //        };
 
-                _disposables.Push(engine.CreateServer(ipv6ListenOptions));
-            }
-            catch (AggregateException ex) when (ex.InnerException is UvException)
-            {
-                var uvEx = (UvException)ex.InnerException;
-                if (uvEx.StatusCode == Constants.EADDRINUSE)
-                {
-                    throw new IOException($"Failed to bind to address {parsedAddress} on the IPv6 loopback interface: port already in use.", ex);
-                }
-                else
-                {
-                    _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv6 loopback interface: ({uvEx.Message})");
-                    exceptions.Add(uvEx);
-                }
-            }
+        //        _disposables.Push(engine.CreateServer(ipv6ListenOptions));
+        //    }
+        //    catch (AggregateException ex) when (ex.InnerException is UvException)
+        //    {
+        //        var uvEx = (UvException)ex.InnerException;
+        //        if (uvEx.StatusCode == Constants.EADDRINUSE)
+        //        {
+        //            throw new IOException($"Failed to bind to address {parsedAddress} on the IPv6 loopback interface: port already in use.", ex);
+        //        }
+        //        else
+        //        {
+        //            _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv6 loopback interface: ({uvEx.Message})");
+        //            exceptions.Add(uvEx);
+        //        }
+        //    }
 
-            if (exceptions.Count == 2)
-            {
-                throw new IOException($"Failed to bind to address {parsedAddress}.", new AggregateException(exceptions));
-            }
-        }
+        //    if (exceptions.Count == 2)
+        //    {
+        //        throw new IOException($"Failed to bind to address {parsedAddress}.", new AggregateException(exceptions));
+        //    }
+        //}
 
         /// <summary>
         /// Returns an <see cref="IPEndPoint"/> for the given host an port.

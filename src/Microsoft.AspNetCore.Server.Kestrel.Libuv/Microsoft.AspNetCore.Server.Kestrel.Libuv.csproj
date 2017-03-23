@@ -7,11 +7,13 @@
     <TargetFrameworks>net451;netstandard1.3</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>aspnetcore;kestrel</PackageTags>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>CS1591;$(NoWarn)</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Libuv" Version="$(LibUvVersion)" />
+    <PackageReference Include="Microsoft.Extensions.TaskCache.Sources" Version="$(AspNetCoreVersion)" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>

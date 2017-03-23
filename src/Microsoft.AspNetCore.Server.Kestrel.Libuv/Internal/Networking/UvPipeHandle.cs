@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             CreateHandle(
                 loop.Libuv, 
                 loop.ThreadId,
-                loop.Libuv.handle_size(Libuv.HandleType.NAMED_PIPE), queueCloseHandle);
+                loop.Libuv.handle_size(LibuvFunctions.HandleType.NAMED_PIPE), queueCloseHandle);
 
             _uv.pipe_init(loop, this, ipc);
         }

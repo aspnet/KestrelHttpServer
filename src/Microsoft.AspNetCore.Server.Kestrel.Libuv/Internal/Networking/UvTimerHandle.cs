@@ -9,7 +9,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
     public class UvTimerHandle : UvHandle
     {
-        private readonly static Libuv.uv_timer_cb _uv_timer_cb = UvTimerCb;
+        private readonly static LibuvFunctions.uv_timer_cb _uv_timer_cb = UvTimerCb;
 
         private Action<UvTimerHandle> _callback;
 
@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             CreateHandle(
                 loop.Libuv,
                 loop.ThreadId,
-                loop.Libuv.handle_size(Libuv.HandleType.TIMER),
+                loop.Libuv.handle_size(LibuvFunctions.HandleType.TIMER),
                 queueCloseHandle);
 
             _uv.timer_init(loop, this);

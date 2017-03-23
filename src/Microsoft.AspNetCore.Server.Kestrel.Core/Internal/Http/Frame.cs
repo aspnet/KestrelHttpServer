@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Adapter;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -77,37 +78,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         protected long _responseBytesWritten;
 
+        private readonly FrameContext _frameContext;
         private readonly IHttpParser _parser;
 
-        public Frame(ConnectionContext context)
+        public Frame(FrameContext frameContext)
         {
-            ConnectionContext = context;
-            Input = context.Input;
-            Output = context.Output;
+            _frameContext = frameContext;
+            Output = new SocketOutputProducer(frameContext.Output, this, ConnectionId, Log);
 
-            ServerOptions = context.ListenerContext.ServiceContext.ServerOptions;
+            ServerOptions = ServiceContext.ServerOptions;
 
-            _parser = context.ListenerContext.ServiceContext.HttpParserFactory(this);
+            _parser = ServiceContext.HttpParserFactory(this);
 
             FrameControl = this;
             _keepAliveMilliseconds = (long)ServerOptions.Limits.KeepAliveTimeout.TotalMilliseconds;
             _requestHeadersTimeoutMilliseconds = (long)ServerOptions.Limits.RequestHeadersTimeout.TotalMilliseconds;
         }
 
-        public ConnectionContext ConnectionContext { get; }
-        public IPipe Input { get; set; }
+        public ServiceContext ServiceContext => _frameContext.ServiceContext;
+        public IConnectionInformation ConnectionInformation => _frameContext.ConnectionInformation;
+
+        public IPipeReader Input => _frameContext.Input;
         public ISocketOutput Output { get; set; }
         public IEnumerable<IAdaptedConnection> AdaptedConnections { get; set; }
 
-        protected IConnectionControl ConnectionControl => ConnectionContext.ConnectionControl;
-        protected IKestrelTrace Log => ConnectionContext.ListenerContext.ServiceContext.Log;
+        protected IConnectionControl ConnectionControl => ConnectionInformation.ConnectionControl;
+        protected IKestrelTrace Log => ServiceContext.Log;
 
-        private DateHeaderValueManager DateHeaderValueManager => ConnectionContext.ListenerContext.ServiceContext.DateHeaderValueManager;
+        private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
         private KestrelServerOptions ServerOptions { get; }
-        private IPEndPoint LocalEndPoint => ConnectionContext.LocalEndPoint;
-        private IPEndPoint RemoteEndPoint => ConnectionContext.RemoteEndPoint;
-        protected string ConnectionId => ConnectionContext.ConnectionId;
+        private IPEndPoint LocalEndPoint => ConnectionInformation.LocalEndPoint;
+        private IPEndPoint RemoteEndPoint => ConnectionInformation.RemoteEndPoint;
+        protected string ConnectionId => _frameContext.ConnectionId;
 
         public string ConnectionIdFeature { get; set; }
         public IPAddress RemoteIpAddress { get; set; }
@@ -404,7 +407,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task StopAsync()
         {
             _requestProcessingStopping = true;
-            Input.Reader.CancelPendingRead();
+            Input.CancelPendingRead();
 
             return _requestProcessingTask ?? TaskCache.CompletedTask;
         }
@@ -423,7 +426,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 try
                 {
-                    ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                    End(ProduceEndType.SocketDisconnect);
                 }
                 catch (Exception ex)
                 {
@@ -856,7 +859,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (_keepAlive)
             {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                End(ProduceEndType.ConnectionKeepAlive);
             }
 
             if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
@@ -876,7 +879,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (_keepAlive)
             {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                End(ProduceEndType.ConnectionKeepAlive);
             }
         }
 
@@ -1199,6 +1202,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             Log.ApplicationError(ConnectionId, ex);
+        }
+
+        protected void End(ProduceEndType endType)
+        {
+            ConnectionControl.End(endType);
+            _frameContext.Output.Complete();
         }
 
         public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)

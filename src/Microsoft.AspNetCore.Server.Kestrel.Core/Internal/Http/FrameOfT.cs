@@ -2,12 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -16,8 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     {
         private readonly IHttpApplication<TContext> _application;
 
-        public Frame(IHttpApplication<TContext> application, ConnectionContext context)
-            : base(context)
+        public Frame(IHttpApplication<TContext> application, FrameContext frameContext)
+            : base(frameContext)
         {
             _application = application;
         }
@@ -40,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.Reader.ReadAsync();
+                        var result = await Input.ReadAsync();
                         var examined = result.Buffer.End;
                         var consumed = result.Buffer.End;
 
@@ -58,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         }
                         finally
                         {
-                            Input.Reader.Advance(consumed, examined);
+                            Input.Advance(consumed, examined);
                         }
 
                         if (_requestProcessingStatus == RequestProcessingStatus.AppStarted)
@@ -190,15 +187,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // SetBadRequestState logs the error.
                 SetBadRequestState(ex);
             }
-            catch (IOException ex) when (ex.InnerException is UvException)
-            {
-                // Don't log ECONNRESET errors made between requests. Browsers like IE will reset connections regularly.
-                if (_requestProcessingStatus != RequestProcessingStatus.RequestPending ||
-                    ((UvException)ex.InnerException).StatusCode != Constants.ECONNRESET)
-                {
-                    Log.RequestProcessingError(ConnectionId, ex);
-                }
-            }
+            //catch (IOException ex) when (ex.InnerException is UvException)
+            //{
+            //    // Don't log ECONNRESET errors made between requests. Browsers like IE will reset connections regularly.
+            //    if (_requestProcessingStatus != RequestProcessingStatus.RequestPending ||
+            //        ((UvException)ex.InnerException).StatusCode != Constants.ECONNRESET)
+            //    {
+            //        Log.RequestProcessingError(ConnectionId, ex);
+            //    }
+            //}
             catch (Exception ex)
             {
                 Log.LogWarning(0, ex, "Connection processing ended abnormally");
@@ -207,12 +204,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 try
                 {
-                    Input.Reader.Complete();
+                    Input.Complete();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
                         await TryProduceInvalidRequestResponse();
-                        ConnectionControl.End(ProduceEndType.SocketShutdown);
+                        End(ProduceEndType.SocketShutdown);
                     }
                 }
                 catch (Exception ex)

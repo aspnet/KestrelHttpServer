@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -20,17 +21,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private string _pipeName;
         private byte[] _pipeMessage;
         private IntPtr _ptr;
-        private Libuv.uv_buf_t _buf;
+        private LibuvFunctions.uv_buf_t _buf;
         private bool _closed;
 
-        public ListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        public ListenerSecondary(LibuvTransportContext transportContext) : base(transportContext)
         {
             _ptr = Marshal.AllocHGlobal(4);
         }
 
         UvPipeHandle DispatchPipe { get; set; }
 
-        public IKestrelTrace Log => ServiceContext.Log;
+        public IKestrelTrace Log => TransportContext.Log;
 
         public Task StartAsync(
             string pipeName,
@@ -101,7 +102,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     (handle, status2, state) => ((ListenerSecondary)state).ReadStartCallback(handle, status2),
                     this);
 
-                writeReq.Init(Thread.Loop);
+               writeReq.Init(Thread.Loop);
                var result = await writeReq.WriteAsync(
                     DispatchPipe,
                     new ArraySegment<ArraySegment<byte>>(new [] { new ArraySegment<byte>(_pipeMessage) }));

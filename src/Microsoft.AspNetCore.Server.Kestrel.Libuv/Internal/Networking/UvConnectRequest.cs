@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public class UvConnectRequest : UvRequest
     {
-        private readonly static Libuv.uv_connect_cb _uv_connect_cb = (req, status) => UvConnectCb(req, status);
+        private readonly static LibuvFunctions.uv_connect_cb _uv_connect_cb = (req, status) => UvConnectCb(req, status);
 
         private Action<UvConnectRequest, int, Exception, object> _callback;
         private object _state;
@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public void Init(UvLoopHandle loop)
         {
-            var requestSize = loop.Libuv.req_size(Libuv.RequestType.CONNECT);
+            var requestSize = loop.Libuv.req_size(LibuvFunctions.RequestType.CONNECT);
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,

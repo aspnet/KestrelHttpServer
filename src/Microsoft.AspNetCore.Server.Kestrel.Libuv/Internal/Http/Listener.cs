@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -16,14 +17,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     {
         private bool _closed;
 
-        public Listener(ServiceContext serviceContext)
-            : base(serviceContext)
+        public Listener(LibuvTransportContext transportContext) : base(transportContext)
         {
         }
 
         protected UvStreamHandle ListenSocket { get; private set; }
 
-        public IKestrelTrace Log => ServiceContext.Log;
+        public IKestrelTrace Log => TransportContext.Log;
 
         public Task StartAsync(
             ListenOptions listenOptions,

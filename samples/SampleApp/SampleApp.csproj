@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- REVIEW: Having the Https project depend on the non-Core project is breaking since it no longer transitively pulls in UseKestrel() :( -->
+    <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Microsoft.AspNetCore.Server.Kestrel.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel.Https\Microsoft.AspNetCore.Server.Kestrel.Https.csproj" />
   </ItemGroup>
 

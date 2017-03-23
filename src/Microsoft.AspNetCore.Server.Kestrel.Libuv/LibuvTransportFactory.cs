@@ -1,0 +1,75 @@
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
+{
+    public class LibuvTransportFactory : ITransportFactory
+    {
+        private readonly LibuvTransportContext _baseTransportContext;
+
+        public LibuvTransportFactory(
+            IOptions<LibuvTransportOptions> options,
+            IApplicationLifetime applicationLifetime,
+            ILoggerFactory loggerFactory)
+        {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+            if (applicationLifetime == null)
+            {
+                throw new ArgumentNullException(nameof(applicationLifetime));
+            }
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            // REVIEW: Should we change the logger namespace for transport logs?
+            var logger  = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
+            // TODO: Add LibuvTrace
+            var trace = new KestrelTrace(logger);
+
+            IThreadPool threadPool;
+            if (options.Value.ThreadPoolDispatching)
+            {
+                threadPool = new LoggingThreadPool(trace);
+            }
+            else
+            {
+                threadPool = new InlineLoggingThreadPool(trace);
+            }
+
+            _baseTransportContext = new LibuvTransportContext
+            {
+                Options = options.Value,
+                AppLifetime = applicationLifetime,
+                Log = trace,
+                ThreadPool = threadPool
+            };
+        }
+
+        public ITransport Create(ListenOptions listenOptions, IConnectionHandler handler)
+        {
+            var transportContext = new LibuvTransportContext
+            {
+                Options = _baseTransportContext.Options,
+                AppLifetime = _baseTransportContext.AppLifetime,
+                Log = _baseTransportContext.Log,
+                ThreadPool = _baseTransportContext.ThreadPool,
+                ConnectionHandler = handler
+            };
+
+            return new KestrelEngine(transportContext, listenOptions);
+        }
+    }
+}

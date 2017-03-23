@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     {
         public const long HeartbeatMilliseconds = 1000;
 
-        private static readonly Libuv.uv_walk_cb _heartbeatWalkCallback = (ptr, arg) =>
+        private static readonly LibuvFunctions.uv_walk_cb _heartbeatWalkCallback = (ptr, arg) =>
         {
             var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
             var thisHandle = GCHandle.FromIntPtr(arg);
@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _appLifetime = engine.AppLifetime;
             _log = engine.Log;
             _threadPool = engine.ThreadPool;
-            _shutdownTimeout = engine.ServerOptions.ShutdownTimeout;
+            _shutdownTimeout = engine.TransportOptions.ShutdownTimeout;
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
@@ -77,7 +77,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             Memory = new MemoryPool();
-            PipelineFactory = new PipeFactory();
             WriteReqPool = new WriteReqPool(this, _log);
             ConnectionManager = new ConnectionManager(this, _threadPool);
         }
@@ -91,8 +90,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public UvLoopHandle Loop { get { return _loop; } }
 
         public MemoryPool Memory { get; }
-
-        public PipeFactory PipelineFactory { get; }
 
         public ConnectionManager ConnectionManager { get; }
 
@@ -194,7 +191,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             finally
             {
                 Memory.Dispose();
-                PipelineFactory.Dispose();
             }
         }
 
@@ -267,7 +263,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             Walk((ptr, arg) => callback(ptr), IntPtr.Zero);
         }
 
-        private void Walk(Libuv.uv_walk_cb callback, IntPtr arg)
+        private void Walk(LibuvFunctions.uv_walk_cb callback, IntPtr arg)
         {
             _engine.Libuv.walk(
                 _loop,

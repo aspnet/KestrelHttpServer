@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
     public abstract class UvHandle : UvMemory
     {
-        private static readonly Libuv.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
+        private static readonly LibuvFunctions.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
         protected UvHandle(IKestrelTrace logger) : base (logger)
@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         }
 
         protected void CreateHandle(
-            Libuv uv,
+            LibuvFunctions uv,
             int threadId,
             int size,
             Action<Action<IntPtr>, IntPtr> queueCloseHandle)

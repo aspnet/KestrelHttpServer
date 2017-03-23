@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public class UvShutdownReq : UvRequest
     {
-        private readonly static Libuv.uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
+        private readonly static LibuvFunctions.uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
 
         private Action<UvShutdownReq, int, object> _callback;
         private object _state;
@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             CreateMemory(
                 loop.Libuv, 
                 loop.ThreadId,
-                loop.Libuv.req_size(Libuv.RequestType.SHUTDOWN));
+                loop.Libuv.req_size(LibuvFunctions.RequestType.SHUTDOWN));
         }
 
         public void Shutdown(UvStreamHandle handle, Action<UvShutdownReq, int, object> callback, object state)

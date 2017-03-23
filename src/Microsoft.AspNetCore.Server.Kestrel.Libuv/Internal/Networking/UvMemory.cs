@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public abstract class UvMemory : SafeHandle
     {
-        protected Libuv _uv;
+        protected LibuvFunctions _uv;
         protected int _threadId;
         protected readonly IKestrelTrace _log;
 
@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             _log = logger;
         }
 
-        public Libuv Libuv { get { return _uv; } }
+        public LibuvFunctions Libuv { get { return _uv; } }
 
         public override bool IsInvalid
         {
@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             }
         }
 
-        unsafe protected void CreateMemory(Libuv uv, int threadId, int size)
+        unsafe protected void CreateMemory(LibuvFunctions uv, int threadId, int size)
         {
             _uv = uv;
             ThreadId = threadId;

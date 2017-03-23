@@ -215,9 +215,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void ConsumedBytes(int count)
         {
-            var scan = _context.Input.Reader.ReadAsync().GetResult().Buffer;
+            var scan = _context.Input.ReadAsync().GetResult().Buffer;
             var consumed = scan.Move(scan.Start, count);
-            _context.Input.Reader.Advance(consumed, consumed);
+            _context.Input.Advance(consumed, consumed);
 
             OnConsumedBytes(count);
         }
@@ -304,7 +304,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
             {
-                return _context.Input.Reader.PeekAsync();
+                return _context.Input.PeekAsync();
             }
         }
 
@@ -351,7 +351,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return new ValueTask<ArraySegment<byte>>();
                 }
 
-                var task = _context.Input.Reader.PeekAsync();
+                var task = _context.Input.PeekAsync();
 
                 if (task.IsCompleted)
                 {
@@ -423,7 +423,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
-                _input = _context.Input.Reader;
+                _input = _context.Input;
                 _requestHeaders = headers;
             }
 

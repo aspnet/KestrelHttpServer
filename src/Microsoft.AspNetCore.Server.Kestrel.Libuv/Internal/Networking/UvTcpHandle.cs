@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             CreateHandle(
                 loop.Libuv,
                 loop.ThreadId,
-                loop.Libuv.handle_size(Libuv.HandleType.TCP), queueCloseHandle);
+                loop.Libuv.handle_size(LibuvFunctions.HandleType.TCP), queueCloseHandle);
 
             _uv.tcp_init(loop, this);
         }

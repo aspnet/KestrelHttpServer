@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         /// The <see cref="IPEndPoint"/> to bind to.
         /// Only set if the <see cref="ListenOptions"/> <see cref="Type"/> is <see cref="ListenType.IPEndPoint"/>.
         /// </summary>
-        public IPEndPoint IPEndPoint { get; internal set; }
+        public IPEndPoint IPEndPoint { get; set; }
 
         /// <summary>
         /// The absolute path to a Unix domain socket to bind to.

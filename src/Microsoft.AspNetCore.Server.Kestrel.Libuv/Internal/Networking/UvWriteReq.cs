@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// </summary>
     public class UvWriteReq : UvRequest
     {
-        private static readonly Libuv.uv_write_cb _uv_write_cb = (IntPtr ptr, int status) => UvWriteCb(ptr, status);
+        private static readonly LibuvFunctions.uv_write_cb _uv_write_cb = (IntPtr ptr, int status) => UvWriteCb(ptr, status);
 
         private IntPtr _bufs;
 
@@ -34,8 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public void Init(UvLoopHandle loop)
         {
-            var requestSize = loop.Libuv.req_size(Libuv.RequestType.WRITE);
-            var bufferSize = Marshal.SizeOf<Libuv.uv_buf_t>() * BUFFER_COUNT;
+            var requestSize = loop.Libuv.req_size(LibuvFunctions.RequestType.WRITE);
+            var bufferSize = Marshal.SizeOf<LibuvFunctions.uv_buf_t>() * BUFFER_COUNT;
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
@@ -79,14 +79,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                     }
                 }
 
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
+                var pBuffers = (LibuvFunctions.uv_buf_t*)_bufs;
                 if (nBuffers > BUFFER_COUNT)
                 {
                     // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
+                    var bufArray = new LibuvFunctions.uv_buf_t[nBuffers];
                     var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
                     _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
+                    pBuffers = (LibuvFunctions.uv_buf_t*)gcHandle.AddrOfPinnedObject();
                 }
 
                 if (nBuffers == 1)
@@ -161,15 +161,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
 
-                var pBuffers = (Libuv.uv_buf_t*)_bufs;
+                var pBuffers = (LibuvFunctions.uv_buf_t*)_bufs;
                 var nBuffers = bufs.Count;
                 if (nBuffers > BUFFER_COUNT)
                 {
                     // create and pin buffer array when it's larger than the pre-allocated one
-                    var bufArray = new Libuv.uv_buf_t[nBuffers];
+                    var bufArray = new LibuvFunctions.uv_buf_t[nBuffers];
                     var gcHandle = GCHandle.Alloc(bufArray, GCHandleType.Pinned);
                     _pins.Add(gcHandle);
-                    pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
+                    pBuffers = (LibuvFunctions.uv_buf_t*)gcHandle.AddrOfPinnedObject();
                 }
 
                 for (var index = 0; index < nBuffers; index++)

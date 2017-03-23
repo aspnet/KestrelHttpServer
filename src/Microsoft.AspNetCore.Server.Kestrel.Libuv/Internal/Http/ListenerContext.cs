@@ -4,17 +4,19 @@
 using System;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class ListenerContext
     {
-        public ListenerContext(ServiceContext serviceContext)
+        public ListenerContext(LibuvTransportContext transportContext)
         {
-            ServiceContext = serviceContext;
+            TransportContext = transportContext;
         }
 
-        public ServiceContext ServiceContext { get; set; }
+        public LibuvTransportContext TransportContext { get; set; }
 
         public ListenOptions ListenOptions { get; set; }
 
@@ -29,12 +31,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 case ListenType.IPEndPoint:
                 case ListenType.FileHandle:
-                    var tcpHandle = new UvTcpHandle(ServiceContext.Log);
+                    var tcpHandle = new UvTcpHandle(TransportContext.Log);
                     tcpHandle.Init(Thread.Loop, Thread.QueueCloseHandle);
                     tcpHandle.NoDelay(ListenOptions.NoDelay);
                     return tcpHandle;
                 case ListenType.SocketPath:
-                    var pipeHandle = new UvPipeHandle(ServiceContext.Log);
+                    var pipeHandle = new UvPipeHandle(TransportContext.Log);
                     pipeHandle.Init(Thread.Loop, Thread.QueueCloseHandle);
                     return pipeHandle;
                 default:
@@ -44,16 +46,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public PipeOptions LibuvInputPipeOptions => new PipeOptions
         {
-            ReaderScheduler = ServiceContext.ThreadPool,
+            ReaderScheduler = TransportContext.ThreadPool,
             WriterScheduler = Thread,
-            MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
-            MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            MaximumSizeHigh = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0,
+            MaximumSizeLow = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0
         };
 
         public PipeOptions LibuvOutputPipeOptions => new PipeOptions
         {
             ReaderScheduler = Thread,
-            WriterScheduler = ServiceContext.ThreadPool,
+            WriterScheduler = TransportContext.ThreadPool,
             MaximumSizeHigh = GetOutputResponseBufferSize(),
             MaximumSizeLow = GetOutputResponseBufferSize()
         };
@@ -62,13 +64,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             ReaderScheduler = InlineScheduler.Default,
             WriterScheduler = InlineScheduler.Default,
-            MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
-            MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            MaximumSizeHigh = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0,
+            MaximumSizeLow = TransportContext.Options.Limits.MaxRequestBufferSize ?? 0
         };
 
         private long GetOutputResponseBufferSize()
         {
-            var bufferSize = ServiceContext.ServerOptions.Limits.MaxResponseBufferSize;
+            var bufferSize = TransportContext.Options.Limits.MaxResponseBufferSize;
             if (bufferSize == 0)
             {
                 // 0 = no buffering so we need to configure the pipe so the the writer waits on the reader directly

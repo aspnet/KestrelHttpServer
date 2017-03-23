@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         {
         }
 
-        public void Init(Libuv uv)
+        public void Init(LibuvFunctions uv)
         {
             CreateMemory(
                 uv,

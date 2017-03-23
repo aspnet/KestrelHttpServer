@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -29,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         // but it has no other functional significance
         private readonly ArraySegment<ArraySegment<byte>> _dummyMessage = new ArraySegment<ArraySegment<byte>>(new[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) });
 
-        public ListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
+        public ListenerPrimary(LibuvTransportContext transportContext) : base(transportContext)
         {
         }
 
@@ -205,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _bufPtr = _bufHandle.AddrOfPinnedObject();
             }
 
-            public Libuv.uv_buf_t AllocCallback(UvStreamHandle dispatchPipe, int suggestedSize)
+            public LibuvFunctions.uv_buf_t AllocCallback(UvStreamHandle dispatchPipe, int suggestedSize)
             {
                 return dispatchPipe.Libuv.buf_init(_bufPtr + _bytesRead, _bufferLength - _bytesRead);
             }
