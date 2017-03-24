@@ -22,8 +22,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private bool _cancelled = false;
         private bool _completed = false;
-        // TODO: Set this when the socket is closed
-        private bool _isSocketClosed = false;
 
         // TODO: Set _lastWriteError
         //private Exception _lastWriteError;
@@ -55,22 +53,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             lock (_contextLock)
             {
-                if (_isSocketClosed)
-                {
-                    _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, null/*_lastWriteError*/);
-
-                    return TaskCache.CompletedTask;
-                }
-
                 if (_completed)
                 {
+                    // TODO: Get actual notification when the consumer stopped from Pipes, so we know if the socket is fully closed.
+                    _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, null/*_lastWriteError*/);
                     return TaskCache.CompletedTask;
                 }
+
+                writableBuffer = _pipe.Alloc();
 
                 if (buffer.Count > 0)
                 {
-                    writableBuffer = _pipe.Alloc();
-
                     if (chunk)
                     {
                         ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
@@ -82,9 +75,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
                     }
-
-                    writableBuffer.Commit();
                 }
+
+                writableBuffer.Commit();
             }
 
             return FlushAsync(writableBuffer);
@@ -175,7 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             lock (_contextLock)
             {
-                _isSocketClosed = false;
+                _completed = true;
                 _pipe.Complete();
             }
         }
