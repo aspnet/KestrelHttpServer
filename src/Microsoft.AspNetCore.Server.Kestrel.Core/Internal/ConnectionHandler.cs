@@ -42,9 +42,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             {
                 ConnectionId = connectionId,
                 ConnectionInformation = connectionInfo,
-                LifetimeControl = new ConnectionLifetimeControl(connectionId, outputPipe, _serviceContext.Log),
                 ServiceContext = _serviceContext
             };
+
+            // TODO: Untangle this mess
+            var frame = new Frame<TContext>(_application, frameContext);
+            var outputProducer = new SocketOutputProducer(outputPipe.Writer, frame, connectionId, _serviceContext.Log);
+            frame.LifetimeControl = new ConnectionLifetimeControl(connectionId, outputPipe.Reader, outputProducer, _serviceContext.Log);
 
             var connection = new ConnectionLifetime(new ConnectionLifetimeContext
             {
@@ -52,9 +56,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 ServiceContext = _serviceContext,
                 PipeFactory = _pipeFactory,
                 ConnectionAdapters = connectionInfo.ListenOptions.ConnectionAdapters,
-                Frame = new Frame<TContext>(_application, frameContext),
+                Frame = frame,
                 Input = inputPipe,
-                Output = outputPipe
+                Output = outputPipe,
+                OutputProducer = outputProducer
             });
 
             // Since data cannot be added to the inputPipe by the transport until OnConnection returns,

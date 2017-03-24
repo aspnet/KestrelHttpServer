@@ -15,6 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public PipeFactory PipeFactory { get; set; }
         public List<IConnectionAdapter> ConnectionAdapters { get; set; }
         public Frame Frame { get; set; }
+        public SocketOutputProducer OutputProducer { get; set; }
 
 
         public IPipe Input { get; set; }

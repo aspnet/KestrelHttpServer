@@ -38,9 +38,5 @@ namespace Microsoft.AspNetCore.Testing
         {
 
         }
-
-        public void Dispose()
-        {
-        }
     }
 }

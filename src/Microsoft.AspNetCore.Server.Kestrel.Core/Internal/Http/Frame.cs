@@ -99,9 +99,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public IPipeReader Input { get; set; }
         public ISocketOutput Output { get; set; }
         public IEnumerable<IAdaptedConnection> AdaptedConnections { get; set; }
+        public ConnectionLifetimeControl LifetimeControl { get; set; }
 
         protected ITimeoutControl TimeoutControl => ConnectionInformation.TimeoutControl;
-        protected ConnectionLifetimeControl LifetimeControl => _frameContext.LifetimeControl;
         protected IKestrelTrace Log => ServiceContext.Log;
 
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;

@@ -8,15 +8,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class ConnectionLifetimeControl
     {
-        public ConnectionLifetimeControl(string connectionId, IPipe outputPipe, IKestrelTrace log)
+        public ConnectionLifetimeControl(
+            string connectionId,
+            IPipeReader outputPipeReader,
+            SocketOutputProducer outputProducer,
+            IKestrelTrace log)
         {
             ConnectionId = connectionId;
-            Output = outputPipe;
+            OutputReader = outputPipeReader;
+            OutputProducer = outputProducer;
             Log = log;
         }
 
         private string ConnectionId { get; }
-        private IPipe Output { get; }
+        private IPipeReader OutputReader { get; }
+        private SocketOutputProducer OutputProducer { get; }
         private IKestrelTrace Log { get; }
 
         public void End(ProduceEndType endType)
@@ -27,10 +33,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     Log.ConnectionKeepAlive(ConnectionId);
                     break;
                 case ProduceEndType.SocketShutdown:
-                    Output.Reader.CancelPendingRead();
+                    OutputReader.CancelPendingRead();
                     goto case ProduceEndType.SocketDisconnect;
                 case ProduceEndType.SocketDisconnect:
-                    Output.Writer.Complete();
+                    OutputProducer.Dispose();
                     Log.ConnectionDisconnect(ConnectionId);
                     break;
             }

@@ -23,10 +23,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private bool _cancelled = false;
         private bool _completed = false;
 
-        // TODO: Set _lastWriteError
-        //private Exception _lastWriteError;
         private readonly IPipeWriter _pipe;
-        private readonly ConnectionLifetime _connection;
+        private readonly Frame _frame;
 
         // https://github.com/dotnet/corefxlab/issues/1334 
         // Pipelines don't support multiple awaiters on flush
@@ -35,10 +33,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly object _flushLock = new object();
         private readonly Action _onFlushCallback;
 
-        public SocketOutputProducer(IPipeWriter pipe, ConnectionLifetime connection, string connectionId, IKestrelTrace log)
+        public SocketOutputProducer(IPipeWriter pipe, Frame frame, string connectionId, IKestrelTrace log)
         {
             _pipe = pipe;
-            _connection = connection;
+            _frame = frame;
             _connectionId = connectionId;
             _log = log;
             _onFlushCallback = OnFlush;
@@ -55,8 +53,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 if (_completed)
                 {
-                    // TODO: Get actual notification when the consumer stopped from Pipes, so we know if the socket is fully closed.
-                    _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, null/*_lastWriteError*/);
+                    // TODO: Get actual notification when the consumer stopped from Pipes,
+                    // so we know if the socket is fully closed and why (for logging exceptions);
+                    _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, ex: null);
                     return TaskCache.CompletedTask;
                 }
 
@@ -127,7 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                _connection.Abort(ex: null);
+                _frame.Abort();
                 _cancelled = true;
                 return Task.FromCanceled(cancellationToken);
             }

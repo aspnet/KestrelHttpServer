@@ -52,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public void StartRequestProcessing()
         {
             _frame.Input = _context.Input.Reader;
-            _frame.Output = new SocketOutputProducer(_context.Output.Writer, this, ConnectionId, Log);
+            _frame.Output = _context.OutputProducer;
 
             if (_connectionAdapters.Count == 0)
             {
@@ -150,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private void CloseRawPipes()
         {
             _filteredStream?.Dispose();
-            _context.Output.Writer.Complete();
+            _context.OutputProducer.Dispose();
             _context.Input.Reader.Complete();
         }
     }

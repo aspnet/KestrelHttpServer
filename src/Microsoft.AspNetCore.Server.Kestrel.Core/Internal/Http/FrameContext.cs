@@ -9,7 +9,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     {
         public string ConnectionId { get; set; }
         public ServiceContext ServiceContext { get; set; }
-        public ConnectionLifetimeControl LifetimeControl { get; set; }
         public IConnectionInformation ConnectionInformation { get; set; }
     }
 }
