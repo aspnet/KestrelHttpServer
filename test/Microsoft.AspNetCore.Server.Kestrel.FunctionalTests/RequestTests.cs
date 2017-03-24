@@ -242,8 +242,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task ConnectionResetPriorToRequestIsLoggedAsDebug()
         {
-            var connectionStartedTcs = new TaskCompletionSource<object>();
-            var connectionResetTcs = new TaskCompletionSource<object>();
+            var connectionStarted = new SemaphoreSlim(0);
+            var connectionReset = new SemaphoreSlim(0);
 
             var mockLogger = new Mock<ILogger>();
             mockLogger
@@ -253,13 +253,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionStartedEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
                 .Callback(() =>
                 {
-                    connectionStartedTcs.SetResult(null);
+                    connectionStarted.Release();
                 });
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionResetEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
                 .Callback(() =>
                 {
-                    connectionResetTcs.SetResult(null);
+                    connectionReset.Release();
                 });
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -285,25 +285,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     socket.Connect(new IPEndPoint(IPAddress.Loopback, host.GetPort()));
 
                     // Wait until connection is established
-                    await connectionStartedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await connectionStarted.WaitAsync(TimeSpan.FromSeconds(10));
 
                     // Force a reset
                     socket.LingerState = new LingerOption(true, 0);
                 }
 
-                // If the reset is correctly logged as Debug, the task below should complete shortly.
+                // If the reset is correctly logged as Debug, the wait below should complete shortly.
                 // This check MUST come before disposing the server, otherwise there's a race where the RST
                 // is still in flight when the connection is aborted, leading to the reset never being received
                 // and therefore not logged.
-                await connectionResetTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                await connectionReset.WaitAsync(TimeSpan.FromSeconds(10));
             }
         }
 
         [Fact]
         public async Task ConnectionResetBetweenRequestsIsLoggedAsDebug()
         {
-            var requestDoneTcs = new TaskCompletionSource<object>();
-            var connectionResetTcs = new TaskCompletionSource<object>();
+            var requestDone = new SemaphoreSlim(0);
+            var connectionReset = new SemaphoreSlim(0);
 
             var mockLogger = new Mock<ILogger>();
             mockLogger
@@ -313,13 +313,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionKeepAliveEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
                 .Callback(() =>
                 {
-                    requestDoneTcs.SetResult(null);
+                    requestDone.Release();
                 });
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionResetEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
                 .Callback(() =>
                 {
-                    connectionResetTcs.SetResult(null);
+                    connectionReset.Release();
                 });
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -347,24 +347,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     socket.Send(Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\n\r\n"));
 
                     // Wait until request is done being processed
-                    await requestDoneTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await requestDone.WaitAsync(TimeSpan.FromSeconds(10));
 
                     // Force a reset
                     socket.LingerState = new LingerOption(true, 0);
                 }
 
-                // If the reset is correctly logged as Debug, the task below should complete shortly.
+                // If the reset is correctly logged as Debug, the wait below should complete shortly.
                 // This check MUST come before disposing the server, otherwise there's a race where the RST
                 // is still in flight when the connection is aborted, leading to the reset never being received
                 // and therefore not logged.
-                await connectionResetTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                await connectionReset.WaitAsync(TimeSpan.FromSeconds(10));
             }
         }
 
         [Fact]
         public async Task ConnectionResetMidRequestIsLoggedAsDebug()
         {
-            var connectionResetTcs = new TaskCompletionSource<object>();
+            var connectionReset = new SemaphoreSlim(0);
 
             var mockLogger = new Mock<ILogger>();
             mockLogger
@@ -374,7 +374,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                  .Setup(logger => logger.Log(LogLevel.Debug, _connectionResetEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
                  .Callback(() =>
                  {
-                     connectionResetTcs.SetResult(null);
+                     connectionReset.Release();
                  });
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -385,7 +385,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
                 .Returns(Mock.Of<ILogger>());
 
-            var requestStartedTcs = new TaskCompletionSource<object>();
+            var requestStarted = new SemaphoreSlim(0);
 
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
@@ -393,7 +393,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseUrls($"http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
                 {
-                    requestStartedTcs.SetResult(null);
+                    requestStarted.Release();
                     await context.Request.Body.ReadAsync(new byte[1], 0, 1);
                 }));
 
@@ -407,17 +407,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     socket.Send(Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\n\r\n"));
 
                     // Wait until connection is established
-                    await requestStartedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await requestStarted.WaitAsync(TimeSpan.FromSeconds(10));
 
                     // Force a reset
                     socket.LingerState = new LingerOption(true, 0);
                 }
 
-                // If the reset is correctly logged as Debug, the task below should complete shortly.
+                // If the reset is correctly logged as Debug, the wait below should complete shortly.
                 // This check MUST come before disposing the server, otherwise there's a race where the RST
                 // is still in flight when the connection is aborted, leading to the reset never being received
                 // and therefore not logged.
-                await connectionResetTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                await connectionReset.WaitAsync(TimeSpan.FromSeconds(10));
             }
         }
 
