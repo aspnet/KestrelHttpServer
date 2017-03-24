@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 while (!_requestProcessingStopping)
                 {
-                    ConnectionControl.SetTimeout(_keepAliveMilliseconds, TimeoutAction.CloseConnection);
+                    TimeoutControl.SetTimeout(_keepAliveMilliseconds, TimeoutAction.CloseConnection);
 
                     InitializeHeaders();
 
@@ -218,7 +218,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
                         await TryProduceInvalidRequestResponse();
-                        End(ProduceEndType.SocketShutdown);
+                        LifetimeControl.End(ProduceEndType.SocketShutdown);
                     }
                 }
                 catch (Exception ex)

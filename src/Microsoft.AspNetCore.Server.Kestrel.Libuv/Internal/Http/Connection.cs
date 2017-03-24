@@ -20,7 +20,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public class Connection : ConnectionContext, IConnectionControl
+    public class Connection : ConnectionContext, ITimeoutControl
     {
         private const int MinAllocBufferSize = 2048;
 
@@ -43,9 +43,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
-            //_connectionAdapters = context.ListenOptions.ConnectionAdapters;
             socket.Connection = this;
-            ConnectionControl = this;
+            TimeoutControl = this;
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)
@@ -53,10 +52,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RemoteEndPoint = tcpHandle.GetPeerIPEndPoint();
                 LocalEndPoint = tcpHandle.GetSockIPEndPoint();
             }
+
+            _lastTimestamp = Thread.Loop.Now();
         }
 
-        // Internal for testing
-        internal Connection()
+        // For testing
+        public Connection()
         {
         }
 
@@ -76,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 ConnectionId = _connectionContext.ConnectionId;
 
                 Log.ConnectionStart(ConnectionId);
-                //KestrelEventSource.Log.ConnectionStart(this);
+                KestrelEventSource.Log.ConnectionStart(this);
 
                 Input = _connectionContext.Input;
                 Output = new SocketOutputConsumer(_connectionContext.Output, Thread, _socket, this, ConnectionId, Log);
@@ -106,6 +107,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         // Called on Libuv thread
         public virtual void OnSocketClosed()
         {
+            KestrelEventSource.Log.ConnectionStop(this);
+
             Input.Complete(new TaskCanceledException("The request was aborted"));
             _socketClosedTcs.TrySetResult(null);
         }
@@ -115,7 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             if (timestamp > PlatformApis.VolatileRead(ref _timeoutTimestamp))
             {
-                ConnectionControl.CancelTimeout();
+                TimeoutControl.CancelTimeout();
 
                 if (_timeoutAction == TimeoutAction.SendTimeoutResponse)
                 {
@@ -206,12 +209,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _currentWritableBuffer = null;
             if (flushTask?.IsCompleted == false)
             {
-                OnPausePosted();
+                Pause();
                 var result = await flushTask.Value;
                 // If the reader isn't complete then resume
                 if (!result.IsCompleted)
                 {
-                    OnResumePosted();
+                    Resume();
                 }
             }
 
@@ -222,25 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        void IConnectionControl.Pause()
-        {
-            Log.ConnectionPause(ConnectionId);
-
-            // Even though this method is called on the event loop already,
-            // post anyway so the ReadStop() call doesn't get reordered
-            // relative to the ReadStart() call made in Resume().
-            Thread.Post(state => state.OnPausePosted(), this);
-        }
-
-        void IConnectionControl.Resume()
-        {
-            Log.ConnectionResume(ConnectionId);
-
-            // This is called from the consuming thread.
-            Thread.Post(state => state.OnResumePosted(), this);
-        }
-
-        private void OnPausePosted()
+        private void Pause()
         {
             // It's possible that uv_close was called between the call to Thread.Post() and now.
             if (!_socket.IsClosed)
@@ -249,7 +234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private void OnResumePosted()
+        private void Resume()
         {
             // It's possible that uv_close was called even before the call to Resume().
             if (!_socket.IsClosed)
@@ -268,35 +253,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        void IConnectionControl.End(ProduceEndType endType)
-        {
-            switch (endType)
-            {
-                case ProduceEndType.ConnectionKeepAlive:
-                    Log.ConnectionKeepAlive(ConnectionId);
-                    break;
-                case ProduceEndType.SocketShutdown:
-                    Output.Shutdown();
-                    goto case ProduceEndType.SocketDisconnect;
-                case ProduceEndType.SocketDisconnect:
-                    Log.ConnectionDisconnect(ConnectionId);
-                    break;
-            }
-        }
-
-        void IConnectionControl.SetTimeout(long milliseconds, TimeoutAction timeoutAction)
+        void ITimeoutControl.SetTimeout(long milliseconds, TimeoutAction timeoutAction)
         {
             Debug.Assert(_timeoutTimestamp == long.MaxValue, "Concurrent timeouts are not supported");
 
             AssignTimeout(milliseconds, timeoutAction);
         }
 
-        void IConnectionControl.ResetTimeout(long milliseconds, TimeoutAction timeoutAction)
+        void ITimeoutControl.ResetTimeout(long milliseconds, TimeoutAction timeoutAction)
         {
             AssignTimeout(milliseconds, timeoutAction);
         }
 
-        void IConnectionControl.CancelTimeout()
+        void ITimeoutControl.CancelTimeout()
         {
             Interlocked.Exchange(ref _timeoutTimestamp, long.MaxValue);
         }

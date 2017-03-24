@@ -18,14 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
         /// </remarks>
         public int ThreadCount { get; set; } = ProcessorThreadCount;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <remarks>
-        /// Defaults to true.
-        /// </remarks>
-        public bool ThreadPoolDispatching { get; set; } = true;
-
         // TODO: Move all shutdown timeout logic back into core project.
         /// <summary>
         /// The amount of time after the server begins shutting down before connections will be forcefully closed.

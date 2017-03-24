@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Hosting.IWebHostBuilder.
         /// </returns>
-        public static IWebHostBuilder UseKestrel(this IWebHostBuilder hostBuilder, Action<LibuvTransportOptions> options)
+        public static IWebHostBuilder UseLibuv(this IWebHostBuilder hostBuilder, Action<LibuvTransportOptions> options)
         {
             return hostBuilder.UseLibuv().ConfigureServices(services =>
             {

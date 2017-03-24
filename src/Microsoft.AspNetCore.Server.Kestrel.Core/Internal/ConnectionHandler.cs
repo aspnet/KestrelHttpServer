@@ -42,6 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             {
                 ConnectionId = connectionId,
                 ConnectionInformation = connectionInfo,
+                LifetimeControl = new ConnectionLifetimeControl(connectionId, outputPipe, _serviceContext.Log),
                 ServiceContext = _serviceContext
             };
 

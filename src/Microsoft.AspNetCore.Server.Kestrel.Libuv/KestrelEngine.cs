@@ -48,7 +48,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             try
             {
-                await Task.WhenAll(Threads.Select(thread => thread.StopAsync(TimeSpan.FromSeconds(2.5))).ToArray());
+                await Task.WhenAll(Threads.Select(thread => thread.StopAsync(TimeSpan.FromSeconds(2.5))).ToArray())
+                    .ConfigureAwait(false);
             }
             catch (AggregateException aggEx)
             {
@@ -82,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
             foreach (var thread in Threads)
             {
-                thread.StartAsync().Wait();
+                await thread.StartAsync().ConfigureAwait(false);
             }
 
             try
@@ -91,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 {
                     var listener = new Listener(TransportContext);
                     _listeners.Add(listener);
-                    await listener.StartAsync(_listenOptions, Threads[0]);
+                    await listener.StartAsync(_listenOptions, Threads[0]).ConfigureAwait(false);
                 }
                 else
                 {
@@ -100,24 +101,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
                     var listenerPrimary = new ListenerPrimary(TransportContext);
                     _listeners.Add(listenerPrimary);
-                    await listenerPrimary.StartAsync(pipeName, pipeMessage, _listenOptions, Threads[0]);
+                    await listenerPrimary.StartAsync(pipeName, pipeMessage, _listenOptions, Threads[0]).ConfigureAwait(false);
 
                     foreach (var thread in Threads.Skip(1))
                     {
                         var listenerSecondary = new ListenerSecondary(TransportContext);
                         _listeners.Add(listenerSecondary);
-                        await listenerSecondary.StartAsync(pipeName, pipeMessage, _listenOptions, thread);
+                        await listenerSecondary.StartAsync(pipeName, pipeMessage, _listenOptions, thread).ConfigureAwait(false);
                     }
                 }
             }
-            catch (AggregateException ex) when ((ex.InnerException as UvException)?.StatusCode == Constants.EADDRINUSE)
+            catch (UvException ex) when (ex.StatusCode == Constants.EADDRINUSE)
             {
-                await UnbindAsync();
-                throw new AddressInUseException(ex.InnerException.Message, ex.InnerException);
+                await UnbindAsync().ConfigureAwait(false);
+                throw new AddressInUseException(ex.Message, ex);
             }
             catch
             {
-                await UnbindAsync();
+                await UnbindAsync().ConfigureAwait(false);
                 throw;
             }
         }
@@ -126,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             var disposeTasks = _listeners.Select(listener => listener.DisposeAsync()).ToArray();
 
-            if (!await WaitAsync(Task.WhenAll(disposeTasks), TimeSpan.FromSeconds(2.5)))
+            if (!await WaitAsync(Task.WhenAll(disposeTasks), TimeSpan.FromSeconds(2.5)).ConfigureAwait(false))
             {
                 Log.LogError(0, null, "Disposing listeners failed");
             }

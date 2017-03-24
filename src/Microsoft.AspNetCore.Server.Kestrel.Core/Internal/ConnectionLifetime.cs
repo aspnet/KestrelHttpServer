@@ -125,11 +125,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
-                _context.Output.Writer.Complete();
-                _context.Input.Reader.Complete();
-
-                _adaptedPipeline?.Dispose();
-                _filteredStream?.Dispose();
+                _frameStartedTcs.SetResult(null);
+                CloseRawPipes();
             }
         }
 
@@ -146,9 +143,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             }
             finally
             {
-                _adaptedPipeline.Dispose();
-                _filteredStream.Dispose();
+                CloseRawPipes();
             }
+        }
+
+        private void CloseRawPipes()
+        {
+            _filteredStream?.Dispose();
+            _context.Output.Writer.Complete();
+            _context.Input.Reader.Complete();
         }
     }
 }

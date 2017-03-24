@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
-    public class AdaptedPipeline : IDisposable
+    public class AdaptedPipeline
     {
         private const int MinAllocBufferSize = 2048;
 
@@ -31,17 +31,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
         public ISocketOutput Output => _output;
 
-        public void Dispose()
-        {
-            Input.Writer.Complete();
-        }
-
         public async Task RunAsync()
         {
             var inputTask = ReadInputAsync();
             var outputTask = _output.WriteOutputAsync();
 
             await inputTask;
+
+            _output.Dispose();
+
             await outputTask;
         }
 

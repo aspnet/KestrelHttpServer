@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport
         IPEndPoint RemoteEndPoint { get; }
         IPEndPoint LocalEndPoint { get; }
 
-        // TODO: Remove this (Use Pipes instead?)
-        IConnectionControl ConnectionControl { get; }
+        // TODO: Remove timeout management from transport
+        ITimeoutControl TimeoutControl { get; }
     }
 }

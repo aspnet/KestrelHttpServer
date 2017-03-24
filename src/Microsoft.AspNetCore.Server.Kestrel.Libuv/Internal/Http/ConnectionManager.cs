@@ -62,11 +62,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             });
 
-            Task.Run(async () =>
+            Task.Run(() =>
             {
                 try
                 {
-                    await Task.WhenAll(tasks.ToArray());
+                    Task.WaitAll(tasks.ToArray());
                 }
                 catch (Exception ex)
                 {

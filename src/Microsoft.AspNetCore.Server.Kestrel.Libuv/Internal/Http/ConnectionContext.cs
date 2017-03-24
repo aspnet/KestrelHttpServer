@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public ListenOptions ListenOptions => ListenerContext.ListenOptions;
 
-        public IConnectionControl ConnectionControl { get; set; }
+        public ITimeoutControl TimeoutControl { get; set; }
 
         public IPEndPoint RemoteEndPoint { get; set; }
 

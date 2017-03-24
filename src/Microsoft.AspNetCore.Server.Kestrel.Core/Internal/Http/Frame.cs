@@ -100,7 +100,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public ISocketOutput Output { get; set; }
         public IEnumerable<IAdaptedConnection> AdaptedConnections { get; set; }
 
-        protected IConnectionControl ConnectionControl => ConnectionInformation.ConnectionControl;
+        protected ITimeoutControl TimeoutControl => ConnectionInformation.TimeoutControl;
+        protected ConnectionLifetimeControl LifetimeControl => _frameContext.LifetimeControl;
         protected IKestrelTrace Log => ServiceContext.Log;
 
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
@@ -421,7 +422,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 try
                 {
-                    End(ProduceEndType.SocketDisconnect);
+                    LifetimeControl.End(ProduceEndType.SocketDisconnect);
                 }
                 catch (Exception ex)
                 {
@@ -433,12 +434,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 _abortedCts = null;
             }
-        }
-
-        protected void End(ProduceEndType endType)
-        {
-            ConnectionControl.End(endType);
-            Output.Dispose();
         }
 
         /// <summary>
@@ -855,7 +850,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (_keepAlive)
             {
-                End(ProduceEndType.ConnectionKeepAlive);
+                LifetimeControl.End(ProduceEndType.ConnectionKeepAlive);
             }
 
             if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
@@ -875,7 +870,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (_keepAlive)
             {
-                End(ProduceEndType.ConnectionKeepAlive);
+                LifetimeControl.End(ProduceEndType.ConnectionKeepAlive);
             }
         }
 
@@ -994,7 +989,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         break;
                     }
 
-                    ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
+                    TimeoutControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
 
                     _requestProcessingStatus = RequestProcessingStatus.ParsingRequestLine;
                     goto case RequestProcessingStatus.ParsingRequestLine;
@@ -1059,7 +1054,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             if (result)
             {
-                ConnectionControl.CancelTimeout();
+                TimeoutControl.CancelTimeout();
             }
             return result;
         }

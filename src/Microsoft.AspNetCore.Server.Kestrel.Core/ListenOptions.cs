@@ -82,7 +82,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public List<IConnectionAdapter> ConnectionAdapters { get; } = new List<IConnectionAdapter>();
 
         // Scheme is hopefully only a temporary measure for back compat with IServerAddressesFeature.
-        internal string Scheme { get; set; } = "http";
+        // TODO: Allow connection adapters to configure the scheme
+        public string Scheme { get; set; } = "http";
 
         public override string ToString()
         {
