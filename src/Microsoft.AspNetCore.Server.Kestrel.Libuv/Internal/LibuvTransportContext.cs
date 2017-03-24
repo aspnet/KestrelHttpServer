@@ -15,8 +15,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal
 
         public IKestrelTrace Log { get; set; }
 
-        public IThreadPool ThreadPool { get; set; }
-
         public IConnectionHandler ConnectionHandler { get; set; }
     }
 }

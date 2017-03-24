@@ -114,32 +114,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var connectionHandler = new ConnectionHandler<TContext>(serviceContext, application);
                 _connectionHandlerDisposable = connectionHandler;
 
-                //var engine = new KestrelEngine();
-
-                //_disposables.Push(engine);
-                //_disposables.Push(dateHeaderValueManager);
-
-                //var threadCount = Options.ThreadCount;
-
-                //if (threadCount <= 0)
-                //{
-                //    throw new ArgumentOutOfRangeException(nameof(threadCount),
-                //        threadCount,
-                //        "ThreadCount must be positive.");
-                //}
-
-                //if (!Constants.ECONNRESET.HasValue)
-                //{
-                //    _logger.LogWarning("Unable to determine ECONNRESET value on this platform.");
-                //}
-
-                //if (!Constants.EADDRINUSE.HasValue)
-                //{
-                //    _logger.LogWarning("Unable to determine EADDRINUSE value on this platform.");
-                //}
-
-                //engine.Start(threadCount);
-
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
                 var hasServerAddresses = _serverAddresses.Addresses.Any();

@@ -41,7 +41,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public IApplicationLifetime AppLifetime => TransportContext.AppLifetime;
         public IKestrelTrace Log => TransportContext.Log;
-        public IThreadPool ThreadPool => TransportContext.ThreadPool;
         public LibuvTransportOptions TransportOptions => TransportContext.Options;
 
         public async Task StopAsync()

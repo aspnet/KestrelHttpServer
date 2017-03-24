@@ -39,14 +39,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
             // TODO: Add LibuvTrace
             var trace = new KestrelTrace(logger);
 
-            IThreadPool threadPool;
-            if (options.Value.ThreadPoolDispatching)
+
+            var threadCount = options.Value.ThreadCount;
+
+            if (threadCount <= 0)
             {
-                threadPool = new LoggingThreadPool(trace);
+                throw new ArgumentOutOfRangeException(nameof(threadCount),
+                    threadCount,
+                    "ThreadCount must be positive.");
             }
-            else
+
+            if (!Constants.ECONNRESET.HasValue)
             {
-                threadPool = new InlineLoggingThreadPool(trace);
+                trace.LogWarning("Unable to determine ECONNRESET value on this platform.");
+            }
+
+            if (!Constants.EADDRINUSE.HasValue)
+            {
+                trace.LogWarning("Unable to determine EADDRINUSE value on this platform.");
             }
 
             _baseTransportContext = new LibuvTransportContext
@@ -54,7 +64,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
                 Options = options.Value,
                 AppLifetime = applicationLifetime,
                 Log = trace,
-                ThreadPool = threadPool
             };
         }
 
@@ -65,7 +74,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
                 Options = _baseTransportContext.Options,
                 AppLifetime = _baseTransportContext.AppLifetime,
                 Log = _baseTransportContext.Log,
-                ThreadPool = _baseTransportContext.ThreadPool,
                 ConnectionHandler = handler
             };
 

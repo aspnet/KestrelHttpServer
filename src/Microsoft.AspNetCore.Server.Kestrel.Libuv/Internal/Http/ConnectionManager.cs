@@ -12,12 +12,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     public class ConnectionManager
     {
         private readonly KestrelThread _thread;
-        private readonly IThreadPool _threadPool;
 
-        public ConnectionManager(KestrelThread thread, IThreadPool threadPool)
+        public ConnectionManager(KestrelThread thread)
         {
             _thread = thread;
-            _threadPool = threadPool;
         }
 
         public async Task<bool> WalkConnectionsAndCloseAsync(TimeSpan timeout)
@@ -64,9 +62,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             });
 
-            _threadPool.Run(() =>
+            Task.Run(() =>
             {
-                Task.WaitAll(tasks.ToArray());
+                try
+                {
+                    Task.WaitAll(tasks.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                    return;
+                }
+
                 tcs.SetResult(null);
             });
         }

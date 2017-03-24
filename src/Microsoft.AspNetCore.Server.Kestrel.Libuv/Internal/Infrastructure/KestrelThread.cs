@@ -53,7 +53,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private bool _initCompleted = false;
         private ExceptionDispatchInfo _closeError;
         private readonly IKestrelTrace _log;
-        private readonly IThreadPool _threadPool;
         private readonly TimeSpan _shutdownTimeout;
         private IntPtr _thisPtr;
 
@@ -62,7 +61,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _engine = engine;
             _appLifetime = engine.AppLifetime;
             _log = engine.Log;
-            _threadPool = engine.ThreadPool;
             _shutdownTimeout = engine.TransportOptions.ShutdownTimeout;
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
@@ -78,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             Memory = new MemoryPool();
             WriteReqPool = new WriteReqPool(this, _log);
-            ConnectionManager = new ConnectionManager(this, _threadPool);
+            ConnectionManager = new ConnectionManager(this);
         }
         // For testing
         internal KestrelThread(KestrelEngine engine, int maxLoops)
@@ -383,14 +381,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     work.CallbackAdapter(work.Callback, work.State);
                     if (work.Completion != null)
                     {
-                        _threadPool.Complete(work.Completion);
+                        ThreadPool.QueueUserWorkItem(o =>
+                        {
+                            try
+                            {
+                                ((TaskCompletionSource<object>)o).SetResult(null);
+                            }
+                            catch (Exception e)
+                            {
+                                _log.LogError(0, e, "KestrelThread.DoPostWork");
+                            }
+                        }, work.Completion);
                     }
                 }
                 catch (Exception ex)
                 {
                     if (work.Completion != null)
                     {
-                        _threadPool.Error(work.Completion, ex);
+                        ThreadPool.QueueUserWorkItem(o =>
+                        {
+                            try
+                            {
+                                ((TaskCompletionSource<object>)o).TrySetException(ex);
+                            }
+                            catch (Exception e)
+                            {
+                                _log.LogError(0, e, "KestrelThread.DoPostWork");
+                            }
+                        }, work.Completion);
                     }
                     else
                     {
