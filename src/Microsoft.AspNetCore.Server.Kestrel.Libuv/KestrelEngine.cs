@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Libuv;
 using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
@@ -108,6 +109,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                         await listenerSecondary.StartAsync(pipeName, pipeMessage, _listenOptions, thread);
                     }
                 }
+            }
+            catch (AggregateException ex) when ((ex.InnerException as UvException)?.StatusCode == Constants.EADDRINUSE)
+            {
+                await UnbindAsync();
+                throw new AddressInUseException(ex.InnerException.Message, ex.InnerException);
             }
             catch
             {

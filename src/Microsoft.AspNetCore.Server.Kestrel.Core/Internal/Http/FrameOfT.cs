@@ -2,9 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -49,7 +52,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (_requestProcessingStatus == RequestProcessingStatus.ParsingHeaders)
                             {
-                                throw BadHttpRequestException.GetException(RequestRejectionReason.MalformedRequestInvalidHeaders);
+                                throw BadHttpRequestException.GetException(RequestRejectionReason
+                                    .MalformedRequestInvalidHeaders);
                             }
                             throw;
                         }
@@ -70,9 +74,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 case RequestProcessingStatus.RequestPending:
                                     return;
                                 case RequestProcessingStatus.ParsingRequestLine:
-                                    throw BadHttpRequestException.GetException(RequestRejectionReason.InvalidRequestLine);
+                                    throw BadHttpRequestException.GetException(
+                                        RequestRejectionReason.InvalidRequestLine);
                                 case RequestProcessingStatus.ParsingHeaders:
-                                    throw BadHttpRequestException.GetException(RequestRejectionReason.MalformedRequestInvalidHeaders);
+                                    throw BadHttpRequestException.GetException(RequestRejectionReason
+                                        .MalformedRequestInvalidHeaders);
                             }
                         }
                     }
@@ -187,15 +193,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // SetBadRequestState logs the error.
                 SetBadRequestState(ex);
             }
-            //catch (IOException ex) when (ex.InnerException is UvException)
-            //{
-            //    // Don't log ECONNRESET errors made between requests. Browsers like IE will reset connections regularly.
-            //    if (_requestProcessingStatus != RequestProcessingStatus.RequestPending ||
-            //        ((UvException)ex.InnerException).StatusCode != Constants.ECONNRESET)
-            //    {
-            //        Log.RequestProcessingError(ConnectionId, ex);
-            //    }
-            //}
+            catch (ConnectionResetException ex)
+            {
+                // Don't log ECONNRESET errors made between requests. Browsers like IE will reset connections regularly.
+                if (_requestProcessingStatus != RequestProcessingStatus.RequestPending)
+                {
+                    Log.RequestProcessingError(ConnectionId, ex);
+                }
+            }
+            catch (IOException ex)
+            {
+                Log.RequestProcessingError(ConnectionId, ex);
+            }
             catch (Exception ex)
             {
                 Log.LogWarning(0, ex, "Connection processing ended abnormally");

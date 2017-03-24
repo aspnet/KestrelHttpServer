@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Exceptions;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 
@@ -183,13 +184,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 if (status == Constants.ECONNRESET)
                 {
                     Log.ConnectionReset(ConnectionId);
+                    error = new ConnectionResetException(uvError.Message, uvError);
                 }
                 else
                 {
                     Log.ConnectionError(ConnectionId, uvError);
+                    error = new IOException(uvError.Message, uvError);
                 }
 
-                error = new IOException(uvError.Message, uvError);
                 _currentWritableBuffer?.Commit();
             }
             else

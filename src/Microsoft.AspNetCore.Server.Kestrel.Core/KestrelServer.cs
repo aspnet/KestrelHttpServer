@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -129,15 +130,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
-                    //// "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                    //StartLocalhost(engine, ServerAddress.FromUrl(Constants.DefaultServerAddress));
+                    // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
+                    StartLocalhost(connectionHandler, ServerAddress.FromUrl(Constants.DefaultServerAddress));
 
-                    //// If StartLocalhost doesn't throw, there is at least one listener.
-                    //// The port cannot change for "localhost".
-                    //_serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
+                    // If StartLocalhost doesn't throw, there is at least one listener.
+                    // The port cannot change for "localhost".
+                    _serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
 
-                    //return;
-                    listenOptions.Add(new ListenOptions(new IPEndPoint(IPAddress.Loopback, 5000)));
+                    return;
                 }
                 else if (!hasListenOptions)
                 {
@@ -165,16 +165,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         {
                             if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
                             {
-                                //// "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                                //StartLocalhost(engine, parsedAddress);
+                                // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
+                                StartLocalhost(connectionHandler, parsedAddress);
 
-                                //// If StartLocalhost doesn't throw, there is at least one listener.
-                                //// The port cannot change for "localhost".
-                                //_serverAddresses.Addresses.Add(parsedAddress.ToString());
-                                listenOptions.Add(new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
-                                {
-                                    Scheme = parsedAddress.Scheme,
-                                });
+                                // If StartLocalhost doesn't throw, there is at least one listener.
+                                // The port cannot change for "localhost".
+                                _serverAddresses.Addresses.Add(parsedAddress.ToString());
                             }
                             else
                             {
@@ -190,33 +186,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 foreach (var endPoint in listenOptions)
                 {
-                    _transports.Add(_transportFactory.Create(endPoint, connectionHandler));
+                    var transport = _transportFactory.Create(endPoint, connectionHandler);
+                    _transports.Add(transport);
 
-                    //try
-                    //{
-                    //    _disposables.Push(engine.CreateServer(endPoint));
-                    //}
-                    //catch (AggregateException ex)
-                    //{
-                    //    if ((ex.InnerException as UvException)?.StatusCode == Constants.EADDRINUSE)
-                    //    {
-                    //        throw new IOException($"Failed to bind to address {endPoint}: address already in use.", ex);
-                    //    }
-
-                    //    throw;
-                    //}
+                    try
+                    {
+                        transport.BindAsync().Wait();
+                    }
+                    catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
+                    {
+                        throw new IOException($"Failed to bind to address {endPoint}: address already in use.", ex);
+                    }
 
                     // If requested port was "0", replace with assigned dynamic port.
                     _serverAddresses.Addresses.Add(endPoint.ToString());
                 }
-
-                var tasks = new Task[_transports.Count];
-                for (int i = 0; i < _transports.Count; i++)
-                {
-                    tasks[i] = _transports[i].BindAsync();
-                }
-
-                Task.WaitAll(tasks);
             }
             catch (Exception ex)
             {
@@ -233,8 +217,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 tasks[i] = _transports[i].UnbindAsync();
             }
-
-            // REVIEW: Is it OK to rely on transports to timeout?
             Task.WaitAll(tasks);
 
             _connectionHandlerDisposable.Dispose();
@@ -266,66 +248,62 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        //private void StartLocalhost(KestrelEngine engine, ServerAddress parsedAddress)
-        //{
-        //    if (parsedAddress.Port == 0)
-        //    {
-        //        throw new InvalidOperationException("Dynamic port binding is not supported when binding to localhost. You must either bind to 127.0.0.1:0 or [::1]:0, or both.");
-        //    }
+        private void StartLocalhost<TContext>(ConnectionHandler<TContext> connectionHandler, ServerAddress parsedAddress)
+        {
+            if (parsedAddress.Port == 0)
+            {
+                throw new InvalidOperationException("Dynamic port binding is not supported when binding to localhost. You must either bind to 127.0.0.1:0 or [::1]:0, or both.");
+            }
 
-        //    var exceptions = new List<Exception>();
+            var exceptions = new List<Exception>();
 
-        //    try
-        //    {
-        //        var ipv4ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
-        //        {
-        //            Scheme = parsedAddress.Scheme,
-        //        };
+            try
+            {
+                var ipv4ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
+                {
+                    Scheme = parsedAddress.Scheme,
+                };
 
-        //        _disposables.Push(engine.CreateServer(ipv4ListenOptions));
-        //    }
-        //    catch (AggregateException ex) when (ex.InnerException is UvException)
-        //    {
-        //        var uvEx = (UvException)ex.InnerException;
-        //        if (uvEx.StatusCode == Constants.EADDRINUSE)
-        //        {
-        //            throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
-        //        }
-        //        else
-        //        {
-        //            _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({uvEx.Message})");
-        //            exceptions.Add(uvEx);
-        //        }
-        //    }
+                var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler);
+                _transports.Add(transport);
+                transport.BindAsync().Wait();
+            }
+            catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
+            {
+                    throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
+            }
+            catch (AggregateException ex)
+            {
+                _logger.LogWarning(0,  $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({ex.Message})");
+                exceptions.Add(ex.InnerException);
+            }
 
-        //    try
-        //    {
-        //        var ipv6ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, parsedAddress.Port))
-        //        {
-        //            Scheme = parsedAddress.Scheme,
-        //        };
+            try
+            {
+                var ipv6ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, parsedAddress.Port))
+                {
+                    Scheme = parsedAddress.Scheme,
+                };
 
-        //        _disposables.Push(engine.CreateServer(ipv6ListenOptions));
-        //    }
-        //    catch (AggregateException ex) when (ex.InnerException is UvException)
-        //    {
-        //        var uvEx = (UvException)ex.InnerException;
-        //        if (uvEx.StatusCode == Constants.EADDRINUSE)
-        //        {
-        //            throw new IOException($"Failed to bind to address {parsedAddress} on the IPv6 loopback interface: port already in use.", ex);
-        //        }
-        //        else
-        //        {
-        //            _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv6 loopback interface: ({uvEx.Message})");
-        //            exceptions.Add(uvEx);
-        //        }
-        //    }
+                var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler);
+                _transports.Add(transport);
+                transport.BindAsync().Wait();
+            }
+            catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
+            {
+                throw new IOException($"Failed to bind to address {parsedAddress} on the IPv6 loopback interface: port already in use.", ex);
+            }
+            catch (AggregateException ex)
+            {
+                _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv6 loopback interface: ({ex.Message})");
+                exceptions.Add(ex.InnerException);
+            }
 
-        //    if (exceptions.Count == 2)
-        //    {
-        //        throw new IOException($"Failed to bind to address {parsedAddress}.", new AggregateException(exceptions));
-        //    }
-        //}
+            if (exceptions.Count == 2)
+            {
+                throw new IOException($"Failed to bind to address {parsedAddress}.", new AggregateException(exceptions));
+            }
+        }
 
         /// <summary>
         /// Returns an <see cref="IPEndPoint"/> for the given host an port.
