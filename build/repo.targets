@@ -1,5 +1,23 @@
 <Project>
+  <Import Project="$(MSBuildThisFileDirectory)\corefxlab.props" />
+
+  <PropertyGroup>
+    <PrepareDependsOn>$(PrepareDependsOn);Internalize</PrepareDependsOn>
+  </PropertyGroup>
+
   <Target Name="CodeGen">
     <Exec Command="dotnet run" WorkingDirectory="$(MSBuildThisFileDirectory)..\tools\CodeGenerator\" />
+  </Target>
+  <Target Name="GitSubmoduleInit">
+    <Exec Command="git submodule update --init --recursive" WorkingDirectory="$(MSBuildThisFileDirectory)..\" />
+    <Exec Command="git reset --hard" WorkingDirectory="$(MSBuildThisFileDirectory)..\corefxlab\" />
+  </Target>
+  <Target Name="Internalize" DependsOnTargets="GitSubmoduleInit;Restore">
+        <PropertyGroup>
+            <InternalizeTempFileName>$(MSBuildThisFileDirectory)..\artifacts\corefxlabfiles.txt</InternalizeTempFileName>
+        </PropertyGroup>
+
+        <WriteLinesToFile File="$(InternalizeTempFileName)" Lines="@(CoreFXLabCompile)" Overwrite="true" Encoding="Unicode"/>
+        <Exec Command="dotnet run $(InternalizeTempFileName)" WorkingDirectory="$(MSBuildThisFileDirectory)..\tools\Internalizer\" />
   </Target>
 </Project>
