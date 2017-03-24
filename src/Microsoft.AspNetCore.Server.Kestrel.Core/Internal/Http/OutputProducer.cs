@@ -59,20 +59,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return TaskCache.CompletedTask;
                 }
 
-                writableBuffer = _pipe.Alloc();
+                writableBuffer = _pipe.Alloc(1);
 
                 if (buffer.Count > 0)
                 {
                     if (chunk)
                     {
-                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
+                        ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
                     }
 
-                    writableBuffer.WriteFast(buffer);
+                    writer.Write(buffer.Array, buffer.Offset, buffer.Count);
 
                     if (chunk)
                     {
-                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
+                        ChunkWriter.WriteEndChunkBytes(ref writer);
                     }
                 }
 
@@ -157,7 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return;
                 }
 
-                var buffer = _pipe.Alloc();
+                var buffer = _pipe.Alloc(1);
                 callback(buffer, state);
                 buffer.Commit();
             }
