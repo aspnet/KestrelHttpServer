@@ -505,32 +505,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             });
         }
 
-        private static int _nextPort = 8001;
-        private static object _portLock = new object();
         private static int GetNextPort()
         {
-            lock (_portLock)
+            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
-                {
-                    while (true)
-                    {
-                        try
-                        {
-                            var port = _nextPort++;
-                            socket.Bind(new IPEndPoint(IPAddress.Loopback, port));
-                            return port;
-                        }
-                        catch (SocketException)
-                        {
-                            // Retry unless exhausted
-                            if (_nextPort == 65536)
-                            {
-                                throw;
-                            }
-                        }
-                    }
-                }
+                socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                return ((IPEndPoint)socket.LocalEndPoint).Port;
             }
         }
 
