@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -192,10 +191,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeAppException()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
-                context =>
-                {
-                    throw new Exception();
-                },
+                context => throw new Exception(),
                 expectedClientStatusCode: HttpStatusCode.InternalServerError,
                 expectedServerStatusCode: HttpStatusCode.InternalServerError);
         }
@@ -230,10 +226,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformed()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
-                context =>
-                {
-                    return TaskCache.CompletedTask;
-                },
+                context => TaskCache.CompletedTask,
                 expectedClientStatusCode: null,
                 expectedServerStatusCode: HttpStatusCode.BadRequest,
                 sendMalformedRequest: true);
@@ -425,10 +418,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task TransferEncodingNotSetOnHeadResponse()
         {
-            using (var server = new TestServer(httpContext =>
-            {
-                return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            using (var server = new TestServer(httpContext => TaskCache.CompletedTask, new TestServiceContext()))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -437,7 +427,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "",
                         "");
@@ -469,7 +459,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "",
                         "");
@@ -506,7 +496,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 11",
                         "",
@@ -520,8 +510,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
 
             Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 11).",
-                logMessage.Exception.Message);
+                "Response Content-Length mismatch: too many bytes written (12 of 11).",
+                logMessage?.Exception.Message);
 
         }
 
@@ -545,7 +535,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 11",
                         "",
@@ -555,8 +545,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
             Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 11).",
-                logMessage.Exception.Message);
+                "Response Content-Length mismatch: too many bytes written (12 of 11).",
+                logMessage?.Exception.Message);
         }
 
         [Fact]
@@ -580,7 +570,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
-                        $"HTTP/1.1 500 Internal Server Error",
+                        "HTTP/1.1 500 Internal Server Error",
                         "Connection: close",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 0",
@@ -591,8 +581,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
             Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 5).",
-                logMessage.Exception.Message);
+                "Response Content-Length mismatch: too many bytes written (12 of 5).",
+                logMessage?.Exception.Message);
         }
 
         [Fact]
@@ -615,7 +605,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.ReceiveForcedEnd(
-                        $"HTTP/1.1 500 Internal Server Error",
+                        "HTTP/1.1 500 Internal Server Error",
                         "Connection: close",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 0",
@@ -626,8 +616,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
             Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 5).",
-                logMessage.Exception.Message);
+                "Response Content-Length mismatch: too many bytes written (12 of 5).",
+                logMessage?.Exception.Message);
         }
 
         [Fact]
@@ -660,7 +650,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // response content length, in which case the check
                     // will be skipped.
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 13",
                         "",
@@ -678,7 +668,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 trace.ApplicationError(
                     It.IsAny<string>(),
                     It.Is<InvalidOperationException>(ex =>
-                        ex.Message.Equals($"Response Content-Length mismatch: too few bytes written (12 of 13).", StringComparison.Ordinal))));
+                        ex.Message.Equals("Response Content-Length mismatch: too few bytes written (12 of 13).", StringComparison.Ordinal))));
         }
 
         [Fact]
@@ -707,7 +697,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 12",
                         "",
@@ -787,7 +777,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 0",
                         "",
@@ -822,7 +812,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 13",
                         "Transfer-Encoding: chunked",
@@ -858,7 +848,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
                     await connection.Receive(
-                        $"HTTP/1.1 200 OK",
+                        "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
                         "Content-Length: 11",
                         "Transfer-Encoding: chunked",
@@ -1233,7 +1223,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        $"Transfer-Encoding: chunked",
+                        "Transfer-Encoding: chunked",
                         "",
                         "c",
                         "hello, world",
@@ -1274,7 +1264,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        $"Transfer-Encoding: chunked",
+                        "Transfer-Encoding: chunked",
                         "",
                         "6",
                         "hello,",
@@ -1315,7 +1305,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        $"Transfer-Encoding: chunked",
+                        "Transfer-Encoding: chunked",
                         "",
                         "c",
                         "hello, world",
@@ -1355,7 +1345,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        $"Transfer-Encoding: chunked",
+                        "Transfer-Encoding: chunked",
                         "",
                         "6",
                         "hello,",

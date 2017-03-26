@@ -22,8 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     {
         private const int _dataLength = 20 * 1024 * 1024;
 
-        private static readonly string[] _requestLines = new[]
-        {
+        private static readonly string[] _requestLines = {
             "POST / HTTP/1.0\r\n",
             $"Content-Length: {_dataLength}\r\n",
             "\r\n"

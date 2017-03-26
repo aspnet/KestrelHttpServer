@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Testing;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Xunit;
 using Microsoft.Extensions.Primitives;
 using System.Collections;
