@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public static int WriteBeginChunkBytes(ref WritableBufferWriter start, int dataCount)
         {
             var chunkSegment = BeginChunkBytes(dataCount);
-            start.Write(chunkSegment.Array, chunkSegment.Offset, chunkSegment.Offset);
+            start.Write(chunkSegment.Array, chunkSegment.Offset, chunkSegment.Count);
             return chunkSegment.Count;
         }
 
