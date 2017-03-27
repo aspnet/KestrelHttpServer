@@ -11,8 +11,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class SocketOutputConsumer
     {
-        private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
-
         private readonly KestrelThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly Connection _connection;

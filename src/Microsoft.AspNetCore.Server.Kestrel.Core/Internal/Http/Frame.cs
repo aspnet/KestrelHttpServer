@@ -408,6 +408,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return _requestProcessingTask ?? TaskCache.CompletedTask;
         }
 
+        public void CancelRequestAbortedToken()
+        {
+            try
+            {
+                RequestAbortedSource.Cancel();
+                _abortedCts = null;
+            }
+            catch (Exception ex)
+            {
+                Log.ApplicationError(ConnectionId, ex);
+            }
+        }
+
         /// <summary>
         /// Immediate kill the connection and poison the request and response streams.
         /// </summary>
@@ -420,19 +433,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _frameStreams?.RequestBody.Abort(error);
                 _frameStreams?.ResponseBody.Abort();
 
-                try
-                {
-                    LifetimeControl.End(ProduceEndType.SocketDisconnect);
-                }
-                catch (Exception ex)
-                {
-                    Log.LogError(0, ex, "Abort");
-                }
+                LifetimeControl.End(ProduceEndType.SocketDisconnect);
 
-                // Potentially calling user code. ThreadPool will catch and log any errors.
-                ServiceContext.ThreadPool.Run(() => RequestAbortedSource.Cancel());
-
-                _abortedCts = null;
+                // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
+                ServiceContext.ThreadPool.UnsafeRun(state => ((Frame)state).CancelRequestAbortedToken(), this);
             }
         }
 
