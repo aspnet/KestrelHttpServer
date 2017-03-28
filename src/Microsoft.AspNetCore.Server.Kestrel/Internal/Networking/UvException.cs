@@ -5,7 +5,8 @@ using System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
-    public class UvException : Exception
+    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
+    public sealed class UvException : Exception
     {
         public UvException(string message, int statusCode) : base(message)
         {

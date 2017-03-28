@@ -127,8 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         {
             var stream = FromIntPtr<UvStreamHandle>(handle);
 
-            Exception error;
-            stream.Libuv.Check(status, out error);
+            stream.Libuv.Check(status, out Exception error);
 
             try
             {

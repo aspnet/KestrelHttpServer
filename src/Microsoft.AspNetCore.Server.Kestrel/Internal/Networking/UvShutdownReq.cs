@@ -9,7 +9,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     /// <summary>
     /// Summary description for UvShutdownRequest
     /// </summary>
-    public class UvShutdownReq : UvRequest
+    // Seal to devirtualize the virtuals https://github.com/dotnet/coreclr/pull/9230
+    public sealed class UvShutdownReq : UvRequest
     {
         private readonly static Libuv.uv_shutdown_cb _uv_shutdown_cb = UvShutdownCb;
 

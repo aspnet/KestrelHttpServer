@@ -302,10 +302,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             handle.Validate();
             ThrowIfErrored(_uv_write(req, handle, bufs, nbufs, cb));
         }
+        unsafe public void write(UvWriteReq req, UvStreamHandle handle, uv_buf_t* bufs, int nbufs, uv_write_cb cb)
+        {
+            req.Validate();
+            handle.Validate();
+            ThrowIfErrored(_uv_write(req, handle, bufs, nbufs, cb));
+        }
 
         unsafe protected delegate int uv_write2_func(UvRequest req, UvStreamHandle handle, uv_buf_t* bufs, int nbufs, UvStreamHandle sendHandle, uv_write_cb cb);
         protected uv_write2_func _uv_write2;
         unsafe public void write2(UvRequest req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, UvStreamHandle sendHandle, uv_write_cb cb)
+        {
+            req.Validate();
+            handle.Validate();
+            ThrowIfErrored(_uv_write2(req, handle, bufs, nbufs, sendHandle, cb));
+        }
+        unsafe public void write2(UvWriteReq req, UvStreamHandle handle, Libuv.uv_buf_t* bufs, int nbufs, UvStreamHandle sendHandle, uv_write_cb cb)
         {
             req.Validate();
             handle.Validate();

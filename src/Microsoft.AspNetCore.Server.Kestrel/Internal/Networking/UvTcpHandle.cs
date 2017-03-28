@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -32,16 +31,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public void Bind(IPEndPoint endPoint)
         {
-            SockAddr addr;
             var addressText = endPoint.Address.ToString();
 
-            Exception error1;
-            _uv.ip4_addr(addressText, endPoint.Port, out addr, out error1);
+            _uv.ip4_addr(addressText, endPoint.Port, out SockAddr addr, out Exception error1);
 
             if (error1 != null)
             {
-                Exception error2;
-                _uv.ip6_addr(addressText, endPoint.Port, out addr, out error2);
+                _uv.ip6_addr(addressText, endPoint.Port, out addr, out Exception error2);
                 if (error2 != null)
                 {
                     throw error1;
@@ -53,18 +49,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public IPEndPoint GetPeerIPEndPoint()
         {
-            SockAddr socketAddress;
             int namelen = Marshal.SizeOf<SockAddr>();
-            _uv.tcp_getpeername(this, out socketAddress, ref namelen);
+            _uv.tcp_getpeername(this, out SockAddr socketAddress, ref namelen);
 
             return socketAddress.GetIPEndPoint();
         }
 
         public IPEndPoint GetSockIPEndPoint()
         {
-            SockAddr socketAddress;
             int namelen = Marshal.SizeOf<SockAddr>();
-            _uv.tcp_getsockname(this, out socketAddress, ref namelen);
+            _uv.tcp_getsockname(this, out SockAddr socketAddress, ref namelen);
 
             return socketAddress.GetIPEndPoint();
         }
