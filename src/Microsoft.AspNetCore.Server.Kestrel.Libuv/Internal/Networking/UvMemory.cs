@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             Marshal.FreeCoTaskMem(memory);
         }
 
-        internal IntPtr InternalGetHandle()
+        public IntPtr InternalGetHandle()
         {
             return handle;
         }

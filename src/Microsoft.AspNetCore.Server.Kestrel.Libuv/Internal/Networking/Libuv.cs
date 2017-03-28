@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         }
 
         // Second ctor that doesn't set any fields only to be used by MockLibuv
-        internal LibuvFunctions(bool onlyForTesting)
+        public LibuvFunctions(bool onlyForTesting)
         {
         }
 

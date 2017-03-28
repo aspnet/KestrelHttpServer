@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         { }
 
         // For testing
-        internal KestrelEngine(LibuvFunctions uv, LibuvTransportContext context, ListenOptions listenOptions)
+        public KestrelEngine(LibuvFunctions uv, LibuvTransportContext context, ListenOptions listenOptions)
         {
             Libuv = uv;
             TransportContext = context;
