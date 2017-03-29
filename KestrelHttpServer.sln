@@ -61,7 +61,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestResources", "TestResour
 		test\shared\TestResources\testCert.pfx = test\shared\TestResources\testCert.pfx
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Libuv", "src\Microsoft.AspNetCore.Server.Kestrel.Libuv\Microsoft.AspNetCore.Server.Kestrel.Libuv.csproj", "{A76B8C8C-0DC5-4DD3-9B1F-02E51A0915F4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv", "src\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.csproj", "{A76B8C8C-0DC5-4DD3-9B1F-02E51A0915F4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel", "src\Microsoft.AspNetCore.Server.Kestrel\Microsoft.AspNetCore.Server.Kestrel.csproj", "{56139957-5C29-4E7D-89BD-7D20598B4EAF}"
 EndProject

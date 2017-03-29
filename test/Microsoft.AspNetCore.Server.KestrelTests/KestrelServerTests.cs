@@ -7,7 +7,7 @@ using System.Net;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel;
-using Microsoft.AspNetCore.Server.Kestrel.Libuv;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;

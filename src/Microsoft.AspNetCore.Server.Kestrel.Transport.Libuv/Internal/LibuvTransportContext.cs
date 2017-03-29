@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
     public class LibuvTransportContext
     {

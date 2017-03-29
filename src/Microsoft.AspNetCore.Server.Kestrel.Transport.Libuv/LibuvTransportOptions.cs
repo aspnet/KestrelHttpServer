@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
 {
     /// <summary>
     /// Provides programmatic configuration of Libuv transport features.

@@ -4,7 +4,7 @@
 using System;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
-using Microsoft.AspNetCore.Server.Kestrel.Libuv.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http

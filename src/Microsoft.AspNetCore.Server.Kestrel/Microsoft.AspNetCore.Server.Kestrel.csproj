@@ -8,11 +8,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>aspnetcore;kestrel</PackageTags>
     <NoWarn>CS1591;$(NoWarn)</NoWarn>
+    <EnableApiCheck>false</EnableApiCheck>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Core\Microsoft.AspNetCore.Server.Kestrel.Core.csproj" />
-    <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Libuv\Microsoft.AspNetCore.Server.Kestrel.Libuv.csproj" />
+    <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.csproj" />
   </ItemGroup>
 
 </Project>

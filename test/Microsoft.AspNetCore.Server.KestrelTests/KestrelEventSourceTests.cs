@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics.Tracing;
 using System.Reflection;
-using Microsoft.AspNetCore.Server.Kestrel.Libuv;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
