@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
@@ -13,6 +14,8 @@ namespace Microsoft.AspNetCore.Testing
 {
     public class TestServiceContext : ServiceContext
     {
+        private RequestDelegate _app;
+
         public TestServiceContext()
         {
             Log = new TestKestrelTrace();
@@ -40,5 +43,18 @@ namespace Microsoft.AspNetCore.Testing
         public string DateHeaderValue { get; }
 
         public LibuvTransportContext TransportContext { get; }
+
+        public RequestDelegate App
+        {
+            get
+            {
+                return _app;
+            }
+            set
+            {
+                TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(this, new DummyApplication(value));
+                _app = value;
+            }
+        }
     }
 }

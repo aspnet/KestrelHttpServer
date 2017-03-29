@@ -44,6 +44,7 @@ namespace Microsoft.AspNetCore.Testing
             _listenOptions = listenOptions;
 
             Context = context;
+            Context.App = app;
             Context.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(Context, new DummyApplication(app, httpContextFactory));
 
             try

@@ -408,7 +408,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return _requestProcessingTask ?? TaskCache.CompletedTask;
         }
 
-        public void CancelRequestAbortedToken()
+        private void CancelRequestAbortedToken()
         {
             try
             {

@@ -139,11 +139,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             return tcs.Task;
         }
-
-        public void Shutdown()
-        {
-            // Graceful shutdown.
-            _pipe.CancelPendingRead();
-        }
     }
 }

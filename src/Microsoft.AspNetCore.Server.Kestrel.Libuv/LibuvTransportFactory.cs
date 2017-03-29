@@ -39,7 +39,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Libuv
             // TODO: Add LibuvTrace
             var trace = new KestrelTrace(logger);
 
-
             var threadCount = options.Value.ThreadCount;
 
             if (threadCount <= 0)

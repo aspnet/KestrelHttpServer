@@ -78,8 +78,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             WriteReqPool = new WriteReqPool(this, _log);
             ConnectionManager = new ConnectionManager(this);
         }
+
         // For testing
-        internal KestrelThread(KestrelEngine engine, int maxLoops)
+        public KestrelThread(KestrelEngine engine, int maxLoops)
             : this(engine)
         {
             _maxLoops = maxLoops;

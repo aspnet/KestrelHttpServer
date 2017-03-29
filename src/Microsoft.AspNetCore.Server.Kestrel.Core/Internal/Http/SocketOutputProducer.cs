@@ -10,7 +10,7 @@ using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public class SocketOutputProducer : ISocketOutput
+    public class SocketOutputProducer : ISocketOutput, IDisposable
     {
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
 

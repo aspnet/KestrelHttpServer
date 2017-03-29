@@ -75,7 +75,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _pipeFactory.Dispose();
         }
 
-        private PipeOptions GetInputPipeOptions(IScheduler scheduler) => new PipeOptions
+        // Internal for testing
+        internal PipeOptions GetInputPipeOptions(IScheduler scheduler) => new PipeOptions
         {
             ReaderScheduler = _serviceContext.ThreadPool,
             WriterScheduler = scheduler,
@@ -83,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             MaximumSizeLow = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
         };
 
-        private PipeOptions GetOutputPipeOptions(IScheduler scheduler) => new PipeOptions
+        internal PipeOptions GetOutputPipeOptions(IScheduler scheduler) => new PipeOptions
         {
             ReaderScheduler = scheduler,
             WriterScheduler = _serviceContext.ThreadPool,

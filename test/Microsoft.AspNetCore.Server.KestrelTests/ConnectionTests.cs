@@ -23,12 +23,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public async Task DoesNotEndConnectionOnZeroRead()
         {
-
-            using (var testConnectionHandler = new TestConnectionHandler())
+            using (var mockConnectionHandler = new MockConnectionHandler())
             {
                 var mockLibuv = new MockLibuv();
                 var serviceContext = new TestServiceContext();
-                serviceContext.TransportContext.ConnectionHandler = testConnectionHandler;
+                serviceContext.TransportContext.ConnectionHandler = mockConnectionHandler;
 
                 var engine = new KestrelEngine(mockLibuv, serviceContext.TransportContext, null);
                 var thread = new KestrelThread(engine);
@@ -51,64 +50,12 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         mockLibuv.ReadCallback(socket.InternalGetHandle(), 0, ref ignored);
                     }, (object)null);
 
-                    var readAwaitable = await testConnectionHandler.Input.Reader.ReadAsync();
+                    var readAwaitable = await mockConnectionHandler.Input.Reader.ReadAsync();
                     Assert.False(readAwaitable.IsCompleted);
                 }
                 finally
                 {
                     await thread.StopAsync(TimeSpan.FromSeconds(1));
-                }
-            }
-        }
-
-        private class TestConnectionHandler : IConnectionHandler, IDisposable
-        {
-            private readonly PipeFactory _pipeFactory;
-
-            public IPipe Input;
-
-            public TestConnectionHandler()
-            {
-                _pipeFactory = new PipeFactory();
-            }
-
-            public IConnectionContext OnConnection(IConnectionInformation connectionInfo, IScheduler inputWriterScheduler, IScheduler outputReaderScheduler)
-            {
-                Assert.Null(Input);
-
-                Input = _pipeFactory.Create();
-
-                return new TestConnectionContext
-                {
-                    Input = Input.Writer,
-                };
-            }
-
-            public void Dispose()
-            {
-                Input?.Writer.Complete();
-                _pipeFactory.Dispose();
-            }
-
-            private class TestConnectionContext : IConnectionContext
-            {
-                public string ConnectionId { get; }
-                public IPipeWriter Input { get; set; }
-                public IPipeReader Output { get; set; }
-
-                public Task StopAsync()
-                {
-                    throw new NotImplementedException();
-                }
-
-                public void Abort(Exception ex)
-                {
-                    throw new NotImplementedException();
-                }
-
-                public void SetBadRequestState(RequestRejectionReason reason)
-                {
-                    throw new NotImplementedException();
                 }
             }
         }

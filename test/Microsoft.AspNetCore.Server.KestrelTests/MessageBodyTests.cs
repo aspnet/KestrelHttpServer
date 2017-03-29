@@ -281,7 +281,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 // The block returned by IncomingStart always has at least 2048 available bytes,
                 // so no need to bounds check in this test.
-                var socketInput = input.FrameContext.Input;
+                var socketInput = input.Pipe;
                 var bytes = Encoding.ASCII.GetBytes(data[0]);
                 var buffer = socketInput.Writer.Alloc(2048);
                 ArraySegment<byte> block;

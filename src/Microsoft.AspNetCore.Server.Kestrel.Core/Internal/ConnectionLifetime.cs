@@ -39,7 +39,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public IPipeReader Output => _context.Output.Reader;
 
         private PipeFactory PipeFactory => _context.PipeFactory;
-        private PipeOptions AdaptedPipeOptions => new PipeOptions
+
+        // Internal for testing
+        internal PipeOptions AdaptedPipeOptions => new PipeOptions
         {
             ReaderScheduler = InlineScheduler.Default,
             WriterScheduler = InlineScheduler.Default,

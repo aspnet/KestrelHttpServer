@@ -212,23 +212,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Dispose()
         {
-            var tasks = new Task[_transports.Count];
-            for (int i = 0; i < _transports.Count; i++)
+            if (_transports != null)
             {
-                tasks[i] = _transports[i].UnbindAsync();
+                var tasks = new Task[_transports.Count];
+                for (int i = 0; i < _transports.Count; i++)
+                {
+                    tasks[i] = _transports[i].UnbindAsync();
+                }
+                Task.WaitAll(tasks);
+
+                // TODO: Do transport-agnostic connection management/shutdown.
+                for (int i = 0; i < _transports.Count; i++)
+                {
+                    tasks[i] = _transports[i].StopAsync();
+                }
+                Task.WaitAll(tasks);
             }
-            Task.WaitAll(tasks);
 
-            _connectionHandlerDisposable.Dispose();
-
-            // TODO: Do transport-agnostic connection management/shutdown.
-            for (int i = 0; i < _transports.Count; i++)
-            {
-                tasks[i] = _transports[i].StopAsync();
-            }
-            Task.WaitAll(tasks);
-
-            _dateHeaderValueManager.Dispose();
+            _connectionHandlerDisposable?.Dispose();
+            _dateHeaderValueManager?.Dispose();
         }
 
         private void ValidateOptions()
