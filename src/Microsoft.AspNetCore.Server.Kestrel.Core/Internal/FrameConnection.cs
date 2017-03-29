@@ -85,9 +85,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _frame.Abort(ex);
         }
 
-        public void SetBadRequestState(RequestRejectionReason reason)
+        public void Timeout()
         {
-            _frame.SetBadRequestState(reason);
+            _frame.SetBadRequestState(RequestRejectionReason.RequestTimeout);
         }
 
         private async Task ApplyConnectionAdaptersAsync()

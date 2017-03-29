@@ -117,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 if (_timeoutAction == TimeoutAction.SendTimeoutResponse)
                 {
-                    _connectionContext.SetBadRequestState(RequestRejectionReason.RequestTimeout);
+                    _connectionContext.Timeout();
                 }
 
                 StopAsync();

@@ -4,7 +4,6 @@
 using System;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport
 {
@@ -17,6 +16,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport
         // TODO: Remove these (Use Pipes instead?)
         Task StopAsync();
         void Abort(Exception ex);
-        void SetBadRequestState(RequestRejectionReason reason);
+        void Timeout();
     }
 }

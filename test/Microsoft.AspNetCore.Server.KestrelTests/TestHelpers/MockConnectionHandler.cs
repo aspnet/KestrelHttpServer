@@ -4,7 +4,6 @@
 using System;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport;
 using Xunit;
 
@@ -58,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
                 throw new NotImplementedException();
             }
 
-            public void SetBadRequestState(RequestRejectionReason reason)
+            public void Timeout()
             {
                 throw new NotImplementedException();
             }
