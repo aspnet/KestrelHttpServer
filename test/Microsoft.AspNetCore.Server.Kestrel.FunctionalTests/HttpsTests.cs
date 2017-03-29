@@ -163,7 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     httpContext.Abort();
                     try
                     {
-                        await httpContext.Response.WriteAsync($"hello, world");
+                        await httpContext.Response.WriteAsync("hello, world");
                         tcs.SetResult(null);
                     }
                     catch (Exception ex)

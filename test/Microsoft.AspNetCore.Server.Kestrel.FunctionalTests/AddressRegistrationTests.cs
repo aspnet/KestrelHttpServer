@@ -570,21 +570,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 _portSupported = new Lazy<bool>(CanBindToPort);
             }
 
-            public bool IsMet
-            {
-                get
-                {
-                    return _portSupported.Value;
-                }
-            }
+            public bool IsMet => _portSupported.Value;
 
-            public string SkipReason
-            {
-                get
-                {
-                    return $"Cannot bind to port {_port} on the host.";
-                }
-            }
+            public string SkipReason => $"Cannot bind to port {_port} on the host.";
 
             private bool CanBindToPort()
             {

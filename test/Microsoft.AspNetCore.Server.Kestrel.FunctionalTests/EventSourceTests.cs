@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var stop = Assert.Single(events, e => e.EventName == "ConnectionStop");
             Assert.All(new[] { "connectionId" }, p => Assert.Contains(p, stop.PayloadNames));
-            Assert.Same(KestrelEventSource.Log, stop.EventSource);
+            Assert.Same(KestrelEventSource.Log, stop?.EventSource);
         }
 
         private string GetProperty(EventWrittenEventArgs data, string propName)

@@ -131,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var builder = new WebHostBuilder()
                 .UseKestrel()
-                .UseUrls($"http://127.0.0.1:0")
+                .UseUrls("http://127.0.0.1:0")
                 .Configure(app =>
                 {
                     app.Run(async context =>
@@ -161,7 +161,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var builder = new WebHostBuilder()
                .UseKestrel()
-               .UseUrls($"http://127.0.0.1:0")
+               .UseUrls("http://127.0.0.1:0")
                .Configure(app =>
                {
                    app.Run(async context =>
@@ -204,7 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var dataRead = false;
             var builder = new WebHostBuilder()
                .UseKestrel()
-               .UseUrls($"http://127.0.0.1:0")
+               .UseUrls("http://127.0.0.1:0")
                .Configure(app =>
                {
                    app.Run(async context =>
@@ -251,29 +251,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Returns(true);
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionStartedEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
-                .Callback(() =>
-                {
-                    connectionStarted.Release();
-                });
+                .Callback(() => connectionStarted.Release());
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionResetEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
-                .Callback(() =>
-                {
-                    connectionReset.Release();
-                });
+                .Callback(() => connectionReset.Release());
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"))
                 .Returns(mockLogger.Object);
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
+                .Setup(factory => factory.CreateLogger(It.IsNotIn("Microsoft.AspNetCore.Server.Kestrel")))
                 .Returns(Mock.Of<ILogger>());
 
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
                 .UseKestrel()
-                .UseUrls($"http://127.0.0.1:0")
+                .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context => TaskCache.CompletedTask));
 
             using (var host = builder.Build())
@@ -311,30 +305,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Returns(true);
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionKeepAliveEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
-                .Callback(() =>
-                {
-                    requestDone.Release();
-                });
+                .Callback(() => requestDone.Release());
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Debug, _connectionResetEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
-                .Callback(() =>
-                {
-                    connectionReset.Release();
-                });
+                .Callback(() => connectionReset.Release());
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"))
                 .Returns(mockLogger.Object);
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
+                .Setup(factory => factory.CreateLogger(It.IsNotIn("Microsoft.AspNetCore.Server.Kestrel")))
                 .Returns(Mock.Of<ILogger>());
 
 
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
                 .UseKestrel()
-                .UseUrls($"http://127.0.0.1:0")
+                .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context => TaskCache.CompletedTask));
 
             using (var host = builder.Build())
@@ -372,17 +360,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Returns(true);
             mockLogger
                  .Setup(logger => logger.Log(LogLevel.Debug, _connectionResetEventId, It.IsAny<object>(), null, It.IsAny<Func<object, Exception, string>>()))
-                 .Callback(() =>
-                 {
-                     connectionReset.Release();
-                 });
+                 .Callback(() => connectionReset.Release());
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"))
                 .Returns(mockLogger.Object);
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
+                .Setup(factory => factory.CreateLogger(It.IsNotIn("Microsoft.AspNetCore.Server.Kestrel")))
                 .Returns(Mock.Of<ILogger>());
 
             var requestStarted = new SemaphoreSlim(0);
@@ -390,7 +375,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
                 .UseKestrel()
-                .UseUrls($"http://127.0.0.1:0")
+                .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
                 {
                     requestStarted.Release();
@@ -431,7 +416,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var builder = new WebHostBuilder()
                 .UseKestrel()
-                .UseUrls($"http://127.0.0.1:0")
+                .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
                 {
                     requestStarted.Release();
@@ -475,14 +460,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var requestAborted = new SemaphoreSlim(0);
             var builder = new WebHostBuilder()
                 .UseKestrel()
-                .UseUrls($"http://127.0.0.1:0")
+                .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
                 {
                     appStarted.Release();
 
                     var token = context.RequestAborted;
                     token.Register(() => requestAborted.Release(2));
-                    await requestAborted.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await requestAborted.WaitAsync(token).TimeoutAfter(TimeSpan.FromSeconds(10));
                 }));
 
             using (var host = builder.Build())
