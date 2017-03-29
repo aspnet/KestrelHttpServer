@@ -4,11 +4,8 @@
 using System;
 using System.IO.Pipelines;
 using System.Text;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;

@@ -3,11 +3,11 @@
 
 using System.Runtime.CompilerServices;
 using System.Text;
+using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {

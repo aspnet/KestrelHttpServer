@@ -4,7 +4,6 @@
 using System;
 using System.IO.Pipelines;
 using System.Text;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
