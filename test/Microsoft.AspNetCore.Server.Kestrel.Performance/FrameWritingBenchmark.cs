@@ -93,21 +93,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerOptions = new KestrelServerOptions(),
-                Log = new MockTrace()
+                Log = new MockTrace(),
+                HttpParserFactory = f => new KestrelHttpParser(log: null)
             };
-            var listenerContext = new ListenerContext(serviceContext)
+            var frameContext = new FrameContext
             {
-                ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 5000))
+                ServiceContext = serviceContext,
+                ConnectionInformation = new MockConnectionInformation()
             };
-            var connectionContext = new ConnectionContext(listenerContext)
-            {
-                Input = socketInput,
-                Output = new MockSocketOutput(),
-                ConnectionControl = new MockConnectionControl()
-            };
-            connectionContext.ListenerContext.ServiceContext.HttpParserFactory = f => new Internal.Http.KestrelHttpParser(log: null);
 
-            var frame = new TestFrame<object>(application: null, context: connectionContext);
+            var frame = new TestFrame<object>(application: null, context: frameContext)
+            {
+                Input = socketInput.Reader,
+                Output = new MockSocketOutput()
+            };
+
             frame.Reset();
             frame.InitializeHeaders();
 
