@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             var outputProducer = new SocketOutputProducer(outputPipe.Writer, frame, connectionId, _serviceContext.Log);
             frame.LifetimeControl = new ConnectionLifetimeControl(connectionId, outputPipe.Reader, outputProducer, _serviceContext.Log);
 
-            var connection = new ConnectionLifetime(new ConnectionLifetimeContext
+            var connection = new FrameConnection(new FrameConnectionContext
             {
                 ConnectionId = connectionId,
                 ServiceContext = _serviceContext,

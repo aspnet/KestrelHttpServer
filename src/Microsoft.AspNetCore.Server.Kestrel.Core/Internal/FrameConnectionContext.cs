@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    public class ConnectionLifetimeContext
+    public class FrameConnectionContext
     {
         public string ConnectionId { get; set; }
         public ServiceContext ServiceContext { get; set; }
@@ -16,7 +16,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public List<IConnectionAdapter> ConnectionAdapters { get; set; }
         public Frame Frame { get; set; }
         public SocketOutputProducer OutputProducer { get; set; }
-
 
         public IPipe Input { get; set; }
         public IPipe Output { get; set; }

@@ -16,9 +16,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    public class ConnectionLifetime : IConnectionContext
+    public class FrameConnection : IConnectionContext
     {
-        private readonly ConnectionLifetimeContext _context;
+        private readonly FrameConnectionContext _context;
         private readonly Frame _frame;
         private readonly List<IConnectionAdapter> _connectionAdapters;
         private readonly TaskCompletionSource<object> _frameStartedTcs = new TaskCompletionSource<object>();
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private Stream _filteredStream;
         private Task _adaptedPipelineTask = TaskCache.CompletedTask;
 
-        public ConnectionLifetime(ConnectionLifetimeContext context)
+        public FrameConnection(FrameConnectionContext context)
         {
             _context = context;
             _frame = context.Frame;
@@ -68,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 {
                     // ApplyConnectionAdaptersAsync should never throw. If it succeeds, it will call _frame.Start().
                     // Otherwise, it will close the connection.
-                    var ignore = ((ConnectionLifetime)state).ApplyConnectionAdaptersAsync();
+                    var ignore = ((FrameConnection)state).ApplyConnectionAdaptersAsync();
                 }, this);
             }
         }
@@ -141,7 +141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             catch (Exception ex)
             {
                 // adaptedPipeline.RunAsync() shouldn't throw.
-                Log.LogError(0, ex, $"{nameof(ConnectionLifetime)}.{nameof(ApplyConnectionAdaptersAsync)}");
+                Log.LogError(0, ex, $"{nameof(FrameConnection)}.{nameof(ApplyConnectionAdaptersAsync)}");
             }
             finally
             {

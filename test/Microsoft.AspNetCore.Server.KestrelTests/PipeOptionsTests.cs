@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxRequestBufferSize = maxRequestBufferSize;
 
-            var connectionLifetime = new ConnectionLifetime(new ConnectionLifetimeContext
+            var connectionLifetime = new FrameConnection(new FrameConnectionContext
             {
                 ServiceContext = serviceContext
             });

@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
             _pipeFactory = new PipeFactory();
         }
 
-        public IConnectionContext OnConnection(IConnectionInformation connectionInfo, IScheduler inputWriterScheduler, IScheduler outputReaderScheduler)
+        public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
         {
             Assert.Null(Input);
 

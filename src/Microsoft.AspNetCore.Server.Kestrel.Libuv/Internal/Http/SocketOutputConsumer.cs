@@ -38,7 +38,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _log = log;
             _writeReqPool = thread.WriteReqPool;
 
-            // REVIEW: This was ignored before but stored in a field.
             var ignore = StartWrites();
         }
 
