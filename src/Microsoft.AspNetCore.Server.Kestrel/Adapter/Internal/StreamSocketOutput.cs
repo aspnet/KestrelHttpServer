@@ -45,15 +45,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 
                 if (buffer.Count > 0)
                 {
+                    var writer = new WritableBufferWriter(writableBuffer);
+
                     if (chunk)
                     {
-                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
-                        writableBuffer.WriteFast(buffer);
-                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
+                        ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
+                        writer.Write(buffer.Array, buffer.Offset, buffer.Count);
+                        ChunkWriter.WriteEndChunkBytes(ref writer);
                     }
                     else
                     {
-                        writableBuffer.WriteFast(buffer);
+                        writer.Write(buffer.Array, buffer.Offset, buffer.Count);
                     }
                 }
 

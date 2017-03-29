@@ -975,11 +975,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private static void WriteResponseHeaders(WritableBuffer writableBuffer, Frame frame)
         {
             var responseHeaders = frame.FrameResponseHeaders;
-            writableBuffer.WriteFast(_bytesHttpVersion11);
+            var writer = new WritableBufferWriter(writableBuffer);
+            writer.Write(_bytesHttpVersion11);
             var statusBytes = ReasonPhrases.ToStatusBytes(frame.StatusCode, frame.ReasonPhrase);
-            writableBuffer.WriteFast(statusBytes);
-            responseHeaders.CopyTo(ref writableBuffer);
-            writableBuffer.WriteFast(_bytesEndHeaders);
+            writer.Write(statusBytes);
+            responseHeaders.CopyTo(ref writer);
+            writer.Write(_bytesEndHeaders);
         }
 
         public void ParseRequest(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)

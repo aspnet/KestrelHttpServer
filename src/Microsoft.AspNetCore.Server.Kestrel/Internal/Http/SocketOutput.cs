@@ -84,16 +84,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 if (buffer.Count > 0)
                 {
+                    var writer = new WritableBufferWriter(writableBuffer);
                     if (chunk)
                     {
-                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
+                        ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
                     }
 
-                    writableBuffer.WriteFast(buffer);
+                    writer.Write(buffer.Array, buffer.Offset, buffer.Count);
 
                     if (chunk)
                     {
-                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
+                        ChunkWriter.WriteEndChunkBytes(ref writer);
                     }
                 }
 
