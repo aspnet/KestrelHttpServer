@@ -227,6 +227,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
+        public void Stop()
+        {
+            Dispose();
+        }
+
         public void Dispose()
         {
             if (_disposables != null)
