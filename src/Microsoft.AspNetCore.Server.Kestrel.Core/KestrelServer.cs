@@ -33,7 +33,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly ITransportFactory _transportFactory;
 
         private bool _isRunning;
-        private IDisposable _connectionHandlerDisposable;
         private DateHeaderValueManager _dateHeaderValueManager;
 
         public KestrelServer(
@@ -113,7 +112,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 };
 
                 var connectionHandler = new ConnectionHandler<TContext>(serviceContext, application);
-                _connectionHandlerDisposable = connectionHandler;
 
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
@@ -229,7 +227,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 Task.WaitAll(tasks);
             }
 
-            _connectionHandlerDisposable?.Dispose();
             _dateHeaderValueManager?.Dispose();
         }
 

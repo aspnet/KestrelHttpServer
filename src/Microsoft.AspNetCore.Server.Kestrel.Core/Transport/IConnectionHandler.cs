@@ -7,6 +7,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport
 {
     public interface IConnectionHandler
     {
-        IConnectionContext OnConnection(IConnectionInformation connectionInfo, IScheduler inputWriterScheduler, IScheduler outputReaderScheduler);
+        IConnectionContext OnConnection(IConnectionInformation connectionInfo);
     }
 }

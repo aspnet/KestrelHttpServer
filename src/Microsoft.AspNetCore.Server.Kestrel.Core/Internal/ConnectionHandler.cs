@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    public class ConnectionHandler<TContext> : IConnectionHandler, IDisposable
+    public class ConnectionHandler<TContext> : IConnectionHandler
     {
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly string _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
@@ -22,19 +22,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private readonly ServiceContext _serviceContext;
         private readonly IHttpApplication<TContext> _application;
-        private readonly PipeFactory _pipeFactory;
 
         public ConnectionHandler(ServiceContext serviceContext, IHttpApplication<TContext> application)
         {
             _serviceContext = serviceContext;
             _application = application;
-            _pipeFactory = new PipeFactory();
         }
 
-        public IConnectionContext OnConnection(IConnectionInformation connectionInfo, IScheduler inputWriterScheduler, IScheduler outputReaderScheduler)
+        public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
         {
-            var inputPipe = _pipeFactory.Create(GetInputPipeOptions(inputWriterScheduler));
-            var outputPipe = _pipeFactory.Create(GetOutputPipeOptions(outputReaderScheduler));
+            var inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(connectionInfo.InputWriterScheduler));
+            var outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(connectionInfo.OutputWriterScheduler));
 
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
@@ -54,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             {
                 ConnectionId = connectionId,
                 ServiceContext = _serviceContext,
-                PipeFactory = _pipeFactory,
+                PipeFactory = connectionInfo.PipeFactory,
                 ConnectionAdapters = connectionInfo.ListenOptions.ConnectionAdapters,
                 Frame = frame,
                 Input = inputPipe,
@@ -70,23 +68,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             return connection;
         }
 
-        public void Dispose()
-        {
-            _pipeFactory.Dispose();
-        }
-
         // Internal for testing
-        internal PipeOptions GetInputPipeOptions(IScheduler scheduler) => new PipeOptions
+        internal PipeOptions GetInputPipeOptions(IScheduler writerScheduler) => new PipeOptions
         {
             ReaderScheduler = _serviceContext.ThreadPool,
-            WriterScheduler = scheduler,
+            WriterScheduler = writerScheduler,
             MaximumSizeHigh = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             MaximumSizeLow = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
         };
 
-        internal PipeOptions GetOutputPipeOptions(IScheduler scheduler) => new PipeOptions
+        internal PipeOptions GetOutputPipeOptions(IScheduler readerScheduler) => new PipeOptions
         {
-            ReaderScheduler = scheduler,
+            ReaderScheduler = readerScheduler,
             WriterScheduler = _serviceContext.ThreadPool,
             MaximumSizeHigh = GetOutputResponseBufferSize(),
             MaximumSizeLow = GetOutputResponseBufferSize()

@@ -20,10 +20,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly WriteReqPool _writeReqPool;
         private readonly IPipeReader _pipe;
 
-        // https://github.com/dotnet/corefxlab/issues/1334 
-        // Pipelines don't support multiple awaiters on flush
-        // this is temporary until it does
-
         public SocketOutputConsumer(
             IPipeReader pipe,
             KestrelThread thread,

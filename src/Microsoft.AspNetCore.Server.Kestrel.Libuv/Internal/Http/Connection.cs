@@ -73,7 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             try
             {
-                _connectionContext = ConnectionHandler.OnConnection(this, Thread, Thread);
+                _connectionContext = ConnectionHandler.OnConnection(this);
                 ConnectionId = _connectionContext.ConnectionId;
 
                 Log.ConnectionStart(ConnectionId);

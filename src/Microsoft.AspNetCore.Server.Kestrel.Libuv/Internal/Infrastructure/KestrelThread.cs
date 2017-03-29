@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 #endif
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
-            Memory = new MemoryPool();
+            PipelineFactory = new PipeFactory();
             WriteReqPool = new WriteReqPool(this, _log);
             ConnectionManager = new ConnectionManager(this);
         }
@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public UvLoopHandle Loop { get { return _loop; } }
 
-        public MemoryPool Memory { get; }
+        public PipeFactory PipelineFactory { get; }
 
         public ConnectionManager ConnectionManager { get; }
 
@@ -189,7 +189,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             }
             finally
             {
-                Memory.Dispose();
+                PipelineFactory.Dispose();
             }
         }
 
