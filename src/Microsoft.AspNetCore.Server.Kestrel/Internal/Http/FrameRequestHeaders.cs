@@ -13,6 +13,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public partial class FrameRequestHeaders : FrameHeaders
     {
+        public bool HasConnection => HeaderConnection.Count != 0;
+
+        public bool HasTransferEncoding => HeaderTransferEncoding.Count != 0;
+
         private static long ParseContentLength(string value)
         {
             long parsed;

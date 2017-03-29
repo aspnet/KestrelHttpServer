@@ -343,7 +343,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }}")}
         }}")}
 {Each(loop.Headers.Where(header => header.EnhancedSetter), header => $@"
-        public void SetRaw{header.Identifier}(StringValues value, byte[] raw)
+        public void SetRaw{header.Identifier}(string value, byte[] raw)
         {{
             {header.SetBit()};
             _headers._{header.Identifier} = value;
