@@ -7,6 +7,8 @@ using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
 {
@@ -19,6 +21,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
         private object _sync = new object();
         private bool _completed;
 
+        private readonly WritableBufferFlusher _flusher = new WritableBufferFlusher();
+
         public StreamSocketOutput(Stream outputStream, IPipe pipe)
         {
             _outputStream = outputStream;
@@ -30,37 +34,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal
             WriteAsync(buffer, chunk, default(CancellationToken)).GetAwaiter().GetResult();
         }
 
-        public async Task WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
+        public Task WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
         {
-            var flushAwaiter = default(WritableBufferAwaitable);
+            var writableBuffer = default(WritableBuffer);
 
             lock (_sync)
             {
                 if (_completed)
                 {
-                    return;
+                    return TaskCache.CompletedTask;
                 }
 
-                var writableBuffer = _pipe.Writer.Alloc();
+                writableBuffer = _pipe.Writer.Alloc();
 
                 if (buffer.Count > 0)
                 {
+                    var writer = writableBuffer.CreateWriter();
+
                     if (chunk)
                     {
-                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
-                        writableBuffer.WriteFast(buffer);
-                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
+                        ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
+                        writer.WriteFast(buffer);
+                        ChunkWriter.WriteEndChunkBytes(ref writer);
                     }
                     else
                     {
-                        writableBuffer.WriteFast(buffer);
+                        writer.WriteFast(buffer);
                     }
-                }
 
-                flushAwaiter = writableBuffer.FlushAsync();
+                    writer.Commit();
+                }
             }
 
-            await flushAwaiter;
+            return _flusher.FlushAsync(writableBuffer);
         }
 
         public void Dispose()

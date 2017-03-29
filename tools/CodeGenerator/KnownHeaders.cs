@@ -522,7 +522,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return true;
         }}
         {(loop.ClassName == "FrameResponseHeaders" ? $@"
-        protected void CopyToFast(ref WritableBuffer output)
+        protected void CopyToFast(ref WritableBufferWriter output)
         {{
             var tempBits = _bits | (_contentLength.HasValue ? {1L << 63}L : 0);
             {Each(loop.Headers.Where(header => header.Identifier != "ContentLength").OrderBy(h => !h.PrimaryHeader), header => $@"

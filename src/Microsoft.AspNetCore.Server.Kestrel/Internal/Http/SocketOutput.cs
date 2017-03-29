@@ -31,12 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly IPipe _pipe;
         private Task _writingTask;
 
-        // https://github.com/dotnet/corefxlab/issues/1334 
-        // Pipelines don't support multiple awaiters on flush
-        // this is temporary until it does
-        private TaskCompletionSource<object> _flushTcs;
-        private readonly object _flushLock = new object();
-        private readonly Action _onFlushCallback;
+        private readonly WritableBufferFlusher _flusher = new WritableBufferFlusher();
 
         public SocketOutput(
             IPipe pipe,
@@ -56,7 +51,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _connectionId = connectionId;
             _log = log;
             _writeReqPool = thread.WriteReqPool;
-            _onFlushCallback = OnFlush;
         }
 
         public Task WriteAsync(
@@ -84,23 +78,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 if (buffer.Count > 0)
                 {
-                    if (chunk)
-                    {
-                        ChunkWriter.WriteBeginChunkBytes(ref writableBuffer, buffer.Count);
-                    }
-
-                    writableBuffer.WriteFast(buffer);
+                    var writer = writableBuffer.CreateWriter();
 
                     if (chunk)
                     {
-                        ChunkWriter.WriteEndChunkBytes(ref writableBuffer);
+                        ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
+                        writer.WriteFast(buffer);
+                        ChunkWriter.WriteEndChunkBytes(ref writer);
                     }
+                    else
+                    {
+                        writer.WriteFast(buffer);
+                    }
+
+                    writer.Commit();
                 }
 
                 writableBuffer.Commit();
             }
 
-            return FlushAsync(writableBuffer);
+            return _flusher.FlushAsync(writableBuffer);
         }
 
         public void End(ProduceEndType endType)
@@ -118,41 +115,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             // We're done writing
             _pipe.Writer.Complete();
-        }
-
-        private Task FlushAsync(WritableBuffer writableBuffer)
-        {
-            var awaitable = writableBuffer.FlushAsync();
-            if (awaitable.IsCompleted)
-            {
-                // The flush task can't fail today
-                return TaskCache.CompletedTask;
-            }
-            return FlushAsyncAwaited(awaitable);
-        }
-
-        private Task FlushAsyncAwaited(WritableBufferAwaitable awaitable)
-        {
-            // https://github.com/dotnet/corefxlab/issues/1334 
-            // Since the flush awaitable doesn't currently support multiple awaiters
-            // we need to use a task to track the callbacks.
-            // All awaiters get the same task
-            lock (_flushLock)
-            {
-                if (_flushTcs == null || _flushTcs.Task.IsCompleted)
-                {
-                    _flushTcs = new TaskCompletionSource<object>();
-
-                    awaitable.OnCompleted(_onFlushCallback);
-                }
-            }
-
-            return _flushTcs.Task;
-        }
-
-        private void OnFlush()
-        {
-            _flushTcs.TrySetResult(null);
         }
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool chunk)
@@ -195,7 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return;
                 }
 
-                var buffer = _pipe.Writer.Alloc();
+                var buffer = _pipe.Writer.Alloc(1);
                 callback(buffer, state);
                 buffer.Commit();
             }
