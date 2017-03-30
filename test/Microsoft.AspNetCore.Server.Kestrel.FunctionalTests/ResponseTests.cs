@@ -1410,10 +1410,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task WhenResponseNotStartedResponseEndedAfterConsumingRequestBody()
         {
-            using (var server = new TestServer(httpContext =>
-            {
-                return TaskCache.CompletedTask;
-            }))
+            using (var server = new TestServer(httpContext => TaskCache.CompletedTask))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1457,6 +1454,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await connection.Receive(
                         "HTTP/1.1 100 Continue",
                         "",
+                        "");
+
+                    // Let the app finish
+                    await connection.Send(
+                        "1",
+                        "a",
                         "");
 
                     // This will be consumed by Frame when it attempts to
