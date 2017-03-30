@@ -80,16 +80,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // Start socket prior to applying the ConnectionAdapter
                 _socket.ReadStart(_allocCallback, _readCallback, this);
                 _lastTimestamp = Thread.Loop.Now();
-
-                // This *must* happen after socket.ReadStart
-                // The socket output consumer is the only thing that can close the connection. If the 
-                // output pipe is already closed by the time we start then it's fine since, it'll close gracefully afterwards.
-                var ignore = Output.StartWrites();
             }
             catch (Exception e)
             {
                 Log.LogError(0, e, "Connection.StartFrame");
                 throw;
+            }
+            finally
+            {
+                // The socket output consumer is the only thing that can close the connection. If the 
+                // output pipe is already closed by the time we start then it's fine since, it'll close gracefully afterwards.
+                var ignore = Output?.StartWrites();
             }
         }
 
