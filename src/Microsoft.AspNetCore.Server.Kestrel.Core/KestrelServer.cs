@@ -22,13 +22,11 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class KestrelServer : IServer
+    public class KestrelServer : IServer, IServerAddressesFeature
     {
-        //private Stack<IDisposable> _disposables;
         private readonly List<ITransport> _transports = new List<ITransport>();
 
         private readonly ILogger _logger;
-        private readonly IServerAddressesFeature _serverAddresses;
         private readonly ITransportFactory _transportFactory;
 
         private bool _isRunning;
@@ -59,8 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _transportFactory = transportFactory;
             _logger = loggerFactory.CreateLogger(typeof(KestrelServer).GetTypeInfo().Namespace);
             Features = new FeatureCollection();
-            _serverAddresses = new ServerAddressesFeature();
-            Features.Set<IServerAddressesFeature>(_serverAddresses);
+            Features.Set<IServerAddressesFeature>(this);
             Features.Set(InternalOptions);
         }
 
@@ -69,6 +66,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public KestrelServerOptions Options { get; }
 
         private InternalKestrelServerOptions InternalOptions { get; }
+
+        public ICollection<string> Addresses { get; } = new List<string>();
 
         public void Start<TContext>(IHttpApplication<TContext> application)
         {
@@ -114,14 +113,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
-                var hasServerAddresses = _serverAddresses.Addresses.Any();
+                var hasServerAddresses = Addresses.Any();
 
                 if (hasListenOptions && hasServerAddresses)
                 {
-                    var joined = string.Join(", ", _serverAddresses.Addresses);
+                    var joined = string.Join(", ", Addresses);
                     _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
 
-                    _serverAddresses.Addresses.Clear();
+                    Addresses.Clear();
                 }
                 else if (!hasListenOptions && !hasServerAddresses)
                 {
@@ -132,15 +131,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                     // If StartLocalhost doesn't throw, there is at least one listener.
                     // The port cannot change for "localhost".
-                    _serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
+                    Addresses.Add(Constants.DefaultServerAddress);
 
                     return;
                 }
                 else if (!hasListenOptions)
                 {
                     // If no endpoints are configured directly using KestrelServerOptions, use those configured via the IServerAddressesFeature.
-                    var copiedAddresses = _serverAddresses.Addresses.ToArray();
-                    _serverAddresses.Addresses.Clear();
+                    var copiedAddresses = Addresses.ToArray();
+                    Addresses.Clear();
 
                     foreach (var address in copiedAddresses)
                     {
@@ -177,7 +176,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                                 // If StartLocalhost doesn't throw, there is at least one listener.
                                 // The port cannot change for "localhost".
-                                _serverAddresses.Addresses.Add(parsedAddress.ToString());
+                                Addresses.Add(parsedAddress.ToString());
                             }
                             else
                             {
@@ -206,7 +205,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     }
 
                     // If requested port was "0", replace with assigned dynamic port.
-                    _serverAddresses.Addresses.Add(endPoint.ToString());
+                    Addresses.Add(endPoint.ToString());
                 }
             }
             catch (Exception ex)
