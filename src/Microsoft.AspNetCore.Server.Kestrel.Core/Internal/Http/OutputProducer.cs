@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly IPipeWriter _pipe;
         private readonly Frame _frame;
 
-        // https://github.com/dotnet/corefxlab/issues/1334 
+        // https://github.com/dotnet/corefxlab/issues/1334
         // Pipelines don't support multiple awaiters on flush
         // this is temporary until it does
         private TaskCompletionSource<object> _flushTcs;
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 writableBuffer = _pipe.Alloc(1);
-
+                var writer = new WritableBufferWriter(writableBuffer);
                 if (buffer.Count > 0)
                 {
                     if (chunk)
@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private Task FlushAsyncAwaited(WritableBufferAwaitable awaitable)
         {
-            // https://github.com/dotnet/corefxlab/issues/1334 
+            // https://github.com/dotnet/corefxlab/issues/1334
             // Since the flush awaitable doesn't currently support multiple awaiters
             // we need to use a task to track the callbacks.
             // All awaiters get the same task

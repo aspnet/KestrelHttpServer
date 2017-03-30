@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return result;
         }
 
-        public unsafe static void WriteAscii(ref WritableBufferWriter buffer, string data)
+        public unsafe static void WriteAsciiNoValidation(ref WritableBufferWriter buffer, string data)
         {
             if (string.IsNullOrEmpty(data))
             {

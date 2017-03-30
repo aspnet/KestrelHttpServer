@@ -541,7 +541,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             if (value != null)
                             {{
                                 output.Write(_headerBytes, {header.BytesOffset}, {header.BytesCount});
-                                PipelineExtensions.WriteAscii(ref output, value);
+                                PipelineExtensions.WriteAsciiNoValidation(ref output, value);
                             }}
                         }}
                     }}
