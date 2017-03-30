@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -22,11 +23,12 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class KestrelServer : IServer, IServerAddressesFeature
+    public class KestrelServer : IServer
     {
         private readonly List<ITransport> _transports = new List<ITransport>();
 
         private readonly ILogger _logger;
+        private readonly IServerAddressesFeature _serverAddresses;
         private readonly ITransportFactory _transportFactory;
 
         private bool _isRunning;
@@ -57,7 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _transportFactory = transportFactory;
             _logger = loggerFactory.CreateLogger(typeof(KestrelServer).GetTypeInfo().Namespace);
             Features = new FeatureCollection();
-            Features.Set<IServerAddressesFeature>(this);
+            _serverAddresses = new ServerAddressesFeature();
+            Features.Set(_serverAddresses);
             Features.Set(InternalOptions);
         }
 
@@ -66,8 +69,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public KestrelServerOptions Options { get; }
 
         private InternalKestrelServerOptions InternalOptions { get; }
-
-        public ICollection<string> Addresses { get; } = new List<string>();
 
         public void Start<TContext>(IHttpApplication<TContext> application)
         {
@@ -113,14 +114,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
-                var hasServerAddresses = Addresses.Any();
+                var hasServerAddresses = _serverAddresses.Addresses.Any();
 
                 if (hasListenOptions && hasServerAddresses)
                 {
-                    var joined = string.Join(", ", Addresses);
+                    var joined = string.Join(", ", _serverAddresses.Addresses);
                     _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
 
-                    Addresses.Clear();
+                    _serverAddresses.Addresses.Clear();
                 }
                 else if (!hasListenOptions && !hasServerAddresses)
                 {
@@ -131,15 +132,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                     // If StartLocalhost doesn't throw, there is at least one listener.
                     // The port cannot change for "localhost".
-                    Addresses.Add(Constants.DefaultServerAddress);
+                    _serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
 
                     return;
                 }
                 else if (!hasListenOptions)
                 {
                     // If no endpoints are configured directly using KestrelServerOptions, use those configured via the IServerAddressesFeature.
-                    var copiedAddresses = Addresses.ToArray();
-                    Addresses.Clear();
+                    var copiedAddresses = _serverAddresses.Addresses.ToArray();
+                    _serverAddresses.Addresses.Clear();
 
                     foreach (var address in copiedAddresses)
                     {
@@ -176,7 +177,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                                 // If StartLocalhost doesn't throw, there is at least one listener.
                                 // The port cannot change for "localhost".
-                                Addresses.Add(parsedAddress.ToString());
+                                _serverAddresses.Addresses.Add(parsedAddress.ToString());
                             }
                             else
                             {
@@ -205,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     }
 
                     // If requested port was "0", replace with assigned dynamic port.
-                    Addresses.Add(endPoint.ToString());
+                    _serverAddresses.Addresses.Add(endPoint.ToString());
                 }
             }
             catch (Exception ex)
@@ -277,11 +278,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
             catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
             {
-                    throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
+                throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
             }
             catch (AggregateException ex)
             {
-                _logger.LogWarning(0,  $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({ex.Message})");
+                _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({ex.Message})");
                 exceptions.Add(ex.InnerException);
             }
 
