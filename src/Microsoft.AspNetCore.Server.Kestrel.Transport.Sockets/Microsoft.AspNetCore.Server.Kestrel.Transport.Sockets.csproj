@@ -3,18 +3,17 @@
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <Description>ASP.NET Core Kestrel cross-platform web server.</Description>
+    <Description>Managed socket transport for the ASP.NET Core Kestrel cross-platform web server.</Description>
     <TargetFrameworks>netstandard1.3;net46</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>aspnetcore;kestrel</PackageTags>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>CS1591;$(NoWarn)</NoWarn>
     <EnableApiCheck>false</EnableApiCheck>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Core\Microsoft.AspNetCore.Server.Kestrel.Core.csproj" />
-    <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.csproj" />
-    <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets\Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.csproj" />
   </ItemGroup>
 
 </Project>

@@ -23,7 +23,8 @@ namespace Microsoft.AspNetCore.Hosting
         /// </returns>
         public static IWebHostBuilder UseKestrel(this IWebHostBuilder hostBuilder)
         {
-            hostBuilder.UseLibuv();
+            // Hack for testing
+            hostBuilder.UseSockets();
 
             return hostBuilder.ConfigureServices(services =>
             {
