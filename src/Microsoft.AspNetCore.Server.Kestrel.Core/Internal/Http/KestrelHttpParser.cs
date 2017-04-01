@@ -46,18 +46,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 // No request line end
                 return false;
             }
+            else if (TryGetNewLine(ref buffer, out var found))
+            {
+                span = buffer.Slice(consumed, found).ToSpan();
+                consumed = found;
+            }
             else
             {
-                if (TryGetNewLine(ref buffer, out var found))
-                {
-                    span = buffer.Slice(consumed, found).ToSpan();
-                    consumed = found;
-                }
-                else
-                {
-                    // No request line end
-                    return false;
-                }
+                // No request line end
+                return false;
             }
 
             // Fix and parse the span
