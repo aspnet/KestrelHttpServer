@@ -371,11 +371,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var parser = CreateParser(Mock.Of<IKestrelTrace>());
             var buffer = BufferUtilities.CreateBuffer("GET ", "/");
-            var consumed = buffer.Start;
-            var examined = buffer.End;
 
             var requestHandler = new RequestHandler();
-            var result = parser.ParseRequestLine(requestHandler, buffer, out consumed, out examined);
+            var result = parser.ParseRequestLine(requestHandler, buffer, out var consumed, out var examined);
 
             Assert.False(result);
             Assert.Equal(buffer.Start, consumed);
