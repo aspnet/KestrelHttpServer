@@ -3,8 +3,8 @@
 
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {

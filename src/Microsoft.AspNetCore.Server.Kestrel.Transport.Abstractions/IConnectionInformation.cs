@@ -3,9 +3,8 @@
 
 using System.IO.Pipelines;
 using System.Net;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Transport
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
 {
     public interface IConnectionInformation
     {
