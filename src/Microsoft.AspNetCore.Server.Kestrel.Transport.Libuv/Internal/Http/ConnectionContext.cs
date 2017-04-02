@@ -3,7 +3,7 @@
 
 using System.IO.Pipelines;
 using System.Net;
-using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {

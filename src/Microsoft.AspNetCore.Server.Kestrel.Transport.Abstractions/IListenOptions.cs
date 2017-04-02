@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Adapter;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Transport
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
 {
     public interface IListenOptions
     {
