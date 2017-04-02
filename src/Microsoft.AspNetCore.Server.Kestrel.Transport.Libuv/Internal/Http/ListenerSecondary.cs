@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -36,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task StartAsync(
             string pipeName,
             byte[] pipeMessage,
-            ListenOptions listenOptions,
+            IListenOptions listenOptions,
             KestrelThread thread)
         {
             _pipeName = pipeName;

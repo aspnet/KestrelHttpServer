@@ -5,6 +5,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport
 {
     public interface ITransportFactory
     {
-        ITransport Create(ListenOptions listenOptions, IConnectionHandler handler);
+        ITransport Create(IListenOptions listenOptions, IConnectionHandler handler);
     }
 }

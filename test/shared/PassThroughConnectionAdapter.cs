@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Testing
 {
     public class PassThroughConnectionAdapter : IConnectionAdapter
     {
-        public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+        public Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context)
         {
             var adapted = new AdaptedConnection(new LoggingStream(context.ConnectionStream, new TestApplicationErrorLogger()));
             return Task.FromResult<IAdaptedConnection>(adapted);

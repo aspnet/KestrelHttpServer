@@ -7,6 +7,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter
 {
     public interface IConnectionAdapter
     {
-        Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context);
+        Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context);
     }
 }
