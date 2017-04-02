@@ -112,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             private RewritingStream _rewritingStream;
 
-            public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+            public Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context)
             {
                 _rewritingStream = new RewritingStream(context.ConnectionStream);
                 return Task.FromResult<IAdaptedConnection>(new AdaptedConnection(_rewritingStream));
@@ -123,7 +123,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         private class AsyncConnectionAdapter : IConnectionAdapter
         {
-            public async Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+            public async Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context)
             {
                 await Task.Delay(100);
                 return new AdaptedConnection(new RewritingStream(context.ConnectionStream));
@@ -132,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         private class ThrowingConnectionAdapter : IConnectionAdapter
         {
-            public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+            public Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context)
             {
                 throw new Exception();
             }

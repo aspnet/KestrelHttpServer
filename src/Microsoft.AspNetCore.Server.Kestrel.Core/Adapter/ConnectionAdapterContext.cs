@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter
 {
     // Even though this only includes the non-adapted ConnectionStream currently, this is a context in case
     // we want to add more connection metadata later.
-    public class ConnectionAdapterContext
+    public class ConnectionAdapterContext : IConnectionAdapterContext
     {
         internal ConnectionAdapterContext(Stream connectionStream)
         {

@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Adapter
             _logger = logger;
         }
 
-        public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+        public Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context)
         {
             return Task.FromResult<IAdaptedConnection>(
                 new LoggingAdaptedConnection(context.ConnectionStream, _logger));

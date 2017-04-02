@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -16,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public LibuvTransportContext TransportContext { get; set; }
 
-        public ListenOptions ListenOptions { get; set; }
+        public IListenOptions ListenOptions { get; set; }
 
         public KestrelThread Thread { get; set; }
 

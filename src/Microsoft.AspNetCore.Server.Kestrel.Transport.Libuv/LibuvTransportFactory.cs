@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
             };
         }
 
-        public ITransport Create(ListenOptions listenOptions, IConnectionHandler handler)
+        public ITransport Create(IListenOptions listenOptions, IConnectionHandler handler)
         {
             var transportContext = new LibuvTransportContext
             {

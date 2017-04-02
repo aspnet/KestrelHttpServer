@@ -166,7 +166,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         private class MockTransportFactory : ITransportFactory
         {
-            public ITransport Create(ListenOptions listenOptions, IConnectionHandler handler)
+            public ITransport Create(IListenOptions listenOptions, IConnectionHandler handler)
             {
                 return Mock.Of<ITransport>();
             }

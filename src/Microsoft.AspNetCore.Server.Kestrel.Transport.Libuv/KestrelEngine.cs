@@ -19,16 +19,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
     public class KestrelEngine : ITransport
     {
-        private readonly ListenOptions _listenOptions;
+        private readonly IListenOptions _listenOptions;
 
         private readonly List<IAsyncDisposable> _listeners = new List<IAsyncDisposable>();
 
-        public KestrelEngine(LibuvTransportContext context, ListenOptions listenOptions)
+        public KestrelEngine(LibuvTransportContext context, IListenOptions listenOptions)
             : this(new LibuvFunctions(), context, listenOptions)
         { }
 
         // For testing
-        public KestrelEngine(LibuvFunctions uv, LibuvTransportContext context, ListenOptions listenOptions)
+        public KestrelEngine(LibuvFunctions uv, LibuvTransportContext context, IListenOptions listenOptions)
         {
             Libuv = uv;
             TransportContext = context;

@@ -11,4 +11,9 @@
     <EnableApiCheck>false</EnableApiCheck>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="$(CoreFxLabsPipelinesVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="$(AspNetCoreVersion)" />
+  </ItemGroup>
+
 </Project>

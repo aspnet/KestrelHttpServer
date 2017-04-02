@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public ListenerContext ListenerContext { get; set; }
 
-        public ListenOptions ListenOptions => ListenerContext.ListenOptions;
+        public IListenOptions ListenOptions => ListenerContext.ListenOptions;
         public IPEndPoint RemoteEndPoint { get; set; }
         public IPEndPoint LocalEndPoint { get; set; }
 
