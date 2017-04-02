@@ -27,10 +27,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public IKestrelTrace Log => TransportContext.Log;
 
         public Task StartAsync(
-            IListenOptions listenOptions,
+            IEndPointInformation endPointInformation,
             KestrelThread thread)
         {
-            ListenOptions = listenOptions;
+            EndPointInformation = endPointInformation;
             Thread = thread;
 
             var tcs = new TaskCompletionSource<int>(this);
@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         /// </summary>
         private UvStreamHandle CreateListenSocket()
         {
-            switch (ListenOptions.Type)
+            switch (EndPointInformation.Type)
             {
                 case ListenType.IPEndPoint:
                 case ListenType.FileHandle:
@@ -68,18 +68,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     try
                     {
                         socket.Init(Thread.Loop, Thread.QueueCloseHandle);
-                        socket.NoDelay(ListenOptions.NoDelay);
+                        socket.NoDelay(EndPointInformation.NoDelay);
 
-                        if (ListenOptions.Type == ListenType.IPEndPoint)
+                        if (EndPointInformation.Type == ListenType.IPEndPoint)
                         {
-                            socket.Bind(ListenOptions.IPEndPoint);
+                            socket.Bind(EndPointInformation.IPEndPoint);
 
                             // If requested port was "0", replace with assigned dynamic port.
-                            ListenOptions.IPEndPoint = socket.GetSockIPEndPoint();
+                            EndPointInformation.IPEndPoint = socket.GetSockIPEndPoint();
                         }
                         else
                         {
-                            socket.Open((IntPtr)ListenOptions.FileHandle);
+                            socket.Open((IntPtr)EndPointInformation.FileHandle);
                         }
                     }
                     catch
@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     try
                     {
                         pipe.Init(Thread.Loop, Thread.QueueCloseHandle, false);
-                        pipe.Bind(ListenOptions.SocketPath);
+                        pipe.Bind(EndPointInformation.SocketPath);
                     }
                     catch
                     {

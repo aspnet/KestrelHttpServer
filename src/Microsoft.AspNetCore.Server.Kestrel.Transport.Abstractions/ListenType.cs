@@ -4,7 +4,7 @@
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
 {
     /// <summary>
-    /// Enumerates the <see cref="IListenOptions"/> types.
+    /// Enumerates the <see cref="IEndPointInformation"/> types.
     /// </summary>
     public enum ListenType
     {

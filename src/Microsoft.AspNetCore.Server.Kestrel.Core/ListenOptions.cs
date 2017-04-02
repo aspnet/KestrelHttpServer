@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     /// Describes either an <see cref="IPEndPoint"/>, Unix domain socket path, or a file descriptor for an already open
     /// socket that Kestrel should bind to or open.
     /// </summary>
-    public class ListenOptions : IListenOptions
+    public class ListenOptions : IEndPointInformation
     {
         internal ListenOptions(IPEndPoint endPoint)
         {

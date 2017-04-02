@@ -9,7 +9,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
     public class MockConnectionInformation : IConnectionInformation
     {
-        public IListenOptions ListenOptions { get; }
+        public IEndPointInformation EndPointInformation { get; }
         public IPEndPoint RemoteEndPoint { get; }
         public IPEndPoint LocalEndPoint { get; }
 

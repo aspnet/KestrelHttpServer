@@ -8,7 +8,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
 {
     public interface IConnectionInformation
     {
-        IListenOptions ListenOptions { get; }
+        IEndPointInformation EndPointInformation { get; }
         IPEndPoint RemoteEndPoint { get; }
         IPEndPoint LocalEndPoint { get; }
 

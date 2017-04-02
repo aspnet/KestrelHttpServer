@@ -712,7 +712,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         private class MockConnectionInformation : IConnectionInformation
         {
-            public IListenOptions ListenOptions { get; }
+            public IEndPointInformation EndPointInformation { get; }
             public IPEndPoint RemoteEndPoint { get; }
             public IPEndPoint LocalEndPoint { get; }
             public PipeFactory PipeFactory { get; }
