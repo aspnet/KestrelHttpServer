@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 ConnectionId = connectionId,
                 ServiceContext = _serviceContext,
                 PipeFactory = connectionInfo.PipeFactory,
-                ConnectionAdapters = connectionInfo.ListenOptions.ConnectionAdapters,
+                ConnectionAdapters = ((ListenOptions)connectionInfo.EndPointInformation).ConnectionAdapters,
                 Frame = frame,
                 Input = inputPipe,
                 Output = outputPipe,

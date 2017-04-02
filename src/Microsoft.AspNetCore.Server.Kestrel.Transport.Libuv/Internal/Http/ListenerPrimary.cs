@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public async Task StartAsync(
             string pipeName,
             byte[] pipeMessage,
-            IListenOptions listenOptions,
+            IEndPointInformation endPointInformation,
             KestrelThread thread)
         {
             _pipeName = pipeName;
@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 Marshal.StructureToPtr(fileCompletionInfo, _fileCompletionInfoPtr, false);
             }
 
-            await StartAsync(listenOptions, thread).ConfigureAwait(false);
+            await StartAsync(endPointInformation, thread).ConfigureAwait(false);
 
             await Thread.PostAsync(state => ((ListenerPrimary)state).PostCallback(),
                                    this).ConfigureAwait(false);

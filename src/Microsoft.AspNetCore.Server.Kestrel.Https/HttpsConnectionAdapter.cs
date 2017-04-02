@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
             _logger = loggerFactory?.CreateLogger(nameof(HttpsConnectionAdapter));
         }
 
-        public async Task<IAdaptedConnection> OnConnectionAsync(IConnectionAdapterContext context)
+        public async Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
         {
             SslStream sslStream;
             bool certificateRequired;

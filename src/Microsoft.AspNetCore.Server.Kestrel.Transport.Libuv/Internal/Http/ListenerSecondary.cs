@@ -37,14 +37,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task StartAsync(
             string pipeName,
             byte[] pipeMessage,
-            IListenOptions listenOptions,
+            IEndPointInformation endPointInformation,
             KestrelThread thread)
         {
             _pipeName = pipeName;
             _pipeMessage = pipeMessage;
             _buf = thread.Loop.Libuv.buf_init(_ptr, 4);
 
-            ListenOptions = listenOptions;
+            EndPointInformation = endPointInformation;
             Thread = thread;
             DispatchPipe = new UvPipeHandle(Log);
 

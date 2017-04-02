@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
             };
         }
 
-        public ITransport Create(IListenOptions listenOptions, IConnectionHandler handler)
+        public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
         {
             var transportContext = new LibuvTransportContext
             {
@@ -76,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                 ConnectionHandler = handler
             };
 
-            return new KestrelEngine(transportContext, listenOptions);
+            return new KestrelEngine(transportContext, endPointInformation);
         }
     }
 }
