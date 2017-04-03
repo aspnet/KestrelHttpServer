@@ -2,12 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Internalizer
 {
@@ -39,46 +41,49 @@ using System.Buffers;
         public static void Run(string csFileList)
         {
             var files = File.ReadAllLines(csFileList);
-            var namespaces = new HashSet<string>();
-            var fileContents = files.Select(file =>
+            var namespaces = new ConcurrentDictionary<string, string>();
+
+            var fileContents = files.AsParallel().Select(file =>
             {
                 var text = File.ReadAllText(file);
                 return new FileEntry(path: file, oldText : text, newText : text);
             }).ToArray();
 
-            foreach (var fileEntry in fileContents)
+            Parallel.ForEach(fileContents, fileEntry =>
             {
                 fileEntry.NewText = ProcessNamespaces(fileEntry.NewText, namespaces);
-            }
+            });
 
-            foreach (var fileEntry in fileContents)
+            Parallel.ForEach(fileContents, fileEntry =>
             {
                 fileEntry.NewText = ProcessUsings(fileEntry.NewText, namespaces);
                 if (fileEntry.NewText != fileEntry.OldText)
                 {
                     File.WriteAllText(fileEntry.Path, fileEntry.NewText, _utf8Encoding);
                 }
-            }
+            });
         }
 
-        private static string ProcessNamespaces(string contents, HashSet<string> namespaces)
+        private static string ProcessNamespaces(string contents, ConcurrentDictionary<string, string> namespaces)
         {
             return _namespaceRegex.Replace(contents, match =>
             {
                 var ns = match.Groups[1].Value;
-                namespaces.Add(ns);
-                return $"namespace {MicrosoftAspnetcoreServerKestrelInternal}.{ns}";
+                var newNamespace = $"{MicrosoftAspnetcoreServerKestrelInternal}.{ns}";
+
+                namespaces.AddOrUpdate(ns, newNamespace, (s, s1) => s);
+                return $"namespace {newNamespace}";
             });
         }
 
-        private static string ProcessUsings(string contents, HashSet<string> namespaces)
+        private static string ProcessUsings(string contents, ConcurrentDictionary<string, string> namespaces)
         {
             return DefaultUsings + _usingRegex.Replace(contents, match =>
             {
                 var ns = match.Groups[1].Value;
-                if (namespaces.Contains(ns))
+                if (namespaces.TryGetValue(ns, out var newNamespace))
                 {
-                    return $"using {MicrosoftAspnetcoreServerKestrelInternal}.{ns};";
+                    return $"using {newNamespace};";
                 }
                 return match.Value;
             });
