@@ -71,7 +71,7 @@ using System.Buffers;
                 var ns = match.Groups[1].Value;
                 var newNamespace = $"{MicrosoftAspnetcoreServerKestrelInternal}.{ns}";
 
-                namespaces.AddOrUpdate(ns, newNamespace, (s, s1) => s);
+                namespaces.AddOrUpdate(ns, newNamespace, (s, s1) => s1);
                 return $"namespace {newNamespace}";
             });
         }
