@@ -15,7 +15,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructur
 using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
-using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -118,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             // Create a pipe connection and keep it open without sending any data
             var connectTcs = new TaskCompletionSource<object>();
-            var connectionTrace = new LibuvTrace(Mock.Of<ILogger>());
+            var connectionTrace = new LibuvTrace(new TestApplicationErrorLogger());
             var pipe = new UvPipeHandle(connectionTrace);
 
             kestrelThreadPrimary.Post(_ =>

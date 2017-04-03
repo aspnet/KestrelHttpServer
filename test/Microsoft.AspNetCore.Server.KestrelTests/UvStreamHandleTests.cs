@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
+using Microsoft.AspNetCore.Testing;
 using Moq;
 using Xunit;
 
@@ -14,13 +15,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public void ReadStopIsIdempotent()
         {
-            var mockLibuvTrace = Mock.Of<ILibuvTrace>();
+            var libuvTrace = new LibuvTrace(new TestApplicationErrorLogger());
 
-            var mockUvLoopHandle = new Mock<UvLoopHandle>(mockLibuvTrace).Object;
+            var mockUvLoopHandle = new Mock<UvLoopHandle>(libuvTrace).Object;
             mockUvLoopHandle.Init(new MockLibuv());
 
             // Need to mock UvTcpHandle instead of UvStreamHandle, since the latter lacks an Init() method
-            var mockUvStreamHandle = new Mock<UvTcpHandle>(mockLibuvTrace).Object;
+            var mockUvStreamHandle = new Mock<UvTcpHandle>(libuvTrace).Object;
             mockUvStreamHandle.Init(mockUvLoopHandle, null);
 
             mockUvStreamHandle.ReadStop();

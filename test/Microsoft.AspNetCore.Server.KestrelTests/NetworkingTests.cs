@@ -7,7 +7,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
@@ -22,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     public class NetworkingTests
     {
         private readonly LibuvFunctions _uv = new LibuvFunctions();
-        private readonly ILibuvTrace _logger = Mock.Of<ILibuvTrace>();
+        private readonly ILibuvTrace _logger = new LibuvTrace(new TestApplicationErrorLogger());
 
         [Fact]
         public void LoopCanBeInitAndClose()

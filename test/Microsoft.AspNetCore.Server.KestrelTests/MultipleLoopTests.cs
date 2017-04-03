@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
-using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -19,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     public class MultipleLoopTests
     {
         private readonly LibuvFunctions _uv = new LibuvFunctions();
-        private readonly ILibuvTrace _logger = Mock.Of<ILibuvTrace>();
+        private readonly ILibuvTrace _logger = new LibuvTrace(new TestApplicationErrorLogger());
 
         [Fact]
         public void InitAndCloseServerPipe()
