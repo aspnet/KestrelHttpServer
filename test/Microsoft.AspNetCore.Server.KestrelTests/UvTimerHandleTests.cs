@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
+using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -12,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public void TestTimeout()
         {
-            var trace = new TestKestrelTrace();
+            var trace = Mock.Of<ILibuvTrace>();
 
             var loop = new UvLoopHandle(trace);
             loop.Init(new LibuvFunctions());
@@ -38,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public void TestRepeat()
         {
-            var trace = new TestKestrelTrace();
+            var trace = Mock.Of<ILibuvTrace>();
 
             var loop = new UvLoopHandle(trace);
             loop.Init(new LibuvFunctions());

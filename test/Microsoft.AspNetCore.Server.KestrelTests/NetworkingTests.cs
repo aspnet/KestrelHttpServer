@@ -8,9 +8,10 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
+using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -20,13 +21,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     /// </summary>
     public class NetworkingTests
     {
-        private readonly LibuvFunctions _uv;
-        private readonly IKestrelTrace _logger;
-        public NetworkingTests()
-        {
-            _uv = new LibuvFunctions();
-            _logger = new TestKestrelTrace();
-        }
+        private readonly LibuvFunctions _uv = new LibuvFunctions();
+        private readonly ILibuvTrace _logger = Mock.Of<ILibuvTrace>();
 
         [Fact]
         public void LoopCanBeInitAndClose()
@@ -69,7 +65,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             loop.Dispose();
         }
 
-
         [Fact]
         public async Task SocketCanListenAndAccept()
         {
@@ -97,7 +92,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             loop.Dispose();
             await t;
         }
-
 
         [Fact]
         public async Task SocketCanRead()
@@ -167,7 +161,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         {
                             for (var x = 0; x < 2; x++)
                             {
-                                var req = new UvWriteReq(new KestrelTrace(new TestKestrelTrace()));
+                                var req = new UvWriteReq(_logger);
                                 req.Init(loop);
                                 var block = ReadableBuffer.Create(new byte[] { 65, 66, 67, 68, 69 });
 
