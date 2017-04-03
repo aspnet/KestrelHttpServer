@@ -44,6 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 ConnectionId = connectionId,
                 ServiceContext = _serviceContext,
                 PipeFactory = connectionInfo.PipeFactory,
+                // TODO: This is a hack, we need to associate kestrel specific things with endpoint information somehow
                 ConnectionAdapters = ((ListenOptions)connectionInfo.EndPointInformation).ConnectionAdapters,
                 Frame = frame,
                 Input = inputPipe,

@@ -33,6 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 ConnectionStart(
                     context.ConnectionId,
+                    // TODO: This is a hack, we need to associate kestrel specific things with endpoint information somehow
                     ((ListenOptions)information.EndPointInformation).Scheme,
                     information.LocalEndPoint.ToString(),
                     information.RemoteEndPoint.ToString());
