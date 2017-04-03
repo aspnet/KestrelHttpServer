@@ -1,6 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
@@ -8,7 +8,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     {
         private GCHandle _pin;
 
-        protected UvRequest(IKestrelTrace logger) : base (logger)
+        protected UvRequest(ITransportTrace logger) : base (logger)
         {
         }
 

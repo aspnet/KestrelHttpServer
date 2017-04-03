@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         UvPipeHandle DispatchPipe { get; set; }
 
-        public IKestrelTrace Log => TransportContext.Log;
+        public ITransportTrace Log => TransportContext.Log;
 
         public Task StartAsync(
             string pipeName,

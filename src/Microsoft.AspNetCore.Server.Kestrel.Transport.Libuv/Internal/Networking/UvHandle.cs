@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         private static readonly LibuvFunctions.uv_close_cb _destroyMemory = (handle) => DestroyMemory(handle);
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
-        protected UvHandle(IKestrelTrace logger) : base (logger)
+        protected UvHandle(ITransportTrace logger) : base (logger)
         {
         }
 

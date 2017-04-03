@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public List<KestrelThread> Threads { get; } = new List<KestrelThread>();
 
         public IApplicationLifetime AppLifetime => TransportContext.AppLifetime;
-        public IKestrelTrace Log => TransportContext.Log;
+        public ITransportTrace Log => TransportContext.Log;
         public LibuvTransportOptions TransportOptions => TransportContext.Options;
 
         public async Task StopAsync()

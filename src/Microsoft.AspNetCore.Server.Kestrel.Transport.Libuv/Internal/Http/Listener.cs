@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         protected UvStreamHandle ListenSocket { get; private set; }
 
-        public IKestrelTrace Log => TransportContext.Log;
+        public ITransportTrace Log => TransportContext.Log;
 
         public Task StartAsync(
             IEndPointInformation endPointInformation,
