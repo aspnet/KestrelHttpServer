@@ -26,15 +26,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         // - Avoid renaming methods or parameters marked with EventAttribute. EventSource uses these to form the event object.
 
         [NonEvent]
-        public void ConnectionStart(IConnectionContext context, IConnectionInformation information)
+        public void ConnectionStart(ListenOptions listenOptions, IConnectionContext context, IConnectionInformation information)
         {
             // avoid allocating strings unless this event source is enabled
             if (IsEnabled())
             {
                 ConnectionStart(
                     context.ConnectionId,
-                    // TODO: This is a hack, we need to associate kestrel specific things with endpoint information somehow
-                    ((ListenOptions)information.EndPointInformation).Scheme,
+                    listenOptions.Scheme,
                     information.LocalEndPoint.ToString(),
                     information.RemoteEndPoint.ToString());
             }

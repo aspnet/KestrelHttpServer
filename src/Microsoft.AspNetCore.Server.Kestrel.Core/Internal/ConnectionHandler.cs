@@ -11,11 +11,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
     public class ConnectionHandler<TContext> : IConnectionHandler
     {
+        private readonly ListenOptions _listenOptions;
         private readonly ServiceContext _serviceContext;
         private readonly IHttpApplication<TContext> _application;
 
-        public ConnectionHandler(ServiceContext serviceContext, IHttpApplication<TContext> application)
+        public ConnectionHandler(ListenOptions listenOptions, ServiceContext serviceContext, IHttpApplication<TContext> application)
         {
+            _listenOptions = listenOptions;
             _serviceContext = serviceContext;
             _application = application;
         }
@@ -44,8 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 ConnectionId = connectionId,
                 ServiceContext = _serviceContext,
                 PipeFactory = connectionInfo.PipeFactory,
-                // TODO: This is a hack, we need to associate kestrel specific things with endpoint information somehow
-                ConnectionAdapters = ((ListenOptions)connectionInfo.EndPointInformation).ConnectionAdapters,
+                ConnectionAdapters = _listenOptions.ConnectionAdapters,
                 Frame = frame,
                 Input = inputPipe,
                 Output = outputPipe,
@@ -53,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             });
 
             _serviceContext.Log.ConnectionStart(connectionId);
-            KestrelEventSource.Log.ConnectionStart(connection, connectionInfo);
+            KestrelEventSource.Log.ConnectionStart(_listenOptions, connection, connectionInfo);
 
             // Since data cannot be added to the inputPipe by the transport until OnConnection returns,
             // Frame.RequestProcessingAsync is guaranteed to unblock the transport thread before calling

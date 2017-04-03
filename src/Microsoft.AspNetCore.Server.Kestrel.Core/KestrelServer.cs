@@ -109,8 +109,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     ServerOptions = Options
                 };
 
-                var connectionHandler = new ConnectionHandler<TContext>(serviceContext, application);
-
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
                 var hasServerAddresses = _serverAddresses.Addresses.Any();
@@ -127,7 +125,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
                     // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                    StartLocalhost(connectionHandler, ServerAddress.FromUrl(Constants.DefaultServerAddress));
+                    StartLocalhost(ServerAddress.FromUrl(Constants.DefaultServerAddress), serviceContext, application);
 
                     // If StartLocalhost doesn't throw, there is at least one listener.
                     // The port cannot change for "localhost".
@@ -172,7 +170,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
                             {
                                 // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                                StartLocalhost(connectionHandler, parsedAddress);
+                                StartLocalhost(parsedAddress, serviceContext, application);
 
                                 // If StartLocalhost doesn't throw, there is at least one listener.
                                 // The port cannot change for "localhost".
@@ -192,6 +190,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 foreach (var endPoint in listenOptions)
                 {
+                    var connectionHandler = new ConnectionHandler<TContext>(endPoint, serviceContext, application);
                     var transport = _transportFactory.Create(endPoint, connectionHandler);
                     _transports.Add(transport);
 
@@ -255,7 +254,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        private void StartLocalhost<TContext>(ConnectionHandler<TContext> connectionHandler, ServerAddress parsedAddress)
+        private void StartLocalhost<TContext>(ServerAddress parsedAddress, ServiceContext serviceContext, IHttpApplication<TContext> application)
         {
             if (parsedAddress.Port == 0)
             {
@@ -271,6 +270,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Scheme = parsedAddress.Scheme,
                 };
 
+                var connectionHandler = new ConnectionHandler<TContext>(ipv4ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler);
                 _transports.Add(transport);
                 transport.BindAsync().Wait();
@@ -292,6 +292,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Scheme = parsedAddress.Scheme,
                 };
 
+                var connectionHandler = new ConnectionHandler<TContext>(ipv6ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler);
                 _transports.Add(transport);
                 transport.BindAsync().Wait();
