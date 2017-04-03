@@ -97,13 +97,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 {
                     // Wait for data to write from the pipe producer
                     ReadResult result = await _output.ReadAsync();
-                    if (result.IsCompleted)
-                    {
-                        // Pipe producer is shut down
-                        Debug.Assert(result.Buffer.IsEmpty);
-                        _socket.Shutdown(SocketShutdown.Send);
-                        break;
-                    }
 
                     // Write received data to socket
                     // TODO: Do multi-buffer write here
@@ -114,6 +107,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
 
                     _output.Advance(buffer.End);
+
+                    if (result.IsCompleted)
+                    {
+                        // Pipe producer is shut down
+                        _socket.Shutdown(SocketShutdown.Send);
+                        break;
+                    }
                 }
             }
             catch (Exception ex)

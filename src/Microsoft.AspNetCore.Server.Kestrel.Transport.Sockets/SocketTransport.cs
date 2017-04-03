@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
+using System.IO;
 using System.IO.Pipelines;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
@@ -55,7 +56,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             IPEndPoint endPoint = _listenOptions.IPEndPoint;
 
             var listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            listenSocket.Bind(endPoint);
+
+            // Kestrel expects IPv6Any to bind to both IPv6 and IPv4
+            if (endPoint.Address == IPAddress.IPv6Any)
+            {
+                listenSocket.DualMode = true;
+            }
+
+            try
+            {
+                listenSocket.Bind(endPoint);
+            }
+            catch (SocketException e)
+            {
+                // Convert to an IO exception, since this is what tests expect
+                // Note the tests actually validate the exact message, which seems questionable
+                // (Actually I just disabled that check for now.  Revisit later.)
+                throw new IOException($"Failed to bind to address http://{endPoint}: address already in use.", e);
+            }
 
             // If requested port was "0", replace with assigned dynamic port.
             _listenOptions.IPEndPoint = (IPEndPoint)listenSocket.LocalEndPoint;
