@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="..\..\build\common.props" />
+  <Import Project="..\..\build\corefxlab.props" />
 
   <PropertyGroup>
     <Description>Core components of ASP.NET Core Kestrel cross-platform web server.</Description>
@@ -30,13 +31,9 @@
     <PackageReference Include="System.Threading.ThreadPool" Version="$(CoreFxVersion)" />
   </ItemGroup>
 
-  <Import Project="..\..\build\corefxlab.props" />
-
   <Target Name="LoadCoreFXLabSources" BeforeTargets="CoreCompile" DependsOnTargets="_GetCoreFXLabSources">
     <ItemGroup>
       <Compile Include="@(CoreFXLabCompile)" />
     </ItemGroup>
   </Target>
-
-
 </Project>

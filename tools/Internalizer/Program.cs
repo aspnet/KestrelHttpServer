@@ -3,10 +3,8 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -16,7 +14,9 @@ namespace Internalizer
     public class Program
     {
         private const string MicrosoftAspnetcoreServerKestrelInternal = "Microsoft.AspNetCore.Server.Kestrel.Internal";
-        private const string DefaultUsings = @"
+        private const string DefaultUsings =
+@"// This file was processed with Internalizer tool and should not be edited manually
+
 using System;
 using System.Runtime;
 using System.Buffers;
@@ -62,6 +62,8 @@ using System.Buffers;
                     File.WriteAllText(fileEntry.Path, fileEntry.NewText, _utf8Encoding);
                 }
             });
+
+            Console.WriteLine($"Successfully internalized {files.Length} file(s).");
         }
 
         private static string ProcessNamespaces(string contents, ConcurrentDictionary<string, string> namespaces)
