@@ -1,6 +1,4 @@
 <Project>
-  <Import Project="$(MSBuildThisFileDirectory)\corefxlab.props" />
-
   <PropertyGroup>
     <PrepareDependsOn>$(PrepareDependsOn);Internalize</PrepareDependsOn>
   </PropertyGroup>
@@ -12,7 +10,9 @@
     <Exec Command="git submodule update --init --recursive" WorkingDirectory="$(MSBuildThisFileDirectory)..\" />
     <Exec Command="git reset --hard" WorkingDirectory="$(MSBuildThisFileDirectory)..\corefxlab\" />
   </Target>
-  <Target Name="Internalize" DependsOnTargets="GitSubmoduleInit;Restore">
+
+  <Import Project="$(MSBuildThisFileDirectory)\corefxlab.props" />
+  <Target Name="Internalize" DependsOnTargets="GitSubmoduleInit;_GetCoreFXLabSources;Restore">
         <PropertyGroup>
             <InternalizeTempFileName>$(MSBuildThisFileDirectory)..\artifacts\corefxlabfiles.txt</InternalizeTempFileName>
         </PropertyGroup>

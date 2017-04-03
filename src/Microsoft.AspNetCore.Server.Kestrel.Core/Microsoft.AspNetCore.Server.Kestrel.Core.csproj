@@ -31,9 +31,12 @@
   </ItemGroup>
 
   <Import Project="..\..\build\corefxlab.props" />
-  <ItemGroup>
-    <Compile Include="@(CoreFXLabCompile)" />
-  </ItemGroup>
+
+  <Target Name="LoadCoreFXLabSources" BeforeTargets="CoreCompile" DependsOnTargets="_GetCoreFXLabSources">
+    <ItemGroup>
+      <Compile Include="@(CoreFXLabCompile)" />
+    </ItemGroup>
+  </Target>
 
 
 </Project>
