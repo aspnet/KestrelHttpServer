@@ -56,30 +56,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
-                while (true)
+                bool done = false;
+                while (!done)
                 {
                     // Ensure we have some reasonable amount of buffer space
                     WritableBuffer buffer = _input.Alloc(MinAllocBufferSize);
 
-                    int bytesReceived = await _socket.ReceiveAsync(GetArraySegment(buffer.Buffer), SocketFlags.None);
-
-                    if (bytesReceived == 0)
+                    try
                     {
-                        // EOF
-                        buffer.Commit();
-                        _input.Complete();
-                        break;
+                        int bytesReceived = await _socket.ReceiveAsync(GetArraySegment(buffer.Buffer), SocketFlags.None);
+
+                        if (bytesReceived == 0)
+                        {
+                            // EOF
+                            _input.Complete();
+                            done = true;
+                            break;
+                        }
+
+                        // record what data we filled into the buffer and push to pipe
+                        buffer.Advance(bytesReceived);
                     }
-
-                    // record what data we filled into the buffer and push to pipe
-                    buffer.Advance(bytesReceived);
-                    var result = await buffer.FlushAsync();
-
-                    if (result.IsCompleted)
+                    finally
                     {
-                        // Pipe consumer is shut down
-                        _socket.Shutdown(SocketShutdown.Receive);
-                        break;
+                        var result = await buffer.FlushAsync();
+                        if (result.IsCompleted)
+                        {
+                            // Pipe consumer is shut down
+                            _socket.Shutdown(SocketShutdown.Receive);
+                            done = true;
+                        }
                     }
                 }
             }
