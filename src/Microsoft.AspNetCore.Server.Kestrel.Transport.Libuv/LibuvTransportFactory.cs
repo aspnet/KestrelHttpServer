@@ -34,11 +34,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            // REVIEW: Should we change the logger namespace for transport logs?
-            var logger  = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
-            // TODO: Add LibuvTrace
-            var trace = new KestrelTrace(logger);
-
             var threadCount = options.Value.ThreadCount;
 
             if (threadCount <= 0)
@@ -48,31 +43,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                     "ThreadCount must be positive.");
             }
 
+            var log = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv");
+
             if (!Constants.ECONNRESET.HasValue)
             {
-                trace.LogWarning("Unable to determine ECONNRESET value on this platform.");
+                log.LogWarning("Unable to determine ECONNRESET value on this platform.");
             }
 
             if (!Constants.EADDRINUSE.HasValue)
             {
-                trace.LogWarning("Unable to determine EADDRINUSE value on this platform.");
+                log.LogWarning("Unable to determine EADDRINUSE value on this platform.");
             }
 
             _baseTransportContext = new LibuvTransportContext
             {
                 Options = options.Value,
                 AppLifetime = applicationLifetime,
-                Log = trace,
             };
         }
 
-        public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
+        public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler, ITransportTrace trace)
         {
             var transportContext = new LibuvTransportContext
             {
                 Options = _baseTransportContext.Options,
                 AppLifetime = _baseTransportContext.AppLifetime,
-                Log = _baseTransportContext.Log,
+                Log = trace,
                 ConnectionHandler = handler
             };
 

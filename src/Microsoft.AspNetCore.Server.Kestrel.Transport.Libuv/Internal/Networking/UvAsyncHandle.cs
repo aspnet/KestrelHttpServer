@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 {
@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         private Action _callback;
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
-        public UvAsyncHandle(IKestrelTrace logger) : base(logger)
+        public UvAsyncHandle(ITransportTrace logger) : base(logger)
         {
         }
 

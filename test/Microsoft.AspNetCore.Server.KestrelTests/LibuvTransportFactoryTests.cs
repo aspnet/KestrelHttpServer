@@ -25,13 +25,5 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             Assert.Equal("threadCount", exception.ParamName);
         }
-
-        [Fact]
-        public void LoggerCategoryNameIsKestrelServerNamespace()
-        {
-            var mockLoggerFactory = new Mock<ILoggerFactory>();
-            new LibuvTransportFactory(Options.Create<LibuvTransportOptions>(new LibuvTransportOptions()), new LifetimeNotImplemented(), mockLoggerFactory.Object);
-            mockLoggerFactory.Verify(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"));
-        }
     }
 }

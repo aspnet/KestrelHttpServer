@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
@@ -52,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private bool _stopImmediate = false;
         private bool _initCompleted = false;
         private ExceptionDispatchInfo _closeError;
-        private readonly IKestrelTrace _log;
+        private readonly ITransportTrace _log;
         private readonly TimeSpan _shutdownTimeout;
         private IntPtr _thisPtr;
 

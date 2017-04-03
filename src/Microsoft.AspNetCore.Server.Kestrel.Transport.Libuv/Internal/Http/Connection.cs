@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public IPipeWriter Input { get; set; }
         public SocketOutputConsumer Output { get; set; }
 
-        private IKestrelTrace Log => ListenerContext.TransportContext.Log;
+        private ITransportTrace Log => ListenerContext.TransportContext.Log;
         private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
         private KestrelThread Thread => ListenerContext.Thread;
 

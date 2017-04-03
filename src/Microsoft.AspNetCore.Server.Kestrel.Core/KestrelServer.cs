@@ -127,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
                     // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                    StartLocalhost(connectionHandler, ServerAddress.FromUrl(Constants.DefaultServerAddress));
+                    StartLocalhost(connectionHandler, ServerAddress.FromUrl(Constants.DefaultServerAddress), trace);
 
                     // If StartLocalhost doesn't throw, there is at least one listener.
                     // The port cannot change for "localhost".
@@ -172,7 +172,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
                             {
                                 // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                                StartLocalhost(connectionHandler, parsedAddress);
+                                StartLocalhost(connectionHandler, parsedAddress, trace);
 
                                 // If StartLocalhost doesn't throw, there is at least one listener.
                                 // The port cannot change for "localhost".
@@ -192,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 foreach (var endPoint in listenOptions)
                 {
-                    var transport = _transportFactory.Create(endPoint, connectionHandler);
+                    var transport = _transportFactory.Create(endPoint, connectionHandler, trace);
                     _transports.Add(transport);
 
                     try
@@ -255,7 +255,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        private void StartLocalhost<TContext>(ConnectionHandler<TContext> connectionHandler, ServerAddress parsedAddress)
+        private void StartLocalhost<TContext>(ConnectionHandler<TContext> connectionHandler, ServerAddress parsedAddress, ITransportTrace trace)
         {
             if (parsedAddress.Port == 0)
             {
@@ -271,7 +271,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Scheme = parsedAddress.Scheme,
                 };
 
-                var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler);
+                var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler, trace);
                 _transports.Add(transport);
                 transport.BindAsync().Wait();
             }
@@ -292,7 +292,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Scheme = parsedAddress.Scheme,
                 };
 
-                var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler);
+                var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler, trace);
                 _transports.Add(transport);
                 transport.BindAsync().Wait();
             }

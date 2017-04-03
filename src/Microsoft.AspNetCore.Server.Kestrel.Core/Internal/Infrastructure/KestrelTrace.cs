@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
@@ -10,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     /// <summary>
     /// Summary description for KestrelTrace
     /// </summary>
-    public class KestrelTrace : IKestrelTrace
+    public class KestrelTrace : IKestrelTrace, ITransportTrace
     {
         private static readonly Action<ILogger, string, Exception> _connectionStart =
             LoggerMessage.Define<string>(LogLevel.Debug, 1, @"Connection id ""{ConnectionId}"" started.");
