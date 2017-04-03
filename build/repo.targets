@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <CompileDependsOn>$(CompileDependsOn);Internalize</CompileDependsOn>
+    <CompileDependsOn>Internalize;$(CompileDependsOn)</CompileDependsOn>
   </PropertyGroup>
 
   <Target Name="CodeGen">
