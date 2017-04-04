@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public class LibuvConnection : ConnectionContext, ITimeoutControl
+    public class LibuvConnection : LibuvConnectionContext, ITimeoutControl
     {
         private const int MinAllocBufferSize = 2048;
 
