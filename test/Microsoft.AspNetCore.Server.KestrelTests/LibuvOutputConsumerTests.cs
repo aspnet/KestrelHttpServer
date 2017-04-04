@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
-    public class SocketOutputTests : IDisposable
+    public class LibuvOutputConsumerTests : IDisposable
     {
         private readonly PipeFactory _pipeFactory;
         private readonly MockLibuv _mockLibuv;
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             (int)new KestrelServerOptions().Limits.MaxResponseBufferSize, 1024, (1024 * 1024) + 1
         };
 
-        public SocketOutputTests()
+        public LibuvOutputConsumerTests()
         {
             _pipeFactory = new PipeFactory();
             _mockLibuv = new MockLibuv();
