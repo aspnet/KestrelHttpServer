@@ -22,7 +22,10 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
-    public class LibuvTransportTests
+    /// <summary>
+    /// Summary description for EngineTests
+    /// </summary>
+    public class EngineTests
     {
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
