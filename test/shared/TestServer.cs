@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 
 namespace Microsoft.AspNetCore.Testing
 {
