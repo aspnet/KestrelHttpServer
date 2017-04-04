@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         };
 
         [Fact]
-        public async Task EngineCanStartAndStop()
+        public async Task TransportCanStartAndStop()
         {
             var serviceContext = new TestServiceContext();
 
