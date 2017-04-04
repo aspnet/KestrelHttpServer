@@ -51,12 +51,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly TimeSpan _shutdownTimeout;
         private IntPtr _thisPtr;
 
-        public LibuvThread(LibuvTransport engine)
+        public LibuvThread(LibuvTransport transport)
         {
-            _transport = engine;
-            _appLifetime = engine.AppLifetime;
-            _log = engine.Log;
-            _shutdownTimeout = engine.TransportOptions.ShutdownTimeout;
+            _transport = transport;
+            _appLifetime = transport.AppLifetime;
+            _log = transport.Log;
+            _shutdownTimeout = transport.TransportOptions.ShutdownTimeout;
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
@@ -75,8 +75,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         }
 
         // For testing
-        public LibuvThread(LibuvTransport engine, int maxLoops)
-            : this(engine)
+        public LibuvThread(LibuvTransport transport, int maxLoops)
+            : this(transport)
         {
             _maxLoops = maxLoops;
         }

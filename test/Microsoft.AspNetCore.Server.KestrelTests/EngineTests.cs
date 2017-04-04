@@ -41,12 +41,12 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var serviceContext = new TestServiceContext();
 
-            // The engine can no longer start threads without binding to an endpoint.
-            var engine = new LibuvTransport(serviceContext.TransportContext,
+            // The transport can no longer start threads without binding to an endpoint.
+            var transport = new LibuvTransport(serviceContext.TransportContext,
                 new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)));
 
-            await engine.BindAsync();
-            await engine.StopAsync();
+            await transport.BindAsync();
+            await transport.StopAsync();
         }
 
         [Theory]
@@ -55,11 +55,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var testContext = new TestServiceContext();
             testContext.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, testContext, new DummyApplication(TestApp.EchoApp));
-            var engine = new LibuvTransport(testContext.TransportContext, listenOptions);
+            var transport = new LibuvTransport(testContext.TransportContext, listenOptions);
 
-            await engine.BindAsync();
-            await engine.UnbindAsync();
-            await engine.StopAsync();
+            await transport.BindAsync();
+            await transport.UnbindAsync();
+            await transport.StopAsync();
         }
 
         [Theory]
@@ -68,9 +68,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var testContext = new TestServiceContext();
             testContext.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, testContext, new DummyApplication(TestApp.EchoApp));
-            var engine = new LibuvTransport(testContext.TransportContext, listenOptions);
+            var transport = new LibuvTransport(testContext.TransportContext, listenOptions);
 
-            await engine.BindAsync();
+            await transport.BindAsync();
 
             var socket = TestConnection.CreateConnectedLoopbackSocket(listenOptions.IPEndPoint.Port);
             var data = "Hello World";
@@ -83,8 +83,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
             socket.Dispose();
 
-            await engine.UnbindAsync();
-            await engine.StopAsync();
+            await transport.UnbindAsync();
+            await transport.StopAsync();
         }
 
         [Theory]

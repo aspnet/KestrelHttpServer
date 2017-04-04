@@ -37,8 +37,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             _pipeFactory = new PipeFactory();
             _mockLibuv = new MockLibuv();
 
-            var kestrelEngine = new LibuvTransport(_mockLibuv, new TestServiceContext().TransportContext, new ListenOptions(0));
-            _libuvThread = new LibuvThread(kestrelEngine, maxLoops: 1);
+            var libuvTransport = new LibuvTransport(_mockLibuv, new TestServiceContext().TransportContext, new ListenOptions(0));
+            _libuvThread = new LibuvThread(libuvTransport, maxLoops: 1);
             _libuvThread.StartAsync().Wait();
         }
 
