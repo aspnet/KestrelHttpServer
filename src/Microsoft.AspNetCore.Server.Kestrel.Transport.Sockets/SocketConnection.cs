@@ -21,6 +21,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     {
         Socket _socket;
         SocketTransport _transport;
+        IPEndPoint _localEndPoint;
+        IPEndPoint _remoteEndPoint;
         IPipeWriter _input;
         IPipeReader _output;
 
@@ -30,6 +32,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             _socket = socket;
             _transport = transport;
+
+            _localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
+            _remoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
         }
 
         public async void Start(IConnectionHandler connectionHandler)
@@ -161,9 +166,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public ListenOptions ListenOptions => _transport.ListenOptions;
 
-        public IPEndPoint RemoteEndPoint => (IPEndPoint)_socket.RemoteEndPoint;
+        public IPEndPoint RemoteEndPoint => _remoteEndPoint;
 
-        public IPEndPoint LocalEndPoint => (IPEndPoint)_socket.LocalEndPoint;
+        public IPEndPoint LocalEndPoint => _localEndPoint;
 
         public PipeFactory PipeFactory => _transport.PipeFactory;
 
