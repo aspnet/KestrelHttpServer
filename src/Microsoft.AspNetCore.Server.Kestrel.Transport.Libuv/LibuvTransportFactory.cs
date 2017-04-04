@@ -44,12 +44,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                     "ThreadCount must be positive.");
             }
 
-            if (!Constants.ECONNRESET.HasValue)
+            if (!LibuvConstants.ECONNRESET.HasValue)
             {
                 trace.LogWarning("Unable to determine ECONNRESET value on this platform.");
             }
 
-            if (!Constants.EADDRINUSE.HasValue)
+            if (!LibuvConstants.EADDRINUSE.HasValue)
             {
                 trace.LogWarning("Unable to determine EADDRINUSE value on this platform.");
             }

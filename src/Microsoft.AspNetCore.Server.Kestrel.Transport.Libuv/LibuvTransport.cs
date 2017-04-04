@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                     }
                 }
             }
-            catch (UvException ex) when (ex.StatusCode == Constants.EADDRINUSE)
+            catch (UvException ex) when (ex.StatusCode == LibuvConstants.EADDRINUSE)
             {
                 await UnbindAsync().ConfigureAwait(false);
                 throw new AddressInUseException(ex.Message, ex);

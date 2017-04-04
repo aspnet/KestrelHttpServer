@@ -155,7 +155,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private async void OnRead(UvStreamHandle handle, int status)
         {
             var normalRead = status >= 0;
-            var normalDone = status == Constants.EOF;
+            var normalDone = status == LibuvConstants.EOF;
             var errorDone = !(normalDone || normalRead);
             var readCount = normalRead ? status : 0;
 
@@ -181,7 +181,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 handle.Libuv.Check(status, out uvError);
 
                 // Log connection resets at a lower (Debug) level.
-                if (status == Constants.ECONNRESET)
+                if (status == LibuvConstants.ECONNRESET)
                 {
                     Log.ConnectionReset(ConnectionId);
                     error = new ConnectionResetException(uvError.Message, uvError);

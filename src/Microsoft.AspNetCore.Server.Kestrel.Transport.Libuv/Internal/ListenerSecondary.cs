@@ -127,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             if (status < 0)
             {
-                if (status != Constants.EOF)
+                if (status != LibuvConstants.EOF)
                 {
                     Exception ex;
                     Thread.Loop.Libuv.Check(status, out ex);

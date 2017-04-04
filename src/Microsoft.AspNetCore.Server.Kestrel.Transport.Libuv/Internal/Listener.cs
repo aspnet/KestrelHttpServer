@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 {
                     var listener = ((Listener) tcs2.Task.AsyncState);
                     listener.ListenSocket = listener.CreateListenSocket();
-                    ListenSocket.Listen(Constants.ListenBacklog, ConnectionCallback, this);
+                    ListenSocket.Listen(LibuvConstants.ListenBacklog, ConnectionCallback, this);
                     tcs2.SetResult(0);
                 }
                 catch (Exception ex)
