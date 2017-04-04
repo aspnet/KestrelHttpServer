@@ -99,26 +99,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
-                while (true)
+                bool done = false;
+                while (!done)
                 {
                     // Wait for data to write from the pipe producer
                     ReadResult result = await _output.ReadAsync();
-
-                    // Write received data to socket
-                    // TODO: Do multi-buffer write here
                     ReadableBuffer buffer = result.Buffer;
-                    foreach (Buffer<byte> b in buffer)
+
+                    try
                     {
-                        await _socket.SendAsync(GetArraySegment(b), SocketFlags.None);
+                        // Write received data to socket
+                        // TODO: Do multi-buffer write here
+                        foreach (Buffer<byte> b in buffer)
+                        {
+                            await _socket.SendAsync(GetArraySegment(b), SocketFlags.None);
+                        }
                     }
-
-                    _output.Advance(buffer.End);
-
-                    if (result.IsCompleted)
+                    finally
                     {
-                        // Pipe producer is shut down
-                        _socket.Shutdown(SocketShutdown.Send);
-                        break;
+                        _output.Advance(buffer.End);
+                        if (result.IsCompleted)
+                        {
+                            // Pipe producer is shut down
+                            _socket.Shutdown(SocketShutdown.Send);
+                            done = true;
+                        }
                     }
                 }
             }
