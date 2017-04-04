@@ -3,6 +3,7 @@
 
 using System.Linq;
 using Microsoft.AspNetCore.Server.Kestrel;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Xunit;
 
@@ -58,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         var begin = mem.GetIterator();
                         var end = GetIterator(begin, byteRange.Length);
 
-                        Assert.Throws<BadHttpRequestException>(() => begin.GetAsciiString(ref end));
+                        Assert.Throws<DecodingException>(() => begin.GetAsciiString(ref end));
 
                         pool.Return(mem);
                     }
