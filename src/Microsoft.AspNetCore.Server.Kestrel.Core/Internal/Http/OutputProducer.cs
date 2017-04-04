@@ -10,7 +10,7 @@ using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public class SocketOutputProducer : ISocketOutput, IDisposable
+    public class OutputProducer : ISocketOutput, IDisposable
     {
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
 
@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly object _flushLock = new object();
         private readonly Action _onFlushCallback;
 
-        public SocketOutputProducer(IPipeWriter pipe, Frame frame, string connectionId, IKestrelTrace log)
+        public OutputProducer(IPipeWriter pipe, Frame frame, string connectionId, IKestrelTrace log)
         {
             _pipe = pipe;
             _frame = frame;

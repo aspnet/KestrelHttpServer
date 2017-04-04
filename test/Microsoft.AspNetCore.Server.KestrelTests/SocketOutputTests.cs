@@ -517,7 +517,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
-        private SocketOutputProducer CreateSocketOutput(PipeOptions pipeOptions, MockConnection connection = null)
+        private OutputProducer CreateSocketOutput(PipeOptions pipeOptions, MockConnection connection = null)
         {
             var pipe = _pipeFactory.Create(pipeOptions);
             var serviceContext = new TestServiceContext();
@@ -525,7 +525,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var frame = new Frame<object>(null, new FrameContext { ServiceContext = serviceContext });
 
             var socket = new MockSocket(_mockLibuv, _kestrelThread.Loop.ThreadId, serviceContext.TransportContext.Log);
-            var socketOutput = new SocketOutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
+            var socketOutput = new OutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
             var consumer = new OutputConsumer(pipe.Reader, _kestrelThread, socket, connection ?? new MockConnection(), "0", serviceContext.TransportContext.Log);
             var ignore = consumer.StartWrites();
 

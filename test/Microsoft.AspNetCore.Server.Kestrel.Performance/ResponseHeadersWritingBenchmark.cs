@@ -128,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            var socketOutputProducer = new SocketOutputProducer(output.Writer, null, null, null);
+            var socketOutputProducer = new OutputProducer(output.Writer, null, null, null);
             var frame = new TestFrame<object>(application: null, context: frameContext)
             {
                 Input = input.Reader,

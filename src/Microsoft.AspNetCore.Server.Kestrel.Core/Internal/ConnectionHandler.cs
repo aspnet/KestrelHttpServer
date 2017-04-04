@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
             // TODO: Untangle this mess
             var frame = new Frame<TContext>(_application, frameContext);
-            var outputProducer = new SocketOutputProducer(outputPipe.Writer, frame, connectionId, _serviceContext.Log);
+            var outputProducer = new OutputProducer(outputPipe.Writer, frame, connectionId, _serviceContext.Log);
             frame.LifetimeControl = new ConnectionLifetimeControl(connectionId, outputPipe.Reader, outputProducer, _serviceContext.Log);
 
             var connection = new FrameConnection(new FrameConnectionContext
