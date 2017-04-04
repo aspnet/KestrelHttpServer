@@ -3,10 +3,10 @@
 
 using System.Collections.Generic;
 using System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Adapter;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public class FrameConnectionContext
     {
