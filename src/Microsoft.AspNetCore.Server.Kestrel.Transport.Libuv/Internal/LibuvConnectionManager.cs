@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public class ConnectionManager
+    public class LibuvConnectionManager
     {
         private readonly LibuvThread _thread;
 
-        public ConnectionManager(LibuvThread thread)
+        public LibuvConnectionManager(LibuvThread thread)
         {
             _thread = thread;
         }
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             return await WalkConnectionsAsync((connectionManager, tcs) => connectionManager.WalkConnectionsAndAbortCore(tcs), timeout).ConfigureAwait(false);
         }
 
-        private async Task<bool> WalkConnectionsAsync(Action<ConnectionManager, TaskCompletionSource<object>> action, TimeSpan timeout)
+        private async Task<bool> WalkConnectionsAsync(Action<LibuvConnectionManager, TaskCompletionSource<object>> action, TimeSpan timeout)
         {
             var tcs = new TaskCompletionSource<object>();
 

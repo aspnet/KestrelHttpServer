@@ -71,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             PipelineFactory = new PipeFactory();
             WriteReqPool = new WriteReqPool(this, _log);
-            ConnectionManager = new ConnectionManager(this);
+            ConnectionManager = new LibuvConnectionManager(this);
         }
 
         // For testing
@@ -85,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public PipeFactory PipelineFactory { get; }
 
-        public ConnectionManager ConnectionManager { get; }
+        public LibuvConnectionManager ConnectionManager { get; }
 
         public WriteReqPool WriteReqPool { get; }
 
