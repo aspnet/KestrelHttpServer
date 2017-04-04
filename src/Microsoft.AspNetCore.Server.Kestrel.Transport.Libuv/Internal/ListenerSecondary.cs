@@ -181,7 +181,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             // Ensure the event loop is still running.
             // If the event loop isn't running and we try to wait on this Post
-            // to complete, then KestrelEngine will never be disposed and
+            // to complete, then LibuvTransport will never be disposed and
             // the exception that stopped the event loop will never be surfaced.
             if (Thread.FatalError == null)
             {

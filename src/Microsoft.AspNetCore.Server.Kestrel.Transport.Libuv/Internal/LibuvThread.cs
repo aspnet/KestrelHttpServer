@@ -14,9 +14,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    /// <summary>
-    /// Summary description for KestrelThread
-    /// </summary>
     public class LibuvThread : IScheduler
     {
         public const long HeartbeatMilliseconds = 1000;
@@ -25,8 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
             var thisHandle = GCHandle.FromIntPtr(arg);
-            var kestrelThread = (LibuvThread)thisHandle.Target;
-            streamHandle?.Connection?.Tick(kestrelThread.Now);
+            var libuvThread = (LibuvThread)thisHandle.Target;
+            streamHandle?.Connection?.Tick(libuvThread.Now);
         };
 
         // maximum times the work queues swapped and are processed in a single pass
@@ -63,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
-            _thread.Name = "KestrelThread - libuv";
+            _thread.Name = nameof(LibuvThread);
             _heartbeatTimer = new UvTimerHandle(_log);
 #if !DEBUG
             // Mark the thread as being as unimportant to keeping the process alive.
@@ -137,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                             Post(t => t.OnStopImmediate());
                             if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                             {
-                                _log.LogCritical("KestrelThread.StopAsync failed to terminate libuv thread.");
+                                _log.LogCritical($"{nameof(LibuvThread)}.{nameof(StopAsync)} failed to terminate libuv thread.");
                             }
                         }
                     }
@@ -146,7 +143,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                         // Until we rework this logic, ODEs are bound to happen sometimes.
                         if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                         {
-                            _log.LogCritical("KestrelThread.StopAsync failed to terminate libuv thread.");
+                            _log.LogCritical($"{nameof(LibuvThread)}.{nameof(StopAsync)} failed to terminate libuv thread.");
                         }
                     }
                 }
@@ -388,7 +385,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                             }
                             catch (Exception e)
                             {
-                                _log.LogError(0, e, "KestrelThread.DoPostWork");
+                                _log.LogError(0, e, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
                             }
                         }, work.Completion);
                     }
@@ -405,13 +402,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                             }
                             catch (Exception e)
                             {
-                                _log.LogError(0, e, "KestrelThread.DoPostWork");
+                                _log.LogError(0, e, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
                             }
                         }, work.Completion);
                     }
                     else
                     {
-                        _log.LogError(0, ex, "KestrelThread.DoPostWork");
+                        _log.LogError(0, ex, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
                         throw;
                     }
                 }
@@ -441,7 +438,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 }
                 catch (Exception ex)
                 {
-                    _log.LogError(0, ex, "KestrelThread.DoPostCloseHandle");
+                    _log.LogError(0, ex, $"{nameof(LibuvThread)}.{nameof(DoPostCloseHandle)}");
                     throw;
                 }
             }

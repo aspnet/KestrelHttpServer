@@ -271,7 +271,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             _timeoutAction = timeoutAction;
 
-            // Add KestrelThread.HeartbeatMilliseconds extra milliseconds since this can be called right before the next heartbeat.
+            // Add LibuvThread.HeartbeatMilliseconds extra milliseconds since this can be called right before the next heartbeat.
             Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + milliseconds + LibuvThread.HeartbeatMilliseconds);
         }
     }
