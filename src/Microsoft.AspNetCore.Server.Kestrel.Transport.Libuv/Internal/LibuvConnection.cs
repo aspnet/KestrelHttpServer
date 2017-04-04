@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public class Connection : ConnectionContext, ITimeoutControl
+    public class LibuvConnection : ConnectionContext, ITimeoutControl
     {
         private const int MinAllocBufferSize = 2048;
 
@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private TimeoutAction _timeoutAction;
         private WritableBuffer? _currentWritableBuffer;
 
-        public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
+        public LibuvConnection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
             socket.Connection = this;
@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         }
 
         // For testing
-        public Connection()
+        public LibuvConnection()
         {
         }
 
@@ -130,7 +130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private static LibuvFunctions.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
         {
-            return ((Connection)state).OnAlloc(handle, suggestedSize);
+            return ((LibuvConnection)state).OnAlloc(handle, suggestedSize);
         }
 
         private unsafe LibuvFunctions.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
@@ -149,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private static void ReadCallback(UvStreamHandle handle, int status, object state)
         {
-            ((Connection)state).OnRead(handle, status);
+            ((LibuvConnection)state).OnRead(handle, status);
         }
 
         private async void OnRead(UvStreamHandle handle, int status)

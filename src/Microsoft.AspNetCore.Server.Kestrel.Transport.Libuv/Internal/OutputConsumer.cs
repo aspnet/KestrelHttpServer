@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
     {
         private readonly LibuvThread _thread;
         private readonly UvStreamHandle _socket;
-        private readonly Connection _connection;
+        private readonly LibuvConnection _connection;
         private readonly string _connectionId;
         private readonly ILibuvTrace _log;
 
@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             IPipeReader pipe,
             LibuvThread thread,
             UvStreamHandle socket,
-            Connection connection,
+            LibuvConnection connection,
             string connectionId,
             ILibuvTrace log)
         {

@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
             try
             {
-                var connection = new Connection(this, acceptSocket);
+                var connection = new LibuvConnection(this, acceptSocket);
                 connection.Start();
             }
             catch (UvException ex)

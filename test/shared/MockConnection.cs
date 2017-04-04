@@ -10,7 +10,7 @@ using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Testing
 {
-    public class MockConnection : Connection, IDisposable
+    public class MockConnection : LibuvConnection, IDisposable
     {
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
 

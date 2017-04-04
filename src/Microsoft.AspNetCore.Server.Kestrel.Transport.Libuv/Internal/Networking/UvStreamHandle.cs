@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
         {
         }
 
-        public Connection Connection { get; set; }
+        public LibuvConnection Connection { get; set; }
 
         protected override bool ReleaseHandle()
         {

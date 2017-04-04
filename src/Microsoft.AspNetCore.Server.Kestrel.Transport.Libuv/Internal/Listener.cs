@@ -145,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         protected virtual void DispatchConnection(UvStreamHandle socket)
         {
-            var connection = new Connection(this, socket);
+            var connection = new LibuvConnection(this, socket);
             connection.Start();
         }
 

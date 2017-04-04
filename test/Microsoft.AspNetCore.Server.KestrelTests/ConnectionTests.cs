@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                             Thread = thread
                         };
                         var socket = new MockSocket(mockLibuv, Thread.CurrentThread.ManagedThreadId, serviceContext.TransportContext.Log);
-                        var connection = new Connection(listenerContext, socket);
+                        var connection = new LibuvConnection(listenerContext, socket);
                         connection.Start();
 
                         LibuvFunctions.uv_buf_t ignored;
