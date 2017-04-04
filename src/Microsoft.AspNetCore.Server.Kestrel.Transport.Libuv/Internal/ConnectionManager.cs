@@ -10,9 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class ConnectionManager
     {
-        private readonly KestrelThread _thread;
+        private readonly IOThread _thread;
 
-        public ConnectionManager(KestrelThread thread)
+        public ConnectionManager(IOThread thread)
         {
             _thread = thread;
         }

@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Testing
     /// </summary>
     public class TestServer : IDisposable
     {
-        private KestrelEngine _engine;
+        private LibuvTransport _engine;
         private ListenOptions _listenOptions;
 
         public TestServer(RequestDelegate app)
@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Testing
 
             try
             {
-                _engine = new KestrelEngine(context.TransportContext, _listenOptions);
+                _engine = new LibuvTransport(context.TransportContext, _listenOptions);
                 _engine.BindAsync().Wait();
             }
             catch

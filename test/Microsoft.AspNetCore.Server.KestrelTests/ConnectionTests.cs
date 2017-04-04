@@ -24,8 +24,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var serviceContext = new TestServiceContext();
                 serviceContext.TransportContext.ConnectionHandler = mockConnectionHandler;
 
-                var engine = new KestrelEngine(mockLibuv, serviceContext.TransportContext, null);
-                var thread = new KestrelThread(engine);
+                var engine = new LibuvTransport(mockLibuv, serviceContext.TransportContext, null);
+                var thread = new IOThread(engine);
 
                 try
                 {

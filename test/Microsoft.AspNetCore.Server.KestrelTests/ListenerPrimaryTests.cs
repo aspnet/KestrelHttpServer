@@ -35,13 +35,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             serviceContextSecondary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextSecondary, new DummyApplication(c => c.Response.WriteAsync("Secondary")));
 
-            var kestrelEngine = new KestrelEngine(libuv, serviceContextPrimary.TransportContext, listenOptions);
+            var kestrelEngine = new LibuvTransport(libuv, serviceContextPrimary.TransportContext, listenOptions);
 
             var pipeName = (libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
             var pipeMessage = Guid.NewGuid().ToByteArray();
 
             // Start primary listener
-            var kestrelThreadPrimary = new KestrelThread(kestrelEngine);
+            var kestrelThreadPrimary = new IOThread(kestrelEngine);
             await kestrelThreadPrimary.StartAsync();
             var listenerPrimary = new ListenerPrimary(serviceContextPrimary.TransportContext);
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, kestrelThreadPrimary);
@@ -52,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal("Primary", await HttpClientSlim.GetStringAsync(address));
 
             // Add secondary listener
-            var kestrelThreadSecondary = new KestrelThread(kestrelEngine);
+            var kestrelThreadSecondary = new IOThread(kestrelEngine);
             await kestrelThreadSecondary.StartAsync();
             var listenerSecondary = new ListenerSecondary(serviceContextSecondary.TransportContext);
             await listenerSecondary.StartAsync(pipeName, pipeMessage, listenOptions, kestrelThreadSecondary);
@@ -93,20 +93,20 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             serviceContextSecondary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextSecondary, new DummyApplication(c => c.Response.WriteAsync("Secondary")));
 
-            var kestrelEngine = new KestrelEngine(libuv, serviceContextPrimary.TransportContext, listenOptions);
+            var kestrelEngine = new LibuvTransport(libuv, serviceContextPrimary.TransportContext, listenOptions);
 
             var pipeName = (libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
             var pipeMessage = Guid.NewGuid().ToByteArray();
 
             // Start primary listener
-            var kestrelThreadPrimary = new KestrelThread(kestrelEngine);
+            var kestrelThreadPrimary = new IOThread(kestrelEngine);
             await kestrelThreadPrimary.StartAsync();
             var listenerPrimary = new ListenerPrimary(serviceContextPrimary.TransportContext);
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, kestrelThreadPrimary);
             var address = listenOptions.ToString();
 
             // Add secondary listener
-            var kestrelThreadSecondary = new KestrelThread(kestrelEngine);
+            var kestrelThreadSecondary = new IOThread(kestrelEngine);
             await kestrelThreadSecondary.StartAsync();
             var listenerSecondary = new ListenerSecondary(serviceContextSecondary.TransportContext);
             await listenerSecondary.StartAsync(pipeName, pipeMessage, listenOptions, kestrelThreadSecondary);
@@ -200,20 +200,20 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             serviceContextSecondary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextSecondary, new DummyApplication(c => c.Response.WriteAsync("Secondary")));
 
-            var kestrelEngine = new KestrelEngine(libuv, serviceContextPrimary.TransportContext, listenOptions);
+            var kestrelEngine = new LibuvTransport(libuv, serviceContextPrimary.TransportContext, listenOptions);
 
             var pipeName = (libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
             var pipeMessage = Guid.NewGuid().ToByteArray();
 
             // Start primary listener
-            var kestrelThreadPrimary = new KestrelThread(kestrelEngine);
+            var kestrelThreadPrimary = new IOThread(kestrelEngine);
             await kestrelThreadPrimary.StartAsync();
             var listenerPrimary = new ListenerPrimary(serviceContextPrimary.TransportContext);
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, kestrelThreadPrimary);
             var address = listenOptions.ToString();
 
             // Add secondary listener with wrong pipe message
-            var kestrelThreadSecondary = new KestrelThread(kestrelEngine);
+            var kestrelThreadSecondary = new IOThread(kestrelEngine);
             await kestrelThreadSecondary.StartAsync();
             var listenerSecondary = new ListenerSecondary(serviceContextSecondary.TransportContext);
             await listenerSecondary.StartAsync(pipeName, Guid.NewGuid().ToByteArray(), listenOptions, kestrelThreadSecondary);

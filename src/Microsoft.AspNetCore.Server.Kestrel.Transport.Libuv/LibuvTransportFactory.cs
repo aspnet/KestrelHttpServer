@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                 ConnectionHandler = handler
             };
 
-            return new KestrelEngine(transportContext, endPointInformation);
+            return new LibuvTransport(transportContext, endPointInformation);
         }
     }
 }

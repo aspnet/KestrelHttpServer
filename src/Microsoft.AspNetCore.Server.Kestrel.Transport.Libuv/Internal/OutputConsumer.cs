@@ -10,9 +10,9 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Infrastructur
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public class SocketOutputConsumer
+    public class OutputConsumer
     {
-        private readonly KestrelThread _thread;
+        private readonly IOThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly Connection _connection;
         private readonly string _connectionId;
@@ -21,9 +21,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly WriteReqPool _writeReqPool;
         private readonly IPipeReader _pipe;
 
-        public SocketOutputConsumer(
+        public OutputConsumer(
             IPipeReader pipe,
-            KestrelThread thread,
+            IOThread thread,
             UvStreamHandle socket,
             Connection connection,
             string connectionId,

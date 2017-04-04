@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     {
         private readonly PipeFactory _pipeFactory;
         private readonly MockLibuv _mockLibuv;
-        private readonly KestrelThread _kestrelThread;
+        private readonly IOThread _kestrelThread;
 
         public static TheoryData<long?> MaxResponseBufferSizeData => new TheoryData<long?>
         {
@@ -36,8 +36,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             _pipeFactory = new PipeFactory();
             _mockLibuv = new MockLibuv();
 
-            var kestrelEngine = new KestrelEngine(_mockLibuv, new TestServiceContext().TransportContext, new ListenOptions(0));
-            _kestrelThread = new KestrelThread(kestrelEngine, maxLoops: 1);
+            var kestrelEngine = new LibuvTransport(_mockLibuv, new TestServiceContext().TransportContext, new ListenOptions(0));
+            _kestrelThread = new IOThread(kestrelEngine, maxLoops: 1);
             _kestrelThread.StartAsync().Wait();
         }
 
@@ -525,7 +525,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             var socket = new MockSocket(_mockLibuv, _kestrelThread.Loop.ThreadId, serviceContext.TransportContext.Log);
             var socketOutput = new SocketOutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
-            var consumer = new SocketOutputConsumer(pipe.Reader, _kestrelThread, socket, connection ?? new MockConnection(), "0", serviceContext.TransportContext.Log);
+            var consumer = new OutputConsumer(pipe.Reader, _kestrelThread, socket, connection ?? new MockConnection(), "0", serviceContext.TransportContext.Log);
             var ignore = consumer.StartWrites();
 
             return socketOutput;

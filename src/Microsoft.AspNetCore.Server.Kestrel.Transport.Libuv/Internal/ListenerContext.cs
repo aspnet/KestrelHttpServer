@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public IEndPointInformation EndPointInformation { get; set; }
 
-        public KestrelThread Thread { get; set; }
+        public IOThread Thread { get; set; }
 
         /// <summary>
         /// Creates a socket which can be used to accept an incoming connection.

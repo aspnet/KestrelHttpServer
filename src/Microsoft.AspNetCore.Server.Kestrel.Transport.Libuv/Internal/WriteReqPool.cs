@@ -9,12 +9,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
     {
         private const int _maxPooledWriteReqs = 1024;
 
-        private readonly KestrelThread _thread;
+        private readonly IOThread _thread;
         private readonly Queue<UvWriteReq> _pool = new Queue<UvWriteReq>(_maxPooledWriteReqs);
         private readonly ILibuvTrace _log;
         private bool _disposed;
 
-        public WriteReqPool(KestrelThread thread, ILibuvTrace log)
+        public WriteReqPool(IOThread thread, ILibuvTrace log)
         {
             _thread = thread;
             _log = log;

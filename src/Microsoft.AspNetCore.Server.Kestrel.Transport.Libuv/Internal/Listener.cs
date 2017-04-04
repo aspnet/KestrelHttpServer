@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public Task StartAsync(
             IEndPointInformation endPointInformation,
-            KestrelThread thread)
+            IOThread thread)
         {
             EndPointInformation = endPointInformation;
             Thread = thread;

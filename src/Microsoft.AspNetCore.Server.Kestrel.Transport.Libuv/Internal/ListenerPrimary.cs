@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             string pipeName,
             byte[] pipeMessage,
             IEndPointInformation endPointInformation,
-            KestrelThread thread)
+            IOThread thread)
         {
             _pipeName = pipeName;
             _pipeMessage = pipeMessage;

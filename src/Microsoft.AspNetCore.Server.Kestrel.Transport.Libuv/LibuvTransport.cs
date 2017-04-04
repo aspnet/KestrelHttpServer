@@ -17,18 +17,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    public class KestrelEngine : ITransport
+    public class LibuvTransport : ITransport
     {
         private readonly IEndPointInformation _endPointInformation;
 
         private readonly List<IAsyncDisposable> _listeners = new List<IAsyncDisposable>();
 
-        public KestrelEngine(LibuvTransportContext context, IEndPointInformation endPointInformation)
+        public LibuvTransport(LibuvTransportContext context, IEndPointInformation endPointInformation)
             : this(new LibuvFunctions(), context, endPointInformation)
         { }
 
         // For testing
-        public KestrelEngine(LibuvFunctions uv, LibuvTransportContext context, IEndPointInformation endPointInformation)
+        public LibuvTransport(LibuvFunctions uv, LibuvTransportContext context, IEndPointInformation endPointInformation)
         {
             Libuv = uv;
             TransportContext = context;
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public LibuvFunctions Libuv { get; }
         public LibuvTransportContext TransportContext { get; }
-        public List<KestrelThread> Threads { get; } = new List<KestrelThread>();
+        public List<IOThread> Threads { get; } = new List<IOThread>();
 
         public IApplicationLifetime AppLifetime => TransportContext.AppLifetime;
         public ILibuvTrace Log => TransportContext.Log;
@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             // TODO: Split endpoint management from thread management
             for (var index = 0; index < TransportOptions.ThreadCount; index++)
             {
-                Threads.Add(new KestrelThread(this));
+                Threads.Add(new IOThread(this));
             }
 
             foreach (var thread in Threads)

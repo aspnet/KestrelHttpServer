@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
     /// <summary>
     /// Summary description for KestrelThread
     /// </summary>
-    public class KestrelThread : IScheduler
+    public class IOThread : IScheduler
     {
         public const long HeartbeatMilliseconds = 1000;
 
@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
             var thisHandle = GCHandle.FromIntPtr(arg);
-            var kestrelThread = (KestrelThread)thisHandle.Target;
+            var kestrelThread = (IOThread)thisHandle.Target;
             streamHandle?.Connection?.Tick(kestrelThread.Now);
         };
 
@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         // otherwise it needs to wait till the next pass of the libuv loop
         private readonly int _maxLoops = 8;
 
-        private readonly KestrelEngine _engine;
+        private readonly LibuvTransport _engine;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
         private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>();
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly TimeSpan _shutdownTimeout;
         private IntPtr _thisPtr;
 
-        public KestrelThread(KestrelEngine engine)
+        public IOThread(LibuvTransport engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;
@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         }
 
         // For testing
-        public KestrelThread(KestrelEngine engine, int maxLoops)
+        public IOThread(LibuvTransport engine, int maxLoops)
             : this(engine)
         {
             _maxLoops = maxLoops;
@@ -236,7 +236,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _post.Send();
         }
 
-        private void Post(Action<KestrelThread> callback)
+        private void Post(Action<IOThread> callback)
         {
             Post(callback, this);
         }

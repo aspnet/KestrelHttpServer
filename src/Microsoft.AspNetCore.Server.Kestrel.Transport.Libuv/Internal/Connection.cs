@@ -58,11 +58,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public string ConnectionId { get; set; }
         public IPipeWriter Input { get; set; }
-        public SocketOutputConsumer Output { get; set; }
+        public OutputConsumer Output { get; set; }
 
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
         private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
-        private KestrelThread Thread => ListenerContext.Thread;
+        private IOThread Thread => ListenerContext.Thread;
 
         public void Start()
         {
@@ -72,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 ConnectionId = _connectionContext.ConnectionId;
 
                 Input = _connectionContext.Input;
-                Output = new SocketOutputConsumer(_connectionContext.Output, Thread, _socket, this, ConnectionId, Log);
+                Output = new OutputConsumer(_connectionContext.Output, Thread, _socket, this, ConnectionId, Log);
 
                 // Start socket prior to applying the ConnectionAdapter
                 _socket.ReadStart(_allocCallback, _readCallback, this);
@@ -274,7 +274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             _timeoutAction = timeoutAction;
 
             // Add KestrelThread.HeartbeatMilliseconds extra milliseconds since this can be called right before the next heartbeat.
-            Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + milliseconds + KestrelThread.HeartbeatMilliseconds);
+            Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + milliseconds + IOThread.HeartbeatMilliseconds);
         }
     }
 }

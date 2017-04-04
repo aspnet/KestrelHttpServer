@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var serviceContext = new TestServiceContext();
 
             // The engine can no longer start threads without binding to an endpoint.
-            var engine = new KestrelEngine(serviceContext.TransportContext,
+            var engine = new LibuvTransport(serviceContext.TransportContext,
                 new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)));
 
             await engine.BindAsync();
@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var testContext = new TestServiceContext();
             testContext.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, testContext, new DummyApplication(TestApp.EchoApp));
-            var engine = new KestrelEngine(testContext.TransportContext, listenOptions);
+            var engine = new LibuvTransport(testContext.TransportContext, listenOptions);
 
             await engine.BindAsync();
             await engine.UnbindAsync();
@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var testContext = new TestServiceContext();
             testContext.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, testContext, new DummyApplication(TestApp.EchoApp));
-            var engine = new KestrelEngine(testContext.TransportContext, listenOptions);
+            var engine = new LibuvTransport(testContext.TransportContext, listenOptions);
 
             await engine.BindAsync();
 
