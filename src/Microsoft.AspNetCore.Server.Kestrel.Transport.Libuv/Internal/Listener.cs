@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public Task StartAsync(
             IEndPointInformation endPointInformation,
-            IOThread thread)
+            LibuvThread thread)
         {
             EndPointInformation = endPointInformation;
             Thread = thread;

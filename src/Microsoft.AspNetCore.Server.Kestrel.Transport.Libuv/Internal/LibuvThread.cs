@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
     /// <summary>
     /// Summary description for KestrelThread
     /// </summary>
-    public class IOThread : IScheduler
+    public class LibuvThread : IScheduler
     {
         public const long HeartbeatMilliseconds = 1000;
 
@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
             var thisHandle = GCHandle.FromIntPtr(arg);
-            var kestrelThread = (IOThread)thisHandle.Target;
+            var kestrelThread = (LibuvThread)thisHandle.Target;
             streamHandle?.Connection?.Tick(kestrelThread.Now);
         };
 
@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly TimeSpan _shutdownTimeout;
         private IntPtr _thisPtr;
 
-        public IOThread(LibuvTransport engine)
+        public LibuvThread(LibuvTransport engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;
@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         }
 
         // For testing
-        public IOThread(LibuvTransport engine, int maxLoops)
+        public LibuvThread(LibuvTransport engine, int maxLoops)
             : this(engine)
         {
             _maxLoops = maxLoops;
@@ -233,7 +233,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _post.Send();
         }
 
-        private void Post(Action<IOThread> callback)
+        private void Post(Action<LibuvThread> callback)
         {
             Post(callback, this);
         }

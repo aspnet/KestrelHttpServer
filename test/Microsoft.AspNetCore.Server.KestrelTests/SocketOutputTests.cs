@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     {
         private readonly PipeFactory _pipeFactory;
         private readonly MockLibuv _mockLibuv;
-        private readonly IOThread _kestrelThread;
+        private readonly LibuvThread _kestrelThread;
 
         public static TheoryData<long?> MaxResponseBufferSizeData => new TheoryData<long?>
         {
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             _mockLibuv = new MockLibuv();
 
             var kestrelEngine = new LibuvTransport(_mockLibuv, new TestServiceContext().TransportContext, new ListenOptions(0));
-            _kestrelThread = new IOThread(kestrelEngine, maxLoops: 1);
+            _kestrelThread = new LibuvThread(kestrelEngine, maxLoops: 1);
             _kestrelThread.StartAsync().Wait();
         }
 

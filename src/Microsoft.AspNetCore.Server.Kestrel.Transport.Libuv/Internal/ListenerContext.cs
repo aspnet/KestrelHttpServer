@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public IEndPointInformation EndPointInformation { get; set; }
 
-        public IOThread Thread { get; set; }
+        public LibuvThread Thread { get; set; }
 
         /// <summary>
         /// Creates a socket which can be used to accept an incoming connection.

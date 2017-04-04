@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
         private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
-        private IOThread Thread => ListenerContext.Thread;
+        private LibuvThread Thread => ListenerContext.Thread;
 
         public void Start()
         {
@@ -272,7 +272,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _timeoutAction = timeoutAction;
 
             // Add KestrelThread.HeartbeatMilliseconds extra milliseconds since this can be called right before the next heartbeat.
-            Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + milliseconds + IOThread.HeartbeatMilliseconds);
+            Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + milliseconds + LibuvThread.HeartbeatMilliseconds);
         }
     }
 }

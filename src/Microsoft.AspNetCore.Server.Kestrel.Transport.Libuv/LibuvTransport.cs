@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
 
         public LibuvFunctions Libuv { get; }
         public LibuvTransportContext TransportContext { get; }
-        public List<IOThread> Threads { get; } = new List<IOThread>();
+        public List<LibuvThread> Threads { get; } = new List<LibuvThread>();
 
         public IApplicationLifetime AppLifetime => TransportContext.AppLifetime;
         public ILibuvTrace Log => TransportContext.Log;
@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
             // TODO: Split endpoint management from thread management
             for (var index = 0; index < TransportOptions.ThreadCount; index++)
             {
-                Threads.Add(new IOThread(this));
+                Threads.Add(new LibuvThread(this));
             }
 
             foreach (var thread in Threads)

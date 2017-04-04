@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
     public class OutputConsumer
     {
-        private readonly IOThread _thread;
+        private readonly LibuvThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly Connection _connection;
         private readonly string _connectionId;
@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public OutputConsumer(
             IPipeReader pipe,
-            IOThread thread,
+            LibuvThread thread,
             UvStreamHandle socket,
             Connection connection,
             string connectionId,

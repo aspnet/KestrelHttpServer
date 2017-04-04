@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             string pipeName,
             byte[] pipeMessage,
             IEndPointInformation endPointInformation,
-            IOThread thread)
+            LibuvThread thread)
         {
             _pipeName = pipeName;
             _pipeMessage = pipeMessage;

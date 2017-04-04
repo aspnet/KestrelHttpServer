@@ -10,9 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
     public class ConnectionManager
     {
-        private readonly IOThread _thread;
+        private readonly LibuvThread _thread;
 
-        public ConnectionManager(IOThread thread)
+        public ConnectionManager(LibuvThread thread)
         {
             _thread = thread;
         }
