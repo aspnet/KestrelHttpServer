@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         // otherwise it needs to wait till the next pass of the libuv loop
         private readonly int _maxLoops = 8;
 
-        private readonly LibuvTransport _engine;
+        private readonly LibuvTransport _transport;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
         private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>();
@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public LibuvThread(LibuvTransport engine)
         {
-            _engine = engine;
+            _transport = engine;
             _appLifetime = engine.AppLifetime;
             _log = engine.Log;
             _shutdownTimeout = engine.TransportOptions.ShutdownTimeout;
@@ -259,7 +259,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void Walk(LibuvFunctions.uv_walk_cb callback, IntPtr arg)
         {
-            _engine.Libuv.walk(
+            _transport.Libuv.walk(
                 _loop,
                 callback,
                 arg
@@ -287,7 +287,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 var tcs = (TaskCompletionSource<int>)parameter;
                 try
                 {
-                    _loop.Init(_engine.Libuv);
+                    _loop.Init(_transport.Libuv);
                     _post.Init(_loop, OnPost, EnqueueCloseHandle);
                     _heartbeatTimer.Init(_loop, EnqueueCloseHandle);
                     _heartbeatTimer.Start(OnHeartbeat, timeout: HeartbeatMilliseconds, repeat: HeartbeatMilliseconds);

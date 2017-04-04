@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Testing
     /// </summary>
     public class TestServer : IDisposable
     {
-        private LibuvTransport _engine;
+        private LibuvTransport _transport;
         private ListenOptions _listenOptions;
 
         public TestServer(RequestDelegate app)
@@ -48,13 +48,13 @@ namespace Microsoft.AspNetCore.Testing
 
             try
             {
-                _engine = new LibuvTransport(context.TransportContext, _listenOptions);
-                _engine.BindAsync().Wait();
+                _transport = new LibuvTransport(context.TransportContext, _listenOptions);
+                _transport.BindAsync().Wait();
             }
             catch
             {
-                _engine.UnbindAsync().Wait();
-                _engine.StopAsync().Wait();
+                _transport.UnbindAsync().Wait();
+                _transport.StopAsync().Wait();
                 throw;
             }
         }
@@ -72,8 +72,8 @@ namespace Microsoft.AspNetCore.Testing
 
         public void Dispose()
         {
-            _engine.UnbindAsync().Wait();
-            _engine.StopAsync().Wait();
+            _transport.UnbindAsync().Wait();
+            _transport.StopAsync().Wait();
         }
     }
 }
