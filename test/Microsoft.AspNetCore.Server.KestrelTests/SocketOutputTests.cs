@@ -526,7 +526,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             var socket = new MockSocket(_mockLibuv, _libuvThread.Loop.ThreadId, serviceContext.TransportContext.Log);
             var socketOutput = new OutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
-            var consumer = new OutputConsumer(pipe.Reader, _libuvThread, socket, connection ?? new MockConnection(), "0", serviceContext.TransportContext.Log);
+            var consumer = new LibuvOutputConsumer(pipe.Reader, _libuvThread, socket, connection ?? new MockConnection(), "0", serviceContext.TransportContext.Log);
             var ignore = consumer.StartWrites();
 
             return socketOutput;

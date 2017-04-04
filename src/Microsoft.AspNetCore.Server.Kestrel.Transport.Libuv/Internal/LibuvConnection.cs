@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public string ConnectionId { get; set; }
         public IPipeWriter Input { get; set; }
-        public OutputConsumer Output { get; set; }
+        public LibuvOutputConsumer Output { get; set; }
 
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
         private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 ConnectionId = _connectionContext.ConnectionId;
 
                 Input = _connectionContext.Input;
-                Output = new OutputConsumer(_connectionContext.Output, Thread, _socket, this, ConnectionId, Log);
+                Output = new LibuvOutputConsumer(_connectionContext.Output, Thread, _socket, this, ConnectionId, Log);
 
                 // Start socket prior to applying the ConnectionAdapter
                 _socket.ReadStart(_allocCallback, _readCallback, this);

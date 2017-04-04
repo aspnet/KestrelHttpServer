@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public class OutputConsumer
+    public class LibuvOutputConsumer
     {
         private readonly LibuvThread _thread;
         private readonly UvStreamHandle _socket;
@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly WriteReqPool _writeReqPool;
         private readonly IPipeReader _pipe;
 
-        public OutputConsumer(
+        public LibuvOutputConsumer(
             IPipeReader pipe,
             LibuvThread thread,
             UvStreamHandle socket,
