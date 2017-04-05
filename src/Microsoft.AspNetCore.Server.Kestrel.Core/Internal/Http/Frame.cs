@@ -988,7 +988,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
-            Output.Write<Frame>(_writeHeaders, this);
+            Output.Write(_writeHeaders, this);
         }
 
         private static void WriteResponseHeaders(WritableBuffer writableBuffer, Frame frame)
