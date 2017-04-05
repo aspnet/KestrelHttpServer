@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Theory]
         [InlineData(10, 10, 10)]
         [InlineData(null, 0, 0)]
-        public void LibuvInputPipeOptionsConfiguredCorrectly(long? maxRequestBufferSize, long expectedMaximumSizeLow, long expectedMaximumSizeHigh)
+        public void InputPipeOptionsConfiguredCorrectly(long? maxRequestBufferSize, long expectedMaximumSizeLow, long expectedMaximumSizeHigh)
         {
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxRequestBufferSize = maxRequestBufferSize;
