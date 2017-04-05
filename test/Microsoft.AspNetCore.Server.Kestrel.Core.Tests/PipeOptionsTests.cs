@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Testing;
 using Moq;
 using Xunit;
+using FrameConnection = Microsoft.AspNetCore.Server.Kestrel.Core.Internal.FrameConnection;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {

@@ -1,11 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
+using System;
+
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public enum TimeoutAction
+    public interface ITick
     {
-        CloseConnection,
-        SendTimeoutResponse
+        void Tick(DateTimeOffset now);
     }
 }

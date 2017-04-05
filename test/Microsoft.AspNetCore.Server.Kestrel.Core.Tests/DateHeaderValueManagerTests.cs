@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -29,19 +30,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             };
             var timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(1);
             var timerInterval = TimeSpan.FromSeconds(10);
-            var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle, timerInterval);
-            string result;
 
-            try
+            using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
+            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
             {
-                result = dateHeaderValueManager.GetDateHeaderValues().String;
+                Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
             }
-            finally
-            {
-                dateHeaderValueManager.Dispose();
-            }
-
-            Assert.Equal(now.ToString(Rfc1123DateFormat), result);
         }
 
         [Fact]
@@ -55,24 +49,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             };
             var timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(1);
             var timerInterval = TimeSpan.FromSeconds(10);
-            var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle, timerInterval);
-            string result1;
-            string result2;
 
-            try
+            using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
+            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
             {
-                result1 = dateHeaderValueManager.GetDateHeaderValues().String;
-                systemClock.UtcNow = future;
-                result2 = dateHeaderValueManager.GetDateHeaderValues().String;
+                Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+                Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+                Assert.Equal(1, systemClock.UtcNowCalled);
             }
-            finally
-            {
-                dateHeaderValueManager.Dispose();
-            }
-
-            Assert.Equal(now.ToString(Rfc1123DateFormat), result1);
-            Assert.Equal(now.ToString(Rfc1123DateFormat), result2);
-            Assert.Equal(1, systemClock.UtcNowCalled);
         }
 
         [Fact]
@@ -86,26 +70,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             };
             var timeWithoutRequestsUntilIdle = TimeSpan.FromMilliseconds(250);
             var timerInterval = TimeSpan.FromMilliseconds(100);
-            var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle, timerInterval);
-            string result1;
-            string result2;
 
-            try
+            using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
+            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
             {
-                result1 = dateHeaderValueManager.GetDateHeaderValues().String;
-                systemClock.UtcNow = future;
+                Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+
                 // Wait for longer than the idle timeout to ensure the timer is stopped
+                systemClock.UtcNow = future;
                 await Task.Delay(TimeSpan.FromSeconds(1));
-                result2 = dateHeaderValueManager.GetDateHeaderValues().String;
-            }
-            finally
-            {
-                dateHeaderValueManager.Dispose();
-            }
 
-            Assert.Equal(now.ToString(Rfc1123DateFormat), result1);
-            Assert.Equal(future.ToString(Rfc1123DateFormat), result2);
-            Assert.True(systemClock.UtcNowCalled >= 2);
+                Assert.Equal(future.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+                Assert.True(systemClock.UtcNowCalled >= 2);
+            }
         }
 
         [Fact]
@@ -119,15 +96,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             };
             var timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(1);
             var timerInterval = TimeSpan.FromSeconds(10);
-            var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle, timerInterval);
 
-            var result1 = dateHeaderValueManager.GetDateHeaderValues().String;
-            dateHeaderValueManager.Dispose();
+            DateHeaderValueManager dateHeaderValueManager;
+
+            using (dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
+            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
+            {
+
+                Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+            }
+
             systemClock.UtcNow = future;
-            var result2 = dateHeaderValueManager.GetDateHeaderValues().String;
-            
-            Assert.Equal(now.ToString(Rfc1123DateFormat), result1);
-            Assert.Equal(future.ToString(Rfc1123DateFormat), result2);
+            Assert.Equal(future.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
         }
     }
 }
