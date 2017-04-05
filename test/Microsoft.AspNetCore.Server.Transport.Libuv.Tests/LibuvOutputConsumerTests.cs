@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = maxResponseBufferSize ?? 0,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 // At least one run of this test should have a MaxResponseBufferSize < 1 MB.
                 var bufferSize = 1024 * 1024;
@@ -99,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = 0,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 // Don't want to allocate anything too huge for perf. This is at least larger than the default buffer.
                 var bufferSize = 1024 * 1024;
@@ -145,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = 1,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 var bufferSize = 1;
                 var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
@@ -199,7 +199,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = maxResponseBufferSize,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 var bufferSize = maxResponseBufferSize - 1;
                 var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
@@ -259,7 +259,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = maxResponseBufferSize,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 var bufferSize = maxResponseBufferSize / 2;
                 var data = new byte[bufferSize];
@@ -327,7 +327,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                     MaximumSizeLow = maxResponseBufferSize,
                 };
 
-                using (var socketOutput = CreateSocketOutput(pipeOptions, mockConnection))
+                using (var socketOutput = CreateOutputProducer(pipeOptions, mockConnection))
                 {
                     var bufferSize = maxResponseBufferSize - 1;
 
@@ -399,7 +399,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = maxResponseBufferSize,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 var bufferSize = maxResponseBufferSize - 1;
                 var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
@@ -457,7 +457,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MaximumSizeLow = maxResponseBufferSize ?? 0,
             };
 
-            using (var socketOutput = CreateSocketOutput(pipeOptions))
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
             {
                 _mockLibuv.KestrelThreadBlocker.Reset();
 
@@ -486,37 +486,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             }
         }
 
-        [Fact]
-        public async Task AllocCommitCanBeCalledAfterConnectionClose()
-        {
-            var pipeOptions = new PipeOptions
-            {
-                ReaderScheduler = _libuvThread,
-            };
+        
 
-            using (var connection = new MockConnection())
-            {
-                var socketOutput = CreateSocketOutput(pipeOptions, connection);
-                // Close SocketOutput
-                socketOutput.Dispose();
-
-                await _mockLibuv.OnPostTask;
-
-                Assert.Equal(TaskStatus.RanToCompletion, connection.SocketClosed.Status);
-
-                var called = false;
-
-                ((ISocketOutput)socketOutput).Write<object>((buffer, state) =>
-                {
-                    called = true;
-                },
-                null);
-
-                Assert.False(called);
-            }
-        }
-
-        private OutputProducer CreateSocketOutput(PipeOptions pipeOptions, MockConnection connection = null)
+        private OutputProducer CreateOutputProducer(PipeOptions pipeOptions, MockConnection connection = null)
         {
             var pipe = _pipeFactory.Create(pipeOptions);
             var serviceContext = new TestServiceContext();
