@@ -48,11 +48,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         if (currentResult == null)
                         {
                             result = await Input.ReadAsync();
-                            currentResult = null;
                         }
                         else
                         {
                             result = currentResult.Value;
+                            currentResult = null;
                         }
 
                         var buffer = result.Buffer;
