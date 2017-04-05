@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.Extensions.Internal;
 
-namespace Microsoft.AspNetCore.Testing
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
 {
     public class MockConnection : LibuvConnection, IDisposable
     {

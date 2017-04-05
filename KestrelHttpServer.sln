@@ -24,11 +24,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{0EF2AC
 		test\shared\HttpParsingData.cs = test\shared\HttpParsingData.cs
 		test\shared\KestrelTestLoggerFactory.cs = test\shared\KestrelTestLoggerFactory.cs
 		test\shared\LifetimeNotImplemented.cs = test\shared\LifetimeNotImplemented.cs
-		test\shared\MockConnection.cs = test\shared\MockConnection.cs
 		test\shared\MockFrameControl.cs = test\shared\MockFrameControl.cs
 		test\shared\MockSocketOutput.cs = test\shared\MockSocketOutput.cs
 		test\shared\MockSystemClock.cs = test\shared\MockSystemClock.cs
-		test\shared\SocketInputExtensions.cs = test\shared\SocketInputExtensions.cs
 		test\shared\StringExtensions.cs = test\shared\StringExtensions.cs
 		test\shared\TestApp.cs = test\shared\TestApp.cs
 		test\shared\TestApplicationErrorLogger.cs = test\shared\TestApplicationErrorLogger.cs
@@ -36,7 +34,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{0EF2AC
 		test\shared\TestFrame.cs = test\shared\TestFrame.cs
 		test\shared\TestKestrelTrace.cs = test\shared\TestKestrelTrace.cs
 		test\shared\TestResources.cs = test\shared\TestResources.cs
-		test\shared\TestServer.cs = test\shared\TestServer.cs
 		test\shared\TestServiceContext.cs = test\shared\TestServiceContext.cs
 	EndProjectSection
 EndProject
@@ -67,7 +64,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions", "src\Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions\Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.csproj", "{2E9CB89D-EC8F-4DD9-A72B-08D5BABF752D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv", "test\Microsoft.AspNetCore.Server.Transport.Libuv.Tests\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.csproj", "{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests", "test\Microsoft.AspNetCore.Server.Transport.Libuv.Tests\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.csproj", "{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
