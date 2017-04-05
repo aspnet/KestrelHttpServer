@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Numerics.Vectors" Version="$(CoreFxVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Internal.CoreFxLab.Sources" Version="1.2.0-preview1-*" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.AspNetCore.Internal.CoreFxLab.Sources" Version="$(AspNetCoreVersion)" PrivateAssets="All" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="$(AspNetCoreVersion)" />
   </ItemGroup>
 
