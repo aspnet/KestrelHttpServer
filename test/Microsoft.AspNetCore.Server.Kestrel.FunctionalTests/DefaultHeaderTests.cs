@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class DefaultHeaderTests
     {

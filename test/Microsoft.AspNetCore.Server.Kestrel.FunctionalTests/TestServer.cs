@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
+using Microsoft.AspNetCore.Testing;
 
-namespace Microsoft.AspNetCore.Testing
+namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     /// <summary>
     /// Summary description for TestServer
