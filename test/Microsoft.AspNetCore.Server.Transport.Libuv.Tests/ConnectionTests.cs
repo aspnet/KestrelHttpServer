@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers;
-using Microsoft.AspNetCore.Testing;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
@@ -20,10 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             using (var mockConnectionHandler = new MockConnectionHandler())
             {
                 var mockLibuv = new MockLibuv();
-                var serviceContext = new TestServiceContext();
-                serviceContext.TransportContext.ConnectionHandler = mockConnectionHandler;
-
-                var transport = new LibuvTransport(mockLibuv, serviceContext.TransportContext, null);
+                var transportContext = new TestLibuvTransportContext() { ConnectionHandler = mockConnectionHandler };
+                var transport = new LibuvTransport(mockLibuv, transportContext, null);
                 var thread = new LibuvThread(transport);
 
                 try
@@ -31,11 +28,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                     await thread.StartAsync();
                     await thread.PostAsync(_ =>
                     {
-                        var listenerContext = new ListenerContext(serviceContext.TransportContext)
+                        var listenerContext = new ListenerContext(transportContext)
                         {
                             Thread = thread
                         };
-                        var socket = new MockSocket(mockLibuv, Thread.CurrentThread.ManagedThreadId, serviceContext.TransportContext.Log);
+                        var socket = new MockSocket(mockLibuv, Thread.CurrentThread.ManagedThreadId, transportContext.Log);
                         var connection = new LibuvConnection(listenerContext, socket);
                         connection.Start();
 

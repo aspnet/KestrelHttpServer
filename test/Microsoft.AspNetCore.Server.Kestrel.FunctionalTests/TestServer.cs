@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Testing;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
@@ -45,11 +46,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             _listenOptions = listenOptions;
 
             Context = context;
-            Context.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, Context, new DummyApplication(app, httpContextFactory));
+            TransportContext = new LibuvTransportContext()
+            {
+                AppLifetime = new LifetimeNotImplemented(),
+                ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, Context, new DummyApplication(app, httpContextFactory)),
+                Log = new LibuvTrace(new TestApplicationErrorLogger()),
+                Options = new LibuvTransportOptions()
+                {
+                    ThreadCount = 1,
+                    ShutdownTimeout = TimeSpan.FromSeconds(5)
+                }
+            };
 
             try
             {
-                _transport = new LibuvTransport(context.TransportContext, _listenOptions);
+                _transport = new LibuvTransport(TransportContext, _listenOptions);
                 _transport.BindAsync().Wait();
             }
             catch
@@ -65,6 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public AddressFamily AddressFamily => _listenOptions.IPEndPoint.AddressFamily;
 
         public TestServiceContext Context { get; }
+        public LibuvTransportContext TransportContext { get; }
 
         public TestConnection CreateConnection()
         {

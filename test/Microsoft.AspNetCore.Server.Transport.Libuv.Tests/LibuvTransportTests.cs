@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -27,8 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
         [Fact]
         public async Task TransportCanBindAndStop()
         {
-            var serviceContext = new TestServiceContext();
-            var transport = new LibuvTransport(serviceContext.TransportContext,
+            var transportContext = new TestLibuvTransportContext();
+            var transport = new LibuvTransport(transportContext,
                 new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)));
 
             // The transport can no longer start threads without binding to an endpoint.
@@ -40,9 +41,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task TransportCanBindUnbindAndStop(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-            testContext.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, testContext, new DummyApplication(TestApp.EchoApp));
-            var transport = new LibuvTransport(testContext.TransportContext, listenOptions);
+            var transportContext = new TestLibuvTransportContext();
+            var transport = new LibuvTransport(transportContext, listenOptions);
 
             await transport.BindAsync();
             await transport.UnbindAsync();
@@ -53,9 +53,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionCanReadAndWrite(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-            testContext.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, testContext, new DummyApplication(TestApp.EchoApp));
-            var transport = new LibuvTransport(testContext.TransportContext, listenOptions);
+            var transportContext = new TestLibuvTransportContext()
+            {
+                ConnectionHandler = new ConnectionHandler<HttpContext>(listenOptions, new TestServiceContext(), new DummyApplication(TestApp.EchoApp))
+            };
+            var transport = new LibuvTransport(transportContext, listenOptions);
 
             await transport.BindAsync();
 

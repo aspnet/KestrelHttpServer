@@ -27,14 +27,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
 
             var serviceContextPrimary = new TestServiceContext();
-            serviceContextPrimary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
+            var transportContextPrimary = new TestLibuvTransportContext();
+            transportContextPrimary.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextPrimary, new DummyApplication(c => c.Response.WriteAsync("Primary")));
 
             var serviceContextSecondary = new TestServiceContext();
-            serviceContextSecondary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
+            var transportContextSecondary = new TestLibuvTransportContext();
+            transportContextSecondary.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextSecondary, new DummyApplication(c => c.Response.WriteAsync("Secondary")));
 
-            var libuvTransport = new LibuvTransport(libuv, serviceContextPrimary.TransportContext, listenOptions);
+            var libuvTransport = new LibuvTransport(libuv, transportContextPrimary, listenOptions);
 
             var pipeName = (libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
             var pipeMessage = Guid.NewGuid().ToByteArray();
@@ -42,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             // Start primary listener
             var libuvThreadPrimary = new LibuvThread(libuvTransport);
             await libuvThreadPrimary.StartAsync();
-            var listenerPrimary = new ListenerPrimary(serviceContextPrimary.TransportContext);
+            var listenerPrimary = new ListenerPrimary(transportContextPrimary);
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadPrimary);
             var address = listenOptions.ToString();
 
@@ -53,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             // Add secondary listener
             var libuvThreadSecondary = new LibuvThread(libuvTransport);
             await libuvThreadSecondary.StartAsync();
-            var listenerSecondary = new ListenerSecondary(serviceContextSecondary.TransportContext);
+            var listenerSecondary = new ListenerSecondary(transportContextSecondary);
             await listenerSecondary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadSecondary);
 
             // Once a secondary listener is added, TCP connections start getting dispatched to it
@@ -78,8 +80,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var libuv = new LibuvFunctions();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
 
+            var logger = new TestApplicationErrorLogger();
+
             var serviceContextPrimary = new TestServiceContext();
-            serviceContextPrimary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
+            var transportContextPrimary = new TestLibuvTransportContext() { Log = new LibuvTrace(logger) };
+            transportContextPrimary.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextPrimary, new DummyApplication(c => c.Response.WriteAsync("Primary")));
 
             var serviceContextSecondary = new TestServiceContext
@@ -89,10 +94,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 ThreadPool = serviceContextPrimary.ThreadPool,
                 HttpParserFactory = serviceContextPrimary.HttpParserFactory,
             };
-            serviceContextSecondary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
+            var transportContextSecondary = new TestLibuvTransportContext();
+            transportContextSecondary.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextSecondary, new DummyApplication(c => c.Response.WriteAsync("Secondary")));
 
-            var libuvTransport = new LibuvTransport(libuv, serviceContextPrimary.TransportContext, listenOptions);
+            var libuvTransport = new LibuvTransport(libuv, transportContextPrimary, listenOptions);
 
             var pipeName = (libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
             var pipeMessage = Guid.NewGuid().ToByteArray();
@@ -100,14 +106,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             // Start primary listener
             var libuvThreadPrimary = new LibuvThread(libuvTransport);
             await libuvThreadPrimary.StartAsync();
-            var listenerPrimary = new ListenerPrimary(serviceContextPrimary.TransportContext);
+            var listenerPrimary = new ListenerPrimary(transportContextPrimary);
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadPrimary);
             var address = listenOptions.ToString();
 
             // Add secondary listener
             var libuvThreadSecondary = new LibuvThread(libuvTransport);
             await libuvThreadSecondary.StartAsync();
-            var listenerSecondary = new ListenerSecondary(serviceContextSecondary.TransportContext);
+            var listenerSecondary = new ListenerSecondary(transportContextSecondary);
             await listenerSecondary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadSecondary);
 
             // TCP Connections get round-robined
@@ -154,10 +160,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
             await libuvThreadPrimary.PostAsync(_ => pipe.Dispose(), (object)null);
 
-            var primaryTrace = (TestKestrelTrace)serviceContextPrimary.Log;
-
             // Wait up to 10 seconds for error to be logged
-            for (var i = 0; i < 10 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
+            for (var i = 0; i < 10 && logger.TotalErrorsLogged == 0; i++)
             {
                 await Task.Delay(100);
             }
@@ -173,8 +177,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             await listenerPrimary.DisposeAsync();
             await libuvThreadPrimary.StopAsync(TimeSpan.FromSeconds(1));
 
-            Assert.Equal(1, primaryTrace.Logger.TotalErrorsLogged);
-            var errorMessage = primaryTrace.Logger.Messages.First(m => m.LogLevel == LogLevel.Error);
+            Assert.Equal(1, logger.TotalErrorsLogged);
+            var errorMessage = logger.Messages.First(m => m.LogLevel == LogLevel.Error);
             Assert.Equal(TestConstants.EOF, Assert.IsType<UvException>(errorMessage.Exception).StatusCode);
         }
 
@@ -185,8 +189,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var libuv = new LibuvFunctions();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
 
+            var logger = new TestApplicationErrorLogger();
+
             var serviceContextPrimary = new TestServiceContext();
-            serviceContextPrimary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
+            var transportContextPrimary = new TestLibuvTransportContext() { Log = new LibuvTrace(logger) };
+            transportContextPrimary.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextPrimary, new DummyApplication(c => c.Response.WriteAsync("Primary")));
 
             var serviceContextSecondary = new TestServiceContext
@@ -196,10 +203,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 ThreadPool = serviceContextPrimary.ThreadPool,
                 HttpParserFactory = serviceContextPrimary.HttpParserFactory,
             };
-            serviceContextSecondary.TransportContext.ConnectionHandler = new ConnectionHandler<HttpContext>(
+            var transportContextSecondary = new TestLibuvTransportContext();
+            transportContextSecondary.ConnectionHandler = new ConnectionHandler<HttpContext>(
                 listenOptions, serviceContextSecondary, new DummyApplication(c => c.Response.WriteAsync("Secondary")));
 
-            var libuvTransport = new LibuvTransport(libuv, serviceContextPrimary.TransportContext, listenOptions);
+            var libuvTransport = new LibuvTransport(libuv, transportContextPrimary, listenOptions);
 
             var pipeName = (libuv.IsWindows ? @"\\.\pipe\kestrel_" : "/tmp/kestrel_") + Guid.NewGuid().ToString("n");
             var pipeMessage = Guid.NewGuid().ToByteArray();
@@ -207,20 +215,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             // Start primary listener
             var libuvThreadPrimary = new LibuvThread(libuvTransport);
             await libuvThreadPrimary.StartAsync();
-            var listenerPrimary = new ListenerPrimary(serviceContextPrimary.TransportContext);
+            var listenerPrimary = new ListenerPrimary(transportContextPrimary);
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadPrimary);
             var address = listenOptions.ToString();
 
             // Add secondary listener with wrong pipe message
             var libuvThreadSecondary = new LibuvThread(libuvTransport);
             await libuvThreadSecondary.StartAsync();
-            var listenerSecondary = new ListenerSecondary(serviceContextSecondary.TransportContext);
+            var listenerSecondary = new ListenerSecondary(transportContextSecondary);
             await listenerSecondary.StartAsync(pipeName, Guid.NewGuid().ToByteArray(), listenOptions, libuvThreadSecondary);
 
-            var primaryTrace = (TestKestrelTrace)serviceContextPrimary.Log;
-
             // Wait up to 10 seconds for error to be logged
-            for (var i = 0; i < 10 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
+            for (var i = 0; i < 10 && logger.TotalErrorsLogged == 0; i++)
             {
                 await Task.Delay(100);
             }
@@ -236,8 +242,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             await listenerPrimary.DisposeAsync();
             await libuvThreadPrimary.StopAsync(TimeSpan.FromSeconds(1));
 
-            Assert.Equal(1, primaryTrace.Logger.TotalErrorsLogged);
-            var errorMessage = primaryTrace.Logger.Messages.First(m => m.LogLevel == LogLevel.Error);
+            Assert.Equal(1, logger.TotalErrorsLogged);
+            var errorMessage = logger.Messages.First(m => m.LogLevel == LogLevel.Error);
             Assert.IsType<IOException>(errorMessage.Exception);
             Assert.Contains("Bad data", errorMessage.Exception.ToString());
         }

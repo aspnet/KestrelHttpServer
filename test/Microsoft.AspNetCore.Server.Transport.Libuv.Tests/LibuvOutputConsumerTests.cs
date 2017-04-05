@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             _pipeFactory = new PipeFactory();
             _mockLibuv = new MockLibuv();
 
-            var libuvTransport = new LibuvTransport(_mockLibuv, new TestServiceContext().TransportContext, new ListenOptions(0));
+            var libuvTransport = new LibuvTransport(_mockLibuv, new TestLibuvTransportContext(), new ListenOptions(0));
             _libuvThread = new LibuvThread(libuvTransport, maxLoops: 1);
             _libuvThread.StartAsync().Wait();
         }
@@ -491,13 +491,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
         private OutputProducer CreateOutputProducer(PipeOptions pipeOptions, MockConnection connection = null)
         {
             var pipe = _pipeFactory.Create(pipeOptions);
-            var serviceContext = new TestServiceContext();
+
+            var logger = new TestApplicationErrorLogger();
+            var serviceContext = new TestServiceContext() { Log = new TestKestrelTrace(logger) };
+            var transportContext = new TestLibuvTransportContext() { Log = new LibuvTrace(logger) };
 
             var frame = new Frame<object>(null, new FrameContext { ServiceContext = serviceContext });
 
-            var socket = new MockSocket(_mockLibuv, _libuvThread.Loop.ThreadId, serviceContext.TransportContext.Log);
+            var socket = new MockSocket(_mockLibuv, _libuvThread.Loop.ThreadId, transportContext.Log);
             var socketOutput = new OutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
-            var consumer = new LibuvOutputConsumer(pipe.Reader, _libuvThread, socket, connection ?? new MockConnection(), "0", serviceContext.TransportContext.Log);
+            var consumer = new LibuvOutputConsumer(pipe.Reader, _libuvThread, socket, connection ?? new MockConnection(), "0", transportContext.Log);
             var ignore = consumer.StartWrites();
 
             return socketOutput;
