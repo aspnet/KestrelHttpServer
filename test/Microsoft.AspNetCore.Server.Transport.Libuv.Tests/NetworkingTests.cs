@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 {
     /// <summary>
     /// Summary description for NetworkingTests

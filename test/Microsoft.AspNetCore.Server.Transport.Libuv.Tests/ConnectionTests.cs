@@ -4,14 +4,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
-using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 {
     public class ConnectionTests
     {

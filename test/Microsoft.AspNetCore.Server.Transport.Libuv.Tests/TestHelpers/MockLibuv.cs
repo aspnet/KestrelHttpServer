@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
 {
     public class MockLibuv : LibuvFunctions
     {

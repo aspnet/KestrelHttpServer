@@ -7,14 +7,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 {
     public class LibuvOutputConsumerTests : IDisposable
     {

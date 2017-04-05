@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
 {
     public class MockConnectionHandler : IConnectionHandler, IDisposable
     {
