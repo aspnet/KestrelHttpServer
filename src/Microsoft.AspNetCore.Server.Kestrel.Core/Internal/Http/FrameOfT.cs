@@ -110,10 +110,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             }
                         }
 
-                        // Incomplete message, we need a new buffer from the pipe
-                        Input.Advance(consumed, examined);
+                        if (!needBuffer)
+                        {
+                            // Incomplete message, we need a new buffer from the pipe
+                            Input.Advance(consumed, examined);
 
-                        needBuffer = true;
+                            needBuffer = true;
+                        }
                     }
 
                     if (!_requestProcessingStopping)
