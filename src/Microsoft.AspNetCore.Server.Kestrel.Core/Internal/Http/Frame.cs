@@ -1033,6 +1033,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 case RequestProcessingStatus.ParsingHeaders:
                     if (TakeMessageHeaders(buffer, out consumed, out examined))
                     {
+                        buffer = buffer.Slice(consumed);
+
                         _requestProcessingStatus = RequestProcessingStatus.AppStarted;
                     }
                     break;
