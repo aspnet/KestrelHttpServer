@@ -1001,7 +1001,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             writableBuffer.WriteFast(_bytesEndHeaders);
         }
 
-        public void ParseRequest(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        public void ParseRequest(ref ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
         {
             consumed = buffer.Start;
             examined = buffer.End;
@@ -1021,7 +1021,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 case RequestProcessingStatus.ParsingRequestLine:
                     if (TakeStartLine(buffer, out consumed, out examined))
                     {
-                        buffer = buffer.Slice(consumed, buffer.End);
+                        buffer = buffer.Slice(consumed);
 
                         _requestProcessingStatus = RequestProcessingStatus.ParsingHeaders;
                         goto case RequestProcessingStatus.ParsingHeaders;

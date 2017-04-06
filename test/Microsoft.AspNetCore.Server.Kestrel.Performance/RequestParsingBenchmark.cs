@@ -68,6 +68,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerTryRead()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                ParseDataTryRead();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
         public void PipelinedPlaintextTechEmpowerDrainBuffer()
         {
             for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
@@ -127,14 +137,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private void ParseDataDrainBuffer()
         {
-            var awaitable = Pipe.Reader.ReadAsync();
-            if (!awaitable.IsCompleted)
+            if (!Pipe.Reader.TryRead(out var result))
             {
                 // No more data
                 return;
             }
 
-            var readableBuffer = awaitable.GetResult().Buffer;
+            var readableBuffer = result.Buffer;
+
             do
             {
                 Frame.Reset();
@@ -160,6 +170,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             Pipe.Reader.Advance(readableBuffer.End);
         }
 
+        private void ParseDataTryRead()
+        {
+            do
+            {
+                if (!Pipe.Reader.TryRead(out var result))
+                {
+                    // No more data
+                    return;
+                }
+
+                var readableBuffer = result.Buffer;
+
+                Frame.Reset();
+
+                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
+                {
+                    ErrorUtilities.ThrowInvalidRequestLine();
+                }
+
+                readableBuffer = readableBuffer.Slice(consumed);
+
+                Frame.InitializeHeaders();
+
+                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
+                {
+                    ErrorUtilities.ThrowInvalidRequestHeaders();
+                }
+
+                Pipe.Reader.Advance(consumed, examined);
+            }
+            while (true);
+        }
+
         private void ParseData()
         {
             do
@@ -180,10 +223,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     ErrorUtilities.ThrowInvalidRequestLine();
                 }
-                Pipe.Reader.Advance(consumed, examined);
 
-                result = Pipe.Reader.ReadAsync().GetAwaiter().GetResult();
-                readableBuffer = result.Buffer;
+                readableBuffer = readableBuffer.Slice(consumed);
 
                 Frame.InitializeHeaders();
 
@@ -191,6 +232,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     ErrorUtilities.ThrowInvalidRequestHeaders();
                 }
+
                 Pipe.Reader.Advance(consumed, examined);
             }
             while (true);

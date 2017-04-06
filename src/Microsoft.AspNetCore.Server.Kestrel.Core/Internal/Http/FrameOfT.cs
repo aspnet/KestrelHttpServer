@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -40,13 +41,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.ReadAsync();
-                        var examined = result.Buffer.End;
-                        var consumed = result.Buffer.End;
+                        if (!Input.TryRead(out var result))
+                        {
+                            result = await Input.ReadAsync();
+                        }
+
+                        var buffer = result.Buffer;
+                        var examined = buffer.End;
+                        var consumed = buffer.End;
 
                         try
                         {
-                            ParseRequest(result.Buffer, out consumed, out examined);
+                            ParseRequest(ref buffer, out consumed, out examined);
                         }
                         catch (InvalidOperationException)
                         {
