@@ -139,35 +139,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             if (!Pipe.Reader.TryRead(out var result))
             {
-                // No more data
+                // No data?
                 return;
             }
 
-            var readableBuffer = result.Buffer;
+            var buffer = result.Buffer;
+            var examined = buffer.End;
+            var consumed = buffer.End;
 
             do
             {
+                ParseRequest(ref buffer, out consumed, out examined);
+
                 Frame.Reset();
-
-                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestLine();
-                }
-
-                readableBuffer = readableBuffer.Slice(consumed);
-
-                Frame.InitializeHeaders();
-
-                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestHeaders();
-                }
-
-                readableBuffer = readableBuffer.Slice(consumed);
             }
-            while (readableBuffer.Length > 0);
+            while (buffer.Length > 0);
 
-            Pipe.Reader.Advance(readableBuffer.End);
+            Pipe.Reader.Advance(consumed, examined);
         }
 
         private void ParseDataTryRead()
@@ -180,25 +168,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                     return;
                 }
 
-                var readableBuffer = result.Buffer;
+                var buffer = result.Buffer;
+                var examined = buffer.End;
+                var consumed = buffer.End;
+
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    Pipe.Reader.Advance(consumed, examined);
+                }
 
                 Frame.Reset();
-
-                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestLine();
-                }
-
-                readableBuffer = readableBuffer.Slice(consumed);
-
-                Frame.InitializeHeaders();
-
-                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestHeaders();
-                }
-
-                Pipe.Reader.Advance(consumed, examined);
             }
             while (true);
         }
@@ -215,27 +198,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 }
 
                 var result = awaitable.GetAwaiter().GetResult();
-                var readableBuffer = result.Buffer;
+                var buffer = result.Buffer;
+                var examined = buffer.End;
+                var consumed = buffer.End;
+
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    Pipe.Reader.Advance(consumed, examined);
+                }
 
                 Frame.Reset();
-
-                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestLine();
-                }
-
-                readableBuffer = readableBuffer.Slice(consumed);
-
-                Frame.InitializeHeaders();
-
-                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestHeaders();
-                }
-
-                Pipe.Reader.Advance(consumed, examined);
             }
             while (true);
+        }
+
+        public void ParseRequest(ref ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        {
+            if (!Frame.TakeStartLine(buffer, out consumed, out examined))
+            {
+                ErrorUtilities.ThrowInvalidRequestLine();
+            }
+
+            buffer = buffer.Slice(consumed);
+
+            Frame.InitializeHeaders();
+
+            if (!Frame.TakeMessageHeaders(buffer, out consumed, out examined))
+            {
+                ErrorUtilities.ThrowInvalidRequestHeaders();
+            }
+
+            buffer = buffer.Slice(consumed);
         }
     }
 }
