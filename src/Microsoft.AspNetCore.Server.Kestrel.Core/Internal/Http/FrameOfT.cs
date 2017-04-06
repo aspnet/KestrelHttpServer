@@ -111,6 +111,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         }
 
                         // Incomplete message, we need a new buffer from the pipe
+                        Input.Advance(consumed, examined);
+
                         needBuffer = true;
                     }
 
@@ -120,11 +122,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
 
-                        if (!messageBody.IsEmpty)
+                        if (!needBuffer && !messageBody.IsEmpty)
                         {
                             // If there's a message body then we need to read from the pipe on the next request
                             // because our buffer is probably invalid
                             needBuffer = true;
+
+                            // We need to advance here since we may not have advanced before this call
+                            Input.Advance(consumed, examined);
                         }
 
                         InitializeStreams(messageBody);
@@ -269,6 +274,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 try
                 {
+                    // If we left a pending read hanging, the advance the pipe
+                    if (!needBuffer)
+                    {
+                        Input.Advance(consumed, examined);
+                    }
+
                     Input.Complete();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
