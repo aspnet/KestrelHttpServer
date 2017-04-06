@@ -60,9 +60,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             ParseRequest(ref buffer, out consumed, out examined);
 
-                            if (buffer.Length == 0)
+                            if (buffer.End == examined)
                             {
-                                // We've consumed the entire buffer so we need to advance the pipe
+                                // We've observed or consumed the entire buffer so we need to advance the pipe
                                 needAdvance = true;
                             }
                         }
