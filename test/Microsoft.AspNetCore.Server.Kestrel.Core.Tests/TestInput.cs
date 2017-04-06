@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     class TestInput : ITimeoutControl, IFrameControl, IDisposable
     {

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class PipelineExtensionTests : IDisposable
     {

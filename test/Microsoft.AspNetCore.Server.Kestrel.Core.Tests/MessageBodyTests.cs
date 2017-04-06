@@ -16,7 +16,7 @@ using Moq;
 using Xunit;
 using Xunit.Sdk;
 
-namespace Microsoft.AspNetCore.Server.KestrelTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     /// <summary>
     /// Summary description for MessageBodyTests
