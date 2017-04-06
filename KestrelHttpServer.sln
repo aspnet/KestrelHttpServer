@@ -39,7 +39,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{0EF2AC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Core", "src\Microsoft.AspNetCore.Server.Kestrel.Core\Microsoft.AspNetCore.Server.Kestrel.Core.csproj", "{F510611A-3BEE-4B88-A613-5F4A74ED82A1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.KestrelTests", "test\Microsoft.AspNetCore.Server.KestrelTests\Microsoft.AspNetCore.Server.KestrelTests.csproj", "{37F3BFB2-6454-49E5-9D7F-581BF755CCFE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Core.Tests", "test\Microsoft.AspNetCore.Server.Kestrel.Core.Tests\Microsoft.AspNetCore.Server.Kestrel.Core.Tests.csproj", "{37F3BFB2-6454-49E5-9D7F-581BF755CCFE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleApp", "samples\SampleApp\SampleApp.csproj", "{2C3CB3DC-EEBF-4F52-9E1C-4F2F972E76C3}"
 EndProject
