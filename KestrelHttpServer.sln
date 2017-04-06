@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26327.1
+VisualStudioVersion = 15.0.26405.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7972A5D6-3385-4127-9277-428506DD44FF}"
 	ProjectSection(SolutionItems) = preProject
@@ -65,6 +65,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions", "src\Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions\Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.csproj", "{2E9CB89D-EC8F-4DD9-A72B-08D5BABF752D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests", "test\Microsoft.AspNetCore.Server.Transport.Libuv.Tests\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.csproj", "{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Server.Kestrel.Tests", "test\Microsoft.AspNetCore.Server.Kestrel.Tests\Microsoft.AspNetCore.Server.Kestrel.Tests.csproj", "{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -220,6 +222,18 @@ Global
 		{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4}.Release|x64.Build.0 = Release|Any CPU
 		{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4}.Release|x86.ActiveCfg = Release|Any CPU
 		{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4}.Release|x86.Build.0 = Release|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Debug|x64.Build.0 = Debug|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Debug|x86.Build.0 = Debug|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Release|x64.ActiveCfg = Release|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Release|x64.Build.0 = Release|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Release|x86.ActiveCfg = Release|Any CPU
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -239,5 +253,6 @@ Global
 		{56139957-5C29-4E7D-89BD-7D20598B4EAF} = {2D5D5227-4DBD-499A-96B1-76A36B03B750}
 		{2E9CB89D-EC8F-4DD9-A72B-08D5BABF752D} = {2D5D5227-4DBD-499A-96B1-76A36B03B750}
 		{D95A7EC3-48AC-4D03-B2E2-0DA3E13BD3A4} = {D3273454-EA07-41D2-BF0B-FCC3675C2483}
+		{4F1C30F8-CCAA-48D7-9DF6-2A84021F5BCC} = {D3273454-EA07-41D2-BF0B-FCC3675C2483}
 	EndGlobalSection
 EndGlobal
