@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
@@ -87,6 +88,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             }
         }
 
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerDrainBufferAsync()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                var ignore = ParseDataDrainBufferAsync();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerAsync()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                var ignore = ParseDataAsync();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerAsyncHybridDrain()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                var ignore = ParseDataAsyncHybridDrain();
+            }
+        }
+
         [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount)]
         public void LiveAspNet()
         {
@@ -158,6 +189,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             Pipe.Reader.Advance(consumed, examined);
         }
 
+        private async Task ParseDataDrainBufferAsync()
+        {
+            var result = await Pipe.Reader.ReadAsync();
+            var buffer = result.Buffer;
+            var examined = buffer.End;
+            var consumed = buffer.End;
+
+            do
+            {
+                Frame.Reset();
+
+                ParseRequest(ref buffer, out consumed, out examined);
+            }
+            while (buffer.Length > 0);
+
+            Pipe.Reader.Advance(consumed, examined);
+        }
+
         private void ParseDataTryRead()
         {
             do
@@ -181,6 +230,64 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 finally
                 {
                     Pipe.Reader.Advance(consumed, examined);
+                }
+            }
+            while (true);
+        }
+
+        private async Task ParseDataAsync()
+        {
+            do
+            {
+                Frame.Reset();
+
+                var result = await Pipe.Reader.ReadAsync();
+                var buffer = result.Buffer;
+                var examined = buffer.End;
+                var consumed = buffer.End;
+
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    Pipe.Reader.Advance(consumed, examined);
+                }
+            }
+            while (true);
+        }
+
+        private async Task ParseDataAsyncHybridDrain()
+        {
+            var buffer = default(ReadableBuffer);
+            var examined = default(ReadCursor);
+            var consumed = default(ReadCursor);
+            var needBuffer = true;
+
+            do
+            {
+                Frame.Reset();
+
+                if (needBuffer)
+                {
+                    var result = await Pipe.Reader.ReadAsync();
+                    buffer = result.Buffer;
+                    needBuffer = false;
+                }
+                
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    if (buffer.Length == 0)
+                    {
+                        Pipe.Reader.Advance(consumed, examined);
+
+                        needBuffer = true;
+                    }
                 }
             }
             while (true);
