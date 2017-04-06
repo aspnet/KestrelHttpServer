@@ -241,7 +241,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 Frame.Reset();
 
-                var result = await Pipe.Reader.ReadAsync();
+                var awaitable = Pipe.Reader.ReadAsync();
+
+                if (!awaitable.IsCompleted)
+                {
+                    // no data
+                    return;
+                }
+
+                var result = await awaitable;
                 var buffer = result.Buffer;
                 var examined = buffer.End;
                 var consumed = buffer.End;
@@ -271,11 +279,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 if (needBuffer)
                 {
-                    var result = await Pipe.Reader.ReadAsync();
+                    var awaitable = Pipe.Reader.ReadAsync();
+
+                    if (!awaitable.IsCompleted)
+                    {
+                        // no data
+                        return;
+                    }
+
+                    var result = await awaitable;
                     buffer = result.Buffer;
                     needBuffer = false;
                 }
-                
+
                 try
                 {
                     ParseRequest(ref buffer, out consumed, out examined);
