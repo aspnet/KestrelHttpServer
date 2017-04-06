@@ -117,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         clientFinishedSendingRequestBody.Set();
                     };
 
-                    var sendTask = sendFunc().TimeoutAfter(TimeSpan.FromSeconds(10));
+                    var sendTask = sendFunc();
 
                     if (expectPause)
                     {
@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     using (var reader = new StreamReader(stream, Encoding.ASCII))
                     {
-                        var response = await reader.ReadToEndAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
+                        var response = reader.ReadToEnd();
                         Assert.Contains($"bytesRead: {data.Length}", response);
                     }
                 }
@@ -245,6 +245,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private static Socket CreateSocket(int port)
         {
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+            // Timeouts large enough to prevent false positives, but small enough to fail quickly.
+            socket.SendTimeout = 10 * 1000;
+            socket.ReceiveTimeout = 10 * 1000;
+
             socket.Connect(IPAddress.Loopback, port);
 
             return socket;
