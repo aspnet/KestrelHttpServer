@@ -326,7 +326,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             await _input.Writer.WriteAsync(Encoding.ASCII.GetBytes("G"));
 
-            _frame.ParseRequest((await _input.Reader.ReadAsync()).Buffer, out _consumed, out _examined);
+            var readableBuffer = (await _input.Reader.ReadAsync()).Buffer;
+            _frame.ParseRequest(ref readableBuffer, out _consumed, out _examined);
             _input.Reader.Advance(_consumed, _examined);
 
             var expectedRequestHeadersTimeout = (long)_serviceContext.ServerOptions.Limits.RequestHeadersTimeout.TotalMilliseconds;

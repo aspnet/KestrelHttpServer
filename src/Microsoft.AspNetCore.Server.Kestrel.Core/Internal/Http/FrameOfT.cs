@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -30,6 +31,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// </summary>
         public override async Task RequestProcessingAsync()
         {
+            var result = default(ReadResult);
+            var buffer = default(ReadableBuffer);
+            var examined = default(ReadCursor);
+            var consumed = default(ReadCursor);
+            var needBuffer = true;
+
             try
             {
                 while (!_requestProcessingStopping)
@@ -40,26 +47,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.ReadAsync();
-                        var examined = result.Buffer.End;
-                        var consumed = result.Buffer.End;
+                        if (needBuffer)
+                        {
+                            result = await Input.ReadAsync();
+                            buffer = result.Buffer;
+                            needBuffer = false;
+                        }
+
+                        var needAdvance = false;
 
                         try
                         {
-                            ParseRequest(result.Buffer, out consumed, out examined);
+                            ParseRequest(ref buffer, out consumed, out examined);
+
+                            if (buffer.End == examined)
+                            {
+                                // We've observed or consumed the entire buffer so we need to advance the pipe
+                                needAdvance = true;
+                            }
                         }
                         catch (InvalidOperationException)
                         {
+                            // An exception occured just advance the buffer
+                            needAdvance = true;
+
                             if (_requestProcessingStatus == RequestProcessingStatus.ParsingHeaders)
                             {
                                 throw BadHttpRequestException.GetException(RequestRejectionReason
                                     .MalformedRequestInvalidHeaders);
                             }
+
                             throw;
                         }
                         finally
                         {
-                            Input.Advance(consumed, examined);
+                            if (needAdvance)
+                            {
+                                Input.Advance(consumed, examined);
+
+                                // We also need to request more data from the pipe
+                                needBuffer = true;
+                            }
                         }
 
                         if (_requestProcessingStatus == RequestProcessingStatus.AppStarted)
@@ -81,6 +109,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                         .MalformedRequestInvalidHeaders);
                             }
                         }
+
+                        if (!needBuffer)
+                        {
+                            // Incomplete message, we need a new buffer from the pipe
+                            Input.Advance(consumed, examined);
+
+                            needBuffer = true;
+                        }
                     }
 
                     if (!_requestProcessingStopping)
@@ -88,6 +124,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         var messageBody = MessageBody.For(_httpVersion, FrameRequestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
+
+                        if (!needBuffer && !messageBody.IsEmpty)
+                        {
+                            // If there's a message body then we need to read from the pipe on the next request
+                            // because our buffer is probably invalid
+                            needBuffer = true;
+
+                            // We need to advance here since we may not have advanced before this call
+                            Input.Advance(consumed, examined);
+                        }
 
                         InitializeStreams(messageBody);
 
@@ -231,6 +277,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 try
                 {
+                    // If we left a pending read hanging, the advance the pipe
+                    if (!needBuffer)
+                    {
+                        Input.Advance(consumed, examined);
+                    }
+
                     Input.Complete();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)

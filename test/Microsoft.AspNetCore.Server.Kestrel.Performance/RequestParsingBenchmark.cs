@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
@@ -68,12 +69,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerTryRead()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                ParseDataTryRead();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
         public void PipelinedPlaintextTechEmpowerDrainBuffer()
         {
             for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
                 InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
                 ParseDataDrainBuffer();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerDrainBufferAsync()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                ParseDataDrainBufferAsync().GetAwaiter().GetResult();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerAsync()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                ParseDataAsync().GetAwaiter().GetResult();
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = RequestParsingData.InnerLoopCount * RequestParsingData.Pipelining)]
+        public void PipelinedPlaintextTechEmpowerAsyncHybridDrain()
+        {
+            for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
+            {
+                InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+                ParseDataAsyncHybridDrain().GetAwaiter().GetResult();
             }
         }
 
@@ -127,73 +168,194 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private void ParseDataDrainBuffer()
         {
-            var awaitable = Pipe.Reader.ReadAsync();
-            if (!awaitable.IsCompleted)
+            if (!Pipe.Reader.TryRead(out var result))
             {
-                // No more data
+                // No data?
                 return;
             }
 
-            var readableBuffer = awaitable.GetResult().Buffer;
+            var buffer = result.Buffer;
+            var examined = buffer.End;
+            var consumed = buffer.End;
+
             do
             {
                 Frame.Reset();
 
-                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestLine();
-                }
-
-                readableBuffer = readableBuffer.Slice(consumed);
-
-                Frame.InitializeHeaders();
-
-                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
-                {
-                    ErrorUtilities.ThrowInvalidRequestHeaders();
-                }
-
-                readableBuffer = readableBuffer.Slice(consumed);
+                ParseRequest(ref buffer, out consumed, out examined);
             }
-            while (readableBuffer.Length > 0);
+            while (buffer.Length > 0);
 
-            Pipe.Reader.Advance(readableBuffer.End);
+            Pipe.Reader.Advance(consumed, examined);
+        }
+
+        private async Task ParseDataDrainBufferAsync()
+        {
+            var result = await Pipe.Reader.ReadAsync();
+            var buffer = result.Buffer;
+            var examined = buffer.End;
+            var consumed = buffer.End;
+
+            do
+            {
+                Frame.Reset();
+
+                ParseRequest(ref buffer, out consumed, out examined);
+            }
+            while (buffer.Length > 0);
+
+            Pipe.Reader.Advance(consumed, examined);
+        }
+
+        private void ParseDataTryRead()
+        {
+            do
+            {
+                Frame.Reset();
+
+                if (!Pipe.Reader.TryRead(out var result))
+                {
+                    // No more data
+                    return;
+                }
+
+                var buffer = result.Buffer;
+                var examined = buffer.End;
+                var consumed = buffer.End;
+
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    Pipe.Reader.Advance(consumed, examined);
+                }
+            }
+            while (true);
+        }
+
+        private async Task ParseDataAsync()
+        {
+            do
+            {
+                Frame.Reset();
+
+                var awaitable = Pipe.Reader.ReadAsync();
+
+                if (!awaitable.IsCompleted)
+                {
+                    // no data
+                    return;
+                }
+
+                var result = await awaitable;
+                var buffer = result.Buffer;
+                var examined = buffer.End;
+                var consumed = buffer.End;
+
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    Pipe.Reader.Advance(consumed, examined);
+                }
+            }
+            while (true);
+        }
+
+        private async Task ParseDataAsyncHybridDrain()
+        {
+            var buffer = default(ReadableBuffer);
+            var examined = default(ReadCursor);
+            var consumed = default(ReadCursor);
+            var needBuffer = true;
+
+            do
+            {
+                Frame.Reset();
+
+                if (needBuffer)
+                {
+                    var awaitable = Pipe.Reader.ReadAsync();
+
+                    if (!awaitable.IsCompleted)
+                    {
+                        // no data
+                        return;
+                    }
+
+                    var result = await awaitable;
+                    buffer = result.Buffer;
+                    needBuffer = false;
+                }
+
+                try
+                {
+                    ParseRequest(ref buffer, out consumed, out examined);
+                }
+                finally
+                {
+                    if (buffer.Length == 0)
+                    {
+                        Pipe.Reader.Advance(consumed, examined);
+
+                        needBuffer = true;
+                    }
+                }
+            }
+            while (true);
         }
 
         private void ParseData()
         {
             do
             {
-                var awaitable = Pipe.Reader.ReadAsync();
+                Frame.Reset();
+
+                var awaitable = Pipe.Reader.ReadAsync().GetAwaiter();
                 if (!awaitable.IsCompleted)
                 {
                     // No more data
                     return;
                 }
 
-                var result = awaitable.GetAwaiter().GetResult();
-                var readableBuffer = result.Buffer;
+                var result = awaitable.GetResult();
+                var buffer = result.Buffer;
+                var examined = buffer.End;
+                var consumed = buffer.End;
 
-                Frame.Reset();
-
-                if (!Frame.TakeStartLine(readableBuffer, out var consumed, out var examined))
+                try
                 {
-                    ErrorUtilities.ThrowInvalidRequestLine();
+                    ParseRequest(ref buffer, out consumed, out examined);
                 }
-                Pipe.Reader.Advance(consumed, examined);
-
-                result = Pipe.Reader.ReadAsync().GetAwaiter().GetResult();
-                readableBuffer = result.Buffer;
-
-                Frame.InitializeHeaders();
-
-                if (!Frame.TakeMessageHeaders(readableBuffer, out consumed, out examined))
+                finally
                 {
-                    ErrorUtilities.ThrowInvalidRequestHeaders();
+                    Pipe.Reader.Advance(consumed, examined);
                 }
-                Pipe.Reader.Advance(consumed, examined);
             }
             while (true);
+        }
+
+        public void ParseRequest(ref ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+        {
+            if (!Frame.TakeStartLine(buffer, out consumed, out examined))
+            {
+                ErrorUtilities.ThrowInvalidRequestLine();
+            }
+
+            buffer = buffer.Slice(consumed);
+
+            Frame.InitializeHeaders();
+
+            if (!Frame.TakeMessageHeaders(buffer, out consumed, out examined))
+            {
+                ErrorUtilities.ThrowInvalidRequestHeaders();
+            }
+
+            buffer = buffer.Slice(consumed);
         }
     }
 }
