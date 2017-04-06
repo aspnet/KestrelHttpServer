@@ -149,9 +149,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             do
             {
-                ParseRequest(ref buffer, out consumed, out examined);
-
                 Frame.Reset();
+
+                ParseRequest(ref buffer, out consumed, out examined);
             }
             while (buffer.Length > 0);
 
@@ -162,6 +162,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             do
             {
+                Frame.Reset();
+
                 if (!Pipe.Reader.TryRead(out var result))
                 {
                     // No more data
@@ -180,8 +182,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     Pipe.Reader.Advance(consumed, examined);
                 }
-
-                Frame.Reset();
             }
             while (true);
         }
@@ -190,14 +190,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             do
             {
-                var awaitable = Pipe.Reader.ReadAsync();
+                Frame.Reset();
+
+                var awaitable = Pipe.Reader.ReadAsync().GetAwaiter();
                 if (!awaitable.IsCompleted)
                 {
                     // No more data
                     return;
                 }
 
-                var result = awaitable.GetAwaiter().GetResult();
+                var result = awaitable.GetResult();
                 var buffer = result.Buffer;
                 var examined = buffer.End;
                 var consumed = buffer.End;
@@ -210,8 +212,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 {
                     Pipe.Reader.Advance(consumed, examined);
                 }
-
-                Frame.Reset();
             }
             while (true);
         }
