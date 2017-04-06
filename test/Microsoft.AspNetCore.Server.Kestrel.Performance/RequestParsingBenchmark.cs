@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
                 InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
-                var ignore = ParseDataDrainBufferAsync();
+                ParseDataDrainBufferAsync().GetAwaiter().GetResult();
             }
         }
 
@@ -104,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
                 InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
-                var ignore = ParseDataAsync();
+                ParseDataAsync().GetAwaiter().GetResult();
             }
         }
 
@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             for (var i = 0; i < RequestParsingData.InnerLoopCount; i++)
             {
                 InsertData(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
-                var ignore = ParseDataAsyncHybridDrain();
+                ParseDataAsyncHybridDrain().GetAwaiter().GetResult();
             }
         }
 
