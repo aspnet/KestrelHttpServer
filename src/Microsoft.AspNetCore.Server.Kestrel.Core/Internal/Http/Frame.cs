@@ -80,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected long _responseBytesWritten;
 
         private readonly FrameContext _frameContext;
-        private readonly IHttpParser _parser;
+        private readonly IHttpParser<Frame> _parser;
 
         public Frame(FrameContext frameContext)
         {

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Primitives;
@@ -257,9 +258,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             "42.000",
         };
 
-        private class NoopHttpParser : IHttpParser
+        private class NoopHttpParser : IHttpParser<NoopRequestHandler>
         {
-            public bool ParseHeaders(IHttpHeadersHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes)
+            public bool ParseHeaders(NoopRequestHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes)
             {
                 consumed = buffer.Start;
                 examined = buffer.End;
@@ -267,7 +268,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 return false;
             }
 
-            public bool ParseRequestLine(IHttpRequestLineHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+            public bool ParseRequestLine(NoopRequestHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 consumed = buffer.Start;
                 examined = buffer.End;
@@ -277,6 +278,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public void Reset()
             {
 
+            }
+        }
+
+        private class NoopRequestHandler : IHttpRequestLineHandler, IHttpHeadersHandler
+        {
+            public void OnHeader(Span<byte> name, Span<byte> value)
+            {
+            }
+
+            public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
+            {
             }
         }
     }

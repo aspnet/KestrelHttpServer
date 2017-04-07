@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public IThreadPool ThreadPool { get; set; }
 
-        public Func<Frame, IHttpParser> HttpParserFactory { get; set; }
+        public Func<Frame, IHttpParser<Frame>> HttpParserFactory { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
