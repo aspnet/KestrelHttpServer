@@ -59,8 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             if (_connectionAdapters.Count == 0)
             {
                 _frame.Start();
-                _frameStartedTcs.SetResult(null);
-                _adaptedPipelineTcs.SetResult(null);
+                _frameStartedTcs.TrySetResult(null);
+                _adaptedPipelineTcs.TrySetResult(null);
             }
             else
             {
@@ -129,13 +129,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 _frame.AdaptedConnections = adaptedConnections;
                 _frame.Start();
-                _frameStartedTcs.SetResult(null);
+                _frameStartedTcs.TrySetResult(null);
             }
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
-                _frameStartedTcs.SetResult(null);
-                _adaptedPipelineTcs.SetResult(null);
+                _frameStartedTcs.TrySetResult(null);
+                _adaptedPipelineTcs.TrySetResult(null);
                 CloseRawPipes();
             }
         }
