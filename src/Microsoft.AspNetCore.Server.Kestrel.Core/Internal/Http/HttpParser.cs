@@ -347,7 +347,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void TakeSingleHeader<T>(byte* headerLine, int length, T handler) where T : IHttpHeadersHandler
+        private unsafe void TakeSingleHeader(byte* headerLine, int length, IHttpHeadersHandler handler)
         {
             // Skip CR, LF from end position
             var valueEnd = length - 3;
