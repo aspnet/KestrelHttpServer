@@ -135,6 +135,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
                 _frameStartedTcs.SetResult(null);
+                _adaptedPipelineTcs.SetResult(null);
                 CloseRawPipes();
             }
         }
