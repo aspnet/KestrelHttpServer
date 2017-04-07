@@ -393,10 +393,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             handler.OnHeader(nameBuffer, valueBuffer);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe Span<byte> MakeSpan(ref byte data, int length)
         {
-            // REVIEW: Do we need fixed here?
-            return new Span<byte>(Unsafe.AsPointer(ref data), length);
+            // We can use this fast path on .NET Core 2.0 to make a span from ref byte
+            // return Span<byte>.DangerousCreate(null, ref data, length);
+            // For slow span, there's no way to do this because we don't have the backing object so we
+            // need to fix the data
+            fixed (byte* pointer = &data)
+            {
+                return new Span<byte>(pointer, length);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
