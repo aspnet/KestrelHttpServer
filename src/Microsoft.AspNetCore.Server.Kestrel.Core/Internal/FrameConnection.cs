@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private AdaptedPipeline _adaptedPipeline;
         private Stream _filteredStream;
-        private Task _adaptedPipelineTask = TaskCache.CompletedTask;
+        private TaskCompletionSource<object> _adaptedPipelineTcs = new TaskCompletionSource<object>();
 
         public FrameConnection(FrameConnectionContext context)
         {
@@ -59,7 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             if (_connectionAdapters.Count == 0)
             {
                 _frame.Start();
-                _frameStartedTcs.SetResult(null);
+                _frameStartedTcs.TrySetResult(null);
+                _adaptedPipelineTcs.TrySetResult(null);
             }
             else
             {
@@ -83,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             await _frameStartedTcs.Task;
             await _frame.StopAsync();
-            await _adaptedPipelineTask;
+            await _adaptedPipelineTcs.Task;
         }
 
         public void Abort(Exception ex)
@@ -123,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     _frame.Input = _adaptedPipeline.Input.Reader;
                     _frame.Output = _adaptedPipeline.Output;
 
-                    _adaptedPipelineTask = RunAdaptedPipeline();
+                    var ignore = RunAdaptedPipeline();
                 }
 
                 _frame.AdaptedConnections = adaptedConnections;
@@ -152,6 +153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             finally
             {
                 CloseRawPipes();
+                _adaptedPipelineTcs.TrySetResult(null);
             }
         }
 
