@@ -1,13 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 #define TRACE
+
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking
 {
     /// <summary>
     /// Summary description for UvMemory
@@ -16,9 +16,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
     {
         protected LibuvFunctions _uv;
         protected int _threadId;
-        protected readonly IKestrelTrace _log;
+        protected readonly ILibuvTrace _log;
 
-        protected UvMemory(IKestrelTrace logger) : base(IntPtr.Zero, true)
+        protected UvMemory(ILibuvTrace logger) : base(IntPtr.Zero, true)
         {
             _log = logger;
         }

@@ -6,8 +6,9 @@ using System.Text;
 using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
@@ -169,7 +170,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             var serviceContext = new ServiceContext
             {
-                HttpParserFactory = f => new KestrelHttpParser(f.ServiceContext.Log),
+                HttpParserFactory = f => new HttpParser(f.ServiceContext.Log),
                 ServerOptions = new KestrelServerOptions()
             };
             var frameContext = new FrameContext

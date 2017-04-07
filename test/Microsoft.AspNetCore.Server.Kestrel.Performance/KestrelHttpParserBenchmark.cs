@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.IO.Pipelines;
 using BenchmarkDotNet.Attributes;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
     public class KestrelHttpParserBenchmark : IHttpRequestLineHandler, IHttpHeadersHandler
     {
-        private readonly KestrelHttpParser _parser = new KestrelHttpParser(log: null);
+        private readonly HttpParser _parser = new HttpParser(log: null);
 
         private ReadableBuffer _buffer;
 

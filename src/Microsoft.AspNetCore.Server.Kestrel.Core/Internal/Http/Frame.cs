@@ -5,25 +5,26 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Encodings.Web.Utf8;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Adapter;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Text.Encodings.Web.Utf8;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 // ReSharper disable AccessToModifiedClosure
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public abstract partial class Frame : IFrameControl, IHttpRequestLineHandler, IHttpHeadersHandler
     {
@@ -69,6 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         protected HttpVersion _httpVersion;
 
+        private string _requestId;
         private int _remainingRequestHeadersBytesAllowed;
         private int _requestHeadersParsed;
 
@@ -112,6 +114,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected string ConnectionId => _frameContext.ConnectionId;
 
         public string ConnectionIdFeature { get; set; }
+
+        /// <summary>
+        /// The request id. <seealso cref="HttpContext.TraceIdentifier"/>
+        /// </summary>
+        public string TraceIdentifier
+        {
+            set => _requestId = value;
+            get
+            {
+                // don't generate an ID until it is requested
+                if (_requestId == null)
+                {
+                    _requestId = CorrelationIdGenerator.GetNextId();
+                }
+                return _requestId;
+            }
+        }
+
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
         public IPAddress LocalIpAddress { get; set; }
@@ -341,6 +361,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             ResetFeatureCollection();
 
+            TraceIdentifier = null;
             Scheme = null;
             Method = null;
             PathBase = null;
@@ -417,7 +438,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
             catch (Exception ex)
             {
-                Log.ApplicationError(ConnectionId, ex);
+                Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
             }
         }
 
@@ -1196,7 +1217,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _applicationException = new AggregateException(_applicationException, ex);
             }
 
-            Log.ApplicationError(ConnectionId, ex);
+            Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
         }
 
         public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)

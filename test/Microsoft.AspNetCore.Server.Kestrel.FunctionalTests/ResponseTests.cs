@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -13,8 +15,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
@@ -26,6 +30,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class ResponseTests
     {
+        public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
+        {
+            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
+            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
+            {
+                ConnectionAdapters = { new PassThroughConnectionAdapter() }
+            }
+        };
+
         [Fact]
         public async Task LargeDownload()
         {
@@ -341,7 +354,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 readException = await Assert.ThrowsAsync<BadHttpRequestException>(
                     async () => await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1));
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -370,7 +383,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 await httpContext.Response.WriteAsync("hello, ");
                 await httpContext.Response.WriteAsync("world");
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -404,7 +417,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.StatusCode = statusCode;
                 return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -427,7 +440,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(httpContext =>
             {
                 return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -635,8 +648,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var logTcs = new TaskCompletionSource<object>();
             var mockTrace = new Mock<IKestrelTrace>();
             mockTrace
-                .Setup(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<InvalidOperationException>()))
-                .Callback<string, Exception>((connectionId, ex) =>
+                .Setup(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()))
+                .Callback<string, string, Exception>((connectionId, requestId, ex) =>
                 {
                     logTcs.SetResult(null);
                 });
@@ -675,6 +688,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             mockTrace.Verify(trace =>
                 trace.ApplicationError(
+                    It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.Is<InvalidOperationException>(ex =>
                         ex.Message.Equals($"Response Content-Length mismatch: too few bytes written (12 of 13).", StringComparison.Ordinal))));
@@ -724,7 +738,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
 
             // With the server disposed we know all connections were drained and all messages were logged.
-            mockTrace.Verify(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<InvalidOperationException>()), Times.Never);
+            mockTrace.Verify(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()), Times.Never);
         }
 
         [Fact]
@@ -880,7 +894,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.ContentLength = 42;
                 return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -908,7 +922,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.ContentLength = 12;
                 await httpContext.Response.WriteAsync("hello, world");
                 await flushed.WaitAsync();
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -939,7 +953,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello, world"), 0, 12);
                 flushed.Wait();
                 return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -970,7 +984,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await httpContext.Response.WriteAsync("");
                 flushed.Wait();
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1013,7 +1027,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     tcs.TrySetException(ex);
                 }
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1053,7 +1067,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await httpContext.Response.WriteAsync(ex.Message);
                     responseWritten.Release();
                 }
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1084,7 +1098,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1131,7 +1145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.Headers["Connection"] = "keep-alive";
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1177,7 +1191,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // App would have to chunk manually, but here we don't care
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1225,7 +1239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 httpContext.Response.Body.Write(response, 0, response.Length);
                 return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1266,7 +1280,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.Body.Write(response, 0, response.Length / 2);
                 httpContext.Response.Body.Write(response, response.Length / 2, response.Length - response.Length / 2);
                 return TaskCache.CompletedTask;
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1307,7 +1321,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 return httpContext.Response.Body.WriteAsync(response, 0, response.Length);
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1347,7 +1361,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 await httpContext.Response.Body.WriteAsync(response, 0, response.Length / 2);
                 await httpContext.Response.Body.WriteAsync(response, response.Length / 2, response.Length - response.Length / 2);
-            }, new TestServiceContext()))
+            }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1369,6 +1383,907 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
                 }
             }
+        }
+
+        [Fact]
+        public async Task WhenResponseAlreadyStartedResponseEndedBeforeConsumingRequestBody()
+        {
+            using (var server = new TestServer(async httpContext =>
+            {
+                await httpContext.Response.WriteAsync("hello, world");
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 1",
+                        "",
+                        "");
+
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        $"Transfer-Encoding: chunked",
+                        "",
+                        "c",
+                        "hello, world",
+                        "");
+
+                    // If the expected behavior is regressed, this will hang because the
+                    // server will try to consume the request body before flushing the chunked
+                    // terminator.
+                    await connection.Receive(
+                        "0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task WhenResponseNotStartedResponseEndedAfterConsumingRequestBody()
+        {
+            using (var server = new TestServer(httpContext => TaskCache.CompletedTask))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "gg");
+
+                    // If the expected behavior is regressed, this will receive
+                    // a success response because the server flushed the response
+                    // before reading the malformed chunk header in the request.
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 400 Bad Request",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Sending100ContinueDoesNotStartResponse()
+        {
+            using (var server = new TestServer(httpContext =>
+            {
+                return httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Transfer-Encoding: chunked",
+                        "Expect: 100-continue",
+                        "",
+                        "");
+
+                    await connection.Receive(
+                        "HTTP/1.1 100 Continue",
+                        "",
+                        "");
+
+                    // Let the app finish
+                    await connection.Send(
+                        "1",
+                        "a",
+                        "");
+
+                    // This will be consumed by Frame when it attempts to
+                    // consume the request body and will cause an error.
+                    await connection.Send(
+                        "gg");
+
+                    // If 100 Continue sets Frame.HasResponseStarted to true,
+                    // a success response will be produced before the server sees the
+                    // bad chunk header above, making this test fail.
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 400 Bad Request",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Sending100ContinueAndResponseSendsChunkTerminatorBeforeConsumingRequestBody()
+        {
+            using (var server = new TestServer(async httpContext =>
+            {
+                await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
+                await httpContext.Response.WriteAsync("hello, world");
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 2",
+                        "Expect: 100-continue",
+                        "",
+                        "");
+
+                    await connection.Receive(
+                        "HTTP/1.1 100 Continue",
+                        "",
+                        "");
+
+                    await connection.Send(
+                        "a");
+
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        $"Transfer-Encoding: chunked",
+                        "",
+                        "c",
+                        "hello, world",
+                        "");
+
+                    // If the expected behavior is regressed, this will hang because the
+                    // server will try to consume the request body before flushing the chunked
+                    // terminator.
+                    await connection.Receive(
+                        "0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task Http11ResponseSentToHttp10Request(ListenOptions listenOptions)
+        {
+            var serviceContext = new TestServiceContext();
+
+            using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.0",
+                        "Content-Length: 11",
+                        "",
+                        "Hello World");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        "Connection: close",
+                        $"Date: {serviceContext.DateHeaderValue}",
+                        "",
+                        "Hello World");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ZeroContentLengthSetAutomaticallyAfterNoWrites(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "GET / HTTP/1.0",
+                        "Connection: keep-alive",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "HTTP/1.1 200 OK",
+                        "Connection: keep-alive",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ZeroContentLengthSetAutomaticallyForNonKeepAliveRequests(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(10)));
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Connection: close",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        "Connection: close",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.0",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        "Connection: close",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ZeroContentLengthNotSetAutomaticallyForHeadRequests(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "HEAD / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var request = httpContext.Request;
+                var response = httpContext.Response;
+
+                using (var reader = new StreamReader(request.Body, Encoding.ASCII))
+                {
+                    var statusString = await reader.ReadLineAsync();
+                    response.StatusCode = int.Parse(statusString);
+                }
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 3",
+                        "",
+                        "204POST / HTTP/1.1",
+                        "Content-Length: 3",
+                        "",
+                        "205POST / HTTP/1.1",
+                        "Content-Length: 3",
+                        "",
+                        "304POST / HTTP/1.1",
+                        "Content-Length: 3",
+                        "",
+                        "200");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 204 No Content",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "",
+                        "HTTP/1.1 205 Reset Content",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "",
+                        "HTTP/1.1 304 Not Modified",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "",
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ConnectionClosedAfter101Response(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var request = httpContext.Request;
+                var stream = await httpContext.Features.Get<IHttpUpgradeFeature>().UpgradeAsync();
+                var response = Encoding.ASCII.GetBytes("hello, world");
+                await stream.WriteAsync(response, 0, response.Length);
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 101 Switching Protocols",
+                        "Connection: Upgrade",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "",
+                        "hello, world");
+                }
+
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.0",
+                        "Connection: keep-alive",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 101 Switching Protocols",
+                        "Connection: Upgrade",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "",
+                        "hello, world");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ThrowingResultsIn500Response(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            bool onStartingCalled = false;
+
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+
+            using (var server = new TestServer(httpContext =>
+            {
+                var response = httpContext.Response;
+                response.OnStarting(_ =>
+                {
+                    onStartingCalled = true;
+                    return TaskCache.CompletedTask;
+                }, null);
+
+                // Anything added to the ResponseHeaders dictionary is ignored
+                response.Headers["Content-Length"] = "11";
+                throw new Exception();
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "GET / HTTP/1.1",
+                        "Connection: close",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 500 Internal Server Error",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "HTTP/1.1 500 Internal Server Error",
+                        "Connection: close",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+
+            Assert.False(onStartingCalled);
+            Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ThrowingInOnStartingResultsInFailedWritesAnd500Response(ListenOptions listenOptions)
+        {
+            var callback1Called = false;
+            var callback2CallCount = 0;
+
+            var testContext = new TestServiceContext();
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var onStartingException = new Exception();
+
+                var response = httpContext.Response;
+                response.OnStarting(_ =>
+                {
+                    callback1Called = true;
+                    throw onStartingException;
+                }, null);
+                response.OnStarting(_ =>
+                {
+                    callback2CallCount++;
+                    throw onStartingException;
+                }, null);
+
+                var writeException = await Assert.ThrowsAsync<ObjectDisposedException>(async () => await response.Body.FlushAsync());
+                Assert.Same(onStartingException, writeException.InnerException);
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 500 Internal Server Error",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "HTTP/1.1 500 Internal Server Error",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+
+            // The first registered OnStarting callback should have been called,
+            // since they are called LIFO order and the other one failed.
+            Assert.False(callback1Called);
+            Assert.Equal(2, callback2CallCount);
+            Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ThrowingInOnCompletedIsLoggedAndClosesConnection(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            var onCompletedCalled1 = false;
+            var onCompletedCalled2 = false;
+
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var response = httpContext.Response;
+                response.OnCompleted(_ =>
+                {
+                    onCompletedCalled1 = true;
+                    throw new Exception();
+                }, null);
+                response.OnCompleted(_ =>
+                {
+                    onCompletedCalled2 = true;
+                    throw new Exception();
+                }, null);
+
+                response.Headers["Content-Length"] = new[] { "11" };
+
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 11",
+                        "",
+                        "Hello World");
+                }
+            }
+
+            // All OnCompleted callbacks should be called even if they throw.
+            Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+            Assert.True(onCompletedCalled1);
+            Assert.True(onCompletedCalled2);
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ThrowingAfterWritingKillsConnection(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            bool onStartingCalled = false;
+
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var response = httpContext.Response;
+                response.OnStarting(_ =>
+                {
+                    onStartingCalled = true;
+                    return Task.FromResult<object>(null);
+                }, null);
+
+                response.Headers["Content-Length"] = new[] { "11" };
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+                throw new Exception();
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 11",
+                        "",
+                        "Hello World");
+                }
+            }
+
+            Assert.True(onStartingCalled);
+            Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ThrowingAfterPartialWriteKillsConnection(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            bool onStartingCalled = false;
+
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var response = httpContext.Response;
+                response.OnStarting(_ =>
+                {
+                    onStartingCalled = true;
+                    return Task.FromResult<object>(null);
+                }, null);
+
+                response.Headers["Content-Length"] = new[] { "11" };
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello"), 0, 5);
+                throw new Exception();
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 11",
+                        "",
+                        "Hello");
+                }
+            }
+
+            Assert.True(onStartingCalled);
+            Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+        }
+
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task FailedWritesResultInAbortedRequest(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            // This should match _maxBytesPreCompleted in SocketOutput
+            var maxBytesPreCompleted = 65536;
+            // Ensure string is long enough to disable write-behind buffering
+            var largeString = new string('a', maxBytesPreCompleted + 1);
+
+            var writeTcs = new TaskCompletionSource<object>();
+            var registrationWh = new ManualResetEventSlim();
+            var connectionCloseWh = new ManualResetEventSlim();
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var response = httpContext.Response;
+                var request = httpContext.Request;
+                var lifetime = httpContext.Features.Get<IHttpRequestLifetimeFeature>();
+
+                lifetime.RequestAborted.Register(() => registrationWh.Set());
+
+                await request.Body.CopyToAsync(Stream.Null);
+                connectionCloseWh.Wait();
+
+                try
+                {
+                    // Ensure write is long enough to disable write-behind buffering
+                    for (int i = 0; i < 100; i++)
+                    {
+                        await response.WriteAsync(largeString, lifetime.RequestAborted);
+                        registrationWh.Wait(1000);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    writeTcs.SetException(ex);
+                    throw;
+                }
+
+                writeTcs.SetException(new Exception("This shouldn't be reached."));
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 5",
+                        "",
+                        "Hello");
+                    // Don't wait to receive the response. Just close the socket.
+                }
+
+                connectionCloseWh.Set();
+
+                // Write failed
+                await Assert.ThrowsAsync<TaskCanceledException>(async () => await writeTcs.Task);
+                // RequestAborted tripped
+                Assert.True(registrationWh.Wait(1000));
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task NoErrorsLoggedWhenServerEndsConnectionBeforeClient(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            var testLogger = new TestApplicationErrorLogger();
+            testContext.Log = new KestrelTrace(testLogger);
+
+            using (var server = new TestServer(async httpContext =>
+            {
+                var response = httpContext.Response;
+                response.Headers["Content-Length"] = new[] { "11" };
+                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.0",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 200 OK",
+                        "Connection: close",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 11",
+                        "",
+                        "Hello World");
+                }
+            }
+
+            Assert.Equal(0, testLogger.TotalErrorsLogged);
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task NoResponseSentWhenConnectionIsClosedByServerBeforeClientFinishesSendingRequest(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            using (var server = new TestServer(httpContext =>
+            {
+                httpContext.Abort();
+                return TaskCache.CompletedTask;
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.0",
+                        "Content-Length: 1",
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd();
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ResponseHeadersAreResetOnEachRequest(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
+
+            IHeaderDictionary originalResponseHeaders = null;
+            var firstRequest = true;
+
+            using (var server = new TestServer(httpContext =>
+            {
+                var responseFeature = httpContext.Features.Get<IHttpResponseFeature>();
+
+                if (firstRequest)
+                {
+                    originalResponseHeaders = responseFeature.Headers;
+                    responseFeature.Headers = new FrameResponseHeaders();
+                    firstRequest = false;
+                }
+                else
+                {
+                    Assert.Same(originalResponseHeaders, responseFeature.Headers);
+                }
+
+                return TaskCache.CompletedTask;
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task OnStartingCallbacksAreCalledInLastInFirstOutOrder(ListenOptions listenOptions)
+        {
+            const string response = "hello, world";
+
+            var testContext = new TestServiceContext();
+
+            var callOrder = new Stack<int>();
+            var onStartingTcs = new TaskCompletionSource<object>();
+
+            using (var server = new TestServer(async context =>
+            {
+                context.Response.OnStarting(_ =>
+                {
+                    callOrder.Push(1);
+                    onStartingTcs.SetResult(null);
+                    return TaskCache.CompletedTask;
+                }, null);
+                context.Response.OnStarting(_ =>
+                {
+                    callOrder.Push(2);
+                    return TaskCache.CompletedTask;
+                }, null);
+
+                context.Response.ContentLength = response.Length;
+                await context.Response.WriteAsync(response);
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        $"Content-Length: {response.Length}",
+                        "",
+                        "hello, world");
+
+                    // Wait for all callbacks to be called.
+                    await onStartingTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                }
+            }
+
+            Assert.Equal(1, callOrder.Pop());
+            Assert.Equal(2, callOrder.Pop());
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task OnCompletedCallbacksAreCalledInLastInFirstOutOrder(ListenOptions listenOptions)
+        {
+            const string response = "hello, world";
+
+            var testContext = new TestServiceContext();
+
+            var callOrder = new Stack<int>();
+            var onCompletedTcs = new TaskCompletionSource<object>();
+
+            using (var server = new TestServer(async context =>
+            {
+                context.Response.OnCompleted(_ =>
+                {
+                    callOrder.Push(1);
+                    onCompletedTcs.SetResult(null);
+                    return TaskCache.CompletedTask;
+                }, null);
+                context.Response.OnCompleted(_ =>
+                {
+                    callOrder.Push(2);
+                    return TaskCache.CompletedTask;
+                }, null);
+
+                context.Response.ContentLength = response.Length;
+                await context.Response.WriteAsync(response);
+            }, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "",
+                        "");
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {testContext.DateHeaderValue}",
+                        $"Content-Length: {response.Length}",
+                        "",
+                        "hello, world");
+
+                    // Wait for all callbacks to be called.
+                    await onCompletedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                }
+            }
+
+            Assert.Equal(1, callOrder.Pop());
+            Assert.Equal(2, callOrder.Pop());
         }
 
         public static TheoryData<string, StringValues, string> NullHeaderData

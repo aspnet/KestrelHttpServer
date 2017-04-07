@@ -3,13 +3,13 @@
 
 using System;
 using System.IO;
-using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.Extensions.Internal;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public abstract class MessageBody
     {

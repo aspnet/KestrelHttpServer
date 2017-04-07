@@ -1,12 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.IO.Pipelines;
 using System.Text;
 using BenchmarkDotNet.Attributes;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
@@ -113,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             public static readonly NullParser Instance = new NullParser();
 
-            public bool ParseHeaders<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes) where T : IHttpHeadersHandler
+            public bool ParseHeaders(IHttpHeadersHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined, out int consumedBytes)
             {
                 handler.OnHeader(new Span<byte>(_hostHeaderName), new Span<byte>(_hostHeaderValue));
                 handler.OnHeader(new Span<byte>(_acceptHeaderName), new Span<byte>(_acceptHeaderValue));
@@ -126,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 return true;
             }
 
-            public bool ParseRequestLine<T>(T handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined) where T : IHttpRequestLineHandler
+            public bool ParseRequestLine(IHttpRequestLineHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 handler.OnStartLine(HttpMethod.Get,
                     HttpVersion.Http11,

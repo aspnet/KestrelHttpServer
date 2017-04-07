@@ -3,13 +3,12 @@
 
 using System;
 using System.Threading;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking
 {
     public class UvLoopHandle : UvMemory
     {
-        public UvLoopHandle(IKestrelTrace logger) : base(logger)
+        public UvLoopHandle(ILibuvTrace logger) : base(logger)
         {
         }
 

@@ -4,8 +4,9 @@
 using System;
 using System.Text;
 using BenchmarkDotNet.Attributes;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {

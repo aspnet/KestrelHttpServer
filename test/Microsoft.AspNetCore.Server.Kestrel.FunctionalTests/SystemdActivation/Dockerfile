@@ -1,4 +1,4 @@
-FROM microsoft/dotnet:1.1-runtime-deps
+FROM microsoft/dotnet-nightly:2.0-runtime-deps
 
 # The "container" environment variable is read by systemd.
 ENV container=docker

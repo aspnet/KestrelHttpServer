@@ -4,9 +4,8 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking
 {
     public class UvAsyncHandle : UvHandle
     {
@@ -16,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         private Action _callback;
         private Action<Action<IntPtr>, IntPtr> _queueCloseHandle;
 
-        public UvAsyncHandle(IKestrelTrace logger) : base(logger)
+        public UvAsyncHandle(ILibuvTrace logger) : base(logger)
         {
         }
 

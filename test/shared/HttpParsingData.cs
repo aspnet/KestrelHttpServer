@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Testing
@@ -33,6 +33,8 @@ namespace Microsoft.AspNetCore.Testing
                     Tuple.Create("/a%C3%A5a", "/a\u00E5a"),
                     Tuple.Create("/%C3%A5/bc", "/\u00E5/bc"),
                     Tuple.Create("/%25", "/%"),
+                    Tuple.Create("/%25%30%30", "/%00"),
+                    Tuple.Create("/%%2000", "/% 00"),
                     Tuple.Create("/%2F", "/%2F"),
                     Tuple.Create("http://host/abs/path", "/abs/path"),
                     Tuple.Create("http://host/abs/path/", "/abs/path/"),

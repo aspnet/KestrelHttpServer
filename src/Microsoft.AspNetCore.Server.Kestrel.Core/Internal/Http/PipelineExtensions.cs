@@ -3,11 +3,13 @@
 
 using System;
 using System.Buffers;
-using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Buffers;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public static class PipelineExtensions
     {

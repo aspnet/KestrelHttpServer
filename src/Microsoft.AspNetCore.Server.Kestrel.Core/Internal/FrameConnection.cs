@@ -4,17 +4,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipelines;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Adapter;
-using Microsoft.AspNetCore.Server.Kestrel.Adapter.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public class FrameConnection : IConnectionContext
     {
@@ -71,6 +71,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     var ignore = ((FrameConnection)state).ApplyConnectionAdaptersAsync();
                 }, this);
             }
+        }
+
+        public void OnConnectionClosed()
+        {
+            Log.ConnectionStop(ConnectionId);
+            KestrelEventSource.Log.ConnectionStop(this);
         }
 
         public async Task StopAsync()

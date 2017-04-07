@@ -3,8 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,10 +32,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            // REVIEW: Should we change the logger namespace for transport logs?
-            var logger  = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
-            // TODO: Add LibuvTrace
-            var trace = new KestrelTrace(logger);
+            var logger  = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv");
+            var trace = new LibuvTrace(logger);
 
             var threadCount = options.Value.ThreadCount;
 
@@ -47,12 +44,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                     "ThreadCount must be positive.");
             }
 
-            if (!Constants.ECONNRESET.HasValue)
+            if (!LibuvConstants.ECONNRESET.HasValue)
             {
                 trace.LogWarning("Unable to determine ECONNRESET value on this platform.");
             }
 
-            if (!Constants.EADDRINUSE.HasValue)
+            if (!LibuvConstants.EADDRINUSE.HasValue)
             {
                 trace.LogWarning("Unable to determine EADDRINUSE value on this platform.");
             }
@@ -65,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
             };
         }
 
-        public ITransport Create(ListenOptions listenOptions, IConnectionHandler handler)
+        public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
         {
             var transportContext = new LibuvTransportContext
             {
@@ -75,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv
                 ConnectionHandler = handler
             };
 
-            return new KestrelEngine(transportContext, listenOptions);
+            return new LibuvTransport(transportContext, endPointInformation);
         }
     }
 }

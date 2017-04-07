@@ -6,10 +6,11 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Exceptions;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public class Frame<TContext> : Frame
     {
@@ -95,6 +96,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             try
                             {
+                                KestrelEventSource.Log.RequestStart(this);
+
                                 await _application.ProcessRequestAsync(context).ConfigureAwait(false);
 
                                 if (Volatile.Read(ref _requestAborted) == 0)
@@ -113,6 +116,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             }
                             finally
                             {
+                                KestrelEventSource.Log.RequestStop(this);
+
                                 // Trigger OnStarting if it hasn't been called yet and the app hasn't
                                 // already failed. If an OnStarting callback throws we can go through
                                 // our normal error handling in ProduceEnd.
@@ -135,16 +140,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             {
                                 ResumeStreams();
 
+                                if (HasResponseStarted)
+                                {
+                                    // If the response has already started, call ProduceEnd() before
+                                    // consuming the rest of the request body to prevent
+                                    // delaying clients waiting for the chunk terminator:
+                                    //
+                                    // https://github.com/dotnet/corefx/issues/17330#issuecomment-288248663
+                                    //
+                                    // ProduceEnd() must be called before _application.DisposeContext(), to ensure
+                                    // HttpContext.Response.StatusCode is correctly set when
+                                    // IHttpContextFactory.Dispose(HttpContext) is called.
+                                    await ProduceEnd();
+                                }
+
                                 if (_keepAlive)
                                 {
                                     // Finish reading the request body in case the app did not.
                                     await messageBody.Consume();
                                 }
 
-                                // ProduceEnd() must be called before _application.DisposeContext(), to ensure
-                                // HttpContext.Response.StatusCode is correctly set when
-                                // IHttpContextFactory.Dispose(HttpContext) is called.
-                                await ProduceEnd();
+                                if (!HasResponseStarted)
+                                {
+                                    await ProduceEnd();
+                                }
                             }
                             else if (!HasResponseStarted)
                             {

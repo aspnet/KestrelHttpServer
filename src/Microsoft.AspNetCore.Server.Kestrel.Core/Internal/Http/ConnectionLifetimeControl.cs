@@ -1,17 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public class ConnectionLifetimeControl
     {
         public ConnectionLifetimeControl(
             string connectionId,
             IPipeReader outputPipeReader,
-            SocketOutputProducer outputProducer,
+            OutputProducer outputProducer,
             IKestrelTrace log)
         {
             ConnectionId = connectionId;
@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private string ConnectionId { get; }
         private IPipeReader OutputReader { get; }
-        private SocketOutputProducer OutputProducer { get; }
+        private OutputProducer OutputProducer { get; }
         private IKestrelTrace Log { get; }
 
         public void End(ProduceEndType endType)

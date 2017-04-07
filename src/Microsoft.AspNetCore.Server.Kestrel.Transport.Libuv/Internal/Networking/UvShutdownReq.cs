@@ -2,9 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking
 {
     /// <summary>
     /// Summary description for UvShutdownRequest
@@ -16,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         private Action<UvShutdownReq, int, object> _callback;
         private object _state;
 
-        public UvShutdownReq(IKestrelTrace logger) : base (logger)
+        public UvShutdownReq(ILibuvTrace logger) : base (logger)
         {
         }
 

@@ -61,8 +61,9 @@ namespace CodeGenerator
                 typeof(IHttpRequestFeature),
                 typeof(IHttpResponseFeature),
                 typeof(IHttpUpgradeFeature),
+                typeof(IHttpRequestIdentifierFeature),
                 typeof(IHttpRequestLifetimeFeature),
-                typeof(IHttpConnectionFeature)
+                typeof(IHttpConnectionFeature),
             };
 
             return $@"// Copyright (c) .NET Foundation. All rights reserved.
@@ -71,7 +72,7 @@ namespace CodeGenerator
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {{
     public partial class Frame
     {{{Each(allFeatures, feature => $@"

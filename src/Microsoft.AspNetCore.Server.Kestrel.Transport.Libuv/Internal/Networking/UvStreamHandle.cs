@@ -3,11 +3,9 @@
 
 using System;
 using System.Runtime.InteropServices;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking
 {
     public abstract class UvStreamHandle : UvHandle
     {
@@ -25,11 +23,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         private object _readState;
         private GCHandle _readVitality;
 
-        protected UvStreamHandle(IKestrelTrace logger) : base(logger)
+        protected UvStreamHandle(ILibuvTrace logger) : base(logger)
         {
         }
 
-        public Connection Connection { get; set; }
+        public LibuvConnection Connection { get; set; }
 
         protected override bool ReleaseHandle()
         {

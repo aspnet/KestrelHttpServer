@@ -6,25 +6,22 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Exceptions;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.AspNetCore.Server.Kestrel
+namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
     public class KestrelServer : IServer
     {
-        //private Stack<IDisposable> _disposables;
         private readonly List<ITransport> _transports = new List<ITransport>();
 
         private readonly ILogger _logger;
@@ -57,10 +54,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             Options = options.Value ?? new KestrelServerOptions();
             InternalOptions = new InternalKestrelServerOptions();
             _transportFactory = transportFactory;
-            _logger = loggerFactory.CreateLogger(typeof(KestrelServer).GetTypeInfo().Namespace);
+            _logger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
-            Features.Set<IServerAddressesFeature>(_serverAddresses);
+            Features.Set(_serverAddresses);
             Features.Set(InternalOptions);
         }
 
@@ -104,13 +101,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var serviceContext = new ServiceContext
                 {
                     Log = trace,
-                    HttpParserFactory = frame => new KestrelHttpParser(frame.ServiceContext.Log),
+                    HttpParserFactory = frame => new HttpParser(frame.ServiceContext.Log),
                     ThreadPool = threadPool,
                     DateHeaderValueManager = _dateHeaderValueManager,
                     ServerOptions = Options
                 };
-
-                var connectionHandler = new ConnectionHandler<TContext>(serviceContext, application);
 
                 var listenOptions = Options.ListenOptions;
                 var hasListenOptions = listenOptions.Any();
@@ -128,7 +123,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
                     // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                    StartLocalhost(connectionHandler, ServerAddress.FromUrl(Constants.DefaultServerAddress));
+                    StartLocalhost(ServerAddress.FromUrl(Constants.DefaultServerAddress), serviceContext, application);
 
                     // If StartLocalhost doesn't throw, there is at least one listener.
                     // The port cannot change for "localhost".
@@ -173,7 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
                             {
                                 // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                                StartLocalhost(connectionHandler, parsedAddress);
+                                StartLocalhost(parsedAddress, serviceContext, application);
 
                                 // If StartLocalhost doesn't throw, there is at least one listener.
                                 // The port cannot change for "localhost".
@@ -193,6 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 foreach (var endPoint in listenOptions)
                 {
+                    var connectionHandler = new ConnectionHandler<TContext>(endPoint, serviceContext, application);
                     var transport = _transportFactory.Create(endPoint, connectionHandler);
                     _transports.Add(transport);
 
@@ -256,7 +252,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        private void StartLocalhost<TContext>(ConnectionHandler<TContext> connectionHandler, ServerAddress parsedAddress)
+        private void StartLocalhost<TContext>(ServerAddress parsedAddress, ServiceContext serviceContext, IHttpApplication<TContext> application)
         {
             if (parsedAddress.Port == 0)
             {
@@ -272,17 +268,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Scheme = parsedAddress.Scheme,
                 };
 
+                var connectionHandler = new ConnectionHandler<TContext>(ipv4ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler);
                 _transports.Add(transport);
                 transport.BindAsync().Wait();
             }
             catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
             {
-                    throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
+                throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
             }
             catch (AggregateException ex)
             {
-                _logger.LogWarning(0,  $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({ex.Message})");
+                _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({ex.Message})");
                 exceptions.Add(ex.InnerException);
             }
 
@@ -293,6 +290,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     Scheme = parsedAddress.Scheme,
                 };
 
+                var connectionHandler = new ConnectionHandler<TContext>(ipv6ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler);
                 _transports.Add(transport);
                 transport.BindAsync().Wait();
