@@ -1,32 +1,38 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using System;
-using System.Threading.Tasks;
+using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.IO;
-using System.IO.Pipelines;
-using System.Diagnostics;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     public class SocketTransport : ITransport
     {
-        ListenOptions _listenOptions;
+        IEndPointInformation _endPointInformation;
         IConnectionHandler _handler;
         PipeFactory _pipeFactory;
         Socket _listenSocket;
         Task _listenTask;
 
-        public SocketTransport(ListenOptions listenOptions, IConnectionHandler handler)
+        public SocketTransport(IEndPointInformation endPointInformation, IConnectionHandler handler)
         {
-            _listenOptions = listenOptions;
+            if (endPointInformation == null)
+            {
+                throw new ArgumentNullException(nameof(endPointInformation));
+            }
+
+            if (handler == null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
+            _endPointInformation = endPointInformation;
             _handler = handler;
 
             // TODO: Maybe should live on SocketTransportFactory?
@@ -37,8 +43,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _listenTask = null;
         }
 
-        public ListenOptions ListenOptions => _listenOptions;
-
         public PipeFactory PipeFactory => _pipeFactory;
 
         public Task BindAsync()
@@ -48,12 +52,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 throw new InvalidOperationException();
             }
 
-            if (_listenOptions.Type != ListenType.IPEndPoint)
+            if (_endPointInformation.Type != ListenType.IPEndPoint)
             {
                 throw new InvalidOperationException();
             }
 
-            IPEndPoint endPoint = _listenOptions.IPEndPoint;
+            IPEndPoint endPoint = _endPointInformation.IPEndPoint;
 
             var listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
@@ -76,7 +80,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
 
             // If requested port was "0", replace with assigned dynamic port.
-            _listenOptions.IPEndPoint = (IPEndPoint)listenSocket.LocalEndPoint;
+            if (_endPointInformation.IPEndPoint.Port == 0)
+            {
+                _endPointInformation.IPEndPoint = (IPEndPoint)listenSocket.LocalEndPoint;
+            }
 
             listenSocket.Listen(512);
 
@@ -114,6 +121,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 while (true)
                 {
                     Socket acceptSocket = await _listenSocket.AcceptAsync();
+
+                    acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
                     SocketConnection connection = new SocketConnection(acceptSocket, this);
                     connection.Start(_handler);

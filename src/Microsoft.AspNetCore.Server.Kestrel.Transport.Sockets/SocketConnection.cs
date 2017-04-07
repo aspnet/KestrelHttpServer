@@ -1,19 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Buffers;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Net.Sockets;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
-using System.IO.Pipelines;
 using System.Net;
-using System.Buffers;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
@@ -39,8 +33,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public async void Start(IConnectionHandler connectionHandler)
         {
-            _socket.NoDelay = true;
-
             IConnectionContext context = connectionHandler.OnConnection(this);
 
             _input = context.Input;
@@ -164,8 +156,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             // TODO
         }
 
-        public ListenOptions ListenOptions => _transport.ListenOptions;
-
         public IPEndPoint RemoteEndPoint => _remoteEndPoint;
 
         public IPEndPoint LocalEndPoint => _localEndPoint;
@@ -174,7 +164,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public IScheduler InputWriterScheduler => InlineScheduler.Default;
 
-        public IScheduler OutputWriterScheduler => InlineScheduler.Default;
+        public IScheduler OutputReaderScheduler => InlineScheduler.Default;
 
         public ITimeoutControl TimeoutControl => this;
     }
