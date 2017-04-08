@@ -24,8 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
         {
-            var inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(connectionInfo.InputWriterScheduler));
-            var outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(connectionInfo.OutputReaderScheduler));
+            var inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(connectionInfo.InputReaderScheduler, connectionInfo.InputWriterScheduler));
+            var outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(connectionInfo.OutputReaderScheduler, connectionInfo.OutputWriterScheduler));
 
             var connectionId = CorrelationIdGenerator.GetNextId();
 
@@ -65,18 +65,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         }
 
         // Internal for testing
-        internal PipeOptions GetInputPipeOptions(IScheduler writerScheduler) => new PipeOptions
+        internal PipeOptions GetInputPipeOptions(IScheduler readerScheduler, IScheduler writerScheduler) => new PipeOptions
         {
-            ReaderScheduler = _serviceContext.ThreadPool,
+            ReaderScheduler = readerScheduler ?? _serviceContext.ThreadPool,
             WriterScheduler = writerScheduler,
             MaximumSizeHigh = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             MaximumSizeLow = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
         };
 
-        internal PipeOptions GetOutputPipeOptions(IScheduler readerScheduler) => new PipeOptions
+        internal PipeOptions GetOutputPipeOptions(IScheduler readerScheduler, IScheduler writerScheduler) => new PipeOptions
         {
             ReaderScheduler = readerScheduler,
-            WriterScheduler = _serviceContext.ThreadPool,
+            WriterScheduler = writerScheduler ?? _serviceContext.ThreadPool,
             MaximumSizeHigh = GetOutputResponseBufferSize(),
             MaximumSizeLow = GetOutputResponseBufferSize()
         };

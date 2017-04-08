@@ -12,9 +12,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
         IPEndPoint LocalEndPoint { get; }
 
         PipeFactory PipeFactory { get; }
+        IScheduler InputReaderScheduler { get; }
         IScheduler InputWriterScheduler { get; }
         IScheduler OutputReaderScheduler { get; }
-
+        IScheduler OutputWriterScheduler { get; }
         // TODO: Remove timeout management from transport
         ITimeoutControl TimeoutControl { get; }
     }

@@ -203,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .Configure(app => app.Run(async context =>
                 {
-                    startReadingRequestBody.WaitOne();
+                    await Task.Run(() => startReadingRequestBody.WaitOne());
 
                     var buffer = new byte[expectedBody.Length];
                     var bytesRead = 0;
@@ -212,7 +212,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         bytesRead += await context.Request.Body.ReadAsync(buffer, bytesRead, buffer.Length - bytesRead);
                     }
 
-                    clientFinishedSendingRequestBody.WaitOne();
+                    await Task.Run(() => clientFinishedSendingRequestBody.WaitOne());
 
                     // Verify client didn't send extra bytes
                     if (context.Request.Body.ReadByte() != -1)

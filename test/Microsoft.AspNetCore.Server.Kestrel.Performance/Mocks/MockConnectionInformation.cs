@@ -13,8 +13,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public IPEndPoint LocalEndPoint { get; }
 
         public PipeFactory PipeFactory { get; }
+        public IScheduler InputReaderScheduler { get; }
         public IScheduler InputWriterScheduler { get; }
         public IScheduler OutputReaderScheduler { get; }
+        public IScheduler OutputWriterScheduler { get; }
 
         public ITimeoutControl TimeoutControl { get; } = new MockTimeoutControl();
 
