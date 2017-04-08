@@ -5,54 +5,38 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
-    public class SocketTransport : ITransport
+    internal sealed class SocketTransport : ITransport
     {
-        IEndPointInformation _endPointInformation;
-        IConnectionHandler _handler;
-        PipeFactory _pipeFactory;
-        Socket _listenSocket;
-        Task _listenTask;
+        private readonly SocketTransportFactory _transportFactory;
+        private readonly IEndPointInformation _endPointInformation;
+        private readonly IConnectionHandler _handler;
+        private Socket _listenSocket;
+        private Task _listenTask;
 
-        public SocketTransport(IEndPointInformation endPointInformation, IConnectionHandler handler)
+        internal SocketTransport(SocketTransportFactory transportFactory, IEndPointInformation endPointInformation, IConnectionHandler handler)
         {
-            if (endPointInformation == null)
-            {
-                throw new ArgumentNullException(nameof(endPointInformation));
-            }
+            Debug.Assert(transportFactory != null);
+            Debug.Assert(endPointInformation != null);
+            Debug.Assert(endPointInformation.Type == ListenType.IPEndPoint);
+            Debug.Assert(handler != null);
 
-            if (handler == null)
-            {
-                throw new ArgumentNullException(nameof(handler));
-            }
-
+            _transportFactory = transportFactory;
             _endPointInformation = endPointInformation;
             _handler = handler;
-
-            // TODO: Maybe should live on SocketTransportFactory?
-            // I think I only need one of these for the entire process.
-            _pipeFactory = new PipeFactory();
 
             _listenSocket = null;
             _listenTask = null;
         }
 
-        public PipeFactory PipeFactory => _pipeFactory;
-
         public Task BindAsync()
         {
             if (_listenSocket != null)
-            {
-                throw new InvalidOperationException();
-            }
-
-            if (_endPointInformation.Type != ListenType.IPEndPoint)
             {
                 throw new InvalidOperationException();
             }
@@ -71,12 +55,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             {
                 listenSocket.Bind(endPoint);
             }
-            catch (SocketException e)
+            catch (SocketException e) when (e.SocketErrorCode == SocketError.AddressAlreadyInUse)
             {
-                // Convert to an IO exception, since this is what tests expect
-                // Note the tests actually validate the exact message, which seems questionable
-                // (Actually I just disabled that check for now.  Revisit later.)
-                throw new IOException($"Failed to bind to address http://{endPoint}: address already in use.", e);
+                throw new AddressInUseException(e.Message, e);
             }
 
             // If requested port was "0", replace with assigned dynamic port.
@@ -89,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             _listenSocket = listenSocket;
 
-            _listenTask = Task.Run(() => AcceptLoop());
+            _listenTask = Task.Run(() => RunAcceptLoopAsync());
 
             return Task.CompletedTask;
         }
@@ -114,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             return Task.CompletedTask;
         }
 
-        public async Task AcceptLoop()
+        private async Task RunAcceptLoopAsync()
         {
             try
             {
@@ -139,7 +120,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     throw;
                 }
             }
-
         }
+
+        internal PipeFactory PipeFactory => _transportFactory.PipeFactory;
     }
 }

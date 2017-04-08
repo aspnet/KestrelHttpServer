@@ -5,25 +5,29 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Buffers;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
-    public sealed class SocketConnection : IConnectionInformation, ITimeoutControl
+    internal sealed class SocketConnection : IConnectionInformation, ITimeoutControl
     {
-        Socket _socket;
-        SocketTransport _transport;
-        IPEndPoint _localEndPoint;
-        IPEndPoint _remoteEndPoint;
-        IPipeWriter _input;
-        IPipeReader _output;
+        private readonly Socket _socket;
+        private readonly SocketTransport _transport;
+        private readonly IPEndPoint _localEndPoint;
+        private readonly IPEndPoint _remoteEndPoint;
+        private IPipeWriter _input;
+        private IPipeReader _output;
 
         private const int MinAllocBufferSize = 2048;        // from libuv transport
 
-        public SocketConnection(Socket socket, SocketTransport transport)
+        internal SocketConnection(Socket socket, SocketTransport transport)
         {
+            Debug.Assert(socket != null);
+            Debug.Assert(transport != null);
+
             _socket = socket;
             _transport = transport;
 
@@ -135,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             ArraySegment<byte> segment;
             if (!buffer.TryGetArray(out segment))
             {
-                throw new InvalidOperationException("Memory is not backed by an array; oops!");
+                throw new InvalidOperationException();
             }
 
             return segment;
