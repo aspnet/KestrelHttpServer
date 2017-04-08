@@ -194,9 +194,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                     try
                     {
-                        transport.BindAsync().Wait();
+                        transport.BindAsync().GetAwaiter().GetResult();
                     }
-                    catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
+                    catch (AddressInUseException ex)
                     {
                         throw new IOException($"Failed to bind to address {endPoint}: address already in use.", ex);
                     }
@@ -271,16 +271,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 var connectionHandler = new ConnectionHandler<TContext>(ipv4ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler);
                 _transports.Add(transport);
-                transport.BindAsync().Wait();
+                transport.BindAsync().GetAwaiter().GetResult();
             }
-            catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
+            catch (AddressInUseException ex)
             {
                 throw new IOException($"Failed to bind to address {parsedAddress} on the IPv4 loopback interface: port already in use.", ex);
             }
-            catch (AggregateException ex)
+            catch (Exception ex)
             {
                 _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv4 loopback interface: ({ex.Message})");
-                exceptions.Add(ex.InnerException);
+                exceptions.Add(ex);
             }
 
             try
@@ -293,16 +293,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 var connectionHandler = new ConnectionHandler<TContext>(ipv6ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler);
                 _transports.Add(transport);
-                transport.BindAsync().Wait();
+                transport.BindAsync().GetAwaiter().GetResult();
             }
-            catch (AggregateException ex) when (ex.InnerException is AddressInUseException)
+            catch (AddressInUseException ex)
             {
                 throw new IOException($"Failed to bind to address {parsedAddress} on the IPv6 loopback interface: port already in use.", ex);
             }
-            catch (AggregateException ex)
+            catch (Exception ex)
             {
                 _logger.LogWarning(0, $"Unable to bind to {parsedAddress} on the IPv6 loopback interface: ({ex.Message})");
-                exceptions.Add(ex.InnerException);
+                exceptions.Add(ex);
             }
 
             if (exceptions.Count == 2)
