@@ -346,6 +346,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _frameStreams.ResponseBody.StopAcceptingWrites();
         }
 
+        // For testing
+        internal void ResetState()
+        {
+            _requestProcessingStatus = RequestProcessingStatus.RequestPending;
+        }
+
         public void Reset()
         {
             FrameRequestHeaders?.Reset();
