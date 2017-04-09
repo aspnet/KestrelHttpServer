@@ -111,7 +111,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 var hasListenOptions = listenOptions.Any();
                 var hasServerAddresses = _serverAddresses.Addresses.Any();
 
-                if (!hasListenOptions && !hasServerAddresses)
+                if (hasListenOptions && hasServerAddresses && !_serverAddresses.PreferHostingUrls)
+                {
+                    var joined = string.Join(", ", _serverAddresses.Addresses);
+                    _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
+
+                    _serverAddresses.Addresses.Clear();
+                }
+                else if (!hasListenOptions && !hasServerAddresses)
                 {
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
@@ -123,13 +130,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     _serverAddresses.Addresses.Add(Constants.DefaultServerAddress);
 
                     return;
-                }
-                else if (hasListenOptions && hasServerAddresses && !_serverAddresses.PreferHostingUrls)
-                {
-                    var joined = string.Join(", ", _serverAddresses.Addresses);
-                    _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
-
-                    _serverAddresses.Addresses.Clear();
                 }
                 else if (!hasListenOptions || (_serverAddresses.PreferHostingUrls && hasServerAddresses))
                 {
