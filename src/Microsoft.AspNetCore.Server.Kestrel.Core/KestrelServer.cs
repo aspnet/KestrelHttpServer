@@ -111,14 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 var hasListenOptions = listenOptions.Any();
                 var hasServerAddresses = _serverAddresses.Addresses.Any();
 
-                if (hasListenOptions && hasServerAddresses)
-                {
-                    var joined = string.Join(", ", _serverAddresses.Addresses);
-                    _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
-
-                    _serverAddresses.Addresses.Clear();
-                }
-                else if (!hasListenOptions && !hasServerAddresses)
+                if (!hasListenOptions && !hasServerAddresses)
                 {
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
@@ -131,8 +124,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                     return;
                 }
-                else if (!hasListenOptions)
+                else if (hasListenOptions && hasServerAddresses && !_serverAddresses.PreferHostingUrls)
                 {
+                    var joined = string.Join(", ", _serverAddresses.Addresses);
+                    _logger.LogWarning($"Overriding address(es) '{joined}'. Binding to endpoints defined in UseKestrel() instead.");
+
+                    _serverAddresses.Addresses.Clear();
+                }
+                else if (!hasListenOptions || (_serverAddresses.PreferHostingUrls && hasServerAddresses))
+                {
+                    if (hasListenOptions)
+                    {
+                        var joined = string.Join(", ", _serverAddresses.Addresses);
+                        _logger.LogWarning($"Overriding endpoints defined in UseKestrel() since {nameof(IServerAddressesFeature.PreferHostingUrls)} is set to true. Binding to address(es) '{joined}' instead.");
+                        listenOptions.Clear();
+                    }
+
                     // If no endpoints are configured directly using KestrelServerOptions, use those configured via the IServerAddressesFeature.
                     var copiedAddresses = _serverAddresses.Addresses.ToArray();
                     _serverAddresses.Addresses.Clear();
