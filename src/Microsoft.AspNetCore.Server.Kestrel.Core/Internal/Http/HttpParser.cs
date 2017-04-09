@@ -404,7 +404,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 valueBuffer = new Span<byte>(headerLine + valueStart, valueEnd - valueStart + 1);
             }
 
-            handler.OnHeader(new Span<byte>(headerLine, nameEnd), valueBuffer);
+            var nameBuffer = new Span<byte>(headerLine, nameEnd);
+
+            handler.OnHeader(nameBuffer, valueBuffer);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
