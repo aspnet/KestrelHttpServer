@@ -33,9 +33,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             var factory = new PipeFactory();
 
-            _frame = MakeFrame(factory);
             _outputPipe = factory.Create();
-            _frame.Output = new OutputProducer(_outputPipe.Writer, null, null, null);
+
+            _frame = MakeFrame(factory, _outputPipe.Writer);
 
             _writeData = Encoding.ASCII.GetBytes("Hello, World!");
         }
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             return _frame.ResponseBody.WriteAsync(_writeData, 0, _writeData.Length, default(CancellationToken));
         }
 
-        private TestFrame<object> MakeFrame(PipeFactory factory)
+        private TestFrame<object> MakeFrame(PipeFactory factory, IPipeWriter writer)
         {
             var socketInput = factory.Create();
 
@@ -122,17 +122,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             frame.InitializeHeaders();
             frame.InitializeStreams(MessageBody.ZeroContentLengthKeepAlive);
 
+            frame.Output = new OutputProducer(writer, null, null, null);
+
             return frame;
         }
 
         [Cleanup]
         public void Cleanup()
         {
-            EmptyPipe(_outputPipe.Reader);
-        }
-
-        private void EmptyPipe(IPipeReader reader)
-        {
+            var reader = _outputPipe.Reader;
             if (reader.TryRead(out var readResult))
             {
                 reader.Advance(readResult.Buffer.End);
