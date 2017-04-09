@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
@@ -69,8 +68,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private unsafe void ParseRequestLine(IHttpRequestLineHandler handler, byte* data, int length)
         {
-            Debug.Assert(length >= 0);
-
             int offset;
             Span<byte> customMethod = default(Span<byte>);
             // Get Method and set the offset
@@ -325,8 +322,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe int FindEndOfName(byte* headerLine, int length)
         {
-            Debug.Assert(length >= 0);
-
             var index = 0;
             var sawWhitespace = false;
             for (; index < length; index++)
@@ -353,8 +348,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void TakeSingleHeader(byte* headerLine, int length, IHttpHeadersHandler handler)
         {
-            Debug.Assert(length >= 0);
-
             // Skip CR, LF from end position
             var valueEnd = length - 3;
             var nameEnd = FindEndOfName(headerLine, length);
@@ -386,12 +379,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             // Check for CR in value
             var valueLength = valueEnd - valueStart + 1;
-            if (new Span<byte>(headerLine + valueStart, valueLength).IndexOf(ByteCR) >= 0)
+            var valueBuffer = new Span<byte>(headerLine + valueStart, valueLength);
+            if (valueBuffer.IndexOf(ByteCR) >= 0)
             {
                 RejectRequestHeader(headerLine, length);
             }
 
             // Ignore end whitespace
+            var lengthChanged = false;
             for (; valueEnd >= valueStart; valueEnd--)
             {
                 var ch = headerLine[valueEnd];
@@ -400,13 +395,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     break;
                 }
 
-                valueLength--;
+                lengthChanged = true;
             }
 
-            var nameBuffer = new Span<byte>(headerLine, nameEnd);
-            var valueBuffer = new Span<byte>(headerLine + valueStart, valueLength);
+            if (lengthChanged)
+            {
+                // Length changed
+                valueBuffer = new Span<byte>(headerLine + valueStart, valueEnd - valueStart + 1);
+            }
 
-            handler.OnHeader(nameBuffer, valueBuffer);
+            handler.OnHeader(new Span<byte>(headerLine, nameEnd), valueBuffer);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -425,8 +423,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.NoInlining)]
         private unsafe Span<byte> GetUnknownMethod(byte* data, int length, out int methodLength)
         {
-            Debug.Assert(length >= 0);
-
             methodLength = 0;
             for (var i = 0; i < length; i++)
             {
