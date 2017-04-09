@@ -153,10 +153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var hostBuilder = new WebHostBuilder()
                .UseKestrel()
-               .ConfigureServices(services =>
-               {
-                   services.AddSingleton<ILoggerFactory>(new KestrelTestLoggerFactory(testLogger));
-               })
+               .UseLoggerFactory(_ => new KestrelTestLoggerFactory(testLogger))
                .Configure(ConfigureEchoAddress);
 
             using (var host = hostBuilder.Build())
@@ -215,6 +212,89 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     var exception = Assert.Throws<IOException>(() => host.Start());
                     Assert.Equal($"Failed to bind to address http://[::1]:{port}: address already in use.", exception.Message);
                 }
+            }
+        }
+
+        [ConditionalFact]
+        [PortSupportedCondition(5001)]
+        [PortSupportedCondition(5002)]
+        public async Task OverrideDirectConfigurationWithIServerAddressesFeature_Succeeds()
+        {
+            var overrideAddress = "http://localhost:5002";
+            var testLogger = new TestApplicationErrorLogger();
+
+            var hostBuilder = new WebHostBuilder()
+               .UseKestrel(options =>
+               {
+                   options.Listen(IPAddress.Loopback, 5001);
+               })
+               .UseUrls(overrideAddress)
+               .PreferHostingUrls(true)
+               .UseLoggerFactory(_ => new KestrelTestLoggerFactory(testLogger))
+               .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(5002, host.GetPort());
+                Assert.Single(testLogger.Messages, log => log.LogLevel == LogLevel.Warning &&
+                    string.Equals($"Overriding endpoints defined in UseKestrel() since {nameof(IServerAddressesFeature.PreferHostingUrls)} ist set to true. Binding to address(es) '{overrideAddress}' instead.",
+                    log.Message, StringComparison.Ordinal));
+
+                Assert.Equal(new Uri(overrideAddress).ToString(), await HttpClientSlim.GetStringAsync(overrideAddress));
+            }
+        }
+
+        [ConditionalFact]
+        [PortSupportedCondition(5001)]
+        [PortSupportedCondition(5002)]
+        public async Task DoesNotOverrideDirectConfigurationWithIServerAddressesFeature_IfPreferHostingUrlsFalse()
+        {
+            var endPointAddress = "http://localhost:5001";
+            var testLogger = new TestApplicationErrorLogger();
+
+            var hostBuilder = new WebHostBuilder()
+               .UseKestrel(options =>
+               {
+                   options.Listen(IPAddress.Loopback, 5001);
+               })
+               .UseUrls("http://localhost:5002")
+               .PreferHostingUrls(false)
+               .UseLoggerFactory(_ => new KestrelTestLoggerFactory(testLogger))
+               .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(5001, host.GetPort());
+                Assert.Equal(new Uri(endPointAddress).ToString(), await HttpClientSlim.GetStringAsync(endPointAddress));
+            }
+        }
+
+        [ConditionalFact]
+        [PortSupportedCondition(5000)]
+        public async Task DoesNotOverrideDirectConfigurationWithIServerAddressesFeature_IfAddressesEmpty()
+        {
+            var endPointAddress = "http://localhost:5001";
+            var testLogger = new TestApplicationErrorLogger();
+
+            var hostBuilder = new WebHostBuilder()
+               .UseKestrel(options =>
+               {
+                   options.Listen(IPAddress.Loopback, 5001);
+               })
+               .PreferHostingUrls(true)
+               .UseLoggerFactory(_ => new KestrelTestLoggerFactory(testLogger))
+               .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(5001, host.GetPort());
+                Assert.Equal(new Uri(endPointAddress).ToString(), await HttpClientSlim.GetStringAsync(endPointAddress));
             }
         }
 
@@ -552,7 +632,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+        [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
         private class PortSupportedConditionAttribute : Attribute, ITestCondition
         {
             private readonly int _port;
