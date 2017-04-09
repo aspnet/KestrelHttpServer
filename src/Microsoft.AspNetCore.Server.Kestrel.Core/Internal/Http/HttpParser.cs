@@ -1,7 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.Numerics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
@@ -69,6 +69,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private unsafe void ParseRequestLine(IHttpRequestLineHandler handler, byte* data, int length)
         {
+            Debug.Assert(length >= 0);
+
             int offset;
             Span<byte> customMethod = default(Span<byte>);
             // Get Method and set the offset
@@ -323,6 +325,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe int FindEndOfName(byte* headerLine, int length)
         {
+            Debug.Assert(length >= 0);
+
             var index = 0;
             var sawWhitespace = false;
             for (; index < length; index++)
@@ -349,6 +353,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void TakeSingleHeader(byte* headerLine, int length, IHttpHeadersHandler handler)
         {
+            Debug.Assert(length >= 0);
+
             // Skip CR, LF from end position
             var valueEnd = length - 3;
             var nameEnd = FindEndOfName(headerLine, length);
@@ -379,8 +385,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             // Check for CR in value
-            var i = valueStart + 1;
-            if (Contains(headerLine + i, valueEnd - i, ByteCR))
+            var valueLength = valueEnd - valueStart + 1;
+            if (new Span<byte>(headerLine + valueStart, valueLength).IndexOf(ByteCR) >= 0)
             {
                 RejectRequestHeader(headerLine, length);
             }
@@ -393,48 +399,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     break;
                 }
+
+                valueLength--;
             }
 
             var nameBuffer = new Span<byte>(headerLine, nameEnd);
-            var valueBuffer = new Span<byte>(headerLine + valueStart, valueEnd - valueStart + 1);
+            var valueBuffer = new Span<byte>(headerLine + valueStart, valueLength);
 
             handler.OnHeader(nameBuffer, valueBuffer);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe bool Contains(byte* searchSpace, int length, byte value)
-        {
-            var i = 0;
-            if (Vector.IsHardwareAccelerated)
-            {
-                // Check Vector lengths
-                if (length - Vector<byte>.Count >= i)
-                {
-                    var vValue = GetVector(value);
-                    do
-                    {
-                        if (!Vector<byte>.Zero.Equals(Vector.Equals(vValue, Unsafe.Read<Vector<byte>>(searchSpace + i))))
-                        {
-                            goto found;
-                        }
-
-                        i += Vector<byte>.Count;
-                    } while (length - Vector<byte>.Count >= i);
-                }
-            }
-
-            // Check remaining for CR
-            for (; i <= length; i++)
-            {
-                var ch = searchSpace[i];
-                if (ch == value)
-                {
-                    goto found;
-                }
-            }
-            return false;
-            found:
-            return true;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -453,6 +425,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.NoInlining)]
         private unsafe Span<byte> GetUnknownMethod(byte* data, int length, out int methodLength)
         {
+            Debug.Assert(length >= 0);
+
             methodLength = 0;
             for (var i = 0; i < length; i++)
             {
@@ -523,15 +497,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void Reset()
         {
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector<byte> GetVector(byte vectorByte)
-        {
-            // Vector<byte> .ctor doesn't become an intrinsic due to detection issue
-            // However this does cause it to become an intrinsic (with additional multiply and reg->reg copy)
-            // https://github.com/dotnet/coreclr/issues/7459#issuecomment-253965670
-            return Vector.AsVectorByte(new Vector<uint>(vectorByte * 0x01010101u));
         }
     }
 }
