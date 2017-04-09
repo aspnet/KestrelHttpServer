@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public interface IHttpParser<TRequestHandler> where TRequestHandler : struct, IHttpHeadersHandler, IHttpRequestLineHandler
+    public interface IHttpParser<TRequestHandler> where TRequestHandler : IHttpHeadersHandler, IHttpRequestLineHandler
     {
         bool ParseRequestLine(TRequestHandler handler, ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined);
 

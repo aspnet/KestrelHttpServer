@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public class HttpParser<TRequestHandler> : IHttpParser<TRequestHandler> where TRequestHandler : struct, IHttpHeadersHandler, IHttpRequestLineHandler
+    public class HttpParser<TRequestHandler> : IHttpParser<TRequestHandler> where TRequestHandler : IHttpHeadersHandler, IHttpRequestLineHandler
     {
         public HttpParser(IKestrelTrace log)
         {
