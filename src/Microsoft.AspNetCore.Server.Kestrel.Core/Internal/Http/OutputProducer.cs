@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -82,6 +84,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return FlushAsync(writableBuffer);
         }
 
+        // Single caller, at end of method - so inline
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Task FlushAsync(WritableBuffer writableBuffer)
         {
             var awaitable = writableBuffer.FlushAsync();
@@ -124,18 +128,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         Task ISocketOutput.WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
         {
+            if (!(cancellationToken.IsCancellationRequested || _cancelled))
+            {
+                return WriteAsync(buffer, cancellationToken, chunk);
+            }
+
             if (cancellationToken.IsCancellationRequested)
             {
                 _frame.Abort();
                 _cancelled = true;
                 return Task.FromCanceled(cancellationToken);
             }
-            else if (_cancelled)
+            else
             {
+                Debug.Assert(_cancelled);
                 return TaskCache.CompletedTask;
             }
-
-            return WriteAsync(buffer, cancellationToken, chunk);
         }
 
         void ISocketOutput.Flush()
