@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -44,8 +46,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public Task WriteAsync(
             ArraySegment<byte> buffer,
-            CancellationToken cancellationToken,
-            bool chunk = false)
+            bool chunk,
+            CancellationToken cancellationToken)
         {
             var writableBuffer = default(WritableBuffer);
 
@@ -82,6 +84,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return FlushAsync(writableBuffer);
         }
 
+        // Single caller, at end of method - so inline
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Task FlushAsync(WritableBuffer writableBuffer)
         {
             var awaitable = writableBuffer.FlushAsync();
@@ -119,33 +123,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         void ISocketOutput.Write(ArraySegment<byte> buffer, bool chunk)
         {
-            WriteAsync(buffer, default(CancellationToken), chunk).GetAwaiter().GetResult();
+            WriteAsync(buffer, chunk, default(CancellationToken)).GetAwaiter().GetResult();
         }
 
         Task ISocketOutput.WriteAsync(ArraySegment<byte> buffer, bool chunk, CancellationToken cancellationToken)
         {
+            if (!(cancellationToken.IsCancellationRequested || _cancelled))
+            {
+                return WriteAsync(buffer, chunk, cancellationToken);
+            }
+
             if (cancellationToken.IsCancellationRequested)
             {
                 _frame.Abort();
                 _cancelled = true;
                 return Task.FromCanceled(cancellationToken);
             }
-            else if (_cancelled)
+            else
             {
+                Debug.Assert(_cancelled);
                 return TaskCache.CompletedTask;
             }
-
-            return WriteAsync(buffer, cancellationToken, chunk);
         }
 
         void ISocketOutput.Flush()
         {
-            WriteAsync(_emptyData, default(CancellationToken)).GetAwaiter().GetResult();
+            WriteAsync(_emptyData, chunk: false, cancellationToken: default(CancellationToken)).GetAwaiter().GetResult();
         }
 
         Task ISocketOutput.FlushAsync(CancellationToken cancellationToken)
         {
-            return WriteAsync(_emptyData, cancellationToken);
+            return WriteAsync(_emptyData, chunk: false, cancellationToken: cancellationToken);
         }
 
         void ISocketOutput.Write<T>(Action<WritableBuffer, T> callback, T state)
