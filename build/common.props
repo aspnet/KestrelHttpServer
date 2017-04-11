@@ -20,4 +20,7 @@
     <PackageReference Include="NETStandard.Library" Version="$(NetStandardImplicitPackageVersion)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Net.Compilers" Version="$(RoslynVersion)" PrivateAssets="All" />
+  </ItemGroup>
 </Project>
