@@ -349,7 +349,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
 
                 // Don't complete response until client has received the first chunk.
-                flushWh.Wait();
+                await Task.Run(() => flushWh.Wait());
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
             }, testContext, listenOptions))

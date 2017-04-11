@@ -947,12 +947,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var flushed = new SemaphoreSlim(0, 1);
 
-            using (var server = new TestServer(httpContext =>
+            using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.ContentLength = 12;
                 httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello, world"), 0, 12);
-                flushed.Wait();
-                return TaskCache.CompletedTask;
+                await Task.Run(() => flushed.Wait());
             }))
             {
                 using (var connection = server.CreateConnection())
