@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public class FrameConnectionManager : ITick
+    public class FrameConnectionManager : IHeartbeatHandler
     {
         private readonly ConcurrentDictionary<long, FrameConnection> _connections
             = new ConcurrentDictionary<long, FrameConnection>();
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public void Tick(DateTimeOffset now)
+        public void OnHeartbeat(DateTimeOffset now)
         {
             foreach (var kvp in _connections)
             {

@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var timerInterval = TimeSpan.FromSeconds(10);
 
             using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
+            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
             {
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
             }
@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var timerInterval = TimeSpan.FromSeconds(10);
 
             using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
+            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
             {
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
@@ -72,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var timerInterval = TimeSpan.FromMilliseconds(100);
 
             using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
+            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
             {
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
 
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             DateHeaderValueManager dateHeaderValueManager;
 
             using (dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new ITick[] {dateHeaderValueManager}, systemClock, timerInterval, null))
+            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
             {
 
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);

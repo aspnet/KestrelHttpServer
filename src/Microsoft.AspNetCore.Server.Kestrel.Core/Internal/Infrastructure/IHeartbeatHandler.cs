@@ -5,8 +5,8 @@ using System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public interface ITick
+    public interface IHeartbeatHandler
     {
-        void Tick(DateTimeOffset now);
+        void OnHeartbeat(DateTimeOffset now);
     }
 }

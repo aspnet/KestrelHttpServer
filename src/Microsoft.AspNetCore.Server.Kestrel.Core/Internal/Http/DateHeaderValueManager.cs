@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     /// <summary>
     /// Manages the generation of the date header value.
     /// </summary>
-    public class DateHeaderValueManager : ITick, IDisposable
+    public class DateHeaderValueManager : IHeartbeatHandler, IDisposable
     {
         private static readonly byte[] _datePreambleBytes = Encoding.ASCII.GetBytes("\r\nDate: ");
 
@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         // Called by the Timer (background) thread
-        public void Tick(DateTimeOffset now)
+        public void OnHeartbeat(DateTimeOffset now)
         {
             if (_timerIsRunning)
             {

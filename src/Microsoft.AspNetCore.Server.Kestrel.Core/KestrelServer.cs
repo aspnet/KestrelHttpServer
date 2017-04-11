@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 var systemClock = new SystemClock();
                 _dateHeaderValueManager = new DateHeaderValueManager(systemClock);
                 var connectionManager = new FrameConnectionManager();
-                _heartbeat = new Heartbeat(new ITick[] { _dateHeaderValueManager, connectionManager }, systemClock, trace);
+                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { _dateHeaderValueManager, connectionManager }, systemClock, trace);
 
                 IThreadPool threadPool;
                 if (InternalOptions.ThreadPoolDispatching)
