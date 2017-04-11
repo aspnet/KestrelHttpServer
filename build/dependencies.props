@@ -5,6 +5,7 @@
     <CoreFxLabsVersion>0.1.0-*</CoreFxLabsVersion>
     <CoreFxVersion>4.3.0</CoreFxVersion>
     <InternalAspNetCoreSdkVersion>2.1.0-*</InternalAspNetCoreSdkVersion>
+    <RoslynVersion>2.3.0-rdonly-ref-61625-05</RoslynVersion>
     <LibUvVersion>1.10.0-*</LibUvVersion>
     <JsonNetVersion>9.0.1</JsonNetVersion>
     <MoqVersion>4.7.1</MoqVersion>
