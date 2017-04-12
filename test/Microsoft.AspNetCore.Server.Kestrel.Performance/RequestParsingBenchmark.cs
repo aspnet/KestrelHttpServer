@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             var serviceContext = new ServiceContext
             {
-                HttpParserFactory = f => new HttpParser(f.ServiceContext.Log),
+                HttpParserFactory = f => new HttpParser<FrameAdapter>(f.Frame.ServiceContext.Log),
                 ServerOptions = new KestrelServerOptions()
             };
             var frameContext = new FrameContext
@@ -120,7 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private void InsertData(byte[] bytes)
         {
             var buffer = Pipe.Writer.Alloc(2048);
-            buffer.WriteFast(bytes);
+            buffer.Write(bytes);
             // There should not be any backpressure and task completes immediately
             buffer.FlushAsync().GetAwaiter().GetResult();
         }
