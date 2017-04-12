@@ -64,8 +64,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-//        private static readonly ITransportFactory s_transportFactory = CreateLibuvTransportFactory();
-        private static readonly ITransportFactory s_transportFactory = CreateSocketTransportFactory();
+        // Switch this to test on socket transport
+        private static readonly ITransportFactory s_transportFactory = CreateLibuvTransportFactory();
+//        private static readonly ITransportFactory s_transportFactory = CreateSocketTransportFactory();
 
         private static ITransportFactory CreateLibuvTransportFactory()
         {
