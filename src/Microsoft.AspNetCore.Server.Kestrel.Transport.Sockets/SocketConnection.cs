@@ -200,13 +200,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public PipeFactory PipeFactory => _transport.PipeFactory;
 
-        public IScheduler InputReaderScheduler => InlineScheduler.Default;
+        public bool RequiresDispatch => false;
 
         public IScheduler InputWriterScheduler => InlineScheduler.Default;
 
         public IScheduler OutputReaderScheduler => InlineScheduler.Default;
-
-        public IScheduler OutputWriterScheduler => InlineScheduler.Default;
 
         public ITimeoutControl TimeoutControl => this;
     }
