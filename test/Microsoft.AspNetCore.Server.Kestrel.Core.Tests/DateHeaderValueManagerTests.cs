@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
+using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -28,14 +29,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 UtcNow = now
             };
-            var timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(1);
-            var timerInterval = TimeSpan.FromSeconds(10);
 
-            using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
-            {
-                Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
-            }
+            var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+            Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
         }
 
         [Fact]
@@ -47,20 +43,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 UtcNow = now
             };
-            var timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(1);
-            var timerInterval = TimeSpan.FromSeconds(10);
 
-            using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
+            var timerInterval = TimeSpan.FromSeconds(10);
+            var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+
+            using (new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager }, systemClock, null, timerInterval))
             {
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+                systemClock.UtcNow = future;
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
-                Assert.Equal(1, systemClock.UtcNowCalled);
             }
+
+            Assert.Equal(1, systemClock.UtcNowCalled);
         }
 
         [Fact]
-        public async Task GetDateHeaderValue_ReturnsUpdatedValueAfterIdle()
+        public async Task GetDateHeaderValue_ReturnsUpdatedValueAfterHeartbeat()
         {
             var now = DateTimeOffset.UtcNow;
             var future = now.AddSeconds(10);
@@ -68,17 +66,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 UtcNow = now
             };
-            var timeWithoutRequestsUntilIdle = TimeSpan.FromMilliseconds(250);
-            var timerInterval = TimeSpan.FromMilliseconds(100);
 
-            using (var dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
+            var timerInterval = TimeSpan.FromMilliseconds(100);
+            var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+
+            var heartbeatTcs = new TaskCompletionSource<object>();
+            var mockHeartbeatHandler = new Mock<IHeartbeatHandler>();
+
+            mockHeartbeatHandler.Setup(h => h.OnHeartbeat(future)).Callback(() => heartbeatTcs.TrySetResult(null));
+
+            using (new Heartbeat(new[] { dateHeaderValueManager, mockHeartbeatHandler.Object }, systemClock, null, timerInterval))
             {
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
 
-                // Wait for longer than the idle timeout to ensure the timer is stopped
+                // Wait for the next heartbeat before verifying GetDateHeaderValues picks up new time.
                 systemClock.UtcNow = future;
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                await heartbeatTcs.Task;
 
                 Assert.Equal(future.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
                 Assert.True(systemClock.UtcNowCalled >= 2);
@@ -86,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void GetDateHeaderValue_ReturnsDateValueAfterDisposed()
+        public void GetDateHeaderValue_ReturnsLastDateValueAfterHeartbeatDisposed()
         {
             var now = DateTimeOffset.UtcNow;
             var future = now.AddSeconds(10);
@@ -94,20 +97,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 UtcNow = now
             };
-            var timeWithoutRequestsUntilIdle = TimeSpan.FromSeconds(1);
+
             var timerInterval = TimeSpan.FromSeconds(10);
+            var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
 
-            DateHeaderValueManager dateHeaderValueManager;
-
-            using (dateHeaderValueManager = new DateHeaderValueManager(systemClock, timeWithoutRequestsUntilIdle))
-            using (new Heartbeat(new IHeartbeatHandler[] {dateHeaderValueManager}, systemClock, null, timerInterval))
+            using (new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager }, systemClock, null, timerInterval))
             {
-
                 Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
             }
 
             systemClock.UtcNow = future;
-            Assert.Equal(future.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
+            Assert.Equal(now.ToString(Rfc1123DateFormat), dateHeaderValueManager.GetDateHeaderValues().String);
         }
     }
 }

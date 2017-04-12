@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _interval = interval;
             _systemClock = systemClock;
             _trace = trace;
-            _timer = new Timer(OnHeartbeat, state: this, dueTime: TimeSpan.Zero, period: _interval);
+            _timer = new Timer(OnHeartbeat, state: this, dueTime: _interval, period: _interval);
         }
         
         // Called by the Timer (background) thread
