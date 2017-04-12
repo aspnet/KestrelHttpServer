@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Buffers;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -20,6 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly IPEndPoint _remoteEndPoint;
         private IPipeWriter _input;
         private IPipeReader _output;
+        private IList<ArraySegment<byte>> _sendBufferList;
 
         private const int MinAllocBufferSize = 2048;        // from libuv transport
 
@@ -96,6 +98,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
         }
 
+        private void SetupSendBuffers(ReadableBuffer buffer)
+        {
+            Debug.Assert(!buffer.IsEmpty);
+            Debug.Assert(!buffer.IsSingleSpan);
+
+            if (_sendBufferList == null)
+            {
+                _sendBufferList = new List<ArraySegment<byte>>();
+            }
+
+            // We should always clear the list after the send
+            Debug.Assert(_sendBufferList.Count == 0);
+
+            foreach (var b in buffer)
+            {
+                _sendBufferList.Add(GetArraySegment(b));
+            }
+        }
+
         private async Task DoSend()
         {
             try
@@ -109,11 +130,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
                     try
                     {
-                        // Write received data to socket
-                        // TODO: Do multi-buffer write here
-                        foreach (Buffer<byte> b in buffer)
+                        if (!buffer.IsEmpty)
                         {
-                            await _socket.SendAsync(GetArraySegment(b), SocketFlags.None);
+                            if (buffer.IsSingleSpan)
+                            {
+                                await _socket.SendAsync(GetArraySegment(buffer.First), SocketFlags.None);
+                            }
+                            else
+                            {
+                                SetupSendBuffers(buffer);
+                                try
+                                {
+                                    await _socket.SendAsync(_sendBufferList, SocketFlags.None);
+                                }
+                                finally
+                                {
+                                    _sendBufferList.Clear();
+                                }
+                            }
                         }
                     }
                     finally
