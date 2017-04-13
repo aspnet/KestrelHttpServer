@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(10, 10, 10)]
         [InlineData(null, 0, 0)]
-        public void AdaptedPipeOptionsConfiguredCorrectly(long? maxRequestBufferSize, long expectedMaximumSizeLow, long expectedMaximumSizeHigh)
+        public void AdaptedInputPipeOptionsConfiguredCorrectly(long? maxRequestBufferSize, long expectedMaximumSizeLow, long expectedMaximumSizeHigh)
         {
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxRequestBufferSize = maxRequestBufferSize;
@@ -73,7 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(10, 10, 10)]
         [InlineData(null, 0, 0)]
-        public void AdaptedPipeOptionsConfiguredCorrectly(long? maxRequestBufferSize, long expectedMaximumSizeLow, long expectedMaximumSizeHigh)
+        public void AdaptedOutputPipeOptionsConfiguredCorrectly(long? maxRequestBufferSize, long expectedMaximumSizeLow, long expectedMaximumSizeHigh)
         {
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxResponseBufferSize = maxRequestBufferSize;
