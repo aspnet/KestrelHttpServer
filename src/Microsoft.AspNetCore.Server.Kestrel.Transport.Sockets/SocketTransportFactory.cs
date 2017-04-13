@@ -10,10 +10,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     public sealed class SocketTransportFactory : ITransportFactory
     {
         private readonly PipeFactory _pipeFactory;
+        private readonly bool _forceDispatch;
 
-        public SocketTransportFactory()
+        public SocketTransportFactory(bool forceDispatch = false)
         {
             _pipeFactory = new PipeFactory();
+            _forceDispatch = forceDispatch;
         }
 
         public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
@@ -37,5 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         }
 
         internal PipeFactory PipeFactory => _pipeFactory;
+
+        internal bool ForceDispatch => _forceDispatch;
     }
 }

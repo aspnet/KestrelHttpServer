@@ -86,7 +86,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private static ITransportFactory CreateSocketTransportFactory()
         {
-            return new SocketTransportFactory();
+            // For now, force the socket transport to do threadpool dispatch for tests.
+            // There are a handful of tests that deadlock due to test issues if we don't do dispatch.
+            // We should clean these up, but for now, make them work by forcing dispatch.
+            return new SocketTransportFactory(true);
         }
         
         public IPEndPoint EndPoint => _listenOptions.IPEndPoint;

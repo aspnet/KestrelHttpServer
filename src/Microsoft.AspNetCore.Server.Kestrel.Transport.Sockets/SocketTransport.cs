@@ -122,6 +122,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
         }
 
-        internal PipeFactory PipeFactory => _transportFactory.PipeFactory;
+        internal SocketTransportFactory TransportFactory => _transportFactory;
     }
 }
