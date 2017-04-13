@@ -9,12 +9,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     public sealed class SocketTransportFactory : ITransportFactory
     {
-        private readonly PipeFactory _pipeFactory;
+        private readonly PipeFactory _pipeFactory = new PipeFactory();
         private readonly bool _forceDispatch;
 
         public SocketTransportFactory(bool forceDispatch = false)
         {
-            _pipeFactory = new PipeFactory();
             _forceDispatch = forceDispatch;
         }
 
@@ -27,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             if (endPointInformation.Type != ListenType.IPEndPoint)
             {
-                throw new ArgumentException(nameof(endPointInformation));
+                throw new ArgumentException("Only ListenType.IPEndPoint is supported", nameof(endPointInformation));
             }
 
             if (handler == null)

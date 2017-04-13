@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             if (_listenSocket != null)
             {
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("Transport is already bound");
             }
 
             IPEndPoint endPoint = _endPointInformation.IPEndPoint;

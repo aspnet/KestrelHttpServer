@@ -53,6 +53,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             await sendTask;
 
             _socket.Dispose();
+
+            context.OnConnectionClosed();
         }
         
         private async Task DoReceive()
