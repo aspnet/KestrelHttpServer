@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.KestrelTests;
 using Microsoft.Extensions.Primitives;
 using Xunit;
 
@@ -79,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     app.Run(async context =>
                     {
                         context.Response.Headers.Add(headerName, headerValue);
-                        
+
                         await context.Response.WriteAsync("");
                     });
                 });
@@ -140,6 +141,162 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
                     Assert.False(onStartingCalled);
                     Assert.True(onCompletedCalled);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task WhenResponseAlreadyStartedResponseEndedBeforeConsumingRequestBody()
+        {
+            using (var server = new TestServer(async httpContext =>
+            {
+                await httpContext.Response.WriteAsync("hello, world");
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 1",
+                        "",
+                        "");
+
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        $"Transfer-Encoding: chunked",
+                        "",
+                        "c",
+                        "hello, world",
+                        "");
+
+                    // If the expected behavior is regressed, this will hang because the
+                    // server will try to consume the request body before flushing the chunked
+                    // terminator.
+                    await connection.Receive(
+                        "0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task WhenResponseNotStartedResponseEndedAfterConsumingRequestBody()
+        {
+            using (var server = new TestServer(httpContext => Task.FromResult(0)))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "gg");
+
+                    // If the expected behavior is regressed, this will receive
+                    // a success response because the server flushed the response
+                    // before reading the malformed chunk header in the request.
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 400 Bad Request",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Sending100ContinueDoesNotStartResponse()
+        {
+            using (var server = new TestServer(httpContext =>
+            {
+                return httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Transfer-Encoding: chunked",
+                        "Expect: 100-continue",
+                        "",
+                        "");
+
+                    await connection.Receive(
+                        "HTTP/1.1 100 Continue",
+                        "",
+                        "");
+
+                    // Let the app finish
+                    await connection.Send(
+                        "1",
+                        "a",
+                        "");
+
+                    // This will be consumed by Frame when it attempts to
+                    // consume the request body and will cause an error.
+                    await connection.Send(
+                        "gg");
+
+                    // If 100 Continue sets Frame.HasResponseStarted to true,
+                    // a success response will be produced before the server sees the
+                    // bad chunk header above, making this test fail.
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 400 Bad Request",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Sending100ContinueAndResponseSendsChunkTerminatorBeforeConsumingRequestBody()
+        {
+            using (var server = new TestServer(async httpContext =>
+            {
+                await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
+                await httpContext.Response.WriteAsync("hello, world");
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 2",
+                        "Expect: 100-continue",
+                        "",
+                        "");
+
+                    await connection.Receive(
+                        "HTTP/1.1 100 Continue",
+                        "",
+                        "");
+
+                    await connection.Send(
+                        "a");
+
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        $"Transfer-Encoding: chunked",
+                        "",
+                        "c",
+                        "hello, world",
+                        "");
+
+                    // If the expected behavior is regressed, this will hang because the
+                    // server will try to consume the request body before flushing the chunked
+                    // terminator.
+                    await connection.Receive(
+                        "0",
+                        "",
+                        "");
                 }
             }
         }
