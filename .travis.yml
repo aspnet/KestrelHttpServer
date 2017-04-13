@@ -15,6 +15,7 @@ branches:
   only:
     - master
     - release
+    - /^rel\//
     - dev
     - /^(.*\/)?ci-.*$/
 before_install:
