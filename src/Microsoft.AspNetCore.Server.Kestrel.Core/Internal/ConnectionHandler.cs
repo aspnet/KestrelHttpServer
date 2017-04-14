@@ -27,8 +27,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
         {
-            var inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(connectionInfo.RequiresDispatch, connectionInfo.InputWriterScheduler));
-            var outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(connectionInfo.RequiresDispatch, connectionInfo.OutputReaderScheduler));
+            var inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(requiresDispatch: connectionInfo.RequiresDispatch, writerScheduler: connectionInfo.InputWriterScheduler));
+            var outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(requiresDispatch: connectionInfo.RequiresDispatch, readerScheduler: connectionInfo.OutputReaderScheduler));
 
             var connectionId = CorrelationIdGenerator.GetNextId();
             var frameConnectionId = Interlocked.Increment(ref _lastFrameConnectionId);

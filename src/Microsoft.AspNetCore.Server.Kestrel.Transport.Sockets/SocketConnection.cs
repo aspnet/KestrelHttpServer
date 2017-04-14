@@ -161,7 +161,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                             }
                         }
 
-                        if (result.IsCancelled || result.IsCompleted)
+                        if (result.IsCancelled)
+                        {
+                            // Send a FIN
+                            _socket.Shutdown(SocketShutdown.Send);
+                            break;
+                        }
+
+                        if (buffer.IsEmpty && result.IsCompleted)
                         {
                             // Send a FIN
                             _socket.Shutdown(SocketShutdown.Send);
