@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -29,7 +30,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private readonly ITransportFactory _transportFactory;
 
         private bool _isRunning;
-        private DateHeaderValueManager _dateHeaderValueManager;
+        private int _stopped;
+        private Heartbeat _heartbeat;
 
         public KestrelServer(
             IOptions<KestrelServerOptions> options,
@@ -67,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
         private InternalKestrelServerOptions InternalOptions { get; }
 
-        public void Start<TContext>(IHttpApplication<TContext> application)
+        public async Task StartAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellationToken)
         {
             try
             {
@@ -85,8 +87,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 }
                 _isRunning = true;
 
-                _dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
+
+                var systemClock = new SystemClock();
+                var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+                var connectionManager = new FrameConnectionManager();
+                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager, connectionManager }, systemClock, trace);
 
                 IThreadPool threadPool;
                 if (InternalOptions.ThreadPoolDispatching)
@@ -103,7 +109,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     Log = trace,
                     HttpParserFactory = frameParser => new HttpParser<FrameAdapter>(frameParser.Frame.ServiceContext.Log),
                     ThreadPool = threadPool,
-                    DateHeaderValueManager = _dateHeaderValueManager,
+                    SystemClock = systemClock,
+                    DateHeaderValueManager = dateHeaderValueManager,
+                    ConnectionManager = connectionManager,
                     ServerOptions = Options
                 };
 
@@ -123,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     _logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
                     // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                    StartLocalhost(ServerAddress.FromUrl(Constants.DefaultServerAddress), serviceContext, application);
+                    await StartLocalhostAsync(ServerAddress.FromUrl(Constants.DefaultServerAddress), serviceContext, application, cancellationToken).ConfigureAwait(false);
 
                     // If StartLocalhost doesn't throw, there is at least one listener.
                     // The port cannot change for "localhost".
@@ -145,6 +153,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                         {
                             throw new InvalidOperationException($"HTTPS endpoints can only be configured using {nameof(KestrelServerOptions)}.{nameof(KestrelServerOptions.Listen)}().");
                         }
+                        else if (!parsedAddress.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidOperationException($"Unrecognized scheme in server address '{address}'. Only 'http://' is supported.");
+                        }
 
                         if (!string.IsNullOrEmpty(parsedAddress.PathBase))
                         {
@@ -158,17 +170,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                         if (parsedAddress.IsUnixPipe)
                         {
-                            listenOptions.Add(new ListenOptions(parsedAddress.UnixPipePath)
-                            {
-                                Scheme = parsedAddress.Scheme,
-                            });
+                            listenOptions.Add(new ListenOptions(parsedAddress.UnixPipePath));
                         }
                         else
                         {
                             if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
                             {
                                 // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                                StartLocalhost(parsedAddress, serviceContext, application);
+                                await StartLocalhostAsync(parsedAddress, serviceContext, application, cancellationToken).ConfigureAwait(false);
 
                                 // If StartLocalhost doesn't throw, there is at least one listener.
                                 // The port cannot change for "localhost".
@@ -177,10 +186,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                             else
                             {
                                 // These endPoints will be added later to _serverAddresses.Addresses
-                                listenOptions.Add(new ListenOptions(CreateIPEndPoint(parsedAddress))
-                                {
-                                    Scheme = parsedAddress.Scheme,
-                                });
+                                listenOptions.Add(new ListenOptions(CreateIPEndPoint(parsedAddress)));
                             }
                         }
                     }
@@ -194,15 +200,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                     try
                     {
-                        transport.BindAsync().GetAwaiter().GetResult();
+                        await transport.BindAsync().ConfigureAwait(false);
                     }
                     catch (AddressInUseException ex)
                     {
                         throw new IOException($"Failed to bind to address {endPoint}: address already in use.", ex);
                     }
 
-                    // If requested port was "0", replace with assigned dynamic port.
-                    _serverAddresses.Addresses.Add(endPoint.ToString());
+                    _serverAddresses.Addresses.Add(endPoint.GetDisplayName());
                 }
             }
             catch (Exception ex)
@@ -213,8 +218,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
         }
 
-        public void Dispose()
+        // Graceful shutdown if possible
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
+            if (Interlocked.Exchange(ref _stopped, 1) == 1)
+            {
+                return;
+            }
+
             if (_transports != null)
             {
                 var tasks = new Task[_transports.Count];
@@ -222,17 +233,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 {
                     tasks[i] = _transports[i].UnbindAsync();
                 }
-                Task.WaitAll(tasks);
+                await Task.WhenAll(tasks).ConfigureAwait(false);
 
                 // TODO: Do transport-agnostic connection management/shutdown.
                 for (int i = 0; i < _transports.Count; i++)
                 {
                     tasks[i] = _transports[i].StopAsync();
                 }
-                Task.WaitAll(tasks);
+                await Task.WhenAll(tasks).ConfigureAwait(false);
             }
 
-            _dateHeaderValueManager?.Dispose();
+            _heartbeat?.Dispose();
+        }
+
+        // Ungraceful shutdown
+        public void Dispose()
+        {
+            var cancelledTokenSource = new CancellationTokenSource();
+            cancelledTokenSource.Cancel();
+            StopAsync(cancelledTokenSource.Token).GetAwaiter().GetResult();
         }
 
         private void ValidateOptions()
@@ -252,7 +271,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
         }
 
-        private void StartLocalhost<TContext>(ServerAddress parsedAddress, ServiceContext serviceContext, IHttpApplication<TContext> application)
+        private async Task StartLocalhostAsync<TContext>(ServerAddress parsedAddress, ServiceContext serviceContext, IHttpApplication<TContext> application, CancellationToken cancellationToken)
         {
             if (parsedAddress.Port == 0)
             {
@@ -263,15 +282,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             try
             {
-                var ipv4ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port))
-                {
-                    Scheme = parsedAddress.Scheme,
-                };
+                var ipv4ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, parsedAddress.Port));
 
                 var connectionHandler = new ConnectionHandler<TContext>(ipv4ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv4ListenOptions, connectionHandler);
                 _transports.Add(transport);
-                transport.BindAsync().GetAwaiter().GetResult();
+                await transport.BindAsync().ConfigureAwait(false);
             }
             catch (AddressInUseException ex)
             {
@@ -285,15 +301,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             try
             {
-                var ipv6ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, parsedAddress.Port))
-                {
-                    Scheme = parsedAddress.Scheme,
-                };
+                var ipv6ListenOptions = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, parsedAddress.Port));
 
                 var connectionHandler = new ConnectionHandler<TContext>(ipv6ListenOptions, serviceContext, application);
                 var transport = _transportFactory.Create(ipv6ListenOptions, connectionHandler);
                 _transports.Add(transport);
-                transport.BindAsync().GetAwaiter().GetResult();
+                await transport.BindAsync().ConfigureAwait(false);
             }
             catch (AddressInUseException ex)
             {

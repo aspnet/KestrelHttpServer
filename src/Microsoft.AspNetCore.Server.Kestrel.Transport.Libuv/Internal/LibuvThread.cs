@@ -16,16 +16,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
     public class LibuvThread : IScheduler
     {
-        public const long HeartbeatMilliseconds = 1000;
-
-        private static readonly LibuvFunctions.uv_walk_cb _heartbeatWalkCallback = (ptr, arg) =>
-        {
-            var streamHandle = UvMemory.FromIntPtr<UvHandle>(ptr) as UvStreamHandle;
-            var thisHandle = GCHandle.FromIntPtr(arg);
-            var libuvThread = (LibuvThread)thisHandle.Target;
-            streamHandle?.Connection?.Tick(libuvThread.Now);
-        };
-
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
         // otherwise it needs to wait till the next pass of the libuv loop
@@ -34,10 +24,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly LibuvTransport _transport;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
-        private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>();
+        private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
-        private readonly UvTimerHandle _heartbeatTimer;
         private Queue<Work> _workAdding = new Queue<Work>(1024);
         private Queue<Work> _workRunning = new Queue<Work>(1024);
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
@@ -49,7 +38,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private ExceptionDispatchInfo _closeError;
         private readonly ILibuvTrace _log;
         private readonly TimeSpan _shutdownTimeout;
-        private IntPtr _thisPtr;
 
         public LibuvThread(LibuvTransport transport)
         {
@@ -61,7 +49,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
             _thread.Name = nameof(LibuvThread);
-            _heartbeatTimer = new UvTimerHandle(_log);
 #if !DEBUG
             // Mark the thread as being as unimportant to keeping the process alive.
             // Don't do this for debug builds, so we know if the thread isn't terminating.
@@ -100,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public Task StartAsync()
         {
-            var tcs = new TaskCompletionSource<int>();
+            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             _thread.Start(tcs);
             return tcs.Task;
         }
@@ -170,7 +157,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void AllowStop()
         {
-            _heartbeatTimer.Stop();
             _post.Unreference();
         }
 
@@ -217,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public Task PostAsync<T>(Action<T> callback, T state)
         {
-            var tcs = new TaskCompletionSource<object>();
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (_workSync)
             {
                 _workAdding.Enqueue(new Work
@@ -269,8 +255,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 {
                     _loop.Init(_transport.Libuv);
                     _post.Init(_loop, OnPost, EnqueueCloseHandle);
-                    _heartbeatTimer.Init(_loop, EnqueueCloseHandle);
-                    _heartbeatTimer.Start(OnHeartbeat, timeout: HeartbeatMilliseconds, repeat: HeartbeatMilliseconds);
                     _initCompleted = true;
                     tcs.SetResult(0);
                 }
@@ -286,8 +270,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
             try
             {
-                _thisPtr = GCHandle.ToIntPtr(thisHandle);
-
                 _loop.Run();
                 if (_stopImmediate)
                 {
@@ -298,7 +280,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 // run the loop one more time to delete the open handles
                 _post.Reference();
                 _post.Dispose();
-                _heartbeatTimer.Dispose();
 
                 // Ensure the Dispose operations complete in the event loop.
                 _loop.Run();
@@ -333,12 +314,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             } while (wasWork && loopsRemaining > 0);
         }
 
-        private void OnHeartbeat(UvTimerHandle timer)
-        {
-            Now = Loop.Now();
-            Walk(_heartbeatWalkCallback, _thisPtr);
-        }
-
         private bool DoPostWork()
         {
             Queue<Work> queue;
@@ -357,36 +332,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 try
                 {
                     work.CallbackAdapter(work.Callback, work.State);
-                    if (work.Completion != null)
-                    {
-                        ThreadPool.QueueUserWorkItem(o =>
-                        {
-                            try
-                            {
-                                ((TaskCompletionSource<object>)o).SetResult(null);
-                            }
-                            catch (Exception e)
-                            {
-                                _log.LogError(0, e, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
-                            }
-                        }, work.Completion);
-                    }
+                    work.Completion?.TrySetResult(null);
                 }
                 catch (Exception ex)
                 {
                     if (work.Completion != null)
                     {
-                        ThreadPool.QueueUserWorkItem(o =>
-                        {
-                            try
-                            {
-                                ((TaskCompletionSource<object>)o).TrySetException(ex);
-                            }
-                            catch (Exception e)
-                            {
-                                _log.LogError(0, e, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
-                            }
-                        }, work.Completion);
+                        work.Completion.TrySetException(ex);
                     }
                     else
                     {

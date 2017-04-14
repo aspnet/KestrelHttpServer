@@ -16,22 +16,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public bool RequiresDispatch { get; }
         public IScheduler InputWriterScheduler { get; }
         public IScheduler OutputReaderScheduler { get; }
-
-        public ITimeoutControl TimeoutControl { get; } = new MockTimeoutControl();
-
-        private class MockTimeoutControl : ITimeoutControl
-        {
-            public void CancelTimeout()
-            {
-            }
-
-            public void ResetTimeout(long milliseconds, TimeoutAction timeoutAction)
-            {
-            }
-
-            public void SetTimeout(long milliseconds, TimeoutAction timeoutAction)
-            {
-            }
-        }
     }
 }

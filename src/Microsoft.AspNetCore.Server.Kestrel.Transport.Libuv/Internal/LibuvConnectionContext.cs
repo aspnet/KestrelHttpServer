@@ -27,7 +27,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         public bool RequiresDispatch => true;
         public IScheduler InputWriterScheduler => ListenerContext.Thread;
         public IScheduler OutputReaderScheduler => ListenerContext.Thread;
-
-        public ITimeoutControl TimeoutControl { get; set; }
     }
 }
