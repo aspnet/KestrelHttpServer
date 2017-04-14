@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly SocketTransport _transport;
         private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _remoteEndPoint;
+        private IConnectionContext _connectionContext;
         private IPipeWriter _input;
         private IPipeReader _output;
         private IList<ArraySegment<byte>> _sendBufferList;
@@ -39,10 +40,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public async void Start(IConnectionHandler connectionHandler)
         {
-            IConnectionContext context = connectionHandler.OnConnection(this);
+            _connectionContext = connectionHandler.OnConnection(this);
 
-            _input = context.Input;
-            _output = context.Output;
+            _input = _connectionContext.Input;
+            _output = _connectionContext.Output;
 
             // Spawn send and receive logic
             Task receiveTask = DoReceive();
@@ -54,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             _socket.Dispose();
 
-            context.OnConnectionClosed();
+            _connectionContext.OnConnectionClosed();
         }
         
         private async Task DoReceive()
@@ -67,36 +68,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     // Ensure we have some reasonable amount of buffer space
                     WritableBuffer buffer = _input.Alloc(MinAllocBufferSize);
 
+                    int bytesReceived;
                     try
                     {
-                        int bytesReceived = await _socket.ReceiveAsync(GetArraySegment(buffer.Buffer), SocketFlags.None);
-
-                        if (bytesReceived == 0)
-                        {
-                            // EOF
-                            _input.Complete();
-                            done = true;
-                            break;
-                        }
-
-                        // record what data we filled into the buffer and push to pipe
-                        buffer.Advance(bytesReceived);
+                        bytesReceived = await _socket.ReceiveAsync(GetArraySegment(buffer.Buffer), SocketFlags.None);
                     }
-                    finally
+                    catch (Exception ex)
                     {
-                        var result = await buffer.FlushAsync();
-                        if (result.IsCompleted)
-                        {
-                            // Pipe consumer is shut down
-                            _socket.Shutdown(SocketShutdown.Receive);
-                            done = true;
-                        }
+                        buffer.Commit();
+                        _connectionContext.Abort(ex);
+                        _input.Complete(ex);
+                        break;
+                    }
+
+                    if (bytesReceived == 0)
+                    {
+                        // EOF
+                        Exception ex = new TaskCanceledException();
+                        buffer.Commit();
+                        _connectionContext.Abort(ex);
+                        _input.Complete(ex);
+                        break;
+                    }
+
+                    // record what data we filled into the buffer and push to pipe
+                    buffer.Advance(bytesReceived);
+                    var result = await buffer.FlushAsync();
+                    if (result.IsCompleted)
+                    {
+                        // Pipe consumer is shut down
+                        _socket.Shutdown(SocketShutdown.Receive);
+                        done = true;
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _input.Complete(ex);
+                // We don't expect any exceptions here, but eat it anyway as caller does not handle this.
+                Debug.Assert(false);
             }
         }
 
