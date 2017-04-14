@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
-    internal sealed class SocketConnection : IConnectionInformation, ITimeoutControl
+    internal sealed class SocketConnection : IConnectionInformation
     {
         private readonly Socket _socket;
         private readonly SocketTransport _transport;
@@ -181,21 +181,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             return segment;
         }
 
-        public void SetTimeout(long milliseconds, TimeoutAction timeoutAction)
-        {
-            // TODO
-        }
-
-        public void ResetTimeout(long milliseconds, TimeoutAction timeoutAction)
-        {
-            // TODO
-        }
-
-        public void CancelTimeout()
-        {
-            // TODO
-        }
-
         public IPEndPoint RemoteEndPoint => _remoteEndPoint;
 
         public IPEndPoint LocalEndPoint => _localEndPoint;
@@ -207,7 +192,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         public IScheduler InputWriterScheduler => InlineScheduler.Default;
 
         public IScheduler OutputReaderScheduler => InlineScheduler.Default;
-
-        public ITimeoutControl TimeoutControl => this;
     }
 }
