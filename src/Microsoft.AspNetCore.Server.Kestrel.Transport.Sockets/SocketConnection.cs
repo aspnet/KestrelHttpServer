@@ -160,18 +160,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                                 }
                             }
                         }
+
+                        if (result.IsCancelled || result.IsCompleted)
+                        {
+                            // Send a FIN
+                            _socket.Shutdown(SocketShutdown.Send);
+                            break;
+                        }
                     }
                     finally
                     {
                         _output.Advance(buffer.End);
-                        if (result.IsCompleted)
-                        {
-                            // Pipe producer is shut down
-                            _socket.Shutdown(SocketShutdown.Send);
-                            done = true;
-                        }
                     }
                 }
+
+                // We're done reading
+                _output.Complete();
             }
             catch (Exception ex)
             {
