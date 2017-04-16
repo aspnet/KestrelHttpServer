@@ -59,10 +59,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void StartedCallback(TaskCompletionSource<int> tcs)
         {
+            var connect = new UvConnectRequest(Log);
             try
             {
                 DispatchPipe.Init(Thread.Loop, Thread.QueueCloseHandle, true);
-                var connect = new UvConnectRequest(Log);
                 connect.Init(Thread.Loop);
                 connect.Connect(
                     DispatchPipe,
@@ -73,6 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             catch (Exception ex)
             {
                 DispatchPipe.Dispose();
+                connect.Dispose();
                 tcs.SetException(ex);
             }
         }

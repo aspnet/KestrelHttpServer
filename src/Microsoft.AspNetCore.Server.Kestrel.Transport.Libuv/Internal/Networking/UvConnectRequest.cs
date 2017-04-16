@@ -38,14 +38,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
             _callback = callback;
             _state = state;
 
-            Pin();
             Libuv.pipe_connect(this, pipe, name, _uv_connect_cb);
         }
 
         private static void UvConnectCb(IntPtr ptr, int status)
         {
             var req = FromIntPtr<UvConnectRequest>(ptr);
-            req.Unpin();
 
             var callback = req._callback;
             req._callback = null;
