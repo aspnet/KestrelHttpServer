@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Testing
                     await writer.WriteAsync($"Host: {requestUri.Authority}\r\n").ConfigureAwait(false);
                     await writer.WriteAsync($"Content-Type: {content.Headers.ContentType}\r\n").ConfigureAwait(false);
                     await writer.WriteAsync($"Content-Length: {content.Headers.ContentLength}\r\n").ConfigureAwait(false);
-                    await writer.WriteAsync("\r\n");
+                    await writer.WriteAsync("\r\n").ConfigureAwait(false);
                 }
 
                 await content.CopyToAsync(stream).ConfigureAwait(false);
