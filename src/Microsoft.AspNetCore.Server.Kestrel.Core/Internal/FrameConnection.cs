@@ -111,6 +111,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _frame.Abort(ex);
         }
 
+        public Task AbortAsync(Exception ex)
+        {
+            _frame.Abort(ex);
+            return StopAsync();
+        }
+
         public void Timeout()
         {
             _frame.SetBadRequestState(RequestRejectionReason.RequestTimeout);

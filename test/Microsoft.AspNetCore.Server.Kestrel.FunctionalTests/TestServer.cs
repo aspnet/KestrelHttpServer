@@ -73,11 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private static ITransportFactory CreateLibuvTransportFactory(TestServiceContext context)
         {
-            var transportOptions = new LibuvTransportOptions()
-            {
-                ThreadCount = 1,
-                ShutdownTimeout = TimeSpan.FromSeconds(5)
-            };
+            var transportOptions = new LibuvTransportOptions { ThreadCount = 1 };
 
             var transportFactory = new LibuvTransportFactory(
                 Options.Create(transportOptions),

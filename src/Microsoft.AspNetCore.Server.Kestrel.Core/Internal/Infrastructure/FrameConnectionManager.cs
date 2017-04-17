@@ -3,6 +3,9 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
@@ -33,6 +36,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             {
                 kvp.Value.Tick(now);
             }
+        }
+
+        public async Task<bool> CloseAllConnectionsAsync(CancellationToken token)
+        {
+            var allStoppedTask = Task.WhenAll(_connections.Select(kvp => kvp.Value.StopAsync()).ToArray());
+            return await Task.WhenAny(allStoppedTask, CancellationTokenAsTask(token)).ConfigureAwait(false) == allStoppedTask;
+        }
+
+        public async Task<bool> AbortAllConnectionsAsync()
+        {
+            var timeoutEx = new TimeoutException("Request processing didn't complete within configured timeout.");
+
+            var allAbortedTask = Task.WhenAll(_connections.Select(kvp => kvp.Value.AbortAsync(timeoutEx)).ToArray());
+            return await Task.WhenAny(allAbortedTask, Task.Delay(1000)).ConfigureAwait(false) == allAbortedTask;
+        }
+
+        private Task CancellationTokenAsTask(CancellationToken token)
+        {
+            if (token.IsCancellationRequested)
+            {
+                return Task.CompletedTask;
+            }
+
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            token.Register(() => tcs.SetResult(null));
+            return tcs.Task;
         }
     }
 }

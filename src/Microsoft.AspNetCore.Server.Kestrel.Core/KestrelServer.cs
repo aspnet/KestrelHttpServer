@@ -20,12 +20,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     public class KestrelServer : IServer
     {
         private readonly List<ITransport> _transports = new List<ITransport>();
+        private readonly FrameConnectionManager _connectionManager = new FrameConnectionManager();
 
         private readonly ILogger _logger;
+        private readonly KestrelTrace _trace;
         private readonly IServerAddressesFeature _serverAddresses;
         private readonly ITransportFactory _transportFactory;
 
-        private bool _isRunning;
+        private bool _hasStarted;
         private int _stopped;
         private Heartbeat _heartbeat;
 
@@ -52,6 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             Options = options.Value ?? new KestrelServerOptions();
             _transportFactory = transportFactory;
             _logger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
+            _trace = new KestrelTrace(_logger);
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
             Features.Set(_serverAddresses);
@@ -72,38 +75,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                 ValidateOptions();
 
-                if (_isRunning)
+                if (_hasStarted)
                 {
                     // The server has already started and/or has not been cleaned up yet
                     throw new InvalidOperationException("Server has already started.");
                 }
-                _isRunning = true;
-
-                var trace = new KestrelTrace(_logger);
+                _hasStarted = true;
 
                 var systemClock = new SystemClock();
                 var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
-                var connectionManager = new FrameConnectionManager();
-                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager, connectionManager }, systemClock, trace);
+                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager, _connectionManager }, systemClock, _trace);
 
                 IThreadPool threadPool;
                 if (Options.UseTransportThread)
                 {
-                    threadPool = new InlineLoggingThreadPool(trace);
+                    threadPool = new InlineLoggingThreadPool(_trace);
                 }
                 else
                 {
-                    threadPool = new LoggingThreadPool(trace);
+                    threadPool = new LoggingThreadPool(_trace);
                 }
 
                 var serviceContext = new ServiceContext
                 {
-                    Log = trace,
+                    Log = _trace,
                     HttpParserFactory = frameParser => new HttpParser<FrameAdapter>(frameParser.Frame.ServiceContext.Log),
                     ThreadPool = threadPool,
                     SystemClock = systemClock,
                     DateHeaderValueManager = dateHeaderValueManager,
-                    ConnectionManager = connectionManager,
+                    ConnectionManager = _connectionManager,
                     ServerOptions = Options
                 };
 
@@ -134,22 +134,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 return;
             }
 
-            if (_transports != null)
+            var tasks = new Task[_transports.Count];
+            for (int i = 0; i < _transports.Count; i++)
             {
-                var tasks = new Task[_transports.Count];
-                for (int i = 0; i < _transports.Count; i++)
-                {
-                    tasks[i] = _transports[i].UnbindAsync();
-                }
-                await Task.WhenAll(tasks).ConfigureAwait(false);
-
-                // TODO: Do transport-agnostic connection management/shutdown.
-                for (int i = 0; i < _transports.Count; i++)
-                {
-                    tasks[i] = _transports[i].StopAsync();
-                }
-                await Task.WhenAll(tasks).ConfigureAwait(false);
+                tasks[i] = _transports[i].UnbindAsync();
             }
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+
+            if (!await _connectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
+            {
+                _trace.NotAllConnectionsClosedGracefully();
+
+                if (!await _connectionManager.AbortAllConnectionsAsync().ConfigureAwait(false))
+                {
+                    _trace.NotAllConnectionsAborted();
+                }
+            }
+
+            for (int i = 0; i < _transports.Count; i++)
+            {
+                tasks[i] = _transports[i].StopAsync();
+            }
+            await Task.WhenAll(tasks).ConfigureAwait(false);
 
             _heartbeat?.Dispose();
         }

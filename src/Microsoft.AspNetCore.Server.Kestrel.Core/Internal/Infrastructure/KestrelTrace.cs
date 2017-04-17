@@ -36,6 +36,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly Action<ILogger, string, int, Exception> _connectionDisconnectedWrite =
             LoggerMessage.Define<string, int>(LogLevel.Debug, 15, @"Connection id ""{ConnectionId}"" write of ""{count}"" bytes to disconnected client.");
 
+        private static readonly Action<ILogger, Exception> _notAllConnectionsClosedGracefully =
+            LoggerMessage.Define(LogLevel.Debug, 16, "Some connections failed to close gracefully during server shutdown.");
+
         private static readonly Action<ILogger, string, string, Exception> _connectionBadRequest =
             LoggerMessage.Define<string, string>(LogLevel.Information, 17, @"Connection id ""{ConnectionId}"" bad request data: ""{message}""");
 
@@ -45,8 +48,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly Action<ILogger, string, Exception> _requestProcessingError =
             LoggerMessage.Define<string>(LogLevel.Information, 20, @"Connection id ""{ConnectionId}"" request processing ended abnormally.");
 
+        private static readonly Action<ILogger, Exception> _notAllConnectionsAborted =
+            LoggerMessage.Define(LogLevel.Debug, 21, "Some connections failed to abort during server shutdown.");
+
         private static readonly Action<ILogger, TimeSpan, DateTimeOffset, Exception> _timerSlow =
-            LoggerMessage.Define<TimeSpan, DateTimeOffset>(LogLevel.Warning, 21, @"Heartbeat took longer than ""{interval}"" at ""{now}"".");
+            LoggerMessage.Define<TimeSpan, DateTimeOffset>(LogLevel.Warning, 22, @"Heartbeat took longer than ""{interval}"" at ""{now}"".");
 
         protected readonly ILogger _logger;
 
@@ -100,6 +106,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _connectionHeadResponseBodyWrite(_logger, connectionId, count, null);
         }
 
+        public void NotAllConnectionsClosedGracefully()
+        {
+            _notAllConnectionsClosedGracefully(_logger, null);
+        }
+
         public void ConnectionBadRequest(string connectionId, BadHttpRequestException ex)
         {
             _connectionBadRequest(_logger, connectionId, ex.Message, ex);
@@ -108,6 +119,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public virtual void RequestProcessingError(string connectionId, Exception ex)
         {
             _requestProcessingError(_logger, connectionId, ex);
+        }
+
+        public void NotAllConnectionsAborted()
+        {
+            _notAllConnectionsAborted(_logger, null);
         }
 
         public virtual void TimerSlow(TimeSpan interval, DateTimeOffset now)
