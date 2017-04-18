@@ -20,8 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     public class KestrelServer : IServer
     {
         private readonly List<ITransport> _transports = new List<ITransport>();
-        private readonly FrameConnectionManager _connectionManager = new FrameConnectionManager();
-
+        private readonly FrameConnectionManager _connectionManager;
         private readonly ILogger _logger;
         private readonly KestrelTrace _trace;
         private readonly IServerAddressesFeature _serverAddresses;
@@ -55,6 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             _transportFactory = transportFactory;
             _logger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
             _trace = new KestrelTrace(_logger);
+            _connectionManager = new FrameConnectionManager(_trace);
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
             Features.Set(_serverAddresses);
@@ -84,7 +84,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                 var systemClock = new SystemClock();
                 var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
-                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager, _connectionManager }, systemClock, _trace);
+                var frameHeartbeatManager = new FrameHeartbeatManager(_connectionManager);
+                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager, frameHeartbeatManager }, systemClock, _trace);
 
                 IThreadPool threadPool;
                 if (Options.UseTransportThread)

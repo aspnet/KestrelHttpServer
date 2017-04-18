@@ -35,5 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void NotAllConnectionsAborted();
 
         void TimerSlow(TimeSpan interval, DateTimeOffset now);
+
+        void ApplicationNeverCompleted(string connectionId);
     }
 }

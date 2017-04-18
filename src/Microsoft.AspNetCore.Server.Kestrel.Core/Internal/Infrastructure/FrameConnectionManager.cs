@@ -3,20 +3,23 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public class FrameConnectionManager : IHeartbeatHandler
+    public class FrameConnectionManager
     {
-        private readonly ConcurrentDictionary<long, FrameConnection> _connections
-            = new ConcurrentDictionary<long, FrameConnection>();
+        // Internal for testing
+        internal readonly ConcurrentDictionary<long, FrameConnectionReference> _connectionReferences = new ConcurrentDictionary<long, FrameConnectionReference>();
+        private readonly IKestrelTrace _trace;
+
+        public FrameConnectionManager(IKestrelTrace trace)
+        {
+            _trace = trace;
+        }
 
         public void AddConnection(long id, FrameConnection connection)
         {
-            if (!_connections.TryAdd(id, connection))
+            if (!_connectionReferences.TryAdd(id, new FrameConnectionReference(connection)))
             {
                 throw new ArgumentException(nameof(id));
             }
@@ -24,44 +27,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public void RemoveConnection(long id)
         {
-            if (!_connections.TryRemove(id, out _))
+            if (!_connectionReferences.TryRemove(id, out var reference))
             {
                 throw new ArgumentException(nameof(id));
             }
+
+            reference.Dispose();
         }
 
-        public void OnHeartbeat(DateTimeOffset now)
+        public void Walk(Action<FrameConnection> callback)
         {
-            foreach (var kvp in _connections)
+            foreach (var kvp in _connectionReferences)
             {
-                kvp.Value.Tick(now);
+                var reference = kvp.Value;
+                var connection = reference.Connection;
+
+                if (connection != null)
+                {
+                    callback(connection);
+                }
+                else if (_connectionReferences.TryRemove(kvp.Key, out reference))
+                {
+                    // It's safe to modify the ConcurrentDictionary in the foreach.
+                    // The connection reference has become unrooted because the application never completed.
+                    _trace.ApplicationNeverCompleted(reference.ConnectionId);
+                    reference.Dispose();
+                }
+
+                // If both conditions are false, the connection was removed during the heartbeat.
             }
-        }
-
-        public async Task<bool> CloseAllConnectionsAsync(CancellationToken token)
-        {
-            var allStoppedTask = Task.WhenAll(_connections.Select(kvp => kvp.Value.StopAsync()).ToArray());
-            return await Task.WhenAny(allStoppedTask, CancellationTokenAsTask(token)).ConfigureAwait(false) == allStoppedTask;
-        }
-
-        public async Task<bool> AbortAllConnectionsAsync()
-        {
-            var timeoutEx = new TimeoutException("Request processing didn't complete within configured timeout.");
-
-            var allAbortedTask = Task.WhenAll(_connections.Select(kvp => kvp.Value.AbortAsync(timeoutEx)).ToArray());
-            return await Task.WhenAny(allAbortedTask, Task.Delay(1000)).ConfigureAwait(false) == allAbortedTask;
-        }
-
-        private Task CancellationTokenAsTask(CancellationToken token)
-        {
-            if (token.IsCancellationRequested)
-            {
-                return Task.CompletedTask;
-            }
-
-            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-            token.Register(() => tcs.SetResult(null));
-            return tcs.Task;
         }
     }
 }

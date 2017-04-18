@@ -54,6 +54,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly Action<ILogger, TimeSpan, DateTimeOffset, Exception> _timerSlow =
             LoggerMessage.Define<TimeSpan, DateTimeOffset>(LogLevel.Warning, 22, @"Heartbeat took longer than ""{interval}"" at ""{now}"".");
 
+        private static readonly Action<ILogger, string, Exception> _applicationNeverCompleted =
+            LoggerMessage.Define<string>(LogLevel.Critical, 23, @"Connection id ""{ConnectionId}"" application never completed");
+
         protected readonly ILogger _logger;
 
         public KestrelTrace(ILogger logger)
@@ -129,6 +132,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public virtual void TimerSlow(TimeSpan interval, DateTimeOffset now)
         {
             _timerSlow(_logger, interval, now, null);
+        }
+
+        public virtual void ApplicationNeverCompleted(string connectionId)
+        {
+            _applicationNeverCompleted(_logger, connectionId, null);
         }
 
         public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
