@@ -31,7 +31,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         public LibuvConnection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
-            socket.Connection = this;
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)
