@@ -8,8 +8,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
     public class FrameConnectionManager
     {
-        // Internal for testing
-        internal readonly ConcurrentDictionary<long, FrameConnectionReference> _connectionReferences = new ConcurrentDictionary<long, FrameConnectionReference>();
+        private readonly ConcurrentDictionary<long, FrameConnectionReference> _connectionReferences = new ConcurrentDictionary<long, FrameConnectionReference>();
         private readonly IKestrelTrace _trace;
 
         public FrameConnectionManager(IKestrelTrace trace)

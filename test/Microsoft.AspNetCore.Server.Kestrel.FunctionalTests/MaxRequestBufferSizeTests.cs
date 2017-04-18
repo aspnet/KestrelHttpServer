@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     using (var reader = new StreamReader(stream, Encoding.ASCII))
                     {
-                        var response = await reader.ReadToEndAsync();
+                        var response = reader.ReadToEnd();
                         Assert.Contains($"bytesRead: {data.Length}", response);
                     }
                 }

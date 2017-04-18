@@ -2,11 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.AspNetCore.Testing.xunit;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -17,7 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     {
         private const int _applicationNeverCompletedId = 23;
 
-        [Fact]
+        [ConditionalFact]
+        [NoDebuggerCondition]
         public async Task CriticalErrorLoggedIfApplicationDoesntComplete()
         {
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -88,6 +91,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 Assert.True(logWaitAttempts < 10);
             }
+        }
+
+        private class NoDebuggerConditionAttribute : Attribute, ITestCondition
+        {
+            public bool IsMet => !Debugger.IsAttached;
+            public string SkipReason => "A debugger is attached.";
         }
     }
 }

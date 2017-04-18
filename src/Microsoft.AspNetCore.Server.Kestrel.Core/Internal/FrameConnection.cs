@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
-using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
@@ -22,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private readonly FrameConnectionContext _context;
         private readonly Frame _frame;
         private readonly List<IConnectionAdapter> _connectionAdapters;
-        private readonly TaskCompletionSource<object> _frameStartedTcs = new TaskCompletionSource<object>();
+        private readonly TaskCompletionSource<bool> _frameStartedTcs = new TaskCompletionSource<bool>();
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
@@ -30,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private AdaptedPipeline _adaptedPipeline;
         private Stream _filteredStream;
-        private Task _adaptedPipelineTask = TaskCache.CompletedTask;
+        private Task _adaptedPipelineTask;
 
         public FrameConnection(FrameConnectionContext context)
         {
@@ -101,9 +100,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public async Task StopAsync()
         {
-            await _frameStartedTcs.Task;
-            await _frame.StopAsync();
-            await _adaptedPipelineTask;
+            if (await _frameStartedTcs.Task)
+            {
+                await _frame.StopAsync();
+                await (_adaptedPipelineTask ?? Task.CompletedTask);
+            }
         }
 
         public void Abort(Exception ex)
@@ -158,7 +159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
-                _frameStartedTcs.SetResult(null);
+                _frameStartedTcs.SetResult(false);
                 CloseRawPipes();
             }
         }
@@ -191,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
             _frame.Start();
-            _frameStartedTcs.SetResult(null);
+            _frameStartedTcs.SetResult(true);
         }
 
         public void Tick(DateTimeOffset now)

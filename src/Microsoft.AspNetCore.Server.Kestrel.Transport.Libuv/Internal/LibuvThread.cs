@@ -259,9 +259,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 }
             }
 
-            // This is used to access a 64-bit timestamp (this.Now) using a potentially 32-bit IntPtr.
-            var thisHandle = GCHandle.Alloc(this, GCHandleType.Weak);
-
             try
             {
                 _loop.Run();
@@ -291,7 +288,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 PipeFactory.Dispose();
                 WriteReqPool.Dispose();
-                thisHandle.Free();
                 _threadTcs.SetResult(null);
 
 #if DEBUG

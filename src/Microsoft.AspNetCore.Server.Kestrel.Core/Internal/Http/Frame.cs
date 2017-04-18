@@ -430,7 +430,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Input.CancelPendingRead();
 
             Debug.Assert(_requestProcessingTask != null);
-            return _requestProcessingTask;
+            return _requestProcessingTask ?? Task.CompletedTask;
         }
 
         private void CancelRequestAbortedToken()
