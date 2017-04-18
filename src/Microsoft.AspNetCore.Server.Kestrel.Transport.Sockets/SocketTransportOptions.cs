@@ -7,9 +7,14 @@ using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
-    // TODO: Come up with some options
+    /// <summary>
+    /// Provides programmatic configuration of Socket transport features.
+    /// </summary>
     public class SocketTransportOptions
     {
-
+        /// <summary>
+        /// Gets or sets a value that determines if Kestrel should dispatch writes to the thread pool
+        /// </summary>
+        public bool DispatchWritesToThreadPool { get; set; } = true;
     }
 }

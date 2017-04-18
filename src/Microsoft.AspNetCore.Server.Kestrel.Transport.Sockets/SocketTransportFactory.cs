@@ -14,6 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public SocketTransportFactory(IOptions<SocketTransportOptions> options)
         {
+            Options = options.Value;
         }
 
         public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
@@ -37,5 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         }
 
         internal PipeFactory PipeFactory => _pipeFactory;
+
+        internal SocketTransportOptions Options { get; private set; }
     }
 }
