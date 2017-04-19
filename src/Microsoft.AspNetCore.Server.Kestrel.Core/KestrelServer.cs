@@ -20,49 +20,89 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     public class KestrelServer : IServer
     {
         private readonly List<ITransport> _transports = new List<ITransport>();
-        private readonly FrameConnectionManager _connectionManager;
-        private readonly ILogger _logger;
-        private readonly KestrelTrace _trace;
+        private readonly Heartbeat _heartbeat;
         private readonly IServerAddressesFeature _serverAddresses;
         private readonly ITransportFactory _transportFactory;
 
         private bool _hasStarted;
         private int _stopped;
-        private Heartbeat _heartbeat;
 
-        public KestrelServer(
-            IOptions<KestrelServerOptions> options,
-            ITransportFactory transportFactory,
-            ILoggerFactory loggerFactory)
+        public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory)
+            : this(transportFactory, CreateServiceContext(options, loggerFactory))
         {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+        }
 
+        // For testing
+        internal KestrelServer(ITransportFactory transportFactory, ServiceContext serviceContext)
+        {
             if (transportFactory == null)
             {
                 throw new ArgumentNullException(nameof(transportFactory));
             }
 
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            Options = options.Value ?? new KestrelServerOptions();
             _transportFactory = transportFactory;
-            _logger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
-            _trace = new KestrelTrace(_logger);
-            _connectionManager = new FrameConnectionManager(_trace);
+            ServiceContext = serviceContext;
+
+            var frameHeartbeatManager = new FrameHeartbeatManager(serviceContext.ConnectionManager);
+            _heartbeat = new Heartbeat(
+                new IHeartbeatHandler[] { serviceContext.DateHeaderValueManager, frameHeartbeatManager },
+                serviceContext.SystemClock, Trace);
+
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
             Features.Set(_serverAddresses);
         }
 
+        private static ServiceContext CreateServiceContext(IOptions<KestrelServerOptions> options, ILoggerFactory loggerFactory)
+        {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            var serverOptions = options.Value ?? new KestrelServerOptions();
+            var logger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
+            var trace = new KestrelTrace(logger);
+            var connectionManager = new FrameConnectionManager(trace);
+
+            var systemClock = new SystemClock();
+            var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+
+            IThreadPool threadPool;
+            if (serverOptions.UseTransportThread)
+            {
+                threadPool = new InlineLoggingThreadPool(trace);
+            }
+            else
+            {
+                threadPool = new LoggingThreadPool(trace);
+            }
+
+            return new ServiceContext
+            {
+                Log = trace,
+                HttpParserFactory = frameParser => new HttpParser<FrameAdapter>(frameParser.Frame.ServiceContext.Log),
+                ThreadPool = threadPool,
+                SystemClock = systemClock,
+                DateHeaderValueManager = dateHeaderValueManager,
+                ConnectionManager = connectionManager,
+                ServerOptions = serverOptions
+            };
+        }
+
         public IFeatureCollection Features { get; }
 
-        public KestrelServerOptions Options { get; }
+        public KestrelServerOptions Options => ServiceContext.ServerOptions;
+
+        private ServiceContext ServiceContext { get; }
+
+        private IKestrelTrace Trace => ServiceContext.Log;
+
+        private FrameConnectionManager ConnectionManager => ServiceContext.ConnectionManager;
 
         public async Task StartAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellationToken)
         {
@@ -82,32 +122,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 }
                 _hasStarted = true;
 
-                var systemClock = new SystemClock();
-                var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
-                var frameHeartbeatManager = new FrameHeartbeatManager(_connectionManager);
-                _heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager, frameHeartbeatManager }, systemClock, _trace);
-
-                IThreadPool threadPool;
-                if (Options.UseTransportThread)
-                {
-                    threadPool = new InlineLoggingThreadPool(_trace);
-                }
-                else
-                {
-                    threadPool = new LoggingThreadPool(_trace);
-                }
-
-                var serviceContext = new ServiceContext
-                {
-                    Log = _trace,
-                    HttpParserFactory = frameParser => new HttpParser<FrameAdapter>(frameParser.Frame.ServiceContext.Log),
-                    ThreadPool = threadPool,
-                    SystemClock = systemClock,
-                    DateHeaderValueManager = dateHeaderValueManager,
-                    ConnectionManager = _connectionManager,
-                    ServerOptions = Options
-                };
-
                 async Task OnBind(ListenOptions endpoint)
                 {
                     var connectionHandler = new ConnectionHandler<TContext>(endpoint, serviceContext, application);
@@ -117,11 +131,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     await transport.BindAsync().ConfigureAwait(false);
                 }
 
-                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, _logger, OnBind).ConfigureAwait(false);
+                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, Trace, OnBind).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogCritical(0, ex, "Unable to start Kestrel.");
+                Trace.LogCritical(0, ex, "Unable to start Kestrel.");
                 Dispose();
                 throw;
             }
@@ -142,13 +156,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            if (!await _connectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
+            if (!await ConnectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
             {
-                _trace.NotAllConnectionsClosedGracefully();
+                Trace.NotAllConnectionsClosedGracefully();
 
-                if (!await _connectionManager.AbortAllConnectionsAsync().ConfigureAwait(false))
+                if (!await ConnectionManager.AbortAllConnectionsAsync().ConfigureAwait(false))
                 {
-                    _trace.NotAllConnectionsAborted();
+                    Trace.NotAllConnectionsAborted();
                 }
             }
 

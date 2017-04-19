@@ -26,12 +26,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public void RemoveConnection(long id)
         {
-            if (!_connectionReferences.TryRemove(id, out var reference))
+            if (!_connectionReferences.TryRemove(id, out _))
             {
                 throw new ArgumentException(nameof(id));
             }
-
-            reference.Dispose();
         }
 
         public void Walk(Action<FrameConnection> callback)
@@ -39,9 +37,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             foreach (var kvp in _connectionReferences)
             {
                 var reference = kvp.Value;
-                var connection = reference.Connection;
 
-                if (connection != null)
+                if (reference.TryGetConnection(out var connection))
                 {
                     callback(connection);
                 }
@@ -50,7 +47,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                     // It's safe to modify the ConcurrentDictionary in the foreach.
                     // The connection reference has become unrooted because the application never completed.
                     _trace.ApplicationNeverCompleted(reference.ConnectionId);
-                    reference.Dispose();
                 }
 
                 // If both conditions are false, the connection was removed during the heartbeat.

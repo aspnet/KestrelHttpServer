@@ -4,9 +4,9 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets;
@@ -20,7 +20,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     /// </summary>
     public class TestServer : IDisposable
     {
-        private ITransport _transport;
+        private static TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(5);
+
+        private KestrelServer _server;
         private ListenOptions _listenOptions;
 
         public TestServer(RequestDelegate app)
@@ -53,20 +55,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var transportFactory = CreateLibuvTransportFactory(context);
             // var transportFactory = CreateSocketTransportFactory(context);
 
-            _transport = transportFactory.Create(listenOptions, new ConnectionHandler<HttpContext>(listenOptions, context, new DummyApplication(app, httpContextFactory)));
+            _server = new KestrelServer(transportFactory, context);
+            var httpApplication = new DummyApplication(app, httpContextFactory);
 
             try
             {
-                _transport.BindAsync().Wait();
+                _server.StartAsync(httpApplication, CancellationToken.None).Wait();
             }
             catch
             {
-                if (_transport != null)
-                {
-                    _transport.UnbindAsync().Wait();
-                    _transport.StopAsync().Wait();
-                    _transport = null;
-                }
+                _server.StopAsync(new CancellationTokenSource(_shutdownTimeout).Token).Wait();
+                _server.Dispose();
                 throw;
             }
         }
@@ -86,7 +85,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private static ITransportFactory CreateSocketTransportFactory(TestServiceContext context)
         {
             var options = new SocketTransportOptions();
-
             return new SocketTransportFactory(Options.Create(options));
         }
         
@@ -103,8 +101,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         public void Dispose()
         {
-            _transport.UnbindAsync().Wait();
-            _transport.StopAsync().Wait();
+            _server.StopAsync(new CancellationTokenSource(_shutdownTimeout).Token).Wait();
+            _server.Dispose();
         }
     }
 }

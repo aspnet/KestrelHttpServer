@@ -2,27 +2,24 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public class FrameConnectionReference : IDisposable
+    public class FrameConnectionReference
     {
-        private readonly GCHandle _gcHandle;
+        private readonly WeakReference<FrameConnection> _weakReference;
 
         public FrameConnectionReference(FrameConnection connection)
         {
-            _gcHandle = GCHandle.Alloc(connection, GCHandleType.Weak);
+            _weakReference = new WeakReference<FrameConnection>(connection);
             ConnectionId = connection.ConnectionId;
         }
 
         public string ConnectionId { get; }
 
-        public FrameConnection Connection => (FrameConnection)_gcHandle.Target;
-
-        public void Dispose()
+        public bool TryGetConnection(out FrameConnection connection)
         {
-            _gcHandle.Free();
+            return _weakReference.TryGetTarget(out connection);
         }
     }
 }
