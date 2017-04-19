@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             var shutdownReq = new UvShutdownReq(_log);
             try
             {
-                shutdownReq.Init(_thread.Loop);
+                shutdownReq.Init(_thread);
                 shutdownReq.Shutdown(_socket, (req, status, state) =>
                 {
                     req.Dispose();

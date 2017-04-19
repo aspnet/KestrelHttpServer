@@ -19,12 +19,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
         {
         }
 
-        public void Init(UvLoopHandle loop)
+        public override void Init(LibuvThread thread)
         {
+            var loop = thread.Loop;
+
             CreateMemory(
                 loop.Libuv, 
                 loop.ThreadId,
                 loop.Libuv.req_size(LibuvFunctions.RequestType.SHUTDOWN));
+
+            base.Init(thread);
         }
 
         public void Shutdown(UvStreamHandle handle, Action<UvShutdownReq, int, object> callback, object state)

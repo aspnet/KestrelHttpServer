@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 var write = new UvWriteReq(Log);
                 try
                 {
-                    write.Init(Thread.Loop);
+                    write.Init(Thread);
                     write.Write2(
                         dispatchPipe,
                         _dummyMessage,

@@ -31,8 +31,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
         {
         }
 
-        public void Init(UvLoopHandle loop)
+        public override void Init(LibuvThread thread)
         {
+            var loop = thread.Loop;
+
             var requestSize = loop.Libuv.req_size(LibuvFunctions.RequestType.WRITE);
             var bufferSize = Marshal.SizeOf<LibuvFunctions.uv_buf_t>() * BUFFER_COUNT;
             CreateMemory(
@@ -40,6 +42,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
                 loop.ThreadId,
                 requestSize + bufferSize);
             _bufs = handle + requestSize;
+
+            base.Init(thread);
         }
 
         public LibuvAwaitable<UvWriteReq> WriteAsync(UvStreamHandle handle, ReadableBuffer buffer)
