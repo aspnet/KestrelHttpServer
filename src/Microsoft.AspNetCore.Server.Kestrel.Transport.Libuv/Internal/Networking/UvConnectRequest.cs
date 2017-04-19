@@ -24,13 +24,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
         {
             var loop = thread.Loop;
 
+            Init(loop);
+
+            base.Init(thread);
+        }
+
+        public void Init(UvLoopHandle loop)
+        {
             var requestSize = loop.Libuv.req_size(LibuvFunctions.RequestType.CONNECT);
             CreateMemory(
                 loop.Libuv,
                 loop.ThreadId,
                 requestSize);
-
-            base.Init(thread);
         }
 
         public void Connect(
