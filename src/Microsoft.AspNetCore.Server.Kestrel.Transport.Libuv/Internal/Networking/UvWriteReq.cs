@@ -33,12 +33,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
 
         public override void Init(LibuvThread thread)
         {
-            Init(thread.Loop);
+            DangerousInit(thread.Loop);
 
             base.Init(thread);
         }
 
-        public void Init(UvLoopHandle loop)
+        public void DangerousInit(UvLoopHandle loop)
         {
             var requestSize = loop.Libuv.req_size(LibuvFunctions.RequestType.WRITE);
             var bufferSize = Marshal.SizeOf<LibuvFunctions.uv_buf_t>() * BUFFER_COUNT;
