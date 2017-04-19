@@ -50,6 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             _listenOptions = listenOptions;
 
             Context = context;
+            context.ServerOptions.ListenOptions.Add(_listenOptions);
 
             // Switch this to test on socket transport
             var transportFactory = CreateLibuvTransportFactory(context);

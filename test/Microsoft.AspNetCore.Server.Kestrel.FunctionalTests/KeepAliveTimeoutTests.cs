@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -182,13 +183,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private TestServer CreateServer(CancellationToken longRunningCt, CancellationToken upgradeCt)
         {
             return new TestServer(httpContext => App(httpContext, longRunningCt, upgradeCt), new TestServiceContext
+            {
+                // Use real SystemClock so timeouts trigger.
+                SystemClock = new SystemClock(),
+                ServerOptions =
                 {
-                    ServerOptions =
-                    {
-                        AddServerHeader = false,
-                        Limits = { KeepAliveTimeout = KeepAliveTimeout }
-                    }
-                });
+                    AddServerHeader = false,
+                    Limits = { KeepAliveTimeout = KeepAliveTimeout }
+                }
+            });
         }
 
         private async Task App(HttpContext httpContext, CancellationToken longRunningCt, CancellationToken upgradeCt)

@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -91,18 +92,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private TestServer CreateServer()
         {
             return new TestServer(async httpContext =>
+            {
+                await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
+                await httpContext.Response.WriteAsync("hello, world");
+            },
+            new TestServiceContext
+            {
+                // Use real SystemClock so timeouts trigger.
+                SystemClock = new SystemClock(),
+                ServerOptions =
                 {
-                    await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
-                    await httpContext.Response.WriteAsync("hello, world");
-                },
-                new TestServiceContext
-                {
-                    ServerOptions =
-                    {
-                        AddServerHeader = false,
-                        Limits = { RequestHeadersTimeout = RequestHeadersTimeout }
-                    }
-                });
+                    AddServerHeader = false,
+                    Limits = { RequestHeadersTimeout = RequestHeadersTimeout }
+                }
+            });
         }
 
         private async Task ReceiveResponse(TestConnection connection)
