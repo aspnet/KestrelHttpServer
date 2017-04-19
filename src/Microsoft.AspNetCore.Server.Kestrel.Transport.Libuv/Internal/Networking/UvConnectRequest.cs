@@ -22,9 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networkin
 
         public override void Init(LibuvThread thread)
         {
-            var loop = thread.Loop;
-
-            Init(loop);
+            Init(thread.Loop);
 
             base.Init(thread);
         }
