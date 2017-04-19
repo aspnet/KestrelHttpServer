@@ -21,7 +21,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private readonly FrameConnectionContext _context;
         private readonly Frame _frame;
         private readonly List<IConnectionAdapter> _connectionAdapters;
-        private readonly TaskCompletionSource<bool> _frameStartedTcs = new TaskCompletionSource<bool>();
+        private readonly TaskCompletionSource<bool> _frameStartedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
@@ -90,6 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             Log.ConnectionStop(ConnectionId);
             KestrelEventSource.Log.ConnectionStop(this);
+            _socketClosedTcs.SetResult(null);
 
             // The connection is already in the "aborted" state by this point, but we want to track it
             // until RequestProcessingAsync completes for graceful shutdown.
@@ -105,6 +107,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 await _frame.StopAsync();
                 await (_adaptedPipelineTask ?? Task.CompletedTask);
             }
+
+            await _socketClosedTcs.Task;
         }
 
         public void Abort(Exception ex)
