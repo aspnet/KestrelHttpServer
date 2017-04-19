@@ -7,8 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -51,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             });
         }
 
-        private async Task ConnectionClosedWhenKeepAliveTimeoutExpires(TimeoutTestServer server)
+        private async Task ConnectionClosedWhenKeepAliveTimeoutExpires(TestServer server)
         {
             using (var connection = server.CreateConnection())
             {
@@ -65,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task ConnectionKeptAliveBetweenRequests(TimeoutTestServer server)
+        private async Task ConnectionKeptAliveBetweenRequests(TestServer server)
         {
             using (var connection = server.CreateConnection())
             {
@@ -86,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task ConnectionNotTimedOutWhileRequestBeingSent(TimeoutTestServer server)
+        private async Task ConnectionNotTimedOutWhileRequestBeingSent(TestServer server)
         {
             using (var connection = server.CreateConnection())
             {
@@ -117,7 +115,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task ConnectionNotTimedOutWhileAppIsRunning(TimeoutTestServer server, CancellationTokenSource cts)
+        private async Task ConnectionNotTimedOutWhileAppIsRunning(TestServer server, CancellationTokenSource cts)
         {
             using (var connection = server.CreateConnection())
             {
@@ -144,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task ConnectionTimesOutWhenOpenedButNoRequestSent(TimeoutTestServer server)
+        private async Task ConnectionTimesOutWhenOpenedButNoRequestSent(TestServer server)
         {
             using (var connection = server.CreateConnection())
             {
@@ -153,7 +151,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task KeepAliveTimeoutDoesNotApplyToUpgradedConnections(TimeoutTestServer server, CancellationTokenSource cts)
+        private async Task KeepAliveTimeoutDoesNotApplyToUpgradedConnections(TestServer server, CancellationTokenSource cts)
         {
             using (var connection = server.CreateConnection())
             {
@@ -181,13 +179,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private TimeoutTestServer CreateServer(CancellationToken longRunningCt, CancellationToken upgradeCt)
+        private TestServer CreateServer(CancellationToken longRunningCt, CancellationToken upgradeCt)
         {
-            return new TimeoutTestServer(httpContext => App(httpContext, longRunningCt, upgradeCt), new KestrelServerOptions
-            {
-                AddServerHeader = false,
-                Limits = { KeepAliveTimeout = KeepAliveTimeout }
-            });
+            return new TestServer(httpContext => App(httpContext, longRunningCt, upgradeCt), new TestServiceContext
+                {
+                    ServerOptions =
+                    {
+                        AddServerHeader = false,
+                        Limits = { KeepAliveTimeout = KeepAliveTimeout }
+                    }
+                });
         }
 
         private async Task App(HttpContext httpContext, CancellationToken longRunningCt, CancellationToken upgradeCt)
