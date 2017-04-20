@@ -21,7 +21,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.AspNetCore.Testing.xunit;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -280,7 +279,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"))
                 .Returns(mockLogger.Object);
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
+                .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv"))
+                .Returns(mockLogger.Object);
+            mockLoggerFactory
+                .Setup(factory => factory.CreateLogger(It.IsNotIn("Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv")))
                 .Returns(Mock.Of<ILogger>());
 
             var builder = new WebHostBuilder()
@@ -340,7 +342,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"))
                 .Returns(mockLogger.Object);
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
+                .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv"))
+                .Returns(mockLogger.Object);
+            mockLoggerFactory
+                .Setup(factory => factory.CreateLogger(It.IsNotIn("Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv")))
                 .Returns(Mock.Of<ILogger>());
 
 
@@ -395,7 +400,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"))
                 .Returns(mockLogger.Object);
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsNotIn(new[] { "Microsoft.AspNetCore.Server.Kestrel" })))
+                .Setup(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv"))
+                .Returns(mockLogger.Object);
+            mockLoggerFactory
+                .Setup(factory => factory.CreateLogger(It.IsNotIn("Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv")))
                 .Returns(Mock.Of<ILogger>());
 
             var requestStarted = new SemaphoreSlim(0);
