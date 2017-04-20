@@ -41,7 +41,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
                     _pipe.Writer.Complete(ex);
                     return;
                 }
@@ -52,17 +51,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             while (true)
             {
-                Console.WriteLine("RequestBodyReader.ReadAsync");
                 ReadResult result = default(ReadResult);
 
                 try
                 {
                     result = await _pipe.Reader.ReadAsync();
-                    Console.WriteLine("hello");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
                     throw;
                 }
 
