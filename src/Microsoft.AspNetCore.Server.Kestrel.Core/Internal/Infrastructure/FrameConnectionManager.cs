@@ -16,6 +16,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _trace = trace;
         }
 
+        // For testing
+        internal ConcurrentDictionary<long, FrameConnectionReference> Connections => _connectionReferences;
+
         public void AddConnection(long id, FrameConnection connection)
         {
             if (!_connectionReferences.TryAdd(id, new FrameConnectionReference(connection)))
