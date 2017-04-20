@@ -13,8 +13,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public abstract class MessageBody
     {
-        private static readonly MessageBody _zeroContentLengthClose = new ForZeroContentLength(keepAlive: false);
-        private static readonly MessageBody _zeroContentLengthKeepAlive = new ForZeroContentLength(keepAlive: true);
+        private static readonly MessageBody _zeroContentLengthClose = new ForZeroContentLength(keepAlive: false, upgrade: false);
+        private static readonly MessageBody _zeroContentLengthCloseAndUpgrade = new ForZeroContentLength(keepAlive: false, upgrade: true);
+        private static readonly MessageBody _zeroContentLengthKeepAlive = new ForZeroContentLength(keepAlive: true, upgrade: false);
+        private static readonly MessageBody _zeroContentLengthKeepAliveAndUpgrade = new ForZeroContentLength(keepAlive: true, upgrade: true);
 
         private readonly Frame _context;
         private bool _send100Continue = true;
@@ -241,12 +243,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 var connectionOptions = FrameHeaders.ParseConnection(connection);
 
+                keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
+
                 if ((connectionOptions & ConnectionOptions.Upgrade) == ConnectionOptions.Upgrade)
                 {
-                    return new ForRemainingData(true, context);
-                }
+                    if (headers.ContentLength.HasValue)
+                    {
+                        return ForContentLength(headers, context, keepAlive, upgrade: true);
+                    }
 
-                keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
+                    return new ForRemainingData(context, upgrade: true);
+                }
             }
 
             var transferEncoding = headers.HeaderTransferEncoding;
@@ -270,13 +277,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             if (headers.ContentLength.HasValue)
             {
-                var contentLength = headers.ContentLength.Value;
-                if (contentLength == 0)
-                {
-                    return keepAlive ? _zeroContentLengthKeepAlive : _zeroContentLengthClose;
-                }
-
-                return new ForContentLength(keepAlive, contentLength, context);
+                return ForContentLength(headers, context, keepAlive, upgrade: false);
             }
 
             // Avoid slowing down most common case
@@ -294,9 +295,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return keepAlive ? _zeroContentLengthKeepAlive : _zeroContentLengthClose;
         }
 
+        private static MessageBody ForContentLength(FrameRequestHeaders headers, Frame context, bool keepAlive, bool upgrade)
+        {
+            var contentLength = headers.ContentLength.Value;
+            if (contentLength == 0)
+            {
+                return upgrade
+                    ? keepAlive ? _zeroContentLengthKeepAliveAndUpgrade : _zeroContentLengthCloseAndUpgrade
+                    : keepAlive ? _zeroContentLengthKeepAlive : _zeroContentLengthClose;
+            }
+
+            return new ForNonZeroContentLength(keepAlive, upgrade, contentLength, context);
+        }
+
         private class ForRemainingData : MessageBody
         {
-            public ForRemainingData(bool upgrade, Frame context)
+            public ForRemainingData(Frame context, bool upgrade)
                 : base(context)
             {
                 RequestUpgrade = upgrade;
@@ -310,10 +324,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private class ForZeroContentLength : MessageBody
         {
-            public ForZeroContentLength(bool keepAlive)
+            public ForZeroContentLength(bool keepAlive, bool upgrade)
                 : base(null)
             {
                 RequestKeepAlive = keepAlive;
+                RequestUpgrade = upgrade;
             }
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
@@ -330,14 +345,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        private class ForContentLength : MessageBody
+        private class ForNonZeroContentLength : MessageBody
         {
             private readonly long _contentLength;
             private long _inputLength;
 
-            public ForContentLength(bool keepAlive, long contentLength, Frame context)
+            public ForNonZeroContentLength(bool keepAlive, bool upgrade, long contentLength, Frame context)
                 : base(context)
             {
+                RequestUpgrade = upgrade;
                 RequestKeepAlive = keepAlive;
                 _contentLength = contentLength;
                 _inputLength = _contentLength;

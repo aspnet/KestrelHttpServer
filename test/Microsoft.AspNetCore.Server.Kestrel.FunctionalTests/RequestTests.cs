@@ -1137,6 +1137,68 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Theory]
+        [InlineData(0)]
+        [InlineData(100)]
+        public async Task UpgradeRequestWithContentLength(int contentLength)
+        {
+            var message = new string('a', contentLength);
+            const string nextMessage = "my custom protocol data here";
+
+            using (var server = new TestServer(async context =>
+            {
+                Assert.Equal(message.Length, context.Request.ContentLength);
+
+                var stream = context.Request.Body;
+                var expectedMessage = message;
+                if (context.Request.Headers["Upgrade"] == "CustomProtocol")
+                {
+                    var upgradeFeature = context.Features.Get<IHttpUpgradeFeature>();
+                    stream = await upgradeFeature.UpgradeAsync();
+                    expectedMessage += nextMessage;
+                }
+
+                var buffer = new byte[expectedMessage.Length];
+                var totalRead = 0;
+                var read = 0;
+                do
+                {
+                    read = await stream.ReadAsync(buffer, totalRead, buffer.Length - totalRead).TimeoutAfter(TimeSpan.FromSeconds(30));
+                    totalRead += read;
+                    Assert.InRange(totalRead, 0, expectedMessage.Length);
+                } while (read != 0);
+
+                Assert.Equal(expectedMessage.Length, totalRead);
+                var received = Encoding.ASCII.GetString(buffer);
+                Assert.Equal(expectedMessage, received);
+            }))
+            {
+                var request = new []
+                {
+                    "Host:",
+                    "Connection: Upgrade",
+                    "Content-Length: " + message.Length,
+                    "",
+                    message,
+                    nextMessage
+                };
+
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send("POST / HTTP/1.1\r\n");
+                    await connection.Send(request);
+                    await connection.Receive("HTTP/1.1 200 ");
+                }
+
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send("POST / HTTP/1.1", "Upgrade: CustomProtocol\r\n");
+                    await connection.Send(request);
+                    await connection.Receive("HTTP/1.1 101 ");
+                }
+            }
+        }
+
+        [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task HeadersAndStreamsAreReusedAcrossRequests(ListenOptions listenOptions)
         {
