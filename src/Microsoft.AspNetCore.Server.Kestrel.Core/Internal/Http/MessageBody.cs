@@ -17,13 +17,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly MessageBody _zeroContentLengthKeepAlive = new ForZeroContentLength(keepAlive: true);
 
         private readonly Frame _context;
-        private readonly IPipe _pipe;
         private bool _send100Continue = true;
 
         protected MessageBody(Frame context)
         {
             _context = context;
-            _pipe = new PipeFactory().Create();
         }
 
         public static MessageBody ZeroContentLengthClose => _zeroContentLengthClose;
@@ -32,57 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public bool RequestUpgrade { get; protected set; }
 
-        public async Task ReadInputAsync(CancellationToken cancellationToken = default(CancellationToken))
-        {
-            while (true)
-            {
-                var readSegment = await ReadInternalAsync(cancellationToken);
-
-                if (readSegment.Count == 0)
-                {
-                    _pipe.Writer.Complete();
-                    break;
-                }
-
-                var writableBuffer = _pipe.Writer.Alloc(readSegment.Count);
-                var writer = new WritableBufferWriter(writableBuffer);
-                writer.Write(readSegment.Array, readSegment.Offset, readSegment.Count);
-                writableBuffer.Commit();
-                await writableBuffer.FlushAsync();
-
-                ConsumedBytes(readSegment.Count);
-            }
-        }
-
-        public async Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            while (true)
-            {
-                var result = await _pipe.Reader.ReadAsync();
-                var readableBuffer = result.Buffer;
-
-                try
-                {
-                    if (!readableBuffer.IsEmpty)
-                    {
-                        var count = Math.Min(result.Buffer.Length, buffer.Count);
-                        readableBuffer = result.Buffer.Slice(0, count);
-                        readableBuffer.CopyTo(buffer);
-                        return count;
-                    }
-                    else if (result.IsCompleted)
-                    {
-                        return 0;
-                    }
-                }
-                finally
-                {
-                    _pipe.Reader.Advance(readableBuffer.End, readableBuffer.End);
-                }
-            }
-        }
-
-        private ValueTask<ArraySegment<byte>> ReadInternalAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
             var task = PeekAsync(cancellationToken);
 
@@ -91,17 +39,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 TryProduceContinue();
 
                 // Incomplete Task await result
-                return ReadInternalAsyncAwaited(task);
+                return ReadAsyncAwaited(task, buffer);
             }
             else
             {
-                return task;
+                var readSegment = task.Result;
+                var consumed = CopyReadSegment(readSegment, buffer);
+
+                return consumed == 0 ? TaskCache<int>.DefaultCompletedTask : Task.FromResult(consumed);
             }
         }
 
-        private async ValueTask<ArraySegment<byte>> ReadInternalAsyncAwaited(ValueTask<ArraySegment<byte>> currentTask)
+        private async Task<int> ReadAsyncAwaited(ValueTask<ArraySegment<byte>> currentTask, ArraySegment<byte> buffer)
         {
-            return await currentTask;
+            return CopyReadSegment(await currentTask, buffer);
         }
 
         private int CopyReadSegment(ArraySegment<byte> readSegment, ArraySegment<byte> buffer)
@@ -255,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        private void TryProduceContinue()
+        public void TryProduceContinue()
         {
             if (_send100Continue)
             {

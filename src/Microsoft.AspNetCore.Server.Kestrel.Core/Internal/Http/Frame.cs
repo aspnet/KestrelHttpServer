@@ -298,14 +298,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
 
-        public void InitializeStreams(MessageBody messageBody)
+        public void InitializeStreams(RequestBodyReader requestBodyReader)
         {
             if (_frameStreams == null)
             {
                 _frameStreams = new Streams(this);
             }
 
-            (RequestBody, ResponseBody) = _frameStreams.Start(messageBody);
+            (RequestBody, ResponseBody) = _frameStreams.Start(requestBodyReader);
         }
 
         public void PauseStreams() => _frameStreams.Pause();

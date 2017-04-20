@@ -90,9 +90,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         var messageBody = MessageBody.For(_httpVersion, FrameRequestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
-                        var ignore = messageBody.ReadInputAsync(default(CancellationToken));
 
-                        InitializeStreams(messageBody);
+                        var requestBodyReader = new RequestBodyReader(messageBody);
+
+                        InitializeStreams(requestBodyReader);
+
+                        var ignore = requestBodyReader.StartAsync();
 
                         var context = _application.CreateContext(this);
                         try
@@ -160,7 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 if (_keepAlive)
                                 {
                                     // Finish reading the request body in case the app did not.
-                                    await messageBody.Consume();
+                                    await requestBodyReader.Consume();
                                 }
 
                                 if (!HasResponseStarted)

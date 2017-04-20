@@ -27,8 +27,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -51,8 +54,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -73,8 +79,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -97,8 +106,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -123,8 +135,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -144,8 +159,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -165,8 +183,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -183,8 +204,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -199,8 +223,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "8197" }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 // Input needs to be greater than 4032 bytes to allocate a block not backed by a slab.
                 var largeInput = new string('a', 8192);
@@ -379,8 +406,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection }, input.FrameContext);
+                var reader = new RequestBodyReader(body);
                 var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
+
+                stream.StartAcceptingReads(reader);
+                var ignore = reader.StartAsync();
 
                 input.Add("Hello");
 

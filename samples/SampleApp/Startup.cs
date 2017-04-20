@@ -26,6 +26,7 @@ namespace SampleApp
                 {
                     await context.Response.Body.WriteAsync(buffer, 0, 1);
                 }
+                logger.LogDebug("app finished");
             });
         }
 
