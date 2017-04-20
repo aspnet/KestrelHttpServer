@@ -226,7 +226,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // Dynamic port and non-loopback addresses
                 dataset.Add("http://127.0.0.1:0/;https://127.0.0.1:0/", GetTestUrls);
-                dataset.Add($"http://{Dns.GetHostName()}:0/;https://{Dns.GetHostName()}:0/", GetTestUrls);
 
                 var ipv4Addresses = GetIPAddresses()
                     .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork);
