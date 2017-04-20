@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class FrameConnectionManagerTests
     {
-        [Fact(Skip = "Flaky test")]
+        [Fact]
         public void UnrootedConnectionsGetRemovedFromHeartbeat()
         {
             var connectionId = "0";
@@ -33,12 +33,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             trace.Verify(t => t.ApplicationNeverCompleted(connectionId), Times.Once());
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         private void UnrootedConnectionsGetRemovedFromHeartbeatInnerScope(
             string connectionId,
             FrameConnectionManager frameConnectionManager,
             Mock<IKestrelTrace> trace)
         {
+            // Just a big number so that the GC won't collect anything in this method
+            GC.TryStartNoGCRegion(1024 * 1024 * 100);
+
             var serviceContext = new TestServiceContext
             {
                 ConnectionManager = frameConnectionManager
@@ -51,11 +54,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ConnectionId = connectionId
             });
 
+            Assert.Equal(1, frameConnectionManager.Connections.Count);
+
             var connectionCount = 0;
             frameConnectionManager.Walk(_ => connectionCount++);
 
             Assert.Equal(1, connectionCount);
             trace.Verify(t => t.ApplicationNeverCompleted(connectionId), Times.Never());
+
+            GC.EndNoGCRegion();
         }
     }
 }
