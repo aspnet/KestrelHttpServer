@@ -4,11 +4,10 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
@@ -207,7 +206,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void StartReading()
         {
-            _socket.ReadStart(_allocCallback, _readCallback, this);
+            try
+            {
+                _socket.ReadStart(_allocCallback, _readCallback, this);
+            }
+            catch (UvException)
+            {
+                // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
+                // This should be treated the same as OnRead() seeing a "normalDone" condition.
+                Log.ConnectionReadFin(ConnectionId);
+                Input.Complete();
+            }
         }
     }
 }
