@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -103,15 +102,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 var stepTimeout = TimeSpan.FromTicks(timeout.Ticks / 3);
 
-                Post(t => t.AllowStop());
+                await PostAsync(t => t.AllowStop(), this).ConfigureAwait(false);
                 if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                 {
                     try
                     {
-                        Post(t => t.OnStopRude());
+                        await PostAsync(t => t.OnStopRude(), this).ConfigureAwait(false);
                         if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                         {
-                            Post(t => t.OnStopImmediate());
+                            await PostAsync(t => t.OnStopImmediate(), this).ConfigureAwait(false);
                             if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                             {
                                 _log.LogCritical($"{nameof(LibuvThread)}.{nameof(StopAsync)} failed to terminate libuv thread.");
