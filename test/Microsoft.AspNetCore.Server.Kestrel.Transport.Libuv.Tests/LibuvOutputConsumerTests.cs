@@ -391,6 +391,152 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
         [Theory]
         [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
+        public async Task CancelsBeforeWriteRequestCompletes(int maxResponseBufferSize)
+        {
+            var completeQueue = new ConcurrentQueue<Action<int>>();
+
+            // Arrange
+            _mockLibuv.OnWrite = (socket, buffers, triggerCompleted) =>
+            {
+                completeQueue.Enqueue(triggerCompleted);
+                return 0;
+            };
+
+            var abortedSource = new CancellationTokenSource();
+
+            var pipeOptions = new PipeOptions
+            {
+                ReaderScheduler = _libuvThread,
+                MaximumSizeHigh = maxResponseBufferSize,
+                MaximumSizeLow = maxResponseBufferSize,
+            };
+
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
+            {
+                var bufferSize = maxResponseBufferSize - 1;
+
+                var data = new byte[bufferSize];
+                var fullBuffer = new ArraySegment<byte>(data, 0, bufferSize);
+
+                // Act
+                var task1Success = socketOutput.WriteAsync(fullBuffer, abortedSource.Token);
+                // task1 should complete successfully as < _maxBytesPreCompleted
+
+                // First task is completed and successful
+                Assert.True(task1Success.IsCompleted);
+                Assert.False(task1Success.IsCanceled);
+                Assert.False(task1Success.IsFaulted);
+
+                // following tasks should wait.
+                var task3Canceled = socketOutput.WriteAsync(fullBuffer, abortedSource.Token);
+
+                // Give time for tasks to percolate
+                await _mockLibuv.OnPostTask;
+
+                // Third task is not completed
+                Assert.False(task3Canceled.IsCompleted);
+                Assert.False(task3Canceled.IsCanceled);
+                Assert.False(task3Canceled.IsFaulted);
+
+                abortedSource.Cancel();
+
+                // Complete writes
+                while (completeQueue.TryDequeue(out var triggerNextCompleted))
+                {
+                    await _libuvThread.PostAsync(cb => cb(0), triggerNextCompleted);
+                }
+
+                // A final write guarantees that the error is observed by OutputProducer,
+                // but doesn't return a canceled/faulted task.
+                var task4Success = socketOutput.WriteAsync(fullBuffer, default(CancellationToken));
+                Assert.True(task4Success.IsCompleted);
+                Assert.False(task4Success.IsCanceled);
+                Assert.False(task4Success.IsFaulted);
+
+                // Third task is now canceled
+                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                Assert.True(task3Canceled.IsCanceled);
+
+                Assert.True(abortedSource.IsCancellationRequested);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
+        public async Task WriteAsyncWithTokenAfterCallWithoutIsCancelled(int maxResponseBufferSize)
+        {
+            var completeQueue = new ConcurrentQueue<Action<int>>();
+
+            // Arrange
+            _mockLibuv.OnWrite = (socket, buffers, triggerCompleted) =>
+            {
+                completeQueue.Enqueue(triggerCompleted);
+                return 0;
+            };
+
+            var abortedSource = new CancellationTokenSource();
+
+            var pipeOptions = new PipeOptions
+            {
+                ReaderScheduler = _libuvThread,
+                MaximumSizeHigh = maxResponseBufferSize,
+                MaximumSizeLow = maxResponseBufferSize,
+            };
+
+            using (var socketOutput = CreateOutputProducer(pipeOptions))
+            {
+                var bufferSize = maxResponseBufferSize;
+
+                var data = new byte[bufferSize];
+                var fullBuffer = new ArraySegment<byte>(data, 0, bufferSize);
+
+                // Act
+                var task1Waits = socketOutput.WriteAsync(fullBuffer, default(CancellationToken));
+
+                // First task is not completed
+                Assert.False(task1Waits.IsCompleted);
+                Assert.False(task1Waits.IsCanceled);
+                Assert.False(task1Waits.IsFaulted);
+
+                // following tasks should wait.
+                var task3Canceled = socketOutput.WriteAsync(fullBuffer, abortedSource.Token);
+
+                // Give time for tasks to percolate
+                await _mockLibuv.OnPostTask;
+
+                // Third task is not completed
+                Assert.False(task3Canceled.IsCompleted);
+                Assert.False(task3Canceled.IsCanceled);
+                Assert.False(task3Canceled.IsFaulted);
+
+                abortedSource.Cancel();
+
+                // Complete writes
+                while (completeQueue.TryDequeue(out var triggerNextCompleted))
+                {
+                    await _libuvThread.PostAsync(cb => cb(0), triggerNextCompleted);
+                }
+
+                // First task is  completed
+                Assert.True(task1Waits.IsCompleted);
+                Assert.False(task1Waits.IsCanceled);
+                Assert.False(task1Waits.IsFaulted);
+
+                // A final write guarantees that the error is observed by OutputProducer,
+                // but doesn't return a canceled/faulted task.
+                var task4Success = socketOutput.WriteAsync(fullBuffer, default(CancellationToken));
+                Assert.True(task4Success.IsCompleted);
+                Assert.False(task4Success.IsCanceled);
+                Assert.False(task4Success.IsFaulted);
+
+                // Third task is now canceled
+                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                Assert.True(task3Canceled.IsCanceled);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(PositiveMaxResponseBufferSizeData))]
         public async Task WritesDontGetCompletedTooQuickly(int maxResponseBufferSize)
         {
             var completeQueue = new ConcurrentQueue<Action<int>>();

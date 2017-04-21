@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return FlushAsyncAwaited(awaitable, cancellationToken);
         }
 
-        private Task FlushAsyncAwaited(WritableBufferAwaitable awaitable, CancellationToken cancellationToken)
+        private async Task FlushAsyncAwaited(WritableBufferAwaitable awaitable, CancellationToken cancellationToken)
         {
             // https://github.com/dotnet/corefxlab/issues/1334
             // Since the flush awaitable doesn't currently support multiple awaiters
@@ -113,11 +113,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     });
                 }
             }
-            if (cancellationToken.CanBeCanceled)
+            await _flushTcs.Task;
+
+            if (cancellationToken.IsCancellationRequested)
             {
-                return _flushTcs.Task.ContinueWith(task => { }, cancellationToken);
+                throw new TaskCanceledException();
             }
-            return _flushTcs.Task;
         }
 
         private void AbortIfNeeded(WritableBufferAwaitable awaitable)
