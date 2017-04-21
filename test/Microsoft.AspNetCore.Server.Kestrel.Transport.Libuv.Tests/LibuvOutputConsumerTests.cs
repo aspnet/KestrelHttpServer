@@ -208,7 +208,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 var bufferSize = maxResponseBufferSize - 1;
                 var buffer = new ArraySegment<byte>(new byte[bufferSize], 0, bufferSize);
 
-                // Act 
+                // Act
                 var writeTask1 = socketOutput.WriteAsync(buffer, default(CancellationToken));
 
                 // Assert
@@ -219,7 +219,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 var writeTask2 = socketOutput.WriteAsync(buffer, default(CancellationToken));
                 await _mockLibuv.OnPostTask;
 
-                // Assert 
+                // Assert
                 // Too many bytes are already pre-completed for the second write to pre-complete.
                 Assert.False(writeTask2.IsCompleted);
 
@@ -270,7 +270,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 var data = new byte[bufferSize];
                 var halfWriteBehindBuffer = new ArraySegment<byte>(data, 0, bufferSize);
 
-                // Act 
+                // Act
                 var writeTask1 = socketOutput.WriteAsync(halfWriteBehindBuffer, default(CancellationToken));
 
                 // Assert
@@ -337,7 +337,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 var data = new byte[bufferSize];
                 var fullBuffer = new ArraySegment<byte>(data, 0, bufferSize);
 
-                // Act 
+                // Act
                 var task1Success = socketOutput.WriteAsync(fullBuffer, abortedSource.Token);
                 // task1 should complete successfully as < _maxBytesPreCompleted
 
@@ -358,7 +358,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 Assert.False(task2Success.IsCanceled);
                 Assert.False(task2Success.IsFaulted);
 
-                // Third task is not completed 
+                // Third task is not completed
                 Assert.False(task3Canceled.IsCompleted);
                 Assert.False(task3Canceled.IsCanceled);
                 Assert.False(task3Canceled.IsFaulted);
@@ -382,9 +382,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 Assert.False(task4Success.IsFaulted);
 
                 // Third task is now canceled
-                // TODO: Cancellation isn't supported right now
-                // await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
-                // Assert.True(task3Canceled.IsCanceled);
+                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                Assert.True(task3Canceled.IsCanceled);
 
                 Assert.True(abortedSource.IsCancellationRequested);
             }
@@ -436,7 +435,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
                 var timeout = TimeSpan.FromSeconds(5);
 
-                // Assert 
+                // Assert
                 // Too many bytes are already pre-completed for the third but not the second write to pre-complete.
                 // https://github.com/aspnet/KestrelHttpServer/issues/356
                 await writeTask2.TimeoutAfter(timeout);
