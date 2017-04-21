@@ -102,15 +102,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 var stepTimeout = TimeSpan.FromTicks(timeout.Ticks / 3);
 
-                await PostAsync(t => t.AllowStop(), this).ConfigureAwait(false);
+                Post(t => t.AllowStop());
                 if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                 {
                     try
                     {
-                        await PostAsync(t => t.OnStopRude(), this).ConfigureAwait(false);
+                        Post(t => t.OnStopRude());
                         if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                         {
-                            await PostAsync(t => t.OnStopImmediate(), this).ConfigureAwait(false);
+                            Post(t => t.OnStopImmediate());
                             if (!await WaitAsync(_threadTcs.Task, stepTimeout).ConfigureAwait(false))
                             {
                                 _log.LogCritical($"{nameof(LibuvThread)}.{nameof(StopAsync)} failed to terminate libuv thread.");
@@ -164,9 +164,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     handle?.Dispose();
                 }
             });
-
-            // uv_unref is idempotent so it's OK to call this here and in AllowStop.
-            _post.Unreference();
         }
 
         private void OnStopImmediate()
