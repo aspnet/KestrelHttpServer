@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
@@ -174,7 +173,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             if (!string.IsNullOrEmpty(parsedAddress.PathBase))
             {
-                throw new InvalidOperationException($"A path base can only be configured using {nameof(IApplicationBuilder)}.UsePathBase().");
+                throw new InvalidOperationException($"A path base can only be configured using IApplicationBuilder.UsePathBase().");
             }
 
             if (parsedAddress.IsUnixPipe)
