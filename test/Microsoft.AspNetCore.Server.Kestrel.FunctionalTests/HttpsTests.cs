@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
                     });
                 })
-                .UseLoggerFactory(loggerFactory)
+                .UseLoggerFactory(_ => loggerFactory)
                 .Configure(app => { });
 
             using (var host = hostBuilder.Build())
@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
                     });
                 })
-                .UseLoggerFactory(loggerFactory)
+                .UseLoggerFactory(_ => loggerFactory)
                 .Configure(app => { });
 
             using (var host = hostBuilder.Build())
@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
                     });
                 })
-                .UseLoggerFactory(loggerFactory)
+                .UseLoggerFactory(_ => loggerFactory)
                 .Configure(app => app.Run(async httpContext =>
                 {
                     var ct = httpContext.RequestAborted;
@@ -160,7 +160,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
                     });
                 })
-                .UseLoggerFactory(loggerFactory)
+                .UseLoggerFactory(_ => loggerFactory)
                 .Configure(app => app.Run(async httpContext =>
                 {
                     httpContext.Abort();
@@ -210,7 +210,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
                     });
                 })
-                .UseLoggerFactory(loggerFactory)
+                .UseLoggerFactory(_ => loggerFactory)
                 .Configure(app => { });
 
             using (var host = hostBuilder.Build())
