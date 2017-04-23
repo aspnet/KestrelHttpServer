@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Buffers;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
@@ -26,13 +27,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private IConnectionContext _connectionContext;
 
         private WritableBuffer? _currentWritableBuffer;
+        private BufferHandle _bufferHandle;
 
         public LibuvConnection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
 
-            var tcpHandle = _socket as UvTcpHandle;
-            if (tcpHandle != null)
+            if (_socket is UvTcpHandle tcpHandle)
             {
                 RemoteEndPoint = tcpHandle.GetPeerIPEndPoint();
                 LocalEndPoint = tcpHandle.GetSockIPEndPoint();
@@ -107,16 +108,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private unsafe LibuvFunctions.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            Debug.Assert(_currentWritableBuffer == null);
             var currentWritableBuffer = Input.Alloc(MinAllocBufferSize);
             _currentWritableBuffer = currentWritableBuffer;
-            void* dataPtr;
-            var tryGetPointer = currentWritableBuffer.Buffer.TryGetPointer(out dataPtr);
-            Debug.Assert(tryGetPointer);
 
-            return handle.Libuv.buf_init(
-                (IntPtr)dataPtr,
-                currentWritableBuffer.Buffer.Length);
+            _bufferHandle = currentWritableBuffer.Buffer.Pin();
+
+            return handle.Libuv.buf_init((IntPtr)_bufferHandle.PinnedPointer, currentWritableBuffer.Buffer.Length);
         }
 
         private static void ReadCallback(UvStreamHandle handle, int status, object state)
@@ -149,8 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             WritableBufferAwaitable? flushTask = null;
             if (errorDone)
             {
-                Exception uvError;
-                handle.Libuv.Check(status, out uvError);
+                handle.Libuv.Check(status, out var uvError);
 
                 // Log connection resets at a lower (Debug) level.
                 if (status == LibuvConstants.ECONNRESET)
@@ -176,6 +172,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
 
             _currentWritableBuffer = null;
+            _bufferHandle.Free();
+
             if (flushTask?.IsCompleted == false)
             {
                 Log.ConnectionPause(ConnectionId);
