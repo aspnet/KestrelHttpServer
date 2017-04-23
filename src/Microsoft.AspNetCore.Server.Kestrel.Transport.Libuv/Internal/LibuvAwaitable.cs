@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             if (_callback == _callbackCompleted ||
                 Interlocked.CompareExchange(ref _callback, continuation, null) == _callbackCompleted)
             {
-                Debug.Fail($"{typeof(LibuvAwaitable<TRequest>)}.OnComplated raced with IsCompleted, scheduling callback back on to the loop thread.");
+                Debug.Fail($"{typeof(LibuvAwaitable<TRequest>)}.OnComplated raced with IsCompleted, running callback inline.");
 
                 // Just run it inline
                 continuation();
