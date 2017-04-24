@@ -31,7 +31,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         // this is temporary until it does
         private TaskCompletionSource<object> _flushTcs;
         private readonly object _flushLock = new object();
-        private Exception _writeError;
 
         public OutputProducer(IPipeWriter pipe, Frame frame, string connectionId, IKestrelTrace log)
         {
@@ -52,7 +51,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 if (_completed)
                 {
-                    _log.ConnectionDisconnectedWrite(_connectionId, buffer.Count, _writeError);
                     return TaskCache.CompletedTask;
                 }
 
@@ -124,7 +122,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             catch (Exception ex)
             {
                 // Store the write exception for logging purposes
-                _writeError = ex;
                 _frame.Abort(ex);
             }
         }
