@@ -114,11 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
             }
             await _flushTcs.Task;
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         private void AbortIfNeeded(WritableBufferAwaitable awaitable)
