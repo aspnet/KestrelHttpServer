@@ -382,7 +382,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 Assert.False(task4Success.IsFaulted);
 
                 // Third task is now canceled
-                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                await Assert.ThrowsAsync<OperationCanceledException>(() => task3Canceled);
                 Assert.True(task3Canceled.IsCanceled);
 
                 Assert.True(abortedSource.IsCancellationRequested);
@@ -454,7 +454,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 Assert.False(task4Success.IsFaulted);
 
                 // Third task is now canceled
-                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                await Assert.ThrowsAsync<OperationCanceledException>(() => task3Canceled);
                 Assert.True(task3Canceled.IsCanceled);
 
                 Assert.True(abortedSource.IsCancellationRequested);
@@ -530,7 +530,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 Assert.False(task4Success.IsFaulted);
 
                 // Third task is now canceled
-                await Assert.ThrowsAsync<TaskCanceledException>(() => task3Canceled);
+                await Assert.ThrowsAsync<OperationCanceledException>(() => task3Canceled);
                 Assert.True(task3Canceled.IsCanceled);
             }
         }
