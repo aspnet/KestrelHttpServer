@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
                             if (writeResult.Error != null)
                             {
-                                consumed = result.Buffer.Start;
+                                consumed = buffer.Start;
                                 throw writeResult.Error;
                             }
                         }
