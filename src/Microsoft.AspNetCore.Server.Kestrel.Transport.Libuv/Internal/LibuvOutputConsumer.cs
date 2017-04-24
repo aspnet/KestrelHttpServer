@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 var result = await _pipe.ReadAsync();
                 var buffer = result.Buffer;
-                var consumed = result.Buffer.End;
+                var consumed = buffer.End;
 
                 try
                 {
