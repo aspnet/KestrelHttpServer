@@ -108,6 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private unsafe LibuvFunctions.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
+            Debug.Assert(_currentWritableBuffer == null);
             var currentWritableBuffer = Input.Alloc(MinAllocBufferSize);
             _currentWritableBuffer = currentWritableBuffer;
 
