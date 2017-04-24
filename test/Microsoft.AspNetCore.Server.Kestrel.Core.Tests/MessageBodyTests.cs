@@ -22,16 +22,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(HttpVersion.Http10)]
         [InlineData(HttpVersion.Http11)]
-        public void CanReadFromContentLength(HttpVersion httpVersion)
+        public async Task CanReadFromContentLength(HttpVersion httpVersion)
         {
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -40,6 +40,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
+
+                await readerTask;
 
                 count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
@@ -54,11 +56,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -68,22 +70,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
 
+                await readerTask;
+
                 count = await stream.ReadAsync(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
             }
         }
 
         [Fact]
-        public void CanReadFromChunkedEncoding()
+        public async Task CanReadFromChunkedEncoding()
         {
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -94,6 +98,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
 
                 input.Add("0\r\n\r\n");
+
+                await readerTask;
 
                 count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
@@ -106,11 +112,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -121,6 +127,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
 
                 input.Add("0\r\n\r\n");
+
+                await readerTask;
 
                 count = await stream.ReadAsync(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
@@ -135,11 +143,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                _ = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -159,11 +167,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                _ = reader.StartAsync();
 
                 input.Add("Hello");
 
@@ -178,18 +186,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(HttpVersion.Http10)]
         [InlineData(HttpVersion.Http11)]
-        public void ReadFromNoContentLengthReturnsZero(HttpVersion httpVersion)
+        public async Task ReadFromNoContentLengthReturnsZero(HttpVersion httpVersion)
         {
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 input.Add("Hello");
+
+                await readerTask;
 
                 var buffer = new byte[1024];
                 Assert.Equal(0, stream.Read(buffer, 0, buffer.Length));
@@ -204,13 +214,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 input.Add("Hello");
+
+                await readerTask;
 
                 var buffer = new byte[1024];
                 Assert.Equal(0, await stream.ReadAsync(buffer, 0, buffer.Length));
@@ -223,11 +235,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "8197" }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                var readerTask = reader.StartAsync();
 
                 // Input needs to be greater than 4032 bytes to allocate a block not backed by a slab.
                 var largeInput = new string('a', 8192);
@@ -243,6 +255,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var requestArray = ms.ToArray();
                 Assert.Equal(8197, requestArray.Length);
                 AssertASCII(largeInput + "Hello", new ArraySegment<byte>(requestArray, 0, requestArray.Length));
+
+                await readerTask;
 
                 var count = await stream.ReadAsync(new byte[1], 0, 1);
                 Assert.Equal(0, count);
@@ -406,11 +420,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection }, input.FrameContext);
-                var reader = new RequestBodyReader(body);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var ignore = reader.StartAsync();
+                _ = reader.StartAsync();
 
                 input.Add("Hello");
 

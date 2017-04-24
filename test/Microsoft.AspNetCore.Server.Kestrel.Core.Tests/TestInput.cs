@@ -19,14 +19,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     class TestInput : IFrameControl, IDisposable
     {
         private MemoryPool _memoryPool;
-        private PipeFactory _pipelineFactory;
+        private PipeFactory _pipeFactory;
 
         public TestInput()
         {
             _memoryPool = new MemoryPool();
-            _pipelineFactory = new PipeFactory();
+            _pipeFactory = new PipeFactory();
 
-            Pipe = _pipelineFactory.Create();
+            Pipe = _pipeFactory.Create();
 
             FrameContext = new Frame<object>(null, new FrameContext
             {
@@ -37,6 +37,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         public IPipe Pipe { get;  }
+
+        public PipeFactory PipeFactory => _pipeFactory;
 
         public Frame FrameContext { get; set; }
 
@@ -94,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public void Dispose()
         {
-            _pipelineFactory.Dispose();
+            _pipeFactory.Dispose();
             _memoryPool.Dispose();
         }
     }

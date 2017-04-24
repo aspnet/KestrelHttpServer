@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -91,11 +92,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
 
-                        var requestBodyReader = new RequestBodyReader(messageBody);
-
+                        var requestBodyReader = new RequestBodyReader(messageBody, CreateRequestBodyPipe());
+                        var readerTask = requestBodyReader.StartAsync();
                         InitializeStreams(requestBodyReader);
-
-                        var ignore = requestBodyReader.StartAsync();
 
                         var context = _application.CreateContext(this);
                         try
@@ -164,6 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 {
                                     // Finish reading the request body in case the app did not.
                                     await requestBodyReader.Consume();
+                                    await readerTask;
                                 }
 
                                 if (!HasResponseStarted)

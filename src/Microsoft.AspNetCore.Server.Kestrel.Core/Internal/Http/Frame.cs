@@ -1422,6 +1422,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
+        protected IPipe CreateRequestBodyPipe()
+            => ConnectionInformation.PipeFactory.Create(new PipeOptions
+            {
+                ReaderScheduler = ServiceContext.ThreadPool,
+                WriterScheduler = ConnectionInformation.InputWriterScheduler,
+                MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
+                MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            });
+
         private enum HttpRequestTarget
         {
             Unknown = -1,

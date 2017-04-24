@@ -6,19 +6,24 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public class RequestBodyReader
     {
+        public static readonly RequestBodyReader ZeroContentLengthClose = new EmptyRequestBodyReader();
+
         private readonly MessageBody _messageBody;
         private readonly IPipe _pipe;
 
-        public RequestBodyReader(MessageBody messageBody)
+        public RequestBodyReader(MessageBody messageBody, IPipe pipe)
         {
             _messageBody = messageBody;
-            _pipe = new PipeFactory().Create();
+            _pipe = pipe;
         }
+
+        public bool RequestUpgrade => _messageBody.RequestUpgrade;
 
         public async Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -31,37 +36,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     var bytesRead = await _messageBody.ReadAsync(writableBuffer.Buffer.GetArray(), cancellationToken);
                     writableBuffer.Advance(bytesRead);
                     writableBuffer.Commit();
-                    await writableBuffer.FlushAsync();
 
                     if (bytesRead == 0)
                     {
                         _pipe.Writer.Complete();
                         return;
                     }
+
+                    await writableBuffer.FlushAsync();
                 }
                 catch (Exception ex)
                 {
+                    writableBuffer.Commit();
                     _pipe.Writer.Complete(ex);
                     return;
                 }
             }
         }
 
-        public async Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
             while (true)
             {
-                ReadResult result = default(ReadResult);
-
-                try
-                {
-                    result = await _pipe.Reader.ReadAsync();
-                }
-                catch (Exception ex)
-                {
-                    throw;
-                }
-
+                var result = await _pipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
 
                 try
@@ -85,7 +82,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
         {
             while (true)
             {
@@ -138,6 +135,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     _pipe.Reader.Advance(readableBuffer.End, readableBuffer.End);
                 }
             }
+        }
+
+        private class EmptyRequestBodyReader : RequestBodyReader
+        {
+            public EmptyRequestBodyReader()
+                : base(MessageBody.ZeroContentLengthClose, null)
+            {
+            }
+
+            public override Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
+                => Task.FromResult(0);
+
+            public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
+                => TaskCache.CompletedTask;
         }
     }
 }
