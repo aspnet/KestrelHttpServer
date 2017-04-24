@@ -121,7 +121,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
             catch (Exception ex)
             {
-                // Store the write exception for logging purposes
                 _frame.Abort(ex);
             }
         }
