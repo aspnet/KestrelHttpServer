@@ -37,8 +37,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <summary>
         /// Gets or sets a value that determines how Kestrel should schedule user callbacks.
         /// </summary>
-        /// <remarks>The default mode is <see cref="SchedulingMode.ThreadPool"/></remarks>
-        public SchedulingMode ApplicationSchedulingMode { get; set; } = SchedulingMode.ThreadPool;
+        /// <remarks>The default mode is <see cref="SchedulingMode.Default"/></remarks>
+        public SchedulingMode ApplicationSchedulingMode { get; set; } = SchedulingMode.Default;
 
         /// <summary>
         /// Enables the Listen options callback to resolve and use services registered by the application during startup.
