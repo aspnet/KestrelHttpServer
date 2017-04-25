@@ -163,7 +163,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 {
                                     // Finish reading the request body in case the app did not.
                                     await requestBodyReader.Consume();
-                                    await readerTask;
                                 }
 
                                 if (!HasResponseStarted)

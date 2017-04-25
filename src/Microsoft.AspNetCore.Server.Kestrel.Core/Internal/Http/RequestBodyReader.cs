@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    _pipe.Reader.Advance(readableBuffer.End, readableBuffer.End);
+                    _pipe.Reader.Advance(readableBuffer.End);
                 }
             }
         }
@@ -86,32 +86,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             while (true)
             {
-                var readTask = _pipe.Reader.ReadAsync();
-
-                if (!readTask.IsCompleted)
-                {
-                    _messageBody.TryProduceContinue();
-                }
-
-                var result = await readTask;
+                var result = await _pipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
-                var segment = readableBuffer.First.GetArray();
 
                 try
                 {
                     if (!readableBuffer.IsEmpty)
                     {
-                        await destination.WriteAsync(segment.Array, segment.Offset, segment.Count);
+                        foreach (var memory in readableBuffer)
+                        {
+                            var array = memory.GetArray();
+                            await destination.WriteAsync(array.Array, array.Offset, array.Count);
+                        }
                     }
-                    else if (readableBuffer.Length == 0)
+                    else if (result.IsCompleted)
                     {
                         return;
                     }
                 }
                 finally
                 {
-                    var consumed = readableBuffer.Move(readableBuffer.Start, segment.Count);
-                    _pipe.Reader.Advance(consumed, consumed);
+                    _pipe.Reader.Advance(readableBuffer.End);
                 }
             }
         }
@@ -123,17 +118,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var result = await _pipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
 
-                try
+                if (result.IsCompleted)
                 {
-                    if (result.IsCompleted)
-                    {
-                        return;
-                    }
+                    return;
                 }
-                finally
-                {
-                    _pipe.Reader.Advance(readableBuffer.End, readableBuffer.End);
-                }
+
+                _pipe.Reader.Advance(readableBuffer.End, readableBuffer.End);
             }
         }
 
