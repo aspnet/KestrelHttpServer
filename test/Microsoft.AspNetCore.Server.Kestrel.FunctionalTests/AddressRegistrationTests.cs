@@ -24,6 +24,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class AddressRegistrationTests
     {
+        [ConditionalFact]
+        [NetworkIsReachable]
+        public async Task RegisterAddresses_HostName_Success()
+        {
+            var hostName = Dns.GetHostName();
+            Func<string, string> fixUrl = url =>
+            {
+                return url
+                    .Replace("0.0.0.0", hostName)
+                    .Replace("[::]", hostName);
+            };
+
+            await RegisterAddresses_Success($"http://{hostName}:0", a => a.Addresses.Select(fixUrl).ToArray());
+        }
+
         [Theory, MemberData(nameof(AddressRegistrationDataIPv4))]
         public async Task RegisterAddresses_IPv4_Success(string addressInput, Func<IServerAddressesFeature, string[]> testUrls)
         {
@@ -224,9 +239,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 dataset.Add($"http://127.0.0.1:{port1}/base/path;https://127.0.0.1:{port2}/base/path",
                     _ => new[] { $"http://127.0.0.1:{port1}/base/path", $"https://127.0.0.1:{port2}/base/path" });
 
-                // Dynamic port and non-loopback addresses
+                // Dynamic port addresses
                 dataset.Add("http://127.0.0.1:0/;https://127.0.0.1:0/", GetTestUrls);
-                dataset.Add($"http://{Dns.GetHostName()}:0/;https://{Dns.GetHostName()}:0/", GetTestUrls);
 
                 var ipv4Addresses = GetIPAddresses()
                     .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork);
