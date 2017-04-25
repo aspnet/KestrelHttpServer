@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.Threading.Thread" Version="$(CoreFxVersion)" />
-    <PackageReference Include="System.Threading.ThreadPool" Version="$(CoreFxVersion)" />
     <PackageReference Include="Libuv" Version="$(LibUvVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="$(AspNetCoreVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(AspNetCoreVersion)" />
