@@ -27,15 +27,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public async Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            while (true)
+            try
             {
-                var writableBuffer = _pipe.Writer.Alloc(1);
-
-                try
+                while (true)
                 {
-                    var bytesRead = await _messageBody.ReadAsync(writableBuffer.Buffer.GetArray(), cancellationToken);
-                    writableBuffer.Advance(bytesRead);
-                    writableBuffer.Commit();
+                    var writableBuffer = _pipe.Writer.Alloc(1);
+                    int bytesRead;
+
+                    try
+                    {
+                        bytesRead = await _messageBody.ReadAsync(writableBuffer.Buffer.GetArray(), cancellationToken);
+                        writableBuffer.Advance(bytesRead);
+                    }
+                    finally
+                    {
+                        writableBuffer.Commit();
+                    }
 
                     if (bytesRead == 0)
                     {
@@ -45,12 +52,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     await writableBuffer.FlushAsync();
                 }
-                catch (Exception ex)
-                {
-                    writableBuffer.Commit();
-                    _pipe.Writer.Complete(ex);
-                    return;
-                }
+            }
+            catch (Exception ex)
+            {
+                _pipe.Writer.Complete(ex);
             }
         }
 
