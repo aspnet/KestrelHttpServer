@@ -93,7 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         _upgrade = messageBody.RequestUpgrade;
 
                         var requestBodyReader = new RequestBodyReader(messageBody, CreateRequestBodyPipe());
-                        var readerTask = requestBodyReader.StartAsync();
+                        _ = requestBodyReader.StartAsync();
                         InitializeStreams(requestBodyReader);
 
                         var context = _application.CreateContext(this);

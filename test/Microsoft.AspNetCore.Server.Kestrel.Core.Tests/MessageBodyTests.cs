@@ -333,8 +333,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var writeCount = 0;
             var writeTcs = new TaskCompletionSource<byte[]>();
-            var mockDestination = new Mock<Stream>();
 
+            var mockDestination = new Mock<Stream>();
             mockDestination
                 .Setup(m => m.WriteAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), CancellationToken.None))
                 .Callback((byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
@@ -347,16 +347,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var readerTask = reader.StartAsync();
 
-                var copyToAsyncTask = body.CopyToAsync(mockDestination.Object);
+                var copyToAsyncTask = reader.CopyToAsync(mockDestination.Object);
 
-                // The block returned by IncomingStart always has at least 2048 available bytes,
-                // so no need to bounds check in this test.
-                var socketInput = input.Pipe;
+                var pipe = input.Pipe;
                 var bytes = Encoding.ASCII.GetBytes(data[0]);
-                var buffer = socketInput.Writer.Alloc(2048);
-                ArraySegment<byte> block;
-                Assert.True(buffer.Buffer.TryGetArray(out block));
+                var buffer = pipe.Writer.Alloc(2048);
+                Assert.True(buffer.Buffer.TryGetArray(out var block));
                 Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
                 buffer.Advance(bytes.Length);
                 await buffer.FlushAsync();
@@ -366,7 +365,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 writeTcs = new TaskCompletionSource<byte[]>();
                 bytes = Encoding.ASCII.GetBytes(data[1]);
-                buffer = socketInput.Writer.Alloc(2048);
+                buffer = pipe.Writer.Alloc(2048);
                 Assert.True(buffer.Buffer.TryGetArray(out block));
                 Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
                 buffer.Advance(bytes.Length);
@@ -376,10 +375,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 if (headers.HeaderConnection == "close")
                 {
-                    socketInput.Writer.Complete();
+                    pipe.Writer.Complete();
                 }
 
                 await copyToAsyncTask;
+                await readerTask;
 
                 Assert.Equal(2, writeCount);
             }
@@ -392,20 +392,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
+                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var readerTask = reader.StartAsync();
 
                 input.Add(data[0]);
 
-                await Assert.ThrowsAsync<XunitException>(() => body.CopyToAsync(writeStream));
+                await Assert.ThrowsAsync<XunitException>(() => reader.CopyToAsync(writeStream));
 
                 input.Add(data[1]);
 
                 // "Hello " should have been consumed
                 var readBuffer = new byte[6];
-                var count = await body.ReadAsync(new ArraySegment<byte>(readBuffer, 0, readBuffer.Length));
+                var count = await reader.ReadAsync(new ArraySegment<byte>(readBuffer, 0, readBuffer.Length));
                 Assert.Equal(6, count);
                 AssertASCII("World!", new ArraySegment<byte>(readBuffer, 0, 6));
 
-                count = await body.ReadAsync(new ArraySegment<byte>(readBuffer, 0, readBuffer.Length));
+                await readerTask;
+
+                count = await reader.ReadAsync(new ArraySegment<byte>(readBuffer, 0, readBuffer.Length));
                 Assert.Equal(0, count);
             }
         }
@@ -421,10 +425,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection }, input.FrameContext);
                 var reader = new RequestBodyReader(body, input.PipeFactory.Create());
-                var stream = new FrameRequestStream();
+                var readerTask = reader.StartAsync();
 
+                var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(reader);
-                _ = reader.StartAsync();
 
                 input.Add("Hello");
 
