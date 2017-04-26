@@ -117,11 +117,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public async Task Consume(CancellationToken cancellationToken = default(CancellationToken))
+        public Task ConsumeAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             while (true)
             {
-                var result = await _pipe.Reader.ReadAsync();
+                var awaitable = _pipe.Reader.ReadAsync();
+
+                if (awaitable.IsCompleted)
+                {
+                    var result = awaitable.GetResult();
+                    var readableBuffer = result.Buffer;
+                    _pipe.Reader.Advance(readableBuffer.End);
+
+                    if (result.IsCompleted)
+                    {
+                        return TaskCache.CompletedTask;
+                    }
+                }
+                else
+                {
+                    return ConsumeAsyncAwaited(awaitable, cancellationToken);
+                }
+            }
+        }
+
+        private async Task ConsumeAsyncAwaited(ReadableBufferAwaitable awaitable, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                var result = await awaitable;
                 var readableBuffer = result.Buffer;
                 _pipe.Reader.Advance(readableBuffer.End);
 
@@ -129,6 +153,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     return;
                 }
+
+                awaitable = _pipe.Reader.ReadAsync();
             }
         }
 
