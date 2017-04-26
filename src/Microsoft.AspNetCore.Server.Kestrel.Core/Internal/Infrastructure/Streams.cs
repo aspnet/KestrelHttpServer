@@ -34,13 +34,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             return _upgradeStream;
         }
 
-        public (Stream request, Stream response) Start(RequestBodyReader requestBodyReader)
+        public (Stream request, Stream response) Start(RequestBodyReader requestBodyReader, bool requestUpgradable)
         {
             _request.StartAcceptingReads(requestBodyReader);
             _emptyRequest.StartAcceptingReads(RequestBodyReader.ZeroContentLengthClose);
             _response.StartAcceptingWrites();
 
-            if (requestBodyReader.RequestUpgrade)
+            if (requestUpgradable)
             {
                 // until Upgrade() is called, context.Response.Body should use the normal output stream
                 _upgradeableResponse.SetInnerStream(_response);

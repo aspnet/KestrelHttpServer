@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Tests.TestHelpers;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
@@ -62,8 +63,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameContext = new FrameContext
             {
                 ServiceContext = _serviceContext,
-                ConnectionInformation = Mock.Of<IConnectionInformation>(),
-                TimeoutControl = _timeoutControl.Object,
+                ConnectionInformation = new MockConnectionInformation
+                {
+                    PipeFactory = _pipeFactory
+                },
+                TimeoutControl = _timeoutControl.Object
+            };
+
+            _frame = new TestFrame<object>(application: null, context: _frameContext)
+            {
                 Input = _input.Reader,
                 Output = output
             };
@@ -274,9 +282,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void InitializeStreamsResetsStreams()
         {
             // Arrange
-            var messageBody = MessageBody.For(Kestrel.Core.Internal.Http.HttpVersion.Http11, (FrameRequestHeaders)_frame.RequestHeaders, _frame);
-            var requestBodyReader = new RequestBodyReader(messageBody, _pipeFactory.Create());
-            _frame.InitializeStreams(requestBodyReader);
+            _frame.InitializeStreams(false);
 
             var originalRequestBody = _frame.RequestBody;
             var originalResponseBody = _frame.ResponseBody;
@@ -284,7 +290,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frame.ResponseBody = new MemoryStream();
 
             // Act
-            _frame.InitializeStreams(requestBodyReader);
+            _frame.InitializeStreams(false);
 
             // Assert
             Assert.Same(originalRequestBody, _frame.RequestBody);

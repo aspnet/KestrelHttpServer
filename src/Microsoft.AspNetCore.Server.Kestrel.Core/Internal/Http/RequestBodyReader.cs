@@ -14,18 +14,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         public static readonly RequestBodyReader ZeroContentLengthClose = new EmptyRequestBodyReader();
 
-        private readonly MessageBody _messageBody;
         private readonly IPipe _pipe;
 
-        public RequestBodyReader(MessageBody messageBody, IPipe pipe)
+        public RequestBodyReader(IPipe pipe)
         {
-            _messageBody = messageBody;
             _pipe = pipe;
         }
 
-        public bool RequestUpgrade => _messageBody.RequestUpgrade;
-
-        public async Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task StartAsync(MessageBody messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
             try
             {
@@ -36,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     try
                     {
-                        bytesRead = await _messageBody.ReadAsync(writableBuffer.Buffer.GetArray(), cancellationToken);
+                        bytesRead = await messageBody.ReadAsync(writableBuffer.Buffer.GetArray(), cancellationToken);
                         writableBuffer.Advance(bytesRead);
                     }
                     finally
@@ -57,6 +53,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _pipe.Writer.Complete(ex);
             }
+        }
+
+        public void Reset()
+        {
+            // TODO: ensure there are no readers
+            // TODO: ensure start task has finished
+            _pipe.Reader.Complete();
+            _pipe.Writer.Complete();
+            _pipe.Reset();
         }
 
         public virtual async Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
@@ -122,20 +127,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 var result = await _pipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
+                _pipe.Reader.Advance(readableBuffer.End);
 
                 if (result.IsCompleted)
                 {
                     return;
                 }
-
-                _pipe.Reader.Advance(readableBuffer.End, readableBuffer.End);
             }
         }
 
         private class EmptyRequestBodyReader : RequestBodyReader
         {
             public EmptyRequestBodyReader()
-                : base(MessageBody.ZeroContentLengthClose, null)
+                : base(null)
             {
             }
 

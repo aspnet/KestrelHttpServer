@@ -27,11 +27,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 input.Add("Hello");
 
@@ -56,11 +56,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 input.Add("Hello");
 
@@ -83,11 +83,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 input.Add("5\r\nHello\r\n");
 
@@ -112,11 +112,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 input.Add("5\r\nHello\r\n");
 
@@ -143,11 +143,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                _ = reader.StartAsync();
+                _ = reader.StartAsync(body);
 
                 input.Add("Hello");
 
@@ -167,11 +167,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                _ = reader.StartAsync();
+                _ = reader.StartAsync(body);
 
                 input.Add("Hello");
 
@@ -191,11 +191,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 input.Add("Hello");
 
@@ -214,11 +214,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 input.Add("Hello");
 
@@ -235,11 +235,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "8197" }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
                 var stream = new FrameRequestStream();
 
                 stream.StartAcceptingReads(reader);
-                var readerTask = reader.StartAsync();
+                var readerTask = reader.StartAsync(body);
 
                 // Input needs to be greater than 4032 bytes to allocate a block not backed by a slab.
                 var largeInput = new string('a', 8192);
@@ -347,8 +347,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
-                var readerTask = reader.StartAsync();
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
+                var readerTask = reader.StartAsync(body);
 
                 var copyToAsyncTask = reader.CopyToAsync(mockDestination.Object);
 
@@ -392,8 +392,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
-                var readerTask = reader.StartAsync();
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
+                var readerTask = reader.StartAsync(body);
 
                 input.Add(data[0]);
 
@@ -424,8 +424,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection }, input.FrameContext);
-                var reader = new RequestBodyReader(body, input.PipeFactory.Create());
-                var readerTask = reader.StartAsync();
+                var reader = new RequestBodyReader(input.PipeFactory.Create());
+                var readerTask = reader.StartAsync(body);
 
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(reader);

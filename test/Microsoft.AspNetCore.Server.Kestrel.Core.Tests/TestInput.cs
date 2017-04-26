@@ -7,7 +7,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+<<<<<<< HEAD
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+=======
+using Microsoft.AspNetCore.Server.Kestrel.Core.Tests.TestHelpers;
+>>>>>>> Instantiate RequestBodyReader once per Frame.
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
@@ -25,8 +29,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             _memoryPool = new MemoryPool();
             _pipeFactory = new PipeFactory();
-
             Pipe = _pipeFactory.Create();
+
+            var innerContext = new FrameContext
+            {
+                ServiceContext = new TestServiceContext(),
+                ConnectionInformation = new MockConnectionInformation
+                {
+                    PipeFactory = _pipeFactory
+                }
+            };
 
             FrameContext = new Frame<object>(null, new FrameContext
             {

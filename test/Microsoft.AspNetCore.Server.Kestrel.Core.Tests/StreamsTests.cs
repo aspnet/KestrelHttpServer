@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public async Task StreamsThrowAfterAbort()
         {
             var streams = new Streams(Mock.Of<IFrameControl>());
-            var (request, response) = streams.Start(new RequestBodyReader(new MockMessageBody(), new PipeFactory().Create()));
+            var (request, response) = streams.Start(new RequestBodyReader(new PipeFactory().Create()), requestUpgradable: false);
 
             var ex = new Exception("My error");
             streams.Abort(ex);
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public async Task StreamsThrowOnAbortAfterUpgrade()
         {
             var streams = new Streams(Mock.Of<IFrameControl>());
-            var (request, response) = streams.Start(new RequestBodyReader(new MockMessageBody(upgradeable: true), new PipeFactory().Create()));
+            var (request, response) = streams.Start(new RequestBodyReader(new PipeFactory().Create()), requestUpgradable: true);
 
             var upgrade = streams.Upgrade();
             var ex = new Exception("My error");
@@ -54,8 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public async Task StreamsThrowOnUpgradeAfterAbort()
         {
             var streams = new Streams(Mock.Of<IFrameControl>());
-
-            var (request, response) = streams.Start(new RequestBodyReader(new MockMessageBody(upgradeable: true), new PipeFactory().Create()));
+            var (request, response) = streams.Start(new RequestBodyReader(new PipeFactory().Create()), requestUpgradable: true);
             var ex = new Exception("My error");
             streams.Abort(ex);
 
