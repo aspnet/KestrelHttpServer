@@ -13,16 +13,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         /// <summary>
         /// Only ListenType.IPEndPoint is supported.
         /// </summary>
-        internal static string OnlyIpEndPointsSupported
+        internal static string OnlyIPEndPointsSupported
         {
-            get => GetString("OnlyIpEndPointsSupported");
+            get => GetString("OnlyIPEndPointsSupported");
         }
 
         /// <summary>
         /// Only ListenType.IPEndPoint is supported.
         /// </summary>
-        internal static string FormatOnlyIpEndPointsSupported()
-            => GetString("OnlyIpEndPointsSupported");
+        internal static string FormatOnlyIPEndPointsSupported()
+            => GetString("OnlyIPEndPointsSupported");
 
         /// <summary>
         /// Transport is already bound.

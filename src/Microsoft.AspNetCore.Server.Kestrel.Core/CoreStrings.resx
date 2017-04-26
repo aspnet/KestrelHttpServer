@@ -130,7 +130,7 @@
     <value>Chunked request incomplete.</value>
   </data>
   <data name="BadRequest_FinalTransferCodingNotChunked" xml:space="preserve">
-    <value>Final transfer coding is not "chunked": "{detail}"</value>
+    <value>The message body length cannot be determined because the final transfer encoding was set to '{detail}' instead of 'chunked'.</value>
   </data>
   <data name="BadRequest_HeadersExceedMaxTotalSize" xml:space="preserve">
     <value>Request headers too long.</value>
@@ -163,10 +163,10 @@
     <value>Invalid request target: '{detail}'</value>
   </data>
   <data name="BadRequest_LengthRequired" xml:space="preserve">
-    <value>{detail} request contains no Content-Length or Transfer-Encoding header</value>
+    <value>{detail} request contains no Content-Length or Transfer-Encoding header.</value>
   </data>
   <data name="BadRequest_LengthRequiredHttp10" xml:space="preserve">
-    <value>{detail} request contains no Content-Length header</value>
+    <value>{detail} request contains no Content-Length header.</value>
   </data>
   <data name="BadRequest_MalformedRequestInvalidHeaders" xml:space="preserve">
     <value>Malformed request: invalid headers.</value>

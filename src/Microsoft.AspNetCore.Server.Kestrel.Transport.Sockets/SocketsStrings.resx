@@ -117,7 +117,7 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="OnlyIpEndPointsSupported" xml:space="preserve">
+  <data name="OnlyIPEndPointsSupported" xml:space="preserve">
     <value>Only ListenType.IPEndPoint is supported.</value>
   </data>
   <data name="TransportAlreadyBound" xml:space="preserve">

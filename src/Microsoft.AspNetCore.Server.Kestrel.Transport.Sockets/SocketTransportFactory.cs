@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             if (endPointInformation.Type != ListenType.IPEndPoint)
             {
-                throw new ArgumentException(SocketsStrings.OnlyIpEndPointsSupported, nameof(endPointInformation));
+                throw new ArgumentException(SocketsStrings.OnlyIPEndPointsSupported, nameof(endPointInformation));
             }
 
             if (handler == null)

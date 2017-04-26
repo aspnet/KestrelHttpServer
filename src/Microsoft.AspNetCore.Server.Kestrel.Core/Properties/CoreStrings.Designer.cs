@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("BadRequest_ChunkedRequestIncomplete");
 
         /// <summary>
-        /// Final transfer coding is not "chunked": "{detail}"
+        /// The message body length cannot be determined because the final transfer encoding was set to '{detail}' instead of 'chunked'.
         /// </summary>
         internal static string BadRequest_FinalTransferCodingNotChunked
         {
@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Final transfer coding is not "chunked": "{detail}"
+        /// The message body length cannot be determined because the final transfer encoding was set to '{detail}' instead of 'chunked'.
         /// </summary>
         internal static string FormatBadRequest_FinalTransferCodingNotChunked(object detail)
             => string.Format(CultureInfo.CurrentCulture, GetString("BadRequest_FinalTransferCodingNotChunked", "detail"), detail);
@@ -221,7 +221,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => string.Format(CultureInfo.CurrentCulture, GetString("BadRequest_InvalidRequestTarget_Detail", "detail"), detail);
 
         /// <summary>
-        /// {detail} request contains no Content-Length or Transfer-Encoding header
+        /// {detail} request contains no Content-Length or Transfer-Encoding header.
         /// </summary>
         internal static string BadRequest_LengthRequired
         {
@@ -229,13 +229,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// {detail} request contains no Content-Length or Transfer-Encoding header
+        /// {detail} request contains no Content-Length or Transfer-Encoding header.
         /// </summary>
         internal static string FormatBadRequest_LengthRequired(object detail)
             => string.Format(CultureInfo.CurrentCulture, GetString("BadRequest_LengthRequired", "detail"), detail);
 
         /// <summary>
-        /// {detail} request contains no Content-Length header
+        /// {detail} request contains no Content-Length header.
         /// </summary>
         internal static string BadRequest_LengthRequiredHttp10
         {
@@ -243,7 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// {detail} request contains no Content-Length header
+        /// {detail} request contains no Content-Length header.
         /// </summary>
         internal static string FormatBadRequest_LengthRequiredHttp10(object detail)
             => string.Format(CultureInfo.CurrentCulture, GetString("BadRequest_LengthRequiredHttp10", "detail"), detail);
