@@ -37,6 +37,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.CloseConnection);
 
+                    if (_hasRequestBody)
+                    {
+                        _requestBodyReader.Reset();
+                    }
+
                     Reset();
 
                     while (!_requestProcessingStopping)
@@ -91,8 +96,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         var messageBody = MessageBody.For(_httpVersion, FrameRequestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
+                        _hasRequestBody = !messageBody.IsEmpty;
 
-                        _ = _requestBodyReader.StartAsync(messageBody);
+                        if (_hasRequestBody)
+                        {
+                            _ = _requestBodyReader.StartAsync(messageBody);
+                        }
+                        else
+                        {
+                            _requestBodyPipe.Writer.Complete();
+                        }
+
                         InitializeStreams(messageBody.RequestUpgrade);
 
                         var context = _application.CreateContext(this);
@@ -158,7 +172,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     await ProduceEnd();
                                 }
 
-                                if (_keepAlive && !messageBody.Empty)
+                                if (_keepAlive && _hasRequestBody)
                                 {
                                     // Finish reading the request body in case the app did not.
                                     await _requestBodyReader.ConsumeAsync();

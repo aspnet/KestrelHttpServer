@@ -23,12 +23,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public async Task StartAsync(MessageBody messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (messageBody.Empty)
-            {
-                _pipe.Writer.Complete();
-                return;
-            }
-
             try
             {
                 while (true)
