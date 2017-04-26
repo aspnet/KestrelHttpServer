@@ -10,12 +10,9 @@ using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public class RequestBodyReader
+    public class RequestBodyReader : IRequestBodyReader
     {
-        public static readonly RequestBodyReader ZeroContentLengthClose = new EmptyRequestBodyReader();
-
         private readonly IPipe _pipe;
-
         public RequestBodyReader(IPipe pipe)
         {
             _pipe = pipe;
@@ -159,19 +156,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 awaitable = _pipe.Reader.ReadAsync();
             }
         }
+    }
 
-        private class EmptyRequestBodyReader : RequestBodyReader
+    public class EmptyRequestBodyReader : IRequestBodyReader
+    {
+        public static readonly IRequestBodyReader Instance = new EmptyRequestBodyReader();
+
+        public Task ConsumeAsync(CancellationToken cancellationToken = default(CancellationToken))
+            => TaskCache.CompletedTask;
+
+        public Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
+            => TaskCache.CompletedTask;
+
+        public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
+            => Task.FromResult(0);
+
+        public void Reset()
         {
-            public EmptyRequestBodyReader()
-                : base(null)
-            {
-            }
-
-            public override Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
-                => Task.FromResult(0);
-
-            public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
-                => TaskCache.CompletedTask;
         }
+
+        public Task StartAsync(MessageBody messageBody, CancellationToken cancellationToken = default(CancellationToken))
+            => TaskCache.CompletedTask;
     }
 }

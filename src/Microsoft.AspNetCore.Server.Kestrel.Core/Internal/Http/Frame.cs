@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private Streams _frameStreams;
         protected readonly RequestBodyReader _requestBodyReader;
-        protected readonly IPipe _requestBodyPipe;
+        protected IRequestBodyReader _currentRequestBodyReader;
 
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
@@ -101,8 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
             Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log);
-            _requestBodyPipe = CreateRequestBodyPipe();
-            _requestBodyReader = new RequestBodyReader(_requestBodyPipe);
+            _requestBodyReader = new RequestBodyReader(CreateRequestBodyPipe());
         }
 
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
@@ -310,7 +309,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _frameStreams = new Streams(this);
             }
 
-            (RequestBody, ResponseBody) = _frameStreams.Start(_requestBodyReader, requestUpgrade);
+            (RequestBody, ResponseBody) = _frameStreams.Start(_currentRequestBodyReader, requestUpgrade);
         }
 
         public void PauseStreams() => _frameStreams.Pause();
@@ -382,7 +381,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _responseBytesWritten = 0;
             _requestCount++;
 
-            _requestBodyReader.Reset();
+            _currentRequestBodyReader?.Reset();
         }
 
         /// <summary>

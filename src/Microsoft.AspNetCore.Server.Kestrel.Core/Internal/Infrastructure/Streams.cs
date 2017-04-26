@@ -34,10 +34,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             return _upgradeStream;
         }
 
-        public (Stream request, Stream response) Start(RequestBodyReader requestBodyReader, bool requestUpgradable)
+        public (Stream request, Stream response) Start(IRequestBodyReader requestBodyReader, bool requestUpgradable)
         {
             _request.StartAcceptingReads(requestBodyReader);
-            _emptyRequest.StartAcceptingReads(RequestBodyReader.ZeroContentLengthClose);
+            _emptyRequest.StartAcceptingReads(EmptyRequestBodyReader.Instance);
             _response.StartAcceptingWrites();
 
             if (requestUpgradable)

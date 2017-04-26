@@ -97,15 +97,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
                         _hasRequestBody = !messageBody.IsEmpty;
-
-                        if (_hasRequestBody)
-                        {
-                            _ = _requestBodyReader.StartAsync(messageBody);
-                        }
-                        else
-                        {
-                            _requestBodyPipe.Writer.Complete();
-                        }
+                        _currentRequestBodyReader = _hasRequestBody ? _requestBodyReader : EmptyRequestBodyReader.Instance;
+                        _ = _currentRequestBodyReader.StartAsync(messageBody);
 
                         InitializeStreams(messageBody.RequestUpgrade);
 
@@ -172,10 +165,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     await ProduceEnd();
                                 }
 
-                                if (_keepAlive && _hasRequestBody)
+                                if (_keepAlive)
                                 {
                                     // Finish reading the request body in case the app did not.
-                                    await _requestBodyReader.ConsumeAsync();
+                                    await _currentRequestBodyReader.ConsumeAsync();
                                 }
 
                                 if (!HasResponseStarted)
