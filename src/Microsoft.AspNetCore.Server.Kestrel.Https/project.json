@@ -25,7 +25,7 @@
     "net451": {},
     "netstandard1.3": {
       "dependencies": {
-        "System.Net.Security": "4.0.0"
+        "System.Net.Security": "4.0.1"
       }
     }
   }
