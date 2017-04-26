@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public IPipeReader Input { get; set; }
         public ISocketOutput Output { get; set; }
-        public IEnumerable<IAdaptedConnection> AdaptedConnections { get; set; }
+        public IAdaptedConnection[] AdaptedConnections { get; set; }
         public ConnectionLifetimeControl LifetimeControl { get; set; }
         public ITimeoutControl TimeoutControl { get; set; }
 
