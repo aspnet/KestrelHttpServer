@@ -43,7 +43,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
 
         public bool IsHttps => true;
 
-        public async Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+        public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+        {
+            // Don't trust SslStream not to block.
+            return Task.Run(() => InnerOnConnectionAsync(context));
+        }
+
+        private async Task<IAdaptedConnection> InnerOnConnectionAsync(ConnectionAdapterContext context)
         {
             SslStream sslStream;
             bool certificateRequired;
