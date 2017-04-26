@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             try
             {
-                while (true)
+                while (!messageBody.Consumed)
                 {
                     var writableBuffer = _pipe.Writer.Alloc(1);
                     int bytesRead;
@@ -40,14 +40,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         writableBuffer.Commit();
                     }
 
-                    if (bytesRead == 0)
-                    {
-                        _pipe.Writer.Complete();
-                        return;
-                    }
-
                     await writableBuffer.FlushAsync();
                 }
+
+                _pipe.Writer.Complete();
             }
             catch (Exception ex)
             {
