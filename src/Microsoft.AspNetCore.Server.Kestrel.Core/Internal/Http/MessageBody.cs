@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public bool RequestUpgrade { get; protected set; }
 
-        public bool Consumed { get; protected set; }
+        public virtual bool Empty => false;
 
         public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -192,8 +192,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 : base(null)
             {
                 RequestKeepAlive = keepAlive;
-                Consumed = true;
             }
+
+            public override bool Empty => true;
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
             {
@@ -281,11 +282,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             protected override void OnConsumedBytes(int count)
             {
                 _inputLength -= count;
-
-                if (_inputLength == 0)
-                {
-                    Consumed = true;
-                }
             }
         }
 
@@ -490,7 +486,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         }
                     }
                     _mode = Mode.Complete;
-                    Consumed = true;
                 }
 
                 return default(ArraySegment<byte>);
@@ -664,7 +659,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     consumed = trailerBuffer.End;
                     examined = trailerBuffer.End;
                     _mode = Mode.Complete;
-                    Consumed = true;
                 }
                 else
                 {

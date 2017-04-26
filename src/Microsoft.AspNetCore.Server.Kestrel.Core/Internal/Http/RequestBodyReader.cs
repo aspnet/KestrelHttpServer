@@ -23,9 +23,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public async Task StartAsync(MessageBody messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
+            if (messageBody.Empty)
+            {
+                _pipe.Writer.Complete();
+                return;
+            }
+
             try
             {
-                while (!messageBody.Consumed)
+                while (true)
                 {
                     var writableBuffer = _pipe.Writer.Alloc(1);
                     int bytesRead;
@@ -40,10 +46,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         writableBuffer.Commit();
                     }
 
+                    if (bytesRead == 0)
+                    {
+                        _pipe.Writer.Complete();
+                        return;
+                    }
+
                     await writableBuffer.FlushAsync();
                 }
-
-                _pipe.Writer.Complete();
             }
             catch (Exception ex)
             {
