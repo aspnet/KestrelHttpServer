@@ -95,6 +95,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 await frameTask;
                 await connectionAdaptersTask;
                 await _socketClosedTcs.Task;
+
+                DisposeAdaptedConnections();
             }
             catch (Exception ex)
             {
@@ -103,7 +105,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             finally
             {
                 _context.ServiceContext.ConnectionManager.RemoveConnection(_context.FrameConnectionId);
-                _filteredStream?.Dispose();
             }
         }
 
@@ -178,6 +179,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     // adaptedPipeline.RunAsync() shouldn't throw, unless filtered stream's WriteAsync throws.
                     Log.LogError(0, ex, $"{nameof(FrameConnection)}.{nameof(ApplyConnectionAdaptersAsync)}");
+                }
+            }
+        }
+
+        private void DisposeAdaptedConnections()
+        {
+            var adaptedConnections = _frame.AdaptedConnections;
+            if (adaptedConnections != null)
+            {
+                for (int i = adaptedConnections.Length - 1; i >= 0; i--)
+                {
+                    adaptedConnections[i].Dispose();
                 }
             }
         }
