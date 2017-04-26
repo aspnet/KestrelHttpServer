@@ -57,8 +57,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void Reset()
         {
-            // TODO: ensure there are no readers
-            // TODO: ensure start task has finished
             _pipe.Reader.Complete();
             _pipe.Writer.Complete();
             _pipe.Reset();
