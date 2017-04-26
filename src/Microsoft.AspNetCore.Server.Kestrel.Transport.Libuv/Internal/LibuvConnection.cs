@@ -63,7 +63,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 Input = _connectionContext.Input;
                 Output = new LibuvOutputConsumer(_connectionContext.Output, Thread, _socket, ConnectionId, Log);
 
-                // Start socket prior to applying the ConnectionAdapter
                 StartReading();
 
                 try
@@ -73,19 +72,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     // output pipe is already closed by the time we start then it's fine since, it'll close gracefully afterwards.
                     await Output.WriteOutputAsync();
                     _connectionContext.Output.Complete();
+
+                    // Now, complete the input so that no more reads can happen
+                    Input.Complete(new TaskCanceledException("The request was aborted"));
                 }
                 catch (UvException ex)
                 {
-                    _connectionContext.Output.Complete(ex);
+                    var ioEx = new IOException(ex.Message, ex);
+                    _connectionContext.Output.Complete(ioEx);
+                    Input.Complete(ioEx);
                 }
                 finally
                 {
                     // Make sure it isn't possible for a paused read to resume reading after calling uv_close
                     // on the stream handle
                     Input.CancelPendingFlush();
-
-                    // Now, complete the input so that no more reads can happen
-                    Input.Complete(new TaskCanceledException("The request was aborted"));
 
                     // We're done with the socket now
                     _socket.Dispose();

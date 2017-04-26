@@ -28,15 +28,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// The resulting Task from this loop is preserved in a field which is used when the server needs
         /// to drain and close all currently active connections.
         /// </summary>
-        public override async Task RequestProcessingAsync()
+        public override async Task ProcessRequestsAsync()
         {
+            var dataRecieved = false;
+
             try
             {
                 while (!_requestProcessingStopping)
                 {
                     TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.CloseConnection);
 
-                    InitializeHeaders();
+                    if (dataRecieved)
+                    {
+                        // Call Reset() before data arrives for the 2nd, 3rd, 4th... keep-alive requests,
+                        // so idle connections don't root objects unnecessarily.
+                        Reset();
+                    }
 
                     while (!_requestProcessingStopping)
                     {
@@ -46,6 +53,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                         try
                         {
+                            if (!result.Buffer.IsEmpty && !dataRecieved)
+                            {
+                                // Wait to call Reset() until data arrives for the 1st request in order to give
+                                // FrameConnection.ApplyConnectionAdaptersAsync() the opportunity to set AdaptedConnections.
+                                Reset();
+                                dataRecieved = true;
+                            }
+
                             ParseRequest(result.Buffer, out consumed, out examined);
                         }
                         catch (InvalidOperationException)
@@ -77,8 +92,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     throw BadHttpRequestException.GetException(
                                         RequestRejectionReason.InvalidRequestLine);
                                 case RequestProcessingStatus.ParsingHeaders:
-                                    throw BadHttpRequestException.GetException(RequestRejectionReason
-                                        .MalformedRequestInvalidHeaders);
+                                    throw BadHttpRequestException.GetException(
+                                        RequestRejectionReason.MalformedRequestInvalidHeaders);
                             }
                         }
                     }
@@ -195,15 +210,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     {
                         // End the connection for non keep alive as data incoming may have been thrown off
                         return;
-                    }
-
-                    // Don't reset frame state if we're exiting the loop. This avoids losing request rejection
-                    // information (for 4xx response), and prevents ObjectDisposedException on HTTPS (ODEs
-                    // will be thrown if PrepareRequest is not null and references objects disposed on connection
-                    // close - see https://github.com/aspnet/KestrelHttpServer/issues/1103#issuecomment-250237677).
-                    if (!_requestProcessingStopping)
-                    {
-                        Reset();
                     }
                 }
             }
