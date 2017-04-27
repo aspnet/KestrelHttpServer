@@ -26,7 +26,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private IPipeReader _output;
         private IList<ArraySegment<byte>> _sendBufferList;
         private const int MinAllocBufferSize = 2048;
-        private bool _aborted;
 
         internal SocketConnection(Socket socket, SocketTransport transport)
         {
@@ -59,17 +58,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
                 {
                     // Tell the reader it's being aborted
-                    Volatile.Write(ref _aborted, true);
-
-                    // Shutdown the both sides
-                    _socket.Shutdown(SocketShutdown.Both);
+                    _socket.Dispose();
                 }
 
                 // Now wait for both to complete
                 await receiveTask;
                 await sendTask;
 
-                // Dispose the socket
+                // Dispose the socket(should noop if already called)
                 _socket.Dispose();
             }
             catch (Exception)
@@ -98,12 +94,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
                         if (bytesReceived == 0)
                         {
-                            // Forced FIN
-                            if (Volatile.Read(ref _aborted))
-                            {
-                                throw new TaskCanceledException("The request was aborted");
-                            }
-
                             // FIN
                             break;
                         }
@@ -129,23 +119,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             catch (Exception ex)
             {
-                var error = ex;
+                Exception error = null;
 
-                if (ex is SocketException se && se.SocketErrorCode == SocketError.ConnectionReset)
+                if (ex is SocketException se)
                 {
-                    // Connection reset
-                    error = new ConnectionResetException(ex.Message, ex);
+                    if (se.SocketErrorCode == SocketError.ConnectionReset)
+                    {
+                        // Connection reset
+                        error = new ConnectionResetException(ex.Message, ex);
+                    }
+                    else if (se.SocketErrorCode == SocketError.OperationAborted)
+                    {
+                        error = new TaskCanceledException("The request was aborted");
+                    }
                 }
-                else if (ex is IOException ioe)
+
+                if (ex is IOException ioe)
                 {
                     error = ioe;
                 }
-                else if (ex is TaskCanceledException)
-                {
-                    // Don't wrap TaskCanceledException
-                    error = ex;
-                }
-                else
+                else if (error == null)
                 {
                     error = new IOException(ex.Message, ex);
                 }
