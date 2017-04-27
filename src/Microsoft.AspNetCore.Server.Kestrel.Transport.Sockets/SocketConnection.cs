@@ -109,7 +109,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     if (result.IsCompleted)
                     {
                         // Pipe consumer is shut down, do we stop writing
-                        _socket.Shutdown(SocketShutdown.Receive);
                         break;
                     }
                 }
@@ -134,7 +133,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                 }
 
-                if (ex is IOException ioe)
+                if (ex is ObjectDisposedException)
+                {
+                    error = new TaskCanceledException("The request was aborted");
+                }
+                else if (ex is IOException ioe)
                 {
                     error = ioe;
                 }
