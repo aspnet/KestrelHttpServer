@@ -51,11 +51,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 Task receiveTask = DoReceive();
                 Task sendTask = DoSend();
 
-                // Wait for eiher of them to complete (note they won't throw exceptions)
-                await Task.WhenAny(receiveTask, sendTask);
-
-                // Shut the socket down and wait for both sides to end
-                _socket.Shutdown(SocketShutdown.Both);
+                // If the sending task completes then close the receive
+                // We don't need to do this in the other direction because the kestrel
+                // will trigger the output closing once the input is complete.
+                if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
+                {
+                    // Shutdown the receive task
+                    _socket.Shutdown(SocketShutdown.Receive);
+                }
 
                 // Now wait for both to complete
                 await receiveTask;
