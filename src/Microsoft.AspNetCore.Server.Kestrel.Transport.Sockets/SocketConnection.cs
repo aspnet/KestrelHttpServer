@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.Buffers;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
@@ -23,8 +25,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private IPipeWriter _input;
         private IPipeReader _output;
         private IList<ArraySegment<byte>> _sendBufferList;
-
-        private const int MinAllocBufferSize = 2048;        // from libuv transport
+        private const int MinAllocBufferSize = 2048;
+        private bool _aborted;
 
         internal SocketConnection(Socket socket, SocketTransport transport)
         {
@@ -56,6 +58,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 // will trigger the output closing once the input is complete.
                 if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
                 {
+                    // Tell the reader it's being aborted
+                    Volatile.Write(ref _aborted, true);
+
                     // Shutdown the both sides
                     _socket.Shutdown(SocketShutdown.Both);
                 }
@@ -93,9 +98,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
                         if (bytesReceived == 0)
                         {
-                            // We receive a FIN so throw an exception so that we cancel the input
-                            // with an error
-                            throw new TaskCanceledException("The request was aborted");
+                            // Forced FIN
+                            if (Volatile.Read(ref _aborted))
+                            {
+                                throw new TaskCanceledException("The request was aborted");
+                            }
+
+                            // FIN
+                            break;
                         }
 
                         buffer.Advance(bytesReceived);
@@ -114,12 +124,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                 }
 
+                _connectionContext.Abort(ex: null);
                 _input.Complete();
             }
             catch (Exception ex)
             {
-                _connectionContext.Abort(ex);
-                _input.Complete(ex);
+                var error = ex;
+
+                if (ex is SocketException se && se.SocketErrorCode == SocketError.ConnectionReset)
+                {
+                    // Connection reset
+                    error = new ConnectionResetException(ex.Message, ex);
+                }
+                else if (ex is IOException ioe)
+                {
+                    error = ioe;
+                }
+                else if (ex is TaskCanceledException)
+                {
+                    // Don't wrap TaskCanceledException
+                    error = ex;
+                }
+                else
+                {
+                    error = new IOException(ex.Message, ex);
+                }
+
+                _connectionContext.Abort(error);
+                _input.Complete(error);
             }
         }
 
