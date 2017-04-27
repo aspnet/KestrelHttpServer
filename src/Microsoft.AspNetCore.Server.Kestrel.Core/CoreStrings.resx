@@ -130,7 +130,7 @@
     <value>Chunked request incomplete.</value>
   </data>
   <data name="BadRequest_FinalTransferCodingNotChunked" xml:space="preserve">
-    <value>The message body length cannot be determined because the final transfer encoding was set to '{detail}' instead of 'chunked'.</value>
+    <value>The message body length cannot be determined because the final transfer coding was set to '{detail}' instead of 'chunked'.</value>
   </data>
   <data name="BadRequest_HeadersExceedMaxTotalSize" xml:space="preserve">
     <value>Request headers too long.</value>

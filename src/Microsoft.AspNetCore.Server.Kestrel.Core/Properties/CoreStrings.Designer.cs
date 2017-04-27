@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("BadRequest_ChunkedRequestIncomplete");
 
         /// <summary>
-        /// The message body length cannot be determined because the final transfer encoding was set to '{detail}' instead of 'chunked'.
+        /// The message body length cannot be determined because the final transfer coding was set to '{detail}' instead of 'chunked'.
         /// </summary>
         internal static string BadRequest_FinalTransferCodingNotChunked
         {
@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// The message body length cannot be determined because the final transfer encoding was set to '{detail}' instead of 'chunked'.
+        /// The message body length cannot be determined because the final transfer coding was set to '{detail}' instead of 'chunked'.
         /// </summary>
         internal static string FormatBadRequest_FinalTransferCodingNotChunked(object detail)
             => string.Format(CultureInfo.CurrentCulture, GetString("BadRequest_FinalTransferCodingNotChunked", "detail"), detail);
