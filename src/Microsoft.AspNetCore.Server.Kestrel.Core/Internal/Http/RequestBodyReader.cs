@@ -169,7 +169,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             => TaskCache.CompletedTask;
 
         public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
-            => Task.FromResult(0);
+            => TaskCache<int>.DefaultCompletedTask;
 
         public void Reset()
         {
