@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// </summary>
         public override async Task ProcessRequestsAsync()
         {
-            var dataRecieved = false;
+            var dataReceived = false;
 
             try
             {
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.CloseConnection);
 
-                    if (dataRecieved)
+                    if (dataReceived)
                     {
                         // Call Reset() before data arrives for the 2nd, 3rd, 4th... keep-alive requests,
                         // so idle connections don't root objects unnecessarily.
@@ -53,12 +53,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                         try
                         {
-                            if (!result.Buffer.IsEmpty && !dataRecieved)
+                            if (!result.Buffer.IsEmpty && !dataReceived)
                             {
                                 // Wait to call Reset() until data arrives for the 1st request in order to give
                                 // FrameConnection.ApplyConnectionAdaptersAsync() the opportunity to set AdaptedConnections.
                                 Reset();
-                                dataRecieved = true;
+                                dataReceived = true;
                             }
 
                             ParseRequest(result.Buffer, out consumed, out examined);
