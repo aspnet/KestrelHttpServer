@@ -56,8 +56,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 // will trigger the output closing once the input is complete.
                 if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
                 {
-                    // Shutdown the receive task
-                    _socket.Shutdown(SocketShutdown.Receive);
+                    // Shutdown the both sides
+                    _socket.Shutdown(SocketShutdown.Both);
                 }
 
                 // Now wait for both to complete
