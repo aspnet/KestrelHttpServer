@@ -11,12 +11,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public class HttpParser<TRequestHandler> : IHttpParser<TRequestHandler> where TRequestHandler : IHttpHeadersHandler, IHttpRequestLineHandler
     {
-        public HttpParser(IKestrelTrace log)
+        private bool _showErrorDetails;
+        public HttpParser(bool showErrorDetails)
         {
-            Log = log;
+            _showErrorDetails = showErrorDetails;
         }
-
-        private IKestrelTrace Log { get; }
 
         // byte types don't have a data type annotation so we pre-cast them; to avoid in-place casts
         private const byte ByteCR = (byte)'\r';
@@ -488,7 +487,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private unsafe BadHttpRequestException GetInvalidRequestException(RequestRejectionReason reason, byte* detail, int length)
             => BadHttpRequestException.GetException(
                 reason,
-                Log.IsEnabled(LogLevel.Information)
+                _showErrorDetails
                     ? new Span<byte>(detail, length).GetAsciiStringEscaped(Constants.MaxExceptionDetailSize)
                     : string.Empty);
     }
