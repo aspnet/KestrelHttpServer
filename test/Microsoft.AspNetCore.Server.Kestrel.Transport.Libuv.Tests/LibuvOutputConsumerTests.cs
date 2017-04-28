@@ -9,10 +9,12 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
+using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
@@ -282,10 +284,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                     Assert.NotEmpty(completeQueue);
 
                     // Add more bytes to the write-behind buffer to prevent the next write from
-                    ((ISocketOutput) socketOutput).Write((writableBuffer, state) =>
-                        {
-                            writableBuffer.Write(state);
-                        },
+                    ((ISocketOutput)socketOutput).Write((writableBuffer, state) =>
+                       {
+                           writableBuffer.Write(state);
+                       },
                         halfWriteBehindBuffer);
 
                     // Act
@@ -672,19 +674,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var socketOutput = new OutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
             var consumer = new LibuvOutputConsumer(pipe.Reader, _libuvThread, socket, "0", transportContext.Log);
 
-            frame.LifetimeControl = new ConnectionLifetimeControl("0", pipe.Reader, socketOutput, serviceContext.Log);
+            frame.LifetimeControl = new ConnectionLifetimeControl("0", Mock.Of<IConnectionInformation>(), pipe.Reader, socketOutput, serviceContext.Log);
 
             if (cts != null)
             {
                 frame.RequestAborted.Register(cts.Cancel);
             }
 
-            var ignore = WriteOutputAsync(consumer, pipe.Reader);
+            var ignore = WriteOutputAsync(consumer, pipe.Reader, frame);
 
             return socketOutput;
         }
 
-        private async Task WriteOutputAsync(LibuvOutputConsumer consumer, IPipeReader outputReader)
+        private async Task WriteOutputAsync(LibuvOutputConsumer consumer, IPipeReader outputReader, Frame frame)
         {
             // This WriteOutputAsync() calling code is equivalent to that in LibuvConnection.
             try
@@ -692,10 +694,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 // Ensure that outputReader.Complete() runs on the LibuvThread.
                 // Without ConfigureAwait(false), xunit will dispatch.
                 await consumer.WriteOutputAsync().ConfigureAwait(false);
+
+                frame.Abort(error: null);
                 outputReader.Complete();
             }
             catch (UvException ex)
             {
+                frame.Abort(ex);
                 outputReader.Complete(ex);
             }
         }

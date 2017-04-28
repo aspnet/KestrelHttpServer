@@ -15,5 +15,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions
 
         IScheduler InputWriterScheduler { get; }
         IScheduler OutputReaderScheduler { get; }
+
+        // TODO: Remove this (https://github.com/aspnet/KestrelHttpServer/issues/1772)
+        void OnApplicationComplete();
     }
 }
