@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             Thread.Post(connection =>
             {
-                // Call uv_close which will fire
+                // Call uv_close which will fire any pending uv_write callbacks
                 connection._socket.Dispose();
             },
             this);
