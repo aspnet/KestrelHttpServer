@@ -65,6 +65,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                         }
                     }
 
+                    if (_socket.IsClosed)
+                    {
+                        break;
+                    }
+
                     if (result.IsCancelled)
                     {
                         // Send a FIN
