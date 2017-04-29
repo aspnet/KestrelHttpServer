@@ -813,10 +813,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public bool RequiresDispatch { get; }
             public IScheduler InputWriterScheduler { get; }
             public IScheduler OutputReaderScheduler { get; }
-
-            public void OnApplicationComplete()
-            {
-            }
         }
 
         private class RequestHeadersWrapper : IHeaderDictionary
