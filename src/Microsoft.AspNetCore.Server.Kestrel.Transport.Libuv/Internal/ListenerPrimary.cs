@@ -245,6 +245,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                         {
                             _listener._dispatchPipes.Add((UvPipeHandle)dispatchPipe);
                             dispatchPipe.ReadStop();
+                            // Calling uv_read_stop removes this from the list of active handles which makes it possible
+                            // to end the loop pre-maturely. Call uv_ref on the handle to make sure that doesn't happen.
+                            dispatchPipe.Reference();
                             _bufHandle.Free();
                         }
                         else
