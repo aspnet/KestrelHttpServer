@@ -285,10 +285,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
                     // Add more bytes to the write-behind buffer to prevent the next write from
                     ((ISocketOutput)socketOutput).Write((writableBuffer, state) =>
-                       {
-                           writableBuffer.Write(state);
-                       },
-                        halfWriteBehindBuffer);
+                    {
+                        writableBuffer.Write(state);
+                    },
+                    halfWriteBehindBuffer);
 
                     // Act
                     var writeTask2 = socketOutput.WriteAsync(halfWriteBehindBuffer, default(CancellationToken));
