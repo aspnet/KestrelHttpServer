@@ -3,7 +3,6 @@
 
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
@@ -11,20 +10,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         public ConnectionLifetimeControl(
             string connectionId,
-            IConnectionInformation connection,
             IPipeReader outputPipeReader,
             OutputProducer outputProducer,
             IKestrelTrace log)
         {
             ConnectionId = connectionId;
-            Connection = connection;
             OutputReader = outputPipeReader;
             OutputProducer = outputProducer;
             Log = log;
         }
 
         private string ConnectionId { get; }
-        private IConnectionInformation Connection { get; }
         private IPipeReader OutputReader { get; }
         private OutputProducer OutputProducer { get; }
         private IKestrelTrace Log { get; }
@@ -41,7 +37,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     goto case ProduceEndType.SocketDisconnect;
                 case ProduceEndType.SocketDisconnect:
                     OutputProducer.Dispose();
-                    Connection.OnApplicationComplete();
                     Log.ConnectionDisconnect(ConnectionId);
                     break;
             }

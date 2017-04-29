@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             // TODO: Untangle this mess
             var frame = new Frame<TContext>(_application, frameContext);
             var outputProducer = new OutputProducer(outputPipe.Writer, frame, connectionId, _serviceContext.Log);
-            frame.LifetimeControl = new ConnectionLifetimeControl(connectionId, connectionInfo, outputPipe.Reader, outputProducer, _serviceContext.Log);
+            frame.LifetimeControl = new ConnectionLifetimeControl(connectionId, outputPipe.Reader, outputProducer, _serviceContext.Log);
 
             var connection = new FrameConnection(new FrameConnectionContext
             {

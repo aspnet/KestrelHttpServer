@@ -674,7 +674,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var socketOutput = new OutputProducer(pipe.Writer, frame, "0", serviceContext.Log);
             var consumer = new LibuvOutputConsumer(pipe.Reader, _libuvThread, socket, "0", transportContext.Log);
 
-            frame.LifetimeControl = new ConnectionLifetimeControl("0", Mock.Of<IConnectionInformation>(), pipe.Reader, socketOutput, serviceContext.Log);
+            frame.LifetimeControl = new ConnectionLifetimeControl("0", pipe.Reader, socketOutput, serviceContext.Log);
 
             if (cts != null)
             {

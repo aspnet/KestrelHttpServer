@@ -109,33 +109,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                 }
             }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+            {
+                error = new ConnectionResetException(ex.Message, ex);
+            }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
+            {
+                error = new TaskCanceledException("The request was aborted");
+            }
+            catch (ObjectDisposedException)
+            {
+                error = new TaskCanceledException("The request was aborted");
+            }
+            catch (IOException ex)
+            {
+                error = ex;
+            }
             catch (Exception ex)
             {
-                if (ex is SocketException se)
-                {
-                    if (se.SocketErrorCode == SocketError.ConnectionReset)
-                    {
-                        // Connection reset
-                        error = new ConnectionResetException(ex.Message, ex);
-                    }
-                    else if (se.SocketErrorCode == SocketError.OperationAborted)
-                    {
-                        error = new TaskCanceledException("The request was aborted");
-                    }
-                }
-
-                if (ex is ObjectDisposedException)
-                {
-                    error = new TaskCanceledException("The request was aborted");
-                }
-                else if (ex is IOException ioe)
-                {
-                    error = ioe;
-                }
-                else if (error == null)
-                {
-                    error = new IOException(ex.Message, ex);
-                }
+                error = new IOException(ex.Message, ex);
             }
             finally
             {
@@ -216,21 +208,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                 }
             }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
+            {
+                error = null;
+            }
+            catch (ObjectDisposedException)
+            {
+                error = null;
+            }
+            catch (IOException ex)
+            {
+                error = ex;
+            }
             catch (Exception ex)
             {
-                if (ex is SocketException se && se.SocketErrorCode == SocketError.OperationAborted || ex is ObjectDisposedException)
-                {
-                    // We had to abort the write
-                    error = null;
-                }
-                else if (ex is IOException)
-                {
-                    error = ex;
-                }
-                else
-                {
-                    error = new IOException(ex.Message, ex);
-                }
+                error = new IOException(ex.Message, ex);
             }
             finally
             {
@@ -247,12 +239,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
 
             return segment;
-        }
-
-        public void OnApplicationComplete()
-        {
-            // Make sure we dispose the socket
-            _socket.Dispose();
         }
 
         public IPEndPoint RemoteEndPoint => _remoteEndPoint;

@@ -102,16 +102,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        public override void OnApplicationComplete()
-        {
-            Thread.Post(connection =>
-            {
-                // Call uv_close which will fire any pending uv_write callbacks
-                connection._socket.Dispose();
-            },
-            this);
-        }
-
         // Called on Libuv thread
         private static LibuvFunctions.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
         {

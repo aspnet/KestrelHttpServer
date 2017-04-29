@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 Input = input.Reader,
                 Output = socketOutput,
-                LifetimeControl = new ConnectionLifetimeControl(null, frameContext.ConnectionInformation, output.Reader, outputProducer, serviceContext.Log)
+                LifetimeControl = new ConnectionLifetimeControl(null, output.Reader, outputProducer, serviceContext.Log)
             };
 
             frame.Reset();
