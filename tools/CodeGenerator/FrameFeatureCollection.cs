@@ -19,7 +19,7 @@ namespace CodeGenerator
             return values.Select(formatter).Aggregate((a, b) => a + b);
         }
 
-        public static string GeneratedFile()
+        public static string GeneratedFile(string className, string namespaceSuffix)
         {
             var alwaysFeatures = new[]
             {
@@ -81,9 +81,9 @@ namespace CodeGenerator
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.{namespaceSuffix}
 {{
-    public partial class Frame
+    public partial class {className}
     {{{Each(allFeatures, feature => $@"
         private static readonly Type {feature.Name}Type = typeof(global::{feature.FullName});")}
 {Each(allFeatures, feature => $@"
