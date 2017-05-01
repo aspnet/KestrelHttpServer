@@ -264,6 +264,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 _post.Reference();
                 _post.Dispose();
 
+                Walk(ptr =>
+                {
+                    var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
+                    if (handle != _post)
+                    {
+                        Debug.Fail($"{handle.GetType()} is still active");
+                    }
+                });
+
                 // Ensure the Dispose operations complete in the event loop.
                 _loop.Run();
 
