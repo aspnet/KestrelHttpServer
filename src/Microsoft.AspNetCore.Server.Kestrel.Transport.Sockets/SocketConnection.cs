@@ -189,8 +189,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
                         if (result.IsCancelled)
                         {
-                            // Send a FIN
-                            _socket.Shutdown(SocketShutdown.Send);
                             break;
                         }
 
@@ -204,6 +202,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         output.Advance(buffer.End);
                     }
                 }
+
+                // Send a FIN
+                _socket.Shutdown(SocketShutdown.Send);
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
             {
