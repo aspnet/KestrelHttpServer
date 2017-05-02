@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Microsoft.AspNetCore.Server.Kestrel.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv\Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel.Https\Microsoft.AspNetCore.Server.Kestrel.Https.csproj" />
   </ItemGroup>
 
