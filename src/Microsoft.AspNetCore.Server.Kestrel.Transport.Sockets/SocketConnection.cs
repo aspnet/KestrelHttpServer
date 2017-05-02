@@ -20,9 +20,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly SocketTransport _transport;
         private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _remoteEndPoint;
-        private IConnectionContext _connectionContext;
-        private IPipeWriter _input;
-        private IPipeReader _output;
         private IList<ArraySegment<byte>> _sendBufferList;
         private const int MinAllocBufferSize = 2048;
 
@@ -42,14 +39,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
-                _connectionContext = connectionHandler.OnConnection(this);
+                var connectionContext = connectionHandler.OnConnection(this);
 
-                _input = _connectionContext.Input;
-                _output = _connectionContext.Output;
+                var input = connectionContext.Input;
+                var output = connectionContext.Output;
 
                 // Spawn send and receive logic
-                Task receiveTask = DoReceive();
-                Task sendTask = DoSend();
+                Task receiveTask = DoReceive(connectionContext, input);
+                Task sendTask = DoSend(connectionContext, output);
 
                 // If the sending task completes then close the receive
                 // We don't need to do this in the other direction because the kestrel
@@ -73,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
         }
 
-        private async Task DoReceive()
+        private async Task DoReceive(IConnectionContext context, IPipeWriter input)
         {
             Exception error = null;
 
@@ -82,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 while (true)
                 {
                     // Ensure we have some reasonable amount of buffer space
-                    var buffer = _input.Alloc(MinAllocBufferSize);
+                    var buffer = input.Alloc(MinAllocBufferSize);
 
                     try
                     {
@@ -131,8 +128,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
-                _connectionContext.Abort(error);
-                _input.Complete(error);
+                context.Abort(error);
+                input.Complete(error);
             }
         }
 
@@ -155,7 +152,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
         }
 
-        private async Task DoSend()
+        private async Task DoSend(IConnectionContext context, IPipeReader output)
         {
             Exception error = null;
 
@@ -164,7 +161,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 while (true)
                 {
                     // Wait for data to write from the pipe producer
-                    var result = await _output.ReadAsync();
+                    var result = await output.ReadAsync();
                     var buffer = result.Buffer;
 
                     try
@@ -204,7 +201,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                     finally
                     {
-                        _output.Advance(buffer.End);
+                        output.Advance(buffer.End);
                     }
                 }
             }
@@ -226,8 +223,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
-                _connectionContext.OnConnectionClosed(error);
-                _output.Complete(error);
+                context.OnConnectionClosed(error);
+                output.Complete(error);
             }
         }
 
