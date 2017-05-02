@@ -3,9 +3,11 @@
 
 using System;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -102,17 +104,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 #error target frameworks need to be updated
 #endif
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            var task = ValidateState(cancellationToken);
-            if (task == null)
+            try
             {
-                return _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
+                var task = ValidateState(cancellationToken);
+                if (task == null)
+                {
+                    return await _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
+                }
+                return await task;
             }
-            return task;
+            catch (ConnectionAbortedException)
+            {
+                ExceptionDispatchInfo.Capture(new TaskCanceledException("The request was aborted")).Throw();
+                // We should never get here
+                return 0;
+            }
         }
 
-        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        public override async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
         {
             if (destination == null)
             {
@@ -123,12 +134,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 throw new ArgumentException(CoreStrings.PositiveIntRequired, nameof(bufferSize));
             }
 
-            var task = ValidateState(cancellationToken);
-            if (task == null)
+            try
             {
-                return _body.CopyToAsync(destination, cancellationToken);
+                var task = ValidateState(cancellationToken);
+                if (task == null)
+                {
+                    await _body.CopyToAsync(destination, cancellationToken);
+                }
+                await task;
             }
-            return task;
+            catch (ConnectionAbortedException)
+            {
+                ExceptionDispatchInfo.Capture(new TaskCanceledException("The request was aborted")).Throw();
+                // We should never get here
+            }
         }
 
         public void StartAcceptingReads(MessageBody body)
@@ -165,7 +184,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public void Abort(Exception error = null)
         {
             // We don't want to throw an ODE until the app func actually completes.
-            // If the request is aborted, we throw an TaskCanceledException instead,
+            // If the request is aborted, we throw a TaskCanceledException instead,
             // unless error is not null, in which case we throw it.
             if (_state != FrameStreamState.Closed)
             {
