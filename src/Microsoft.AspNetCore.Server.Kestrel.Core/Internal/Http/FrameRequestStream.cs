@@ -104,16 +104,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 #error target frameworks need to be updated
 #endif
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            var task = ValidateState(cancellationToken);
+            if (task != null)
+            {
+                return task;
+            }
+
+            return ReadAsyncInternal(buffer, offset, count, cancellationToken);
+        }
+
+        private async Task<int> ReadAsyncInternal(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             try
             {
-                var task = ValidateState(cancellationToken);
-                if (task == null)
-                {
-                    return await _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
-                }
-                return await task;
+                return await _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
             }
             catch (ConnectionAbortedException)
             {
@@ -123,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public override async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
         {
             if (destination == null)
             {
@@ -134,14 +140,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 throw new ArgumentException(CoreStrings.PositiveIntRequired, nameof(bufferSize));
             }
 
+            var task = ValidateState(cancellationToken);
+            if (task != null)
+            {
+                return task;
+            }
+
+            return CopyToAsyncInternal(destination, cancellationToken);
+        }
+
+        private async Task CopyToAsyncInternal(Stream destination, CancellationToken cancellationToken)
+        {
             try
             {
-                var task = ValidateState(cancellationToken);
-                if (task == null)
-                {
-                    await _body.CopyToAsync(destination, cancellationToken);
-                }
-                await task;
+                await _body.CopyToAsync(destination, cancellationToken);
             }
             catch (ConnectionAbortedException)
             {
