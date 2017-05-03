@@ -121,11 +121,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 return await _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
             }
-            catch (ConnectionAbortedException)
+            catch (ConnectionAbortedException ex)
             {
-                ExceptionDispatchInfo.Capture(new TaskCanceledException("The request was aborted")).Throw();
-                // We should never get here
-                return 0;
+                throw new TaskCanceledException("The request was aborted", ex);
             }
         }
 
@@ -155,10 +153,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 await _body.CopyToAsync(destination, cancellationToken);
             }
-            catch (ConnectionAbortedException)
+            catch (ConnectionAbortedException ex)
             {
-                ExceptionDispatchInfo.Capture(new TaskCanceledException("The request was aborted")).Throw();
-                // We should never get here
+                throw new TaskCanceledException("The request was aborted", ex);
             }
         }
 
