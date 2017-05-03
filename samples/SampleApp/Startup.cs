@@ -63,11 +63,6 @@ namespace SampleApp
                         listenOptions.UseHttps("testCert.pfx", "testPassword");
                         listenOptions.UseConnectionLogging();
                     });
-
-                    options.UseSystemd();
-
-                    // The following section should be used to demo sockets
-                    //options.ListenUnixSocket("/tmp/kestrel-test.sock");
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
