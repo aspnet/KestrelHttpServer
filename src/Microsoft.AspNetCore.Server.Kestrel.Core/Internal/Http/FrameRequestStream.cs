@@ -59,49 +59,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return ReadAsync(buffer, offset, count).Result;
         }
 
-#if NET46
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            var task = ReadAsync(buffer, offset, count, default(CancellationToken), state);
-            if (callback != null)
-            {
-                task.ContinueWith(t => callback.Invoke(t));
-            }
-            return task;
-        }
-
-        public override int EndRead(IAsyncResult asyncResult)
-        {
-            return ((Task<int>)asyncResult).GetAwaiter().GetResult();
-        }
-
-        private Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, object state)
-        {
-            var tcs = new TaskCompletionSource<int>(state);
-            var task = ReadAsync(buffer, offset, count, cancellationToken);
-            task.ContinueWith((task2, state2) =>
-            {
-                var tcs2 = (TaskCompletionSource<int>)state2;
-                if (task2.IsCanceled)
-                {
-                    tcs2.SetCanceled();
-                }
-                else if (task2.IsFaulted)
-                {
-                    tcs2.SetException(task2.Exception);
-                }
-                else
-                {
-                    tcs2.SetResult(task2.Result);
-                }
-            }, tcs, cancellationToken);
-            return tcs.Task;
-        }
-#elif NETSTANDARD1_3
-#else
-#error target frameworks need to be updated
-#endif
-
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             var task = ValidateState(cancellationToken);

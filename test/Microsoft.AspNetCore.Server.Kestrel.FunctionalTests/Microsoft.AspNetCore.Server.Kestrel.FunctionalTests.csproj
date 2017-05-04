@@ -3,9 +3,7 @@
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;net46</TargetFrameworks>
-    <TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">netcoreapp2.0</TargetFrameworks>
-    <PlatformTarget Condition="'$(TargetFramework)' == 'net46'">x64</PlatformTarget>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <ServerGarbageCollection>true</ServerGarbageCollection>
@@ -26,6 +24,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel\Microsoft.AspNetCore.Server.Kestrel.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.AspNetCore.Server.Kestrel.Https\Microsoft.AspNetCore.Server.Kestrel.Https.csproj" />
+
+    <ProjectReference Include="..\..\tools\CodeGenerator\CodeGenerator.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,13 +35,9 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
     <PackageReference Include="Moq" Version="$(MoqVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(JsonNetVersion)" />
+    <PackageReference Include="System.Net.NetworkInformation" Version="$(CoreFxVersion)" />
     <PackageReference Include="xunit" Version="$(XunitVersion)" />
     <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
-    <ProjectReference Include="..\..\tools\CodeGenerator\CodeGenerator.csproj" />
-    <PackageReference Include="System.Net.NetworkInformation" Version="$(CoreFxVersion)" />
   </ItemGroup>
 
   <ItemGroup>
