@@ -21,5 +21,4 @@
     <PackageReference Include="System.Net.Security" Version="$(CoreFxVersion)" />
   </ItemGroup>
 
-
 </Project>
