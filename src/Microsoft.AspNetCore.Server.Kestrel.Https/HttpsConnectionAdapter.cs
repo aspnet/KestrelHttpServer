@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
                             }
                         }
 
-                        var certificate2 = ConvertToX509Certificate2(certificate);
+                        var certificate2 = (X509Certificate2)certificate;
                         if (certificate2 == null)
                         {
                             return false;
@@ -105,22 +105,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
             return new HttpsAdaptedConnection(sslStream);
         }
 
-        private static X509Certificate2 ConvertToX509Certificate2(X509Certificate certificate)
-        {
-            if (certificate == null)
-            {
-                return null;
-            }
-
-            X509Certificate2 certificate2 = certificate as X509Certificate2;
-            if (certificate2 != null)
-            {
-                return certificate2;
-            }
-
-            return null;
-        }
-
         private class HttpsAdaptedConnection : IAdaptedConnection
         {
             private readonly SslStream _sslStream;
@@ -134,7 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
 
             public void PrepareRequest(IFeatureCollection requestFeatures)
             {
-                var clientCertificate = ConvertToX509Certificate2(_sslStream.RemoteCertificate);
+                var clientCertificate = (X509Certificate2)_sslStream.RemoteCertificate;
                 if (clientCertificate != null)
                 {
                     requestFeatures.Set<ITlsConnectionFeature>(new TlsConnectionFeature { ClientCertificate = clientCertificate });
