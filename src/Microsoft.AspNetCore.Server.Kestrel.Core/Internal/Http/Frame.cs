@@ -293,9 +293,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public bool HasResponseStarted => _requestProcessingStatus == RequestProcessingStatus.ResponseStarted;
 
-        protected FrameRequestHeaders FrameRequestHeaders { get; private set; }
+        protected FrameRequestHeaders FrameRequestHeaders { get; } = new FrameRequestHeaders();
 
-        protected FrameResponseHeaders FrameResponseHeaders { get; private set; }
+        protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
 
         public void InitializeStreams(MessageBody messageBody)
         {
@@ -344,12 +344,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             LocalIpAddress = LocalEndPoint?.Address;
             LocalPort = LocalEndPoint?.Port ?? 0;
             ConnectionIdFeature = ConnectionId;
-
-            if (FrameRequestHeaders == null)
-            {
-                FrameRequestHeaders = new FrameRequestHeaders();
-                FrameResponseHeaders = new FrameResponseHeaders();
-            }
 
             FrameRequestHeaders.Reset();
             FrameResponseHeaders.Reset();

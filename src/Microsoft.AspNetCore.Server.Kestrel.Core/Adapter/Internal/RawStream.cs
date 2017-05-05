@@ -215,6 +215,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
             // _output is disposed by ConnectionLifetimeControl
             _input.Complete();
         }
-
     }
 }
