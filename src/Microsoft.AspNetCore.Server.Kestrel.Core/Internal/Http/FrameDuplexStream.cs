@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -111,6 +112,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public override Task FlushAsync(CancellationToken cancellationToken)
         {
             return _responseStream.FlushAsync(cancellationToken);
+        }
+
+        public override void Close()
+        {
+            _requestStream.Close();
+            _responseStream.Close();
+        }
+
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            return _requestStream.BeginRead(buffer, offset, count, callback, state);
+        }
+
+        public override int EndRead(IAsyncResult asyncResult)
+        {
+            return _requestStream.EndRead(asyncResult);
+        }
+
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            return _responseStream.BeginWrite(buffer, offset, count, callback, state);
+        }
+
+        public override void EndWrite(IAsyncResult asyncResult)
+        {
+            _responseStream.EndWrite(asyncResult);
         }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)

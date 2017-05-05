@@ -55,6 +55,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public void BeginReadThrows()
+        {
+            var stream = new FrameResponseStream(new MockFrameControl());
+            Assert.Throws<NotSupportedException>(() => stream.BeginRead(new byte[1], 0, 1, null, null));
+        }
+
+        [Fact]
         public void SeekThrows()
         {
             var stream = new FrameResponseStream(new MockFrameControl());

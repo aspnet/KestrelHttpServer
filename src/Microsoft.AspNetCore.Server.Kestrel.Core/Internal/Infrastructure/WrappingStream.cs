@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.Remoting;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -88,6 +89,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
             => _inner.CopyToAsync(destination, bufferSize, cancellationToken);
+
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+            => _inner.BeginRead(buffer, offset, count, callback, state);
+
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+            => _inner.BeginWrite(buffer, offset, count, callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult)
+            => _inner.EndRead(asyncResult);
+
+        public override void EndWrite(IAsyncResult asyncResult)
+            => _inner.EndWrite(asyncResult);
+
+        public override ObjRef CreateObjRef(Type requestedType)
+            => _inner.CreateObjRef(requestedType);
+
+        public override object InitializeLifetimeService()
+            => _inner.InitializeLifetimeService();
+
+        public override void Close()
+            => _inner.Close();
 
         public override bool Equals(object obj)
             => _inner.Equals(obj);
