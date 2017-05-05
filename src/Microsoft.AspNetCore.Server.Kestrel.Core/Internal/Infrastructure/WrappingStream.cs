@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Runtime.Remoting;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -101,9 +100,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public override void EndWrite(IAsyncResult asyncResult)
             => _inner.EndWrite(asyncResult);
-
-        public override ObjRef CreateObjRef(Type requestedType)
-            => _inner.CreateObjRef(requestedType);
 
         public override object InitializeLifetimeService()
             => _inner.InitializeLifetimeService();
