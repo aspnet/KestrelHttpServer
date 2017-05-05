@@ -37,11 +37,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.CloseConnection);
 
-                    if (_hasRequestBody)
-                    {
-                        _requestBodyReader.Reset();
-                    }
-
                     Reset();
 
                     while (!_requestProcessingStopping)
