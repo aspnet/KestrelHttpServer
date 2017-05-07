@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 {
@@ -15,43 +14,89 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
     {
         private const int MinAllocBufferSize = 2048;
 
-        private readonly Stream _filteredStream;
-        private readonly StreamSocketOutput _output;
+        private readonly Stream _stream;
         private readonly IKestrelTrace _trace;
+        private readonly IPipeWriter _transportOutputPipe;
+        private readonly IPipeReader _transportInputPipe;
 
         public AdaptedPipeline(
-            Stream filteredStream,
+            Stream stream,
+            IPipeReader transportInputPipe,
+            IPipeWriter transportOutputPipe,
             IPipe inputPipe,
             IPipe outputPipe,
             IKestrelTrace trace)
         {
+            _stream = stream;
+            _transportInputPipe = transportInputPipe;
+            _transportOutputPipe = transportOutputPipe;
             Input = inputPipe;
-            _output = new StreamSocketOutput(filteredStream, outputPipe);
-            _filteredStream = filteredStream;
+            Output = outputPipe;
             _trace = trace;
         }
 
         public IPipe Input { get; }
 
-        public ISocketOutput Output => _output;
+        public IPipe Output { get; }
 
         public async Task RunAsync()
         {
+            var inputTask = ReadInputAsync();
+            var outputTask = WriteOutputAsync();
+
+            await inputTask;
+            await outputTask;
+        }
+
+        private async Task WriteOutputAsync()
+        {
             try
             {
-                var inputTask = ReadInputAsync();
-                var outputTask = _output.WriteOutputAsync();
+                while (true)
+                {
+                    var readResult = await Output.Reader.ReadAsync();
+                    var buffer = readResult.Buffer;
 
-                await inputTask;
+                    try
+                    {
+                        if (buffer.IsEmpty && readResult.IsCompleted)
+                        {
+                            break;
+                        }
 
-                _output.Dispose();
+                        if (buffer.IsEmpty)
+                        {
+                            await _stream.FlushAsync();
+                        }
+                        else if (buffer.IsSingleSpan)
+                        {
+                            var array = buffer.First.GetArray();
+                            await _stream.WriteAsync(array.Array, array.Offset, array.Count);
+                        }
+                        else
+                        {
+                            foreach (var memory in buffer)
+                            {
+                                var array = memory.GetArray();
+                                await _stream.WriteAsync(array.Array, array.Offset, array.Count);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        Output.Reader.Advance(buffer.End);
+                    }
+                }
 
-                await outputTask;
+                _transportOutputPipe.Complete();
             }
             catch (Exception ex)
             {
-                // adaptedPipeline.RunAsync() shouldn't throw, unless filtered stream's WriteAsync throws.
-                _trace.LogError(0, ex, $"{nameof(AdaptedPipeline)}.{nameof(RunAsync)}");
+                _transportOutputPipe.Complete(ex);
+            }
+            finally
+            {
+                Output.Reader.Complete();
             }
         }
 
@@ -59,21 +104,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
         {
             int bytesRead;
 
-            do
+            while (true)
             {
-                var block = Input.Writer.Alloc(MinAllocBufferSize);
-
                 try
                 {
-                    var array = block.Buffer.GetArray();
+                    var outputBuffer = Input.Writer.Alloc(MinAllocBufferSize);
+
+                    var array = outputBuffer.Buffer.GetArray();
                     try
                     {
-                        bytesRead = await _filteredStream.ReadAsync(array.Array, array.Offset, array.Count);
-                        block.Advance(bytesRead);
+                        bytesRead = await _stream.ReadAsync(array.Array, array.Offset, array.Count);
+                        outputBuffer.Advance(bytesRead);
+
+                        if (bytesRead == 0)
+                        {
+                            // FIN
+                            break;
+                        }
                     }
                     finally
                     {
-                        await block.FlushAsync();
+                        outputBuffer.Commit();
+                    }
+
+                    var result = await outputBuffer.FlushAsync();
+
+                    if (result.IsCompleted)
+                    {
+                        break;
                     }
                 }
                 catch (Exception ex)
@@ -83,9 +141,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                     // Don't rethrow the exception. It should be handled by the Pipeline consumer.
                     return;
                 }
-            } while (bytesRead != 0);
+            }
 
             Input.Writer.Complete();
+            // The application could have ended the input pipe so complete
+            // the transport pipe as well
+            _transportInputPipe.Complete();
         }
     }
 }

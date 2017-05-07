@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 var called = false;
 
-                ((ISocketOutput)socketOutput).Write((buffer, state) =>
+                socketOutput.Write((buffer, state) =>
                 {
                     called = true;
                 },
