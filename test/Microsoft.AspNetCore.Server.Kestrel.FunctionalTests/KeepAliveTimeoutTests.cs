@@ -19,7 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private static readonly TimeSpan LongDelay = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan ShortDelay = TimeSpan.FromSeconds(LongDelay.TotalSeconds / 10);
 
-        [Fact]
+        [ConditionalFact]
+        [OSSkipCondition(OperatingSystems.Windows, WindowsVersions.Win7, SkipReason = "https://github.com/aspnet/KestrelHttpServer/issues/1684")]
         public Task TestKeepAliveTimeout()
         {
             // Delays in these tests cannot be much longer than expected.
