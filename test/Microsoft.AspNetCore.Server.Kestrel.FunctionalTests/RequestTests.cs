@@ -287,7 +287,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Returns(Mock.Of<ILogger>());
 
             var builder = new WebHostBuilder()
-                .UseLoggerFactory(mockLoggerFactory.Object)
+                .UseLoggerFactory(_ => mockLoggerFactory.Object)
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context => TaskCache.CompletedTask));
@@ -351,7 +351,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
 
             var builder = new WebHostBuilder()
-                .UseLoggerFactory(mockLoggerFactory.Object)
+                .UseLoggerFactory(_ => mockLoggerFactory.Object)
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context => TaskCache.CompletedTask));
@@ -410,7 +410,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var requestStarted = new SemaphoreSlim(0);
 
             var builder = new WebHostBuilder()
-                .UseLoggerFactory(mockLoggerFactory.Object)
+                .UseLoggerFactory(_ => mockLoggerFactory.Object)
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
