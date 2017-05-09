@@ -16,17 +16,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
         private const int MinAllocBufferSize = 2048;
 
         private readonly IKestrelTrace _trace;
-        private readonly IPipeWriter _transportOutputPipe;
-        private readonly IPipeReader _transportInputPipe;
+        private readonly IPipeWriter _transportOutputPipeWriter;
+        private readonly IPipeReader _transportInputPipeReader;
 
-        public AdaptedPipeline(IPipeReader transportInputPipe,
-                               IPipeWriter transportOutputPipe,
+        public AdaptedPipeline(IPipeReader transportInputPipeReader,
+                               IPipeWriter transportOutputPipeWriter,
                                IPipe inputPipe,
                                IPipe outputPipe,
                                IKestrelTrace trace)
         {
-            _transportInputPipe = transportInputPipe;
-            _transportOutputPipe = transportOutputPipe;
+            _transportInputPipeReader = transportInputPipeReader;
+            _transportOutputPipeWriter = transportOutputPipeWriter;
             Input = inputPipe;
             Output = outputPipe;
             _trace = trace;
@@ -99,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
             finally
             {
                 Output.Reader.Complete();
-                _transportOutputPipe.Complete(error);
+                _transportOutputPipeWriter.Complete(error);
             }
         }
 
@@ -156,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                 Input.Writer.Complete(error);
                 // The application could have ended the input pipe so complete
                 // the transport pipe as well
-                _transportInputPipe.Complete();
+                _transportInputPipeReader.Complete();
             }
         }
     }

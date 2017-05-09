@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task ImmediateFinAfterOnConnectionAsync()
+        public async Task ImmediateFinAfterOnConnectionAsyncClosesGracefully()
         {
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
@@ -99,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task ImmediateFinAfterThrowingShutsDownGracefully()
+        public async Task ImmediateFinAfterThrowingClosesGracefully()
         {
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
@@ -120,7 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task ImmediateShutdownAfterOnConnectionAsync()
+        public async Task ImmediateShutdownAfterOnConnectionAsyncDoesNotCrash()
         {
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
