@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -30,6 +31,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// </summary>
         public override async Task ProcessRequestsAsync()
         {
+            ReadResult? currentResult = null;
+
             try
             {
                 while (!_requestProcessingStopping)
@@ -40,13 +43,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.ReadAsync();
-                        var examined = result.Buffer.End;
-                        var consumed = result.Buffer.End;
+                        var result = default(ReadResult);
+
+                        if (currentResult == null)
+                        {
+                            result = await Input.ReadAsync();
+                        }
+                        else
+                        {
+                            result = currentResult.Value;
+                            currentResult = null;
+                        }
+
+                        var buffer = result.Buffer;
+                        var examined = buffer.End;
+                        var consumed = examined;
 
                         try
                         {
-                            ParseRequest(result.Buffer, out consumed, out examined);
+                            ParseRequest(buffer, out consumed, out examined);
                         }
                         catch (InvalidOperationException)
                         {
@@ -92,6 +107,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         _upgrade = messageBody.RequestUpgrade;
 
                         InitializeStreams(messageBody);
+
+                        // If there's no body then try to read the next request
+                        if (messageBody.IsEmpty && Input.TryRead(out var nextResult))
+                        {
+                            currentResult = nextResult;
+                        }
 
                         var context = _application.CreateContext(this);
                         try
@@ -224,6 +245,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 try
                 {
+                    if (currentResult != null)
+                    {
+                        // Didn't consume the current buffer so advance before completing
+                        Input.Advance(currentResult.Value.Buffer.Start);
+                    }
+
                     Input.Complete();
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)

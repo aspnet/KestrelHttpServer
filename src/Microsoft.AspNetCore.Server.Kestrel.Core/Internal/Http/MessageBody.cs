@@ -30,6 +30,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public bool RequestUpgrade { get; protected set; }
 
+        public bool IsEmpty { get; protected set; }
+
         public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
             var task = PeekAsync(cancellationToken);
@@ -328,6 +330,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 : base(null)
             {
                 RequestKeepAlive = keepAlive;
+                IsEmpty = true;
             }
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
