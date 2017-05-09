@@ -91,8 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         var messageBody = MessageBody.For(_httpVersion, FrameRequestHeaders, this);
                         _keepAlive = messageBody.RequestKeepAlive;
                         _upgrade = messageBody.RequestUpgrade;
-                        _hasRequestBody = !messageBody.IsEmpty;
-                        _currentRequestBodyReader = _hasRequestBody ? _requestBodyReader : EmptyRequestBodyReader.Instance;
+                        _currentRequestBodyReader = !messageBody.IsEmpty ? _requestBodyReader : EmptyRequestBodyReader.Instance;
                         _ = _currentRequestBodyReader.StartAsync(messageBody);
 
                         InitializeStreams(messageBody.RequestUpgrade);
