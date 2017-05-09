@@ -19,7 +19,6 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.AspNetCore.Testing.xunit;
 using Microsoft.Extensions.Internal;
@@ -289,6 +288,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
                 .UseKestrel()
+                .UseLibuv()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context => TaskCache.CompletedTask));
 
@@ -353,6 +353,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
                 .UseKestrel()
+                .UseLibuv()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context => TaskCache.CompletedTask));
 
@@ -412,6 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var builder = new WebHostBuilder()
                 .UseLoggerFactory(mockLoggerFactory.Object)
                 .UseKestrel()
+                .UseLibuv()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
                 {

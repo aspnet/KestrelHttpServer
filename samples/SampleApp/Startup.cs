@@ -53,7 +53,7 @@ namespace SampleApp
                     options.Listen(IPAddress.Loopback, 5000, listenOptions =>
                     {
                         // Uncomment the following to enable Nagle's algorithm for this endpoint.
-                        //listenOptions.NoDelay = false;
+                        // listenOptions.NoDelay = false;
 
                         listenOptions.UseConnectionLogging();
                     });
@@ -63,16 +63,6 @@ namespace SampleApp
                         listenOptions.UseHttps("testCert.pfx", "testPassword");
                         listenOptions.UseConnectionLogging();
                     });
-
-                    options.UseSystemd();
-
-                    // The following section should be used to demo sockets
-                    //options.ListenUnixSocket("/tmp/kestrel-test.sock");
-                })
-                .UseLibuv(options =>
-                {
-                    // Uncomment the following line to change the default number of libuv threads for all endpoints.
-                    // options.ThreadCount = 4;
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
