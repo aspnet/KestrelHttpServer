@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
@@ -21,7 +22,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private readonly Frame _frame;
         private readonly List<IConnectionAdapter> _connectionAdapters;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly TaskCompletionSource<object> _frameInitializedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
@@ -70,46 +70,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             try
             {
+                AdaptedPipeline adaptedPipeline = null;
                 var adaptedPipelineTask = Task.CompletedTask;
                 var input = _context.Input.Reader;
                 var output = _context.Output.Writer;
 
-                // Set these before the first await, this is to make sure that we don't yield control
-                // to the transport until we've added the connection to the connection manager
-                _frame.TimeoutControl = this;
-                _context.ServiceContext.ConnectionManager.AddConnection(_context.FrameConnectionId, this);
-                _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
-
                 if (_connectionAdapters.Count > 0)
                 {
-                    var adaptedPipeline = await ApplyConnectionAdaptersAsync();
-
-                    if (adaptedPipeline == null)
-                    {
-                        // We need to assign these anyways because frame.Abort calls via OutputProducer.Abort
-                        _frame.Input = input;
-                        _frame.Output = new OutputProducer(output, _frame, ConnectionId, Log);
-
-                        // Complete the input and output since the frame never started
-                        input.Complete();
-                        output.Complete();
-
-                        _frameInitializedTcs.TrySetResult(null);
-
-                        // We failed to initialize connection adapters
-                        await _socketClosedTcs.Task;
-                        return;
-                    }
+                    adaptedPipeline = new AdaptedPipeline(_context.Input.Reader,
+                                                          _context.Output.Writer,
+                                                          PipeFactory.Create(AdaptedInputPipeOptions),
+                                                          PipeFactory.Create(AdaptedOutputPipeOptions),
+                                                          Log);
 
                     input = adaptedPipeline.Input.Reader;
                     output = adaptedPipeline.Output.Writer;
-
-                    adaptedPipelineTask = adaptedPipeline.RunAsync();
                 }
 
+                // Set these before the first await, this is to make sure that we don't yield control
+                // to the transport until we've added the connection to the connection manager
+                _frame.TimeoutControl = this;
                 _frame.Input = input;
-                _frame.Output = new OutputProducer(output, _frame, ConnectionId, Log);
-                _frameInitializedTcs.TrySetResult(null);
+                _frame.Output = new OutputProducer(output, ConnectionId, Log);
+                _context.ServiceContext.ConnectionManager.AddConnection(_context.FrameConnectionId, this);
+                _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
+
+                if (adaptedPipeline != null)
+                {
+                    // Stream can be null here and run async will close the connection in that case
+                    var stream = await ApplyConnectionAdaptersAsync();
+                    adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
+                }
 
                 await _frame.ProcessRequestsAsync();
                 await adaptedPipelineTask;
@@ -117,9 +108,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
             catch (Exception ex)
             {
-                // This would only *not* be set if something completely unexpected threw (like ConnectionManager.AddConnection)
-                _frameInitializedTcs.TrySetResult(null);
-
                 Log.LogError(0, ex, $"Unexpected exception in {nameof(FrameConnection)}.{nameof(ProcessRequestsAsync)}.");
             }
             finally
@@ -129,43 +117,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public async void OnConnectionClosed(Exception ex)
+        public void OnConnectionClosed(Exception ex)
         {
-            await AbortAsyncInternal(ex);
+            // Abort the connection (if not already aborted)
+            _frame.Abort(ex);
 
             Log.ConnectionStop(ConnectionId);
             KestrelEventSource.Log.ConnectionStop(this);
             _socketClosedTcs.TrySetResult(null);
         }
 
-        public async Task StopAsync()
+        public Task StopAsync()
         {
-            await _frameInitializedTcs.Task;
-
             _frame.Stop();
 
-            await _lifetimeTask;
+            return _lifetimeTask;
         }
 
         public void Abort(Exception ex)
         {
-            _ = AbortAsyncInternal(ex);
-        }
-
-        public async Task AbortAsync(Exception ex)
-        {
-            await AbortAsyncInternal(ex);
-
-            await _lifetimeTask;
-        }
-
-        private async Task AbortAsyncInternal(Exception ex)
-        {
-            // Make sure the frame is fully initialized before aborting
-            await _frameInitializedTcs.Task;
-
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
+        }
+
+        public Task AbortAsync(Exception ex)
+        {
+            // Abort the connection (if not already aborted)
+            _frame.Abort(ex);
+
+            return _lifetimeTask;
         }
 
         public void Timeout()
@@ -173,7 +153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _frame.SetBadRequestState(RequestRejectionReason.RequestTimeout);
         }
 
-        private async Task<AdaptedPipeline> ApplyConnectionAdaptersAsync()
+        private async Task<Stream> ApplyConnectionAdaptersAsync()
         {
             var stream = new RawStream(_context.Input.Reader, _context.Output.Writer);
             var adapterContext = new ConnectionAdapterContext(stream);
@@ -194,15 +174,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 return null;
             }
+            finally
+            {
+                _frame.AdaptedConnections = adaptedConnections;
+            }
 
-            _frame.AdaptedConnections = adaptedConnections;
-
-            return new AdaptedPipeline(adapterContext.ConnectionStream,
-                                       _context.Input.Reader,
-                                       _context.Output.Writer,
-                                       PipeFactory.Create(AdaptedInputPipeOptions),
-                                       PipeFactory.Create(AdaptedOutputPipeOptions),
-                                       Log);
+            return adapterContext.ConnectionStream;
         }
 
         private void DisposeAdaptedConnections()

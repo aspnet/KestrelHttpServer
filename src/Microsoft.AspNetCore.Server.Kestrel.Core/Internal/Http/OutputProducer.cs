@@ -25,7 +25,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private bool _completed = false;
 
         private readonly IPipeWriter _pipe;
-        private readonly Frame _frame;
 
         // https://github.com/dotnet/corefxlab/issues/1334
         // Pipelines don't support multiple awaiters on flush
@@ -34,10 +33,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly object _flushLock = new object();
         private Action _flushCompleted;
 
-        public OutputProducer(IPipeWriter pipe, Frame frame, string connectionId, IKestrelTrace log)
+        public OutputProducer(IPipeWriter pipe, string connectionId, IKestrelTrace log)
         {
             _pipe = pipe;
-            _frame = frame;
             _connectionId = connectionId;
             _log = log;
             _flushCompleted = OnFlushCompleted;
@@ -52,7 +50,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                _frame.Abort(error: null);
                 _cancelled = true;
                 return Task.FromCanceled(cancellationToken);
             }
@@ -184,11 +181,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
             }
             await _flushTcs.Task;
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                _frame.Abort(error: null);
-            }
 
             cancellationToken.ThrowIfCancellationRequested();
         }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 {
@@ -14,20 +15,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
     {
         private const int MinAllocBufferSize = 2048;
 
-        private readonly Stream _stream;
         private readonly IKestrelTrace _trace;
         private readonly IPipeWriter _transportOutputPipe;
         private readonly IPipeReader _transportInputPipe;
 
-        public AdaptedPipeline(
-            Stream stream,
-            IPipeReader transportInputPipe,
-            IPipeWriter transportOutputPipe,
-            IPipe inputPipe,
-            IPipe outputPipe,
-            IKestrelTrace trace)
+        public AdaptedPipeline(IPipeReader transportInputPipe,
+                               IPipeWriter transportOutputPipe,
+                               IPipe inputPipe,
+                               IPipe outputPipe,
+                               IKestrelTrace trace)
         {
-            _stream = stream;
             _transportInputPipe = transportInputPipe;
             _transportOutputPipe = transportOutputPipe;
             Input = inputPipe;
@@ -39,19 +36,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 
         public IPipe Output { get; }
 
-        public async Task RunAsync()
+        public async Task RunAsync(Stream stream)
         {
-            var inputTask = ReadInputAsync();
-            var outputTask = WriteOutputAsync();
+            var inputTask = ReadInputAsync(stream);
+            var outputTask = WriteOutputAsync(stream);
 
             await inputTask;
             await outputTask;
         }
 
-        private async Task WriteOutputAsync()
+        private async Task WriteOutputAsync(Stream stream)
         {
+            Exception error = null;
+
             try
             {
+                if (stream == null)
+                {
+                    return;
+                }
+
                 while (true)
                 {
                     var readResult = await Output.Reader.ReadAsync();
@@ -66,19 +70,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 
                         if (buffer.IsEmpty)
                         {
-                            await _stream.FlushAsync();
+                            await stream.FlushAsync();
                         }
                         else if (buffer.IsSingleSpan)
                         {
                             var array = buffer.First.GetArray();
-                            await _stream.WriteAsync(array.Array, array.Offset, array.Count);
+                            await stream.WriteAsync(array.Array, array.Offset, array.Count);
                         }
                         else
                         {
                             foreach (var memory in buffer)
                             {
                                 var array = memory.GetArray();
-                                await _stream.WriteAsync(array.Array, array.Offset, array.Count);
+                                await stream.WriteAsync(array.Array, array.Offset, array.Count);
                             }
                         }
                     }
@@ -87,33 +91,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                         Output.Reader.Advance(buffer.End);
                     }
                 }
-
-                _transportOutputPipe.Complete();
             }
             catch (Exception ex)
             {
-                _transportOutputPipe.Complete(ex);
+                error = ex;
             }
             finally
             {
                 Output.Reader.Complete();
+                _transportOutputPipe.Complete(error);
             }
         }
 
-        private async Task ReadInputAsync()
+        private async Task ReadInputAsync(Stream stream)
         {
-            int bytesRead;
+            Exception error = null;
 
-            while (true)
+            try
             {
-                try
+                if (stream == null)
                 {
+                    // If the stream is null then we're going to abort the connection
+                    throw new ConnectionAbortedException();
+                }
+
+                while (true)
+                {
+
                     var outputBuffer = Input.Writer.Alloc(MinAllocBufferSize);
 
                     var array = outputBuffer.Buffer.GetArray();
                     try
                     {
-                        bytesRead = await _stream.ReadAsync(array.Array, array.Offset, array.Count);
+                        var bytesRead = await stream.ReadAsync(array.Array, array.Offset, array.Count);
                         outputBuffer.Advance(bytesRead);
 
                         if (bytesRead == 0)
@@ -133,20 +143,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                     {
                         break;
                     }
-                }
-                catch (Exception ex)
-                {
-                    Input.Writer.Complete(ex);
 
-                    // Don't rethrow the exception. It should be handled by the Pipeline consumer.
-                    return;
                 }
             }
-
-            Input.Writer.Complete();
-            // The application could have ended the input pipe so complete
-            // the transport pipe as well
-            _transportInputPipe.Complete();
+            catch (Exception ex)
+            {
+                // Don't rethrow the exception. It should be handled by the Pipeline consumer.
+                error = ex;
+            }
+            finally
+            {
+                Input.Writer.Complete(error);
+                // The application could have ended the input pipe so complete
+                // the transport pipe as well
+                _transportInputPipe.Complete();
+            }
         }
     }
 }
