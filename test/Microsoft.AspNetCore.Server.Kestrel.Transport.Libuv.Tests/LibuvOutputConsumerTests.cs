@@ -393,6 +393,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
                     Assert.True(abortedSource.IsCancellationRequested);
 
+                    await _mockLibuv.OnPostTask;
+
                     // Complete the 4th write
                     while (completeQueue.TryDequeue(out var triggerNextCompleted))
                     {
