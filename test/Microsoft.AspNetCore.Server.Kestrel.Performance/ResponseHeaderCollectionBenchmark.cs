@@ -32,10 +32,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Params(
-            BenchmarkTypes.ContentLengthNumeric, 
-            BenchmarkTypes.ContentLengthString, 
-            BenchmarkTypes.Plaintext, 
-            BenchmarkTypes.Common, 
+            BenchmarkTypes.ContentLengthNumeric,
+            BenchmarkTypes.ContentLengthString,
+            BenchmarkTypes.Plaintext,
+            BenchmarkTypes.Common,
             BenchmarkTypes.Unknown
         )]
         public BenchmarkTypes Type { get; set; }
@@ -179,7 +179,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            var frame = new Frame<object>(application: null, frameContext: frameContext);
+            var frame = new Frame<object>(application: null, frameContext: frameContext, timeoutControl: null);
 
             frame.Reset();
             _responseHeadersDirect = (FrameResponseHeaders)frame.ResponseHeaders;

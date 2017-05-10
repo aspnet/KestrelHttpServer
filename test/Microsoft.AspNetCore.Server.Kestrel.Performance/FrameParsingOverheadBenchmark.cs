@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
@@ -31,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            _frame = new Frame<object>(application: null, frameContext: frameContext);
+            _frame = new Frame<object>(application: null, frameContext: frameContext, timeoutControl: new MockTimeoutControl());
         }
 
         [Benchmark(Baseline = true, OperationsPerInvoke = InnerLoopCount)]

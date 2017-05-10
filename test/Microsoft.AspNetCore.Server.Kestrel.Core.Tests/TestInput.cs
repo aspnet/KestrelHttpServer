@@ -7,10 +7,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
+using Moq;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
@@ -23,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var innerContext = new FrameContext { ServiceContext = new TestServiceContext() };
 
-            FrameContext = new Frame<object>(null, innerContext);
+            FrameContext = new Frame<object>(null, innerContext, Mock.Of<ITimeoutControl>());
             FrameContext.FrameControl = this;
 
             _memoryPool = new MemoryPool();

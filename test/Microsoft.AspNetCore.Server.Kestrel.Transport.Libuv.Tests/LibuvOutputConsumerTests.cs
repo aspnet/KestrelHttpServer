@@ -693,7 +693,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             };
             var transportContext = new TestLibuvTransportContext { Log = new LibuvTrace(logger) };
 
-            var frame = new Frame<object>(null, new FrameContext { ServiceContext = serviceContext });
+            var frame = new Frame<object>(null, new FrameContext { ServiceContext = serviceContext }, Mock.Of<ITimeoutControl>());
 
             var socket = new MockSocket(_mockLibuv, _libuvThread.Loop.ThreadId, transportContext.Log);
             var outputProducer = new OutputProducer(pipe, "0", serviceContext.Log);

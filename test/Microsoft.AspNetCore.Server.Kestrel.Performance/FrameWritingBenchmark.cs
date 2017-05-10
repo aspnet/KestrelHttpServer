@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks;
 using Microsoft.AspNetCore.Testing;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
@@ -104,9 +105,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            var frame = new TestFrame<object>(application: null, context: frameContext)
+            var frame = new TestFrame<object>(application: null, context: frameContext, timeoutControl: new MockTimeoutControl())
             {
-                Input = input.Reader,
+                Input = input.Reader
             };
 
             frame.Output = new OutputProducer(output, "", null);

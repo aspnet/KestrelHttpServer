@@ -87,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            _frame = new Frame<object>(application: null, frameContext: frameContext);
+            _frame = new Frame<object>(application: null, frameContext: frameContext, timeoutControl: null);
         }
 
         [Setup]

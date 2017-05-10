@@ -74,6 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private int _requestHeadersParsed;
         private uint _requestCount;
 
+        protected readonly ITimeoutControl _timeoutControl;
         protected readonly long _keepAliveTicks;
         private readonly long _requestHeadersTimeoutTicks;
 
@@ -85,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
         private Uri _absoluteRequestTarget;
 
-        public Frame(FrameContext frameContext)
+        public Frame(FrameContext frameContext, ITimeoutControl timeoutControl)
         {
             _frameContext = frameContext;
 
@@ -96,6 +97,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             FrameControl = this;
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
+
+            _timeoutControl = timeoutControl;
         }
 
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
@@ -967,7 +970,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         break;
                     }
 
-                    TimeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutAction.SendTimeoutResponse);
+                    _timeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutAction.SendTimeoutResponse);
 
                     _requestProcessingStatus = RequestProcessingStatus.ParsingRequestLine;
                     goto case RequestProcessingStatus.ParsingRequestLine;
@@ -1032,7 +1035,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
             if (result)
             {
-                TimeoutControl.CancelTimeout();
+                _timeoutControl.CancelTimeout();
             }
             return result;
         }

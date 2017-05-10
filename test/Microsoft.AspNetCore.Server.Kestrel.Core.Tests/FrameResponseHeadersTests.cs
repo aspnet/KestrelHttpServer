@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Primitives;
@@ -25,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ConnectionInformation = Mock.Of<IConnectionInformation>()
             };
 
-            var frame = new Frame<object>(application: null, frameContext: frameContext);
+            var frame = new Frame<object>(application: null, frameContext: frameContext, timeoutControl: null);
 
             frame.Reset();
 
@@ -61,14 +62,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [InlineData("Ser\u0080ver", "Data")]
         [InlineData("Server", "Da\u0080ta")]
         [InlineData("Unknown\u0080-Header", "Data")]
-        [InlineData("Serôver", "Data")]
-        [InlineData("Server", "Daôta")]
-        [InlineData("Unknownô-Header", "Data")]
-        [InlineData("Serôver", "Data")]
-        [InlineData("öerver", "Data")]
-        [InlineData("Server", "Daöta")]
-        [InlineData("Unknownö-Header", "Data")]
-        [InlineData("Seröver", "Data")]
+        [InlineData("Ser‚Ñ¢ver", "Data")]
+        [InlineData("Server", "Da‚Ñ¢ta")]
+        [InlineData("Unknown‚Ñ¢-Header", "Data")]
+        [InlineData("Ser‚Ñ¢ver", "Data")]
+        [InlineData("≈°erver", "Data")]
+        [InlineData("Server", "Da≈°ta")]
+        [InlineData("Unknown≈°-Header", "Data")]
+        [InlineData("Ser≈°ver", "Data")]
         public void AddingControlOrNonAsciiCharactersToHeadersThrows(string key, string value)
         {
             var responseHeaders = new FrameResponseHeaders();
