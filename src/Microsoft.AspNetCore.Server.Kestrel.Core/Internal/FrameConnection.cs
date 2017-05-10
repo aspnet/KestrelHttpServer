@@ -90,6 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     output = adaptedPipeline.Output;
                 }
 
+                // _frame must be initialized before adding the connection to the connection manager
                 _frame = new Frame<TContext>(application, new FrameContext
                 {
                     ConnectionId = _context.ConnectionId,
@@ -100,7 +101,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     Output = new OutputProducer(output, ConnectionId, Log)
                 });
 
-                // Don't yield control to the transport until we've added the connection to the connection manager
+                // Do this before the first await so we don't yield control to the transport until we've
+                // added the connection to the connection manager
                 _context.ServiceContext.ConnectionManager.AddConnection(_context.FrameConnectionId, this);
                 _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 
