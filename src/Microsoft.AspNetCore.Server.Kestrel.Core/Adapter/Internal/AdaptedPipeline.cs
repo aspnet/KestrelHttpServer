@@ -71,6 +71,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 
                         if (buffer.IsEmpty)
                         {
+                            if (result.IsCompleted)
+                            {
+                                break;
+                            }
                             await stream.FlushAsync();
                         }
                         else if (buffer.IsSingleSpan)
@@ -85,11 +89,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                                 var array = memory.GetArray();
                                 await stream.WriteAsync(array.Array, array.Offset, array.Count);
                             }
-                        }
-
-                        if (result.IsCompleted)
-                        {
-                            break;
                         }
                     }
                     finally
