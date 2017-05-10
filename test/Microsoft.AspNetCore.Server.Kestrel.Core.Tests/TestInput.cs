@@ -23,15 +23,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public TestInput()
         {
-            var innerContext = new FrameContext { ServiceContext = new TestServiceContext() };
-
-            FrameContext = new Frame<object>(null, innerContext);
-            FrameContext.FrameControl = this;
-
             _memoryPool = new MemoryPool();
             _pipelineFactory = new PipeFactory();
+
             Pipe = _pipelineFactory.Create();
-            FrameContext.Input = Pipe.Reader;
+
+            FrameContext = new Frame<object>(null, new FrameContext
+            {
+                ServiceContext = new TestServiceContext(),
+                Input = Pipe.Reader
+            });
+            FrameContext.FrameControl = this;
         }
 
         public IPipe Pipe { get;  }

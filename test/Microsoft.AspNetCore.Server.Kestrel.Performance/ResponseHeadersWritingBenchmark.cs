@@ -122,18 +122,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 HttpParserFactory = f => new HttpParser<FrameAdapter>()
             };
 
-            var frameContext = new FrameContext
+            var frame = new TestFrame<object>(application: null, context: new FrameContext
             {
                 ServiceContext = serviceContext,
                 ConnectionInformation = new MockConnectionInformation(),
-                TimeoutControl = new MockTimeoutControl()
-            };
-
-            var frame = new TestFrame<object>(application: null, context: frameContext)
-            {
+                TimeoutControl = new MockTimeoutControl(),
                 Input = input.Reader,
-            };
-            frame.Output = new OutputProducer(output, "", null);
+                Output = new OutputProducer(output, "", null)
+            });
 
             frame.Reset();
 

@@ -99,18 +99,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 Log = new MockTrace(),
                 HttpParserFactory = f => new HttpParser<FrameAdapter>()
             };
-            var frameContext = new FrameContext
+
+            var frame = new TestFrame<object>(application: null, context: new FrameContext
             {
                 ServiceContext = serviceContext,
-                ConnectionInformation = new MockConnectionInformation()
-            };
-
-            var frame = new TestFrame<object>(application: null, context: frameContext)
-            {
-                Input = input.Reader
-            };
-
-            frame.Output = new OutputProducer(output, "", null);
+                ConnectionInformation = new MockConnectionInformation(),
+                Input = input.Reader,
+                Output = new OutputProducer(output, "", null)
+            });
 
             frame.Reset();
 

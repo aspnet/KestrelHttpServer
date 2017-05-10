@@ -70,15 +70,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             try
             {
-                var frameContext = new FrameContext
-                {
-                    ConnectionId = _context.ConnectionId,
-                    ConnectionInformation = _context.ConnectionInformation,
-                    ServiceContext = _context.ServiceContext,
-                    TimeoutControl = this
-                };
-                _frame = new Frame<TContext>(application, frameContext: frameContext);
-
                 Log.ConnectionStart(ConnectionId);
                 KestrelEventSource.Log.ConnectionStart(this, _context.ConnectionInformation);
 
@@ -99,10 +90,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     output = adaptedPipeline.Output;
                 }
 
-                // Set these before the first await, this is to make sure that we don't yield control
-                // to the transport until we've added the connection to the connection manager
-                _frame.Input = input;
-                _frame.Output = new OutputProducer(output, ConnectionId, Log);
+                _frame = new Frame<TContext>(application, new FrameContext
+                {
+                    ConnectionId = _context.ConnectionId,
+                    ConnectionInformation = _context.ConnectionInformation,
+                    ServiceContext = _context.ServiceContext,
+                    TimeoutControl = this,
+                    Input = input,
+                    Output = new OutputProducer(output, ConnectionId, Log)
+                });
+
+                // Don't yield control to the transport until we've added the connection to the connection manager
                 _context.ServiceContext.ConnectionManager.AddConnection(_context.FrameConnectionId, this);
                 _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 

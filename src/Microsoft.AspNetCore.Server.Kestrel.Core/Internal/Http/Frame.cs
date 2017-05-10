@@ -101,9 +101,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
         public IConnectionInformation ConnectionInformation => _frameContext.ConnectionInformation;
 
-        public IPipeReader Input { get; set; }
-        public OutputProducer Output { get; set; }
         public IFeatureCollection ConnectionFeatures { get; set; }
+        public IPipeReader Input => _frameContext.Input;
+        public OutputProducer Output => _frameContext.Output;
         public ITimeoutControl TimeoutControl => _frameContext.TimeoutControl;
 
         protected IKestrelTrace Log => ServiceContext.Log;

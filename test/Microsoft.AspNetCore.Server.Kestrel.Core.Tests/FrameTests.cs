@@ -63,16 +63,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 ServiceContext = _serviceContext,
                 ConnectionInformation = Mock.Of<IConnectionInformation>(),
-                TimeoutControl = _timeoutControl.Object
+                TimeoutControl = _timeoutControl.Object,
+                Input = _input.Reader,
+                Output = new OutputProducer(output, "", Mock.Of<IKestrelTrace>())
             };
 
-            _frame = new TestFrame<object>(application: null, context: _frameContext)
-            {
-                Input = _input.Reader
-            };
-
-            _frame.Output = new OutputProducer(output, "", Mock.Of<IKestrelTrace>());
-
+            _frame = new TestFrame<object>(application: null, context: _frameContext);
             _frame.Reset();
         }
 
