@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     var tlsFeature = context.Features.Get<ITlsConnectionFeature>();
                     Assert.NotNull(tlsFeature);
-                    Assert.Equal(tlsFeature.ClientCertificate, null);
+                    Assert.Null(tlsFeature.ClientCertificate);
                     return context.Response.WriteAsync("hello world");
                 },
                 serviceContext, listenOptions))
