@@ -14,6 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public IConnectionInformation ConnectionInformation { get; set; }
         public ITimeoutControl TimeoutControl { get; set; }
         public IPipeReader Input { get; set; }
-        public OutputProducer Output { get; set; }
+        public IPipe Output { get; set; }
     }
 }

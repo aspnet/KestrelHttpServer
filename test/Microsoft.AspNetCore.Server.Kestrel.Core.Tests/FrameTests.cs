@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ConnectionInformation = Mock.Of<IConnectionInformation>(),
                 TimeoutControl = _timeoutControl.Object,
                 Input = _input.Reader,
-                Output = new OutputProducer(output, "", Mock.Of<IKestrelTrace>())
+                Output = output
             };
 
             _frame = new TestFrame<object>(application: null, context: _frameContext);

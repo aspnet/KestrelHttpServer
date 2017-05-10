@@ -128,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation(),
                 TimeoutControl = new MockTimeoutControl(),
                 Input = input.Reader,
-                Output = new OutputProducer(output, "", null)
+                Output = output
             });
 
             frame.Reset();

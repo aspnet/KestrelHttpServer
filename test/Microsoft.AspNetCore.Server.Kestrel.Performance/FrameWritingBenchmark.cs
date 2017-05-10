@@ -105,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ServiceContext = serviceContext,
                 ConnectionInformation = new MockConnectionInformation(),
                 Input = input.Reader,
-                Output = new OutputProducer(output, "", null)
+                Output = output
             });
 
             frame.Reset();

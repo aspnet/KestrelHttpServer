@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     ServiceContext = _context.ServiceContext,
                     TimeoutControl = this,
                     Input = input,
-                    Output = new OutputProducer(output, ConnectionId, Log)
+                    Output = output
                 });
 
                 // Do this before the first await so we don't yield control to the transport until we've
