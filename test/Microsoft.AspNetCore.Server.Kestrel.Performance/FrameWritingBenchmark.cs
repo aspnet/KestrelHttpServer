@@ -105,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            var frame = new TestFrame<object>(application: null, context: frameContext, timeoutControl: new MockTimeoutControl())
+            var frame = new TestFrame<object>(application: null, context: frameContext)
             {
                 Input = input.Reader
             };

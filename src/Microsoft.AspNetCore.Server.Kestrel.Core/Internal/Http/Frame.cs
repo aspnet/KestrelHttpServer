@@ -74,7 +74,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private int _requestHeadersParsed;
         private uint _requestCount;
 
-        protected readonly ITimeoutControl _timeoutControl;
         protected readonly long _keepAliveTicks;
         private readonly long _requestHeadersTimeoutTicks;
 
@@ -86,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
         private Uri _absoluteRequestTarget;
 
-        public Frame(FrameContext frameContext, ITimeoutControl timeoutControl)
+        public Frame(FrameContext frameContext)
         {
             _frameContext = frameContext;
 
@@ -97,8 +96,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             FrameControl = this;
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
-
-            _timeoutControl = timeoutControl;
         }
 
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
@@ -107,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public IPipeReader Input { get; set; }
         public OutputProducer Output { get; set; }
         public IFeatureCollection ConnectionFeatures { get; set; }
-        public ITimeoutControl TimeoutControl { get; set; }
+        public ITimeoutControl TimeoutControl => _frameContext.TimeoutControl;
 
         protected IKestrelTrace Log => ServiceContext.Log;
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
@@ -970,7 +967,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         break;
                     }
 
-                    _timeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutAction.SendTimeoutResponse);
+                    TimeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutAction.SendTimeoutResponse);
 
                     _requestProcessingStatus = RequestProcessingStatus.ParsingRequestLine;
                     goto case RequestProcessingStatus.ParsingRequestLine;
@@ -1035,7 +1032,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
             if (result)
             {
-                _timeoutControl.CancelTimeout();
+                TimeoutControl.CancelTimeout();
             }
             return result;
         }

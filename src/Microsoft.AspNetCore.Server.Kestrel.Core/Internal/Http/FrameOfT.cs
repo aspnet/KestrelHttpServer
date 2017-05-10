@@ -16,8 +16,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         private readonly IHttpApplication<TContext> _application;
 
-        public Frame(IHttpApplication<TContext> application, FrameContext frameContext, ITimeoutControl timeoutControl)
-            : base(frameContext, timeoutControl)
+        public Frame(IHttpApplication<TContext> application, FrameContext frameContext)
+            : base(frameContext)
         {
             _application = application;
         }
@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 while (!_requestProcessingStopping)
                 {
-                    _timeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.CloseConnection);
+                    TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.CloseConnection);
 
                     Reset();
 

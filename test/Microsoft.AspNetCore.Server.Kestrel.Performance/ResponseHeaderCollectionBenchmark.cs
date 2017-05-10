@@ -179,7 +179,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 ConnectionInformation = new MockConnectionInformation()
             };
 
-            var frame = new Frame<object>(application: null, frameContext: frameContext, timeoutControl: null);
+            var frame = new Frame<object>(application: null, frameContext: frameContext);
 
             frame.Reset();
             _responseHeadersDirect = (FrameResponseHeaders)frame.ResponseHeaders;

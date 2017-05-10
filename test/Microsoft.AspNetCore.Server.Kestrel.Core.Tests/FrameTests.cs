@@ -40,8 +40,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private class TestFrame<TContext> : Frame<TContext>
         {
-            public TestFrame(IHttpApplication<TContext> application, FrameContext context, ITimeoutControl timeoutControl)
-                : base(application, context, timeoutControl)
+            public TestFrame(IHttpApplication<TContext> application, FrameContext context)
+                : base(application, context)
             {
             }
 
@@ -58,18 +58,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var output = _pipelineFactory.Create();
 
             _serviceContext = new TestServiceContext();
-
+            _timeoutControl = new Mock<ITimeoutControl>();
             _frameContext = new FrameContext
             {
                 ServiceContext = _serviceContext,
-                ConnectionInformation = Mock.Of<IConnectionInformation>()
+                ConnectionInformation = Mock.Of<IConnectionInformation>(),
+                TimeoutControl = _timeoutControl.Object
             };
 
-            _timeoutControl = new Mock<ITimeoutControl>();
-
-            _frame = new TestFrame<object>(application: null, context: _frameContext, timeoutControl: _timeoutControl.Object)
+            _frame = new TestFrame<object>(application: null, context: _frameContext)
             {
-                Input = _input.Reader,
+                Input = _input.Reader
             };
 
             _frame.Output = new OutputProducer(output, "", Mock.Of<IKestrelTrace>());

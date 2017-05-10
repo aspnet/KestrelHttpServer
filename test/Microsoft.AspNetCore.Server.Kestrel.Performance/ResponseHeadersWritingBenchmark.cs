@@ -125,10 +125,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             var frameContext = new FrameContext
             {
                 ServiceContext = serviceContext,
-                ConnectionInformation = new MockConnectionInformation()
+                ConnectionInformation = new MockConnectionInformation(),
+                TimeoutControl = new MockTimeoutControl()
             };
 
-            var frame = new TestFrame<object>(application: null, context: frameContext, timeoutControl: new MockTimeoutControl())
+            var frame = new TestFrame<object>(application: null, context: frameContext)
             {
                 Input = input.Reader,
             };

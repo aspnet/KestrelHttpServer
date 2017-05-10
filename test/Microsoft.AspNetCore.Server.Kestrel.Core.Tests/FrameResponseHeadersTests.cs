@@ -23,10 +23,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var frameContext = new FrameContext
             {
                 ServiceContext = new TestServiceContext(),
-                ConnectionInformation = Mock.Of<IConnectionInformation>()
+                ConnectionInformation = Mock.Of<IConnectionInformation>(),
+                TimeoutControl = null
             };
 
-            var frame = new Frame<object>(application: null, frameContext: frameContext, timeoutControl: null);
+            var frame = new Frame<object>(application: null, frameContext: frameContext);
 
             frame.Reset();
 

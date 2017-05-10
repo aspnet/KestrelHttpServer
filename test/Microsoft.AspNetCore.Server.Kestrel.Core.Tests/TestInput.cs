@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var innerContext = new FrameContext { ServiceContext = new TestServiceContext() };
 
-            FrameContext = new Frame<object>(null, innerContext, Mock.Of<ITimeoutControl>());
+            FrameContext = new Frame<object>(null, innerContext);
             FrameContext.FrameControl = this;
 
             _memoryPool = new MemoryPool();

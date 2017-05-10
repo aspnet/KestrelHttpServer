@@ -74,9 +74,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     ConnectionId = _context.ConnectionId,
                     ConnectionInformation = _context.ConnectionInformation,
-                    ServiceContext = _context.ServiceContext
+                    ServiceContext = _context.ServiceContext,
+                    TimeoutControl = this
                 };
-                _frame = new Frame<TContext>(application, frameContext: frameContext, timeoutControl: this);
+                _frame = new Frame<TContext>(application, frameContext: frameContext);
 
                 Log.ConnectionStart(ConnectionId);
                 KestrelEventSource.Log.ConnectionStart(this, _context.ConnectionInformation);
