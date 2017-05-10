@@ -133,6 +133,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void OnConnectionClosed(Exception ex)
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
 
@@ -141,6 +143,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public Task StopAsync()
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             _frame.Stop();
 
             return _lifetimeTask;
@@ -148,12 +152,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Abort(Exception ex)
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
         }
 
         public Task AbortAsync(Exception ex)
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
 
@@ -162,11 +170,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Timeout()
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             _frame.SetBadRequestState(RequestRejectionReason.RequestTimeout);
         }
 
         private async Task<Stream> ApplyConnectionAdaptersAsync()
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             var features = new FeatureCollection();
             var connectionAdapters = _context.ConnectionAdapters;
             var stream = new RawStream(_context.Input.Reader, _context.Output.Writer);
@@ -210,6 +222,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Tick(DateTimeOffset now)
         {
+            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+
             var timestamp = now.Ticks;
 
             // TODO: Use PlatformApis.VolatileRead equivalent again
