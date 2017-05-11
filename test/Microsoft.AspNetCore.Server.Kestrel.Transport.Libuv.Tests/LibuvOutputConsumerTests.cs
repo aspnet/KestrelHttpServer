@@ -702,7 +702,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 ConnectionInformation = new MockConnectionInformation
                 {
                     PipeFactory = _pipeFactory
-                }
+                },
                 TimeoutControl = Mock.Of<ITimeoutControl>(),
                 Output = pipe
             });

@@ -67,11 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 {
                     PipeFactory = _pipeFactory
                 },
-                TimeoutControl = _timeoutControl.Object
-            };
-
-            _frame = new TestFrame<object>(application: null, context: _frameContext)
-            {
+                TimeoutControl = _timeoutControl.Object,
                 Input = _input.Reader,
                 Output = output
             };
