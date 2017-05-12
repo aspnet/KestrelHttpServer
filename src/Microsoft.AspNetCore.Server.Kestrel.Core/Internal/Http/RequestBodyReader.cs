@@ -20,6 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public async Task StartAsync(MessageBody messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
+            Exception error = null;
+
             try
             {
                 while (true)
@@ -30,6 +32,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     try
                     {
                         bytesRead = await messageBody.ReadAsync(writableBuffer.Buffer.GetArray(), cancellationToken);
+
+                        if (bytesRead == 0)
+                        {
+                            break;
+                        }
+
                         writableBuffer.Advance(bytesRead);
                     }
                     finally
@@ -37,18 +45,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         writableBuffer.Commit();
                     }
 
-                    if (bytesRead == 0)
+                    var result = await writableBuffer.FlushAsync();
+                    if (result.IsCompleted)
                     {
-                        _pipe.Writer.Complete();
-                        return;
+                        // Pipe reader is done
+                        break;
                     }
-
-                    await writableBuffer.FlushAsync();
                 }
             }
             catch (Exception ex)
             {
-                _pipe.Writer.Complete(ex);
+                error = ex;
+            }
+            finally
+            {
+                _pipe.Writer.Complete(error);
             }
         }
 
