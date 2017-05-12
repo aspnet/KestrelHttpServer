@@ -40,11 +40,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        // For testing
-        public LibuvConnection()
-        {
-        }
-
         public string ConnectionId { get; set; }
         public IPipeWriter Input { get; set; }
         public LibuvOutputConsumer Output { get; set; }
@@ -128,7 +123,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void OnRead(UvStreamHandle handle, int status)
         {
-            if (status >= 0)
+            if (status == 0)
+            {
+                // EAGAIN/EWOULDBLOCK so just return the buffer.
+                // http://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb
+                Debug.Assert(_currentWritableBuffer != null);
+                _currentWritableBuffer.Value.Commit();
+            }
+            else if (status > 0)
             {
                 Log.ConnectionRead(ConnectionId, status);
 
@@ -139,15 +141,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
                 if (!flushTask.IsCompleted)
                 {
-                    // We wrote too many bytes too the reader so pause reading and resume when
-                    // we hit the low water mark
+                    // We wrote too many bytes to the reader, so pause reading and resume when
+                    // we hit the low water mark.
                     _ = ApplyBackpressureAsync(flushTask);
                 }
             }
             else
             {
-                _socket.ReadStop();
+                // Given a negative status, it's possible that OnAlloc wasn't called.
                 _currentWritableBuffer?.Commit();
+                _socket.ReadStop();
 
                 IOException error = null;
 
@@ -177,6 +180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 Input.Complete(error);
             }
 
+            // Cleanup state from last OnAlloc. This is safe even if OnAlloc wasn't called.
             _currentWritableBuffer = null;
             _bufferHandle.Free();
         }
@@ -184,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private async Task ApplyBackpressureAsync(WritableBufferAwaitable flushTask)
         {
             Log.ConnectionPause(ConnectionId);
-            StopReading();
+            _socket.ReadStop();
 
             var result = await flushTask;
 
@@ -196,11 +200,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        private void StopReading()
-        {
-            _socket.ReadStop();
-        }
-
         private void StartReading()
         {
             try
@@ -210,7 +209,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             catch (UvException ex)
             {
                 // ReadStart() can throw a UvException in some cases (e.g. socket is no longer connected).
-                // This should be treated the same as OnRead() seeing a "normalDone" condition.
+                // This should be treated the same as OnRead() seeing a negative status.
                 Log.ConnectionReadFin(ConnectionId);
                 var error = new IOException(ex.Message, ex);
 
