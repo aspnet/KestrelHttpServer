@@ -161,7 +161,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 if (_keepAlive)
                                 {
                                     // Finish reading the request body in case the app did not.
-                                    await messageBody.Consume();
+                                    await messageBody.ConsumeAsync();
                                 }
 
                                 if (!HasResponseStarted)

@@ -34,6 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual async Task StartAsync()
         {
+            Exception error = null;
+
             try
             {
                 while (true)
@@ -55,24 +57,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     {
                         if (!readableBuffer.IsEmpty)
                         {
-                            try
+                            var done = Read(readableBuffer, out consumed, out examined);
+
+                            if (_currentWritableBuffer.HasValue)
                             {
-                                var done = Read(readableBuffer, out consumed, out examined);
-
-                                if (_currentWritableBuffer.HasValue)
-                                {
-                                    await _currentWritableBuffer.Value.FlushAsync();
-                                    _currentWritableBuffer = null;
-                                }
-
-                                if (done)
-                                {
-                                    return;
-                                }
+                                await _currentWritableBuffer.Value.FlushAsync();
+                                _currentWritableBuffer = null;
                             }
-                            catch (Exception ex)
+
+                            if (done)
                             {
-                                _context.RequestBodyPipe.Writer.Complete(ex);
+                                break;
                             }
                         }
                         else if (result.IsCompleted)
@@ -86,9 +81,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
             finally
             {
-                _context.RequestBodyPipe.Writer.Complete();
+                _context.RequestBodyPipe.Writer.Complete(error);
             }
         }
 
@@ -123,61 +122,79 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
         {
-            while (true)
-            {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
-                var readableBuffer = result.Buffer;
-                var consumed = readableBuffer.End;
+            Exception error = null;
 
-                try
+            try
+            {
+                while (true)
                 {
-                    if (!readableBuffer.IsEmpty)
+                    var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                    var readableBuffer = result.Buffer;
+                    var consumed = readableBuffer.End;
+
+                    try
                     {
-                        foreach (var memory in readableBuffer)
+                        if (!readableBuffer.IsEmpty)
                         {
-                            var array = memory.GetArray();
-                            await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
+                            foreach (var memory in readableBuffer)
+                            {
+                                var array = memory.GetArray();
+                                await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
+                            }
+                        }
+                        else if (result.IsCompleted)
+                        {
+                            return;
                         }
                     }
-                    else if (result.IsCompleted)
+                    finally
+                    {
+                        _context.RequestBodyPipe.Reader.Advance(consumed);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+            finally
+            {
+                _context.RequestBodyPipe.Reader.Complete(error);
+            }
+        }
+
+        public virtual async Task ConsumeAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            Exception error = null;
+
+            try
+            {
+                while (true)
+                {
+                    var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                    _context.RequestBodyPipe.Reader.Advance(result.Buffer.End);
+
+                    if (result.IsCompleted)
                     {
                         return;
                     }
                 }
-                finally
-                {
-                    _context.RequestBodyPipe.Reader.Advance(consumed);
-                }
             }
-        }
-
-        public virtual async Task Consume(CancellationToken cancellationToken = default(CancellationToken))
-        {
-            while (true)
+            catch (Exception ex)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
-                _context.RequestBodyPipe.Reader.Advance(result.Buffer.End);
-
-                if (result.IsCompleted)
-                {
-                    return;
-                }
-            }
-        }
-
-        protected void OnData(ReadableBuffer data)
-        {
-            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
-
-            try
-            {
-                writableBuffer.Append(data);
+                error = ex;
             }
             finally
             {
-                writableBuffer.Commit();
+                _context.RequestBodyPipe.Reader.Complete(error);
             }
+        }
 
+        protected void OnData(ReadableBuffer readableBuffer)
+        {
+            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
+            // TODO: change to Append()
+            writableBuffer.Write(readableBuffer.ToSpan());
             _currentWritableBuffer = writableBuffer;
         }
 
@@ -310,7 +327,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 return Task.CompletedTask;
             }
 
-            public override Task Consume(CancellationToken cancellationToken = default(CancellationToken))
+            public override Task ConsumeAsync(CancellationToken cancellationToken = default(CancellationToken))
             {
                 return Task.CompletedTask;
             }
