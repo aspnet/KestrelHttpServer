@@ -235,8 +235,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 Assert.Equal(8197, requestArray.Length);
                 AssertASCII(largeInput + "Hello", new ArraySegment<byte>(requestArray, 0, requestArray.Length));
 
-                var count = await stream.ReadAsync(new byte[1], 0, 1);
-                Assert.Equal(0, count);
+                // CopyToAsync completes the reader
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await stream.ReadAsync(new byte[1], 0, 1));
             }
         }
 
@@ -282,6 +282,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 Assert.Equal(StatusCodes.Status400BadRequest, ex.StatusCode);
                 Assert.Equal(CoreStrings.FormatBadRequest_LengthRequiredHttp10(method), ex.Message);
+            }
+        }
+
+        [Fact]
+        public async Task CopyToAsyncCompletesPipeReader()
+        {
+            using (var input = new TestInput())
+            {
+                var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
+                _ = body.StartAsync();
+
+                input.Add("Hello");
+
+                using (var ms = new MemoryStream())
+                {
+                    await body.CopyToAsync(ms);
+                }
+
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
+            }
+        }
+
+        [Fact]
+        public async Task ConsumeAsyncCompletesPipeReader()
+        {
+            using (var input = new TestInput())
+            {
+                var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
+                _ = body.StartAsync();
+
+                input.Add("Hello");
+
+                await body.ConsumeAsync();
+
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
             }
         }
 
