@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Moq;
 using Xunit;
 
@@ -80,9 +81,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 RequestUpgrade = upgradeable;
             }
 
-            protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
+            protected override bool Read(ReadableBuffer readableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
-                return new ValueTask<ArraySegment<byte>>(new ArraySegment<byte>(new byte[1]));
+                consumed = default(ReadCursor);
+                examined = default(ReadCursor);
+                return true;
             }
         }
     }

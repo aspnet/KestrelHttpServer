@@ -25,18 +25,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             _memoryPool = new MemoryPool();
             _pipelineFactory = new PipeFactory();
-
             Pipe = _pipelineFactory.Create();
 
             FrameContext = new Frame<object>(null, new FrameContext
             {
                 ServiceContext = new TestServiceContext(),
-                Input = Pipe.Reader
+                Input = Pipe.Reader,
+                ConnectionInformation = new MockConnectionInformation
+                {
+                    PipeFactory = _pipelineFactory
+                }
             });
             FrameContext.FrameControl = this;
         }
 
         public IPipe Pipe { get; }
+
+        public PipeFactory PipeFactory => _pipelineFactory;
 
         public Frame FrameContext { get; set; }
 

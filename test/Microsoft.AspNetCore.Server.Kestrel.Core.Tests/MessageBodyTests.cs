@@ -30,6 +30,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
+                _ = body.StartAsync();
+
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
@@ -54,6 +56,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
+                _ = body.StartAsync();
+
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
@@ -75,6 +79,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
+
+                _ = body.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -99,6 +105,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
+
+                _ = body.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -126,6 +134,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
+                _ = body.StartAsync();
+
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
@@ -146,6 +156,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
+
+                _ = body.StartAsync();
 
                 input.Add("Hello");
 
@@ -168,6 +180,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
+                _ = body.StartAsync();
+
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
@@ -186,6 +200,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
+                _ = body.StartAsync();
+
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
@@ -201,6 +217,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "8197" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
+
+                _ = body.StartAsync();
 
                 // Input needs to be greater than 4032 bytes to allocate a block not backed by a slab.
                 var largeInput = new string('a', 8192);
@@ -306,6 +324,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
+                _ = body.StartAsync();
 
                 var copyToAsyncTask = body.CopyToAsync(mockDestination.Object);
 
@@ -351,6 +370,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
+                _ = body.StartAsync();
 
                 input.Add(data[0]);
 
@@ -381,6 +401,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = headerConnection }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
+
+                _ = body.StartAsync();
 
                 input.Add("Hello");
 

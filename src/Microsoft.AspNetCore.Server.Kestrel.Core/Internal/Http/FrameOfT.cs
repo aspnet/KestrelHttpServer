@@ -93,6 +93,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                         InitializeStreams(messageBody);
 
+                        _ = messageBody.StartAsync();
+
                         var context = _application.CreateContext(this);
                         try
                         {
