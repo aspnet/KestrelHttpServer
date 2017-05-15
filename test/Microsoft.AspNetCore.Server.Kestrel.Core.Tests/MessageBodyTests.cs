@@ -234,8 +234,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var requestArray = ms.ToArray();
                 Assert.Equal(8197, requestArray.Length);
                 AssertASCII(largeInput + "Hello", new ArraySegment<byte>(requestArray, 0, requestArray.Length));
-
-                Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1));
             }
         }
 
@@ -284,8 +282,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
-        [Fact(Skip = "Investigating another test")]
-        public async Task CopyToAsyncCompletesPipeReader()
+        [Fact]
+        public async Task CopyToAsyncDoesNotCompletePipeReader()
         {
             using (var input = new TestInput())
             {
@@ -299,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     await body.CopyToAsync(ms);
                 }
 
-                await Assert.ThrowsAsync<InvalidOperationException>(async () => await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
+                Assert.Equal(0, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
             }
         }
 
