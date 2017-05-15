@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "5", "Hello",
                         "6", " World",
                         "0",
-                         "",
+                        "",
                         "POST / HTTP/1.0",
                         "Content-Length: 7",
                         "",

@@ -399,32 +399,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(CombinedData))]
-        public async Task CopyToAsyncAdvancesRequestStreamWhenDestinationWriteAsyncThrows(Stream writeStream, FrameRequestHeaders headers, string[] data)
-        {
-            using (var input = new TestInput())
-            {
-                var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
-                _ = body.StartAsync();
-
-                input.Add(data[0]);
-
-                await Assert.ThrowsAsync<XunitException>(() => body.CopyToAsync(writeStream));
-
-                input.Add(data[1]);
-
-                // "Hello " should have been consumed
-                var readBuffer = new byte[6];
-                var count = await body.ReadAsync(new ArraySegment<byte>(readBuffer, 0, readBuffer.Length));
-                Assert.Equal(6, count);
-                AssertASCII("World!", new ArraySegment<byte>(readBuffer, 0, 6));
-
-                count = await body.ReadAsync(new ArraySegment<byte>(readBuffer, 0, readBuffer.Length));
-                Assert.Equal(0, count);
-            }
-        }
-
-        [Theory]
         [InlineData("keep-alive, upgrade")]
         [InlineData("Keep-Alive, Upgrade")]
         [InlineData("upgrade, keep-alive")]

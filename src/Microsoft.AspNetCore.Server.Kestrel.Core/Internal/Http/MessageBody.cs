@@ -156,6 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             catch (Exception ex)
             {
                 error = ex;
+                throw;
             }
             finally
             {
