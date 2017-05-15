@@ -105,6 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     {
                         var actual = Math.Min(readableBuffer.Length, buffer.Count);
                         var slice = readableBuffer.Slice(0, actual);
+                        consumed = readableBuffer.Move(readableBuffer.Start, actual);
                         slice.CopyTo(buffer);
                         return actual;
                     }
@@ -122,45 +123,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
         {
-            Exception error = null;
-
-            try
+            while (true)
             {
-                while (true)
-                {
-                    var result = await _context.RequestBodyPipe.Reader.ReadAsync();
-                    var readableBuffer = result.Buffer;
-                    var consumed = readableBuffer.End;
+                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var readableBuffer = result.Buffer;
+                var consumed = readableBuffer.End;
 
-                    try
+                try
+                {
+                    if (!readableBuffer.IsEmpty)
                     {
-                        if (!readableBuffer.IsEmpty)
+                        foreach (var memory in readableBuffer)
                         {
-                            foreach (var memory in readableBuffer)
-                            {
-                                var array = memory.GetArray();
-                                await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
-                            }
-                        }
-                        else if (result.IsCompleted)
-                        {
-                            return;
+                            var array = memory.GetArray();
+                            await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
                         }
                     }
-                    finally
+                    else if (result.IsCompleted)
                     {
-                        _context.RequestBodyPipe.Reader.Advance(consumed);
+                        return;
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                error = ex;
-                throw;
-            }
-            finally
-            {
-                _context.RequestBodyPipe.Reader.Complete(error);
+                finally
+                {
+                    _context.RequestBodyPipe.Reader.Advance(consumed);
+                }
             }
         }
 
@@ -184,6 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             catch (Exception ex)
             {
                 error = ex;
+                throw;
             }
             finally
             {
@@ -194,9 +182,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected void OnData(ReadableBuffer readableBuffer)
         {
             var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
-            // TODO: change to Append()
-            writableBuffer.Write(readableBuffer.ToSpan());
-            _currentWritableBuffer = writableBuffer;
+
+            try
+            {
+                // TODO: change to Append()
+                writableBuffer.Write(readableBuffer.ToSpan());
+            }
+            finally
+            {
+                writableBuffer.Commit();
+                _currentWritableBuffer = writableBuffer;
+            }
         }
 
         private void TryProduceContinue()
@@ -603,12 +599,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return;
                 }
 
-                var sufixBuffer = buffer.Slice(0, 2);
-                var sufixSpan = sufixBuffer.ToSpan();
-                if (sufixSpan[0] == '\r' && sufixSpan[1] == '\n')
+                var suffixBuffer = buffer.Slice(0, 2);
+                var suffixSpan = suffixBuffer.ToSpan();
+                if (suffixSpan[0] == '\r' && suffixSpan[1] == '\n')
                 {
-                    consumed = sufixBuffer.End;
-                    examined = sufixBuffer.End;
+                    consumed = suffixBuffer.End;
+                    examined = suffixBuffer.End;
                     _mode = Mode.Prefix;
                 }
                 else

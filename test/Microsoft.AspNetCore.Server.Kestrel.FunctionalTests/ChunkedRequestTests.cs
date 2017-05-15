@@ -72,9 +72,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "5", "Hello",
                         "6", " World",
                         "0",
-                         "",
-                         "");
-                    await connection.ReceiveEnd(
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
                         "HTTP/1.1 200 OK",
                         "Connection: close",
                         $"Date: {testContext.DateHeaderValue}",
@@ -115,7 +115,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "Content-Length: 11",
                         "",
                         "Hello World");
-                    await connection.ReceiveEnd(
+                    await connection.ReceiveForcedEnd(
                         "HTTP/1.1 200 OK",
                         "Connection: close",
                         $"Date: {testContext.DateHeaderValue}",
