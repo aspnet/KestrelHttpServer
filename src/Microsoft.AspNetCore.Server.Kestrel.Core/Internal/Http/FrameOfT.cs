@@ -93,7 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                         InitializeStreams(messageBody);
 
-                        _ = messageBody.StartAsync();
+                        var messageBodyTask = messageBody.StartAsync();
 
                         var context = _application.CreateContext(this);
                         try
@@ -162,6 +162,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 {
                                     // Finish reading the request body in case the app did not.
                                     await messageBody.ConsumeAsync();
+                                    await messageBodyTask;
                                 }
 
                                 if (!HasResponseStarted)
@@ -192,8 +193,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             StopStreams();
                         }
 
-                        // ForZeroContentLength does not complete RequestBodyPipe.Reader and RequestBodyPipe.Writer
-                        if (!messageBody.IsEmpty)
+                        // If not keep-alive, ConsumeAsync isn't called and the reader isn't completed
+                        // ForZeroContentLength does not complete the reader nor the writer
+                        if (_keepAlive && !messageBody.IsEmpty)
                         {
                             RequestBodyPipe.Reset();
                         }
