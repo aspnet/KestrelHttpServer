@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 using Moq;
 using Xunit;
@@ -22,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(HttpVersion.Http10)]
         [InlineData(HttpVersion.Http11)]
-        public void CanReadFromContentLength(HttpVersion httpVersion)
+        public async Task CanReadFromContentLength(HttpVersion httpVersion)
         {
             using (var input = new TestInput())
             {
@@ -30,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
@@ -42,6 +43,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
+
+                await bodyTask;
             }
         }
 
@@ -56,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
@@ -68,11 +71,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 count = await stream.ReadAsync(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
+
+                await bodyTask;
             }
         }
 
         [Fact]
-        public void CanReadFromChunkedEncoding()
+        public async Task CanReadFromChunkedEncoding()
         {
             using (var input = new TestInput())
             {
@@ -80,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -94,6 +99,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
+
+                await bodyTask;
             }
         }
 
@@ -106,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("5\r\nHello\r\n");
 
@@ -120,13 +127,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 count = await stream.ReadAsync(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
+
+                await bodyTask;
             }
         }
 
         [Theory]
         [InlineData(HttpVersion.Http10)]
         [InlineData(HttpVersion.Http11)]
-        public void CanReadFromRemainingData(HttpVersion httpVersion)
+        public async Task CanReadFromRemainingData(HttpVersion httpVersion)
         {
             using (var input = new TestInput())
             {
@@ -134,7 +143,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
@@ -143,6 +152,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
+
+                input.Fin();
+
+                await bodyTask;
             }
         }
 
@@ -157,7 +170,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
@@ -166,13 +179,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var count = await stream.ReadAsync(buffer, 0, buffer.Length);
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
+
+                input.Fin();
+
+                await bodyTask;
             }
         }
 
         [Theory]
         [InlineData(HttpVersion.Http10)]
         [InlineData(HttpVersion.Http11)]
-        public void ReadFromNoContentLengthReturnsZero(HttpVersion httpVersion)
+        public async Task ReadFromNoContentLengthReturnsZero(HttpVersion httpVersion)
         {
             using (var input = new TestInput())
             {
@@ -180,12 +197,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
                 Assert.Equal(0, stream.Read(buffer, 0, buffer.Length));
+
+                await bodyTask;
             }
         }
 
@@ -200,12 +219,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
                 Assert.Equal(0, await stream.ReadAsync(buffer, 0, buffer.Length));
+
+                await bodyTask;
             }
         }
 
@@ -218,7 +239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 // Input needs to be greater than 4032 bytes to allocate a block not backed by a slab.
                 var largeInput = new string('a', 8192);
@@ -234,6 +255,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var requestArray = ms.ToArray();
                 Assert.Equal(8197, requestArray.Length);
                 AssertASCII(largeInput + "Hello", new ArraySegment<byte>(requestArray, 0, requestArray.Length));
+
+                await bodyTask;
             }
         }
 
@@ -288,7 +311,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
@@ -298,6 +321,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 }
 
                 Assert.Equal(0, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
+
+                await bodyTask;
             }
         }
 
@@ -307,13 +332,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders { HeaderContentLength = "5" }, input.FrameContext);
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
                 await body.ConsumeAsync();
 
                 await Assert.ThrowsAsync<InvalidOperationException>(async () => await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
+
+                await bodyTask;
             }
         }
 
@@ -360,7 +387,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, headers, input.FrameContext);
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 var copyToAsyncTask = body.CopyToAsync(mockDestination.Object);
 
@@ -395,6 +422,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 await copyToAsyncTask;
 
                 Assert.Equal(2, writeCount);
+
+                await bodyTask;
             }
         }
 
@@ -403,7 +432,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [InlineData("Keep-Alive, Upgrade")]
         [InlineData("upgrade, keep-alive")]
         [InlineData("Upgrade, Keep-Alive")]
-        public void ConnectionUpgradeKeepAlive(string headerConnection)
+        public async Task ConnectionUpgradeKeepAlive(string headerConnection)
         {
             using (var input = new TestInput())
             {
@@ -411,13 +440,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                _ = body.StartAsync();
+                var bodyTask = body.StartAsync();
 
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
                 Assert.Equal(5, stream.Read(buffer, 0, buffer.Length));
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, 5));
+
+                input.Fin();
+
+                await bodyTask;
             }
         }
 

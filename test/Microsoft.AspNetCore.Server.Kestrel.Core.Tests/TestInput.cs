@@ -51,6 +51,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Pipe.Writer.WriteAsync(data).Wait();
         }
 
+        public void Fin()
+        {
+            Pipe.Writer.Complete();
+        }
+
         public void ProduceContinue()
         {
         }
