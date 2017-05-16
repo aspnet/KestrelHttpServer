@@ -183,11 +183,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected void OnData(ReadableBuffer readableBuffer)
         {
-            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(0);
+            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
 
             try
             {
-                writableBuffer.Append(readableBuffer);
+                // https://github.com/dotnet/corefx/issues/19845
+                if (!readableBuffer.IsEmpty)
+                {
+                    writableBuffer.Write(readableBuffer.ToArray());
+                }
             }
             finally
             {
