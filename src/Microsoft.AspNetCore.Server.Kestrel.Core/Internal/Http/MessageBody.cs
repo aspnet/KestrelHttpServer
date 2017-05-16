@@ -32,6 +32,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public bool RequestUpgrade { get; protected set; }
 
+        public virtual bool IsEmpty => false;
+
         public virtual async Task StartAsync()
         {
             Exception error = null;
@@ -307,6 +309,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 RequestKeepAlive = keepAlive;
             }
+
+            public override bool IsEmpty => true;
 
             public override Task StartAsync()
             {

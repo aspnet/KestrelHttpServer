@@ -191,6 +191,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             // to ensure InitializeStreams has been called.
                             StopStreams();
                         }
+
+                        // ForZeroContentLength does not complete RequestBodyPipe.Reader and RequestBodyPipe.Writer
+                        if (!messageBody.IsEmpty)
+                        {
+                            RequestBodyPipe.Reset();
+                        }
                     }
 
                     if (!_keepAlive)

@@ -377,11 +377,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _responseBytesWritten = 0;
             _requestCount++;
-
-            // TODO: probably not the right place to complete
-            RequestBodyPipe.Reader.Complete();
-            RequestBodyPipe.Writer.Complete();
-            RequestBodyPipe.Reset();
         }
 
         /// <summary>
