@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(CoreStrings.ResponseStreamWasUpgraded, writeEx.Message);
 
             Assert.Same(ex,
-              await Assert.ThrowsAsync<Exception>(() => request.ReadAsync(new byte[1], 0, 1)));
+                await Assert.ThrowsAsync<Exception>(() => request.ReadAsync(new byte[1], 0, 1)));
 
             Assert.Same(ex,
                 await Assert.ThrowsAsync<Exception>(() => upgrade.ReadAsync(new byte[1], 0, 1)));
@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(CoreStrings.ResponseStreamWasUpgraded, writeEx.Message);
 
             Assert.Same(ex,
-              await Assert.ThrowsAsync<Exception>(() => request.ReadAsync(new byte[1], 0, 1)));
+                await Assert.ThrowsAsync<Exception>(() => request.ReadAsync(new byte[1], 0, 1)));
 
             Assert.Same(ex,
                 await Assert.ThrowsAsync<Exception>(() => upgrade.ReadAsync(new byte[1], 0, 1)));
@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 RequestUpgrade = upgradeable;
             }
 
-            protected override bool Read(ReadableBuffer readableBuffer, out ReadCursor consumed, out ReadCursor examined)
+            protected override bool Read(ReadableBuffer readableBuffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 consumed = default(ReadCursor);
                 examined = default(ReadCursor);

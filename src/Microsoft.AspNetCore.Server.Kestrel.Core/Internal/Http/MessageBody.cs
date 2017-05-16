@@ -19,8 +19,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly Frame _context;
         private bool _send100Continue = true;
 
-        private WritableBuffer? _currentWritableBuffer;
-
         protected MessageBody(Frame context)
         {
             _context = context;
@@ -59,13 +57,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     {
                         if (!readableBuffer.IsEmpty)
                         {
-                            var done = Read(readableBuffer, out consumed, out examined);
+                            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
+                            bool done;
 
-                            if (_currentWritableBuffer.HasValue)
+                            try
                             {
-                                await _currentWritableBuffer.Value.FlushAsync();
-                                _currentWritableBuffer = null;
+                                done = Read(readableBuffer, writableBuffer, out consumed, out examined);
                             }
+                            finally
+                            {
+                                writableBuffer.Commit();
+                            }
+
+                            await writableBuffer.FlushAsync();
 
                             if (done)
                             {
@@ -181,22 +185,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        protected void OnData(ReadableBuffer readableBuffer)
+        protected void Copy(ReadableBuffer readableBuffer, WritableBuffer writableBuffer)
         {
-            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
-
-            try
+            // TODO: remove IsEmpty check after https://github.com/dotnet/corefxlab/issues/1547 is fixed
+            if (!readableBuffer.IsEmpty)
             {
-                // https://github.com/dotnet/corefx/issues/19845
-                if (!readableBuffer.IsEmpty)
-                {
-                    writableBuffer.Write(readableBuffer.ToArray());
-                }
-            }
-            finally
-            {
-                writableBuffer.Commit();
-                _currentWritableBuffer = writableBuffer;
+                writableBuffer.Write(readableBuffer.ToArray());
             }
         }
 
@@ -209,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        protected abstract bool Read(ReadableBuffer readableBuffer, out ReadCursor consumed, out ReadCursor examined);
+        protected abstract bool Read(ReadableBuffer readableBuffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined);
 
         public static MessageBody For(
             HttpVersion httpVersion,
@@ -297,9 +291,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 RequestUpgrade = true;
             }
 
-            protected override bool Read(ReadableBuffer readableBuffer, out ReadCursor consumed, out ReadCursor examined)
+            protected override bool Read(ReadableBuffer readableBuffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
-                OnData(readableBuffer);
+                Copy(readableBuffer, writableBuffer);
                 consumed = readableBuffer.End;
                 examined = readableBuffer.End;
                 return false;
@@ -336,7 +330,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 return Task.CompletedTask;
             }
 
-            protected override bool Read(ReadableBuffer readableBuffer, out ReadCursor consumed, out ReadCursor examined)
+            protected override bool Read(ReadableBuffer readableBuffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 throw new NotImplementedException();
             }
@@ -355,7 +349,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _inputLength = _contentLength;
             }
 
-            protected override bool Read(ReadableBuffer readableBuffer, out ReadCursor consumed, out ReadCursor examined)
+            protected override bool Read(ReadableBuffer readableBuffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 if (_inputLength == 0)
                 {
@@ -368,7 +362,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 consumed = readableBuffer.Move(readableBuffer.Start, actual);
                 examined = consumed;
 
-                OnData(readableBuffer.Slice(0, actual));
+                Copy(readableBuffer.Slice(0, actual), writableBuffer);
 
                 return _inputLength == 0;
             }
@@ -396,7 +390,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _requestHeaders = headers;
             }
 
-            protected override bool Read(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+            protected override bool Read(ReadableBuffer readableBuffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 consumed = default(ReadCursor);
                 examined = default(ReadCursor);
@@ -405,69 +399,69 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     if (_mode == Mode.Prefix)
                     {
-                        ParseChunkedPrefix(buffer, out consumed, out examined);
+                        ParseChunkedPrefix(readableBuffer, out consumed, out examined);
 
                         if (_mode == Mode.Prefix)
                         {
                             return false;
                         }
 
-                        buffer = buffer.Slice(consumed);
+                        readableBuffer = readableBuffer.Slice(consumed);
                     }
 
                     if (_mode == Mode.Extension)
                     {
-                        ParseExtension(buffer, out consumed, out examined);
+                        ParseExtension(readableBuffer, out consumed, out examined);
 
                         if (_mode == Mode.Extension)
                         {
                             return false;
                         }
 
-                        buffer = buffer.Slice(consumed);
+                        readableBuffer = readableBuffer.Slice(consumed);
                     }
 
                     if (_mode == Mode.Data)
                     {
-                        PeekChunkedData(buffer, out consumed, out examined);
+                        ReadChunkedData(readableBuffer, writableBuffer, out consumed, out examined);
 
                         if (_mode == Mode.Data)
                         {
                             return false;
                         }
 
-                        buffer = buffer.Slice(consumed);
+                        readableBuffer = readableBuffer.Slice(consumed);
                     }
 
                     if (_mode == Mode.Suffix)
                     {
-                        ParseChunkedSuffix(buffer, out consumed, out examined);
+                        ParseChunkedSuffix(readableBuffer, out consumed, out examined);
 
                         if (_mode == Mode.Suffix)
                         {
                             return false;
                         }
 
-                        buffer = buffer.Slice(consumed);
+                        readableBuffer = readableBuffer.Slice(consumed);
                     }
                 }
 
                 // Chunks finished, parse trailers
                 if (_mode == Mode.Trailer)
                 {
-                    ParseChunkedTrailer(buffer, out consumed, out examined);
+                    ParseChunkedTrailer(readableBuffer, out consumed, out examined);
 
                     if (_mode == Mode.Trailer)
                     {
                         return false;
                     }
 
-                    buffer = buffer.Slice(consumed);
+                    readableBuffer = readableBuffer.Slice(consumed);
                 }
 
                 if (_mode == Mode.TrailerHeaders)
                 {
-                    if (_context.TakeMessageHeaders(buffer, out consumed, out examined))
+                    if (_context.TakeMessageHeaders(readableBuffer, out consumed, out examined))
                     {
                         _mode = Mode.Complete;
                     }
@@ -579,13 +573,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 } while (_mode == Mode.Extension);
             }
 
-            private void PeekChunkedData(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
+            private void ReadChunkedData(ReadableBuffer buffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
                 var actual = Math.Min(buffer.Length, _inputLength);
                 consumed = buffer.Move(buffer.Start, actual);
                 examined = consumed;
 
-                OnData(buffer.Slice(0, actual));
+                Copy(buffer.Slice(0, actual), writableBuffer);
 
                 _inputLength -= actual;
 
