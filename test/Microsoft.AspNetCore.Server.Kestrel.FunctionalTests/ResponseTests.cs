@@ -2072,21 +2072,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var largeString = new string('a', maxBytesPreCompleted + 1);
 
             var writeTcs = new TaskCompletionSource<object>();
-            var registrationWh = new TaskCompletionSource<object>();
-            var connectionCloseWh = new TaskCompletionSource<object>();
-            var responseStarted = new TaskCompletionSource<object>();
+            var registrationWh = new ManualResetEventSlim();
+            var connectionCloseWh = new ManualResetEventSlim();
+            var requestStartWh = new ManualResetEventSlim();
 
             using (var server = new TestServer(async httpContext =>
             {
-                responseStarted.TrySetResult(null);
+                requestStartWh.Set();
                 var response = httpContext.Response;
                 var request = httpContext.Request;
                 var lifetime = httpContext.Features.Get<IHttpRequestLifetimeFeature>();
 
-                lifetime.RequestAborted.Register(() => registrationWh.TrySetResult(null));
+                lifetime.RequestAborted.Register(() => registrationWh.Set());
 
                 await request.Body.CopyToAsync(Stream.Null);
-                await connectionCloseWh.Task.TimeoutAfter(TimeSpan.FromSeconds(15));
+                connectionCloseWh.Wait(1000);
 
                 try
                 {
@@ -2094,7 +2094,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     for (int i = 0; i < 100; i++)
                     {
                         await response.WriteAsync(largeString, lifetime.RequestAborted);
-                        await registrationWh.Task.TimeoutAfter(TimeSpan.FromSeconds(1));
+                        registrationWh.Wait(1000);
                     }
                 }
                 catch (Exception ex)
@@ -2115,15 +2115,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "Hello");
 
-                    await responseStarted.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    requestStartWh.Wait(1000);
                 }
 
-                connectionCloseWh.TrySetResult(null);
+                connectionCloseWh.Set();
 
                 // Write failed
                 await Assert.ThrowsAsync<TaskCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TimeSpan.FromSeconds(15));
                 // RequestAborted tripped
-                Assert.True(registrationWh.Task.IsCompleted);
+                Assert.True(registrationWh.Wait(1000));
             }
         }
 
