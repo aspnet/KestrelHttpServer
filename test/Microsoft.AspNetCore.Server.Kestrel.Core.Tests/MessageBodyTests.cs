@@ -348,8 +348,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Setup(m => m.WriteAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), CancellationToken.None))
                 .Callback((byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
                 {
-                    writeTcs.SetResult(buffer);
-                    writeCount++;
+                    // TODO: remove this once https://github.com/dotnet/corefxlab/issues/1540 is fixed
+                    if (count > 0)
+                    {
+                        writeTcs.SetResult(buffer);
+                        writeCount++;
+                    }
                 })
                 .Returns(TaskCache.CompletedTask);
 
@@ -362,9 +366,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 // The block returned by IncomingStart always has at least 2048 available bytes,
                 // so no need to bounds check in this test.
-                var socketInput = input.Pipe;
                 var bytes = Encoding.ASCII.GetBytes(data[0]);
-                var buffer = socketInput.Writer.Alloc(2048);
+                var buffer = input.Pipe.Writer.Alloc(2048);
                 ArraySegment<byte> block;
                 Assert.True(buffer.Buffer.TryGetArray(out block));
                 Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
@@ -376,7 +379,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 writeTcs = new TaskCompletionSource<byte[]>();
                 bytes = Encoding.ASCII.GetBytes(data[1]);
-                buffer = socketInput.Writer.Alloc(2048);
+                buffer = input.Pipe.Writer.Alloc(2048);
                 Assert.True(buffer.Buffer.TryGetArray(out block));
                 Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
                 buffer.Advance(bytes.Length);
@@ -386,7 +389,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 if (headers.HeaderConnection == "close")
                 {
-                    socketInput.Writer.Complete();
+                    input.Pipe.Writer.Complete();
                 }
 
                 await copyToAsyncTask;

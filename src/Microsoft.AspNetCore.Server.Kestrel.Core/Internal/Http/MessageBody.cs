@@ -181,12 +181,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected void OnData(ReadableBuffer readableBuffer)
         {
-            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
+            var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(0);
 
             try
             {
-                // TODO: change to Append()
-                writableBuffer.Write(readableBuffer.ToSpan());
+                writableBuffer.Append(readableBuffer);
             }
             finally
             {
