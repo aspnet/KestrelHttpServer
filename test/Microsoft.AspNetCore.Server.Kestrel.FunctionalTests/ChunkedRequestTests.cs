@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -185,7 +186,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task TrailingHeadersAreParsed(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
             var requestCount = 10;
             var requestsReceived = 0;
 
@@ -195,8 +195,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var request = httpContext.Request;
 
                 var buffer = new byte[200];
-
-                Assert.True(string.IsNullOrEmpty(request.Headers["X-Trailer-Header"]));
 
                 while (await request.Body.ReadAsync(buffer, 0, buffer.Length) != 0)
                 {
@@ -217,11 +215,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
+            }, new TestServiceContext(), listenOptions))
             {
                 var response = string.Join("\r\n", new string[] {
                     "HTTP/1.1 200 OK",
-                    $"Date: {testContext.DateHeaderValue}",
+                    $"Date: {server.Context.DateHeaderValue}",
                     "Content-Length: 11",
                     "",
                     "Hello World"});
@@ -371,8 +369,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var request = httpContext.Request;
 
                 var buffer = new byte[200];
-
-                Assert.True(string.IsNullOrEmpty(request.Headers["X-Trailer-Header"]));
 
                 while (await request.Body.ReadAsync(buffer, 0, buffer.Length) != 0)
                 {

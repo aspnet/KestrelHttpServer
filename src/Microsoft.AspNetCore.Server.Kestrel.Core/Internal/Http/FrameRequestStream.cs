@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     internal class FrameRequestStream : ReadOnlyStream
     {
-        private MessageBody _body;
+        private IRequestBodyReader _requestBodyReader;
         private FrameStreamState _state;
         private Exception _error;
 
@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             try
             {
-                return await _body.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
+                return await _requestBodyReader.ReadAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
             }
             catch (ConnectionAbortedException ex)
             {
@@ -146,7 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             try
             {
-                await _body.CopyToAsync(destination, cancellationToken);
+                await _requestBodyReader.CopyToAsync(destination, cancellationToken);
             }
             catch (ConnectionAbortedException ex)
             {
@@ -154,13 +154,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public void StartAcceptingReads(MessageBody body)
+        public void StartAcceptingReads(IRequestBodyReader requestBodyReader)
         {
             // Only start if not aborted
             if (_state == FrameStreamState.Closed)
             {
                 _state = FrameStreamState.Open;
-                _body = body;
+                _requestBodyReader = requestBodyReader;
             }
         }
 
@@ -182,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // Can't use dispose (or close) as can be disposed too early by user code
             // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
             _state = FrameStreamState.Closed;
-            _body = null;
+            _requestBodyReader = null;
         }
 
         public void Abort(Exception error = null)

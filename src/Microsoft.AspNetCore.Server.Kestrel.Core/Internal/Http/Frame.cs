@@ -50,6 +50,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly object _onCompletedSync = new Object();
 
         private Streams _frameStreams;
+        protected readonly RequestBodyReader _requestBodyReader;
+        protected IRequestBodyReader _currentRequestBodyReader;
 
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
@@ -62,6 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected RequestProcessingStatus _requestProcessingStatus;
         protected bool _keepAlive;
         protected bool _upgrade;
+        protected bool _hasRequestBody;
         private bool _canHaveBody;
         private bool _autoChunk;
         protected Exception _applicationException;
@@ -98,6 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
             Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log);
+            _requestBodyReader = new RequestBodyReader(CreateRequestBodyPipe());
         }
 
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
@@ -298,14 +302,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
 
-        public void InitializeStreams(MessageBody messageBody)
+        public void InitializeStreams(bool requestUpgrade)
         {
             if (_frameStreams == null)
             {
                 _frameStreams = new Streams(this);
             }
 
-            (RequestBody, ResponseBody) = _frameStreams.Start(messageBody);
+            (RequestBody, ResponseBody) = _frameStreams.Start(_currentRequestBodyReader, requestUpgrade);
         }
 
         public void PauseStreams() => _frameStreams.Pause();
@@ -321,6 +325,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _requestProcessingStatus = RequestProcessingStatus.RequestPending;
             _keepAlive = false;
+            _upgrade = false;
+            _hasRequestBody = false;
             _autoChunk = false;
             _applicationException = null;
 
@@ -374,6 +380,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _responseBytesWritten = 0;
             _requestCount++;
+
+            _currentRequestBodyReader?.Reset();
         }
 
         /// <summary>
@@ -1364,6 +1372,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
             }
         }
+
+        private IPipe CreateRequestBodyPipe()
+            => ConnectionInformation.PipeFactory.Create(new PipeOptions
+            {
+                ReaderScheduler = ServiceContext.ThreadPool,
+                WriterScheduler = ConnectionInformation.InputWriterScheduler,
+                MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
+                MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            });
 
         private enum HttpRequestTarget
         {

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Tests.TestHelpers;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
@@ -19,24 +20,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     class TestInput : IFrameControl, IDisposable
     {
         private MemoryPool _memoryPool;
-        private PipeFactory _pipelineFactory;
+        private PipeFactory _pipeFactory;
 
         public TestInput()
         {
             _memoryPool = new MemoryPool();
-            _pipelineFactory = new PipeFactory();
-
-            Pipe = _pipelineFactory.Create();
+            _pipeFactory = new PipeFactory();
+            Pipe = _pipeFactory.Create();
 
             FrameContext = new Frame<object>(null, new FrameContext
             {
                 ServiceContext = new TestServiceContext(),
-                Input = Pipe.Reader
+                Input = Pipe.Reader,
+                ConnectionInformation = new MockConnectionInformation
+                {
+                    PipeFactory = _pipeFactory
+                }
             });
             FrameContext.FrameControl = this;
         }
 
         public IPipe Pipe { get; }
+
+        public PipeFactory PipeFactory => _pipeFactory;
 
         public Frame FrameContext { get; set; }
 
@@ -82,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public void Dispose()
         {
-            _pipelineFactory.Dispose();
+            _pipeFactory.Dispose();
             _memoryPool.Dispose();
         }
     }
