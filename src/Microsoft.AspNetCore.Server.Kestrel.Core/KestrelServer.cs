@@ -93,6 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 Log = trace,
                 HttpParserFactory = frameParser => new HttpParser<FrameAdapter>(frameParser.Frame.ServiceContext.Log.IsEnabled(LogLevel.Information)),
                 ThreadPool = threadPool,
+                InlineScheduler = new InlineLoggingThreadPool(trace),
                 SystemClock = systemClock,
                 DateHeaderValueManager = dateHeaderValueManager,
                 ConnectionManager = connectionManager,

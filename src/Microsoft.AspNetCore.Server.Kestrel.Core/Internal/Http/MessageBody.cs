@@ -76,6 +76,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 break;
                             }
                         }
+                        else if (result.IsCancelled)
+                        {
+                            break;
+                        }
                         else if (result.IsCompleted)
                         {
                             _context.RejectRequest(RequestRejectionReason.UnexpectedEndOfRequestContent);
@@ -168,7 +172,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     var result = await _context.RequestBodyPipe.Reader.ReadAsync();
                     _context.RequestBodyPipe.Reader.Advance(result.Buffer.End);
 
-                    if (result.IsCompleted)
+                    if (result.IsCompleted || result.IsCancelled)
                     {
                         return;
                     }

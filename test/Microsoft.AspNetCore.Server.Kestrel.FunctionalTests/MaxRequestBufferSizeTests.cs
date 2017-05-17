@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     using (var reader = new StreamReader(stream, Encoding.ASCII))
                     {
-                        var response = reader.ReadToEnd();
+                        var response = await reader.ReadToEndAsync();
                         Assert.Contains($"bytesRead: {data.Length}", response);
                     }
                 }
@@ -290,7 +290,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await clientFinishedSendingRequestBody.Task.TimeoutAfter(TimeSpan.FromSeconds(120));
 
                     // Verify client didn't send extra bytes
-                    if (context.Request.Body.ReadByte() != -1)
+                    if (await context.Request.Body.ReadAsync(new byte[1], 0, 1) > 0)
                     {
                         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                         await context.Response.WriteAsync("Client sent more bytes than expectedBody.Length");

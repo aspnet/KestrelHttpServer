@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
@@ -12,6 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public IKestrelTrace Log { get; set; }
 
         public IThreadPool ThreadPool { get; set; }
+
+        public IScheduler InlineScheduler { get; set; }
 
         public Func<FrameAdapter, IHttpParser<FrameAdapter>> HttpParserFactory { get; set; }
 

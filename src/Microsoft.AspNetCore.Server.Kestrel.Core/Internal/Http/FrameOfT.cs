@@ -158,12 +158,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     await ProduceEnd();
                                 }
 
-                                if (_keepAlive)
+                                // Finish reading the request body in case the app did not.
+                                if (_upgrade)
                                 {
-                                    // Finish reading the request body in case the app did not.
-                                    await messageBody.ConsumeAsync();
-                                    await messageBodyTask;
+                                    RequestBodyPipe.Reader.CancelPendingRead();
                                 }
+
+                                await messageBody.ConsumeAsync();
 
                                 if (!HasResponseStarted)
                                 {
@@ -193,9 +194,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             StopStreams();
                         }
 
-                        // If not keep-alive, ConsumeAsync isn't called and the reader isn't completed
+                        // After consuming, the pipe reader is completed.
+                        // Await the message body read task so we know the writer is completed as well.
+                        if (_upgrade)
+                        {
+                            Input.CancelPendingRead();
+                        }
+
+                        await messageBodyTask;
+
                         // ForZeroContentLength does not complete the reader nor the writer
-                        if (_keepAlive && !messageBody.IsEmpty)
+                        if (!messageBody.IsEmpty)
                         {
                             RequestBodyPipe.Reset();
                         }
