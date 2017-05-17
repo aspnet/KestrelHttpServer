@@ -158,12 +158,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     await ProduceEnd();
                                 }
 
-                                // Finish reading the request body in case the app did not.
+                                // An upgraded request has no defined request body length.
+                                // Cancel any pending reads so the request body pipe can be drained.
                                 if (_upgrade)
                                 {
-                                    RequestBodyPipe.Reader.CancelPendingRead();
+                                    Input.CancelPendingRead();
                                 }
 
+                                // Finish reading the request body in case the app did not.
                                 await messageBody.ConsumeAsync();
 
                                 if (!HasResponseStarted)
@@ -194,13 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             StopStreams();
                         }
 
-                        // After consuming, the pipe reader is completed.
-                        // Await the message body read task so we know the writer is completed as well.
-                        if (_upgrade)
-                        {
-                            Input.CancelPendingRead();
-                        }
-
+                        // At this point both the request body pipe reader and writer should be completed.
                         await messageBodyTask;
 
                         // ForZeroContentLength does not complete the reader nor the writer
