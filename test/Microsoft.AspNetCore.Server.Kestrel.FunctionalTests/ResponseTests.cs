@@ -2085,8 +2085,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 lifetime.RequestAborted.Register(() => requestAbortedWh.Set());
 
-                requestAbortedWh.Wait(TimeSpan.FromSeconds(10));
-
                 try
                 {
                     // Ensure write is long enough to disable write-behind buffering
@@ -2118,8 +2116,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 connectionCloseWh.Set();
 
-                // Write failed
-                await Assert.ThrowsAsync<TaskCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TimeSpan.FromSeconds(15));
+                // Write failed - can throw TaskCanceledException or OperationCanceledException,
+                // dependending on how far the canceled write goes.
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TimeSpan.FromSeconds(15));
 
                 // RequestAborted tripped
                 Assert.True(requestAbortedWh.Wait(TimeSpan.FromSeconds(1)));
