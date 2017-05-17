@@ -17,6 +17,7 @@ namespace Microsoft.AspNetCore.Testing
             Log = new TestKestrelTrace(ErrorLogger);
             ThreadPool = new LoggingThreadPool(Log);
             SystemClock = new MockSystemClock();
+            Heartbeat = new Heartbeat(new IHeartbeatHandler[] { DateHeaderValueManager }, SystemClock, Log);
             DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
             ConnectionManager = new FrameConnectionManager(Log);
             DateHeaderValue = DateHeaderValueManager.GetDateHeaderValues().String;

@@ -186,16 +186,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private TestServer CreateServer(CancellationToken longRunningCt, CancellationToken upgradeCt)
         {
-            return new TestServer(httpContext => App(httpContext, longRunningCt, upgradeCt), new TestServiceContext
-            {
-                // Use real SystemClock so timeouts trigger.
-                SystemClock = new SystemClock(),
-                ServerOptions =
-                {
-                    AddServerHeader = false,
-                    Limits = { KeepAliveTimeout = KeepAliveTimeout }
-                }
-            });
+            var serviceContext = new TestServiceContext();
+
+            // Use real SystemClock so timeouts trigger.
+            serviceContext.SystemClock = new SystemClock();
+            serviceContext.Heartbeat = new Heartbeat(new IHeartbeatHandler[] { }, serviceContext.SystemClock, serviceContext.Log);
+            serviceContext.ServerOptions.AddServerHeader = false;
+            serviceContext.ServerOptions.Limits.KeepAliveTimeout = KeepAliveTimeout;
+
+            return new TestServer(httpContext => App(httpContext, longRunningCt, upgradeCt), serviceContext);
         }
 
         private async Task App(HttpContext httpContext, CancellationToken longRunningCt, CancellationToken upgradeCt)

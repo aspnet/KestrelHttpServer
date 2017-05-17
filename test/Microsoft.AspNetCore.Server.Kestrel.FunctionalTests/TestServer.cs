@@ -55,33 +55,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             Context = context;
 
             _host = new WebHostBuilder()
-                     .UseKestrel(o =>
-                     {
-                         o.ListenOptions.Add(_listenOptions);
-                     })
-                     .ConfigureServices(services =>
-                     {
-                         if (httpContextFactory != null)
-                         {
-                             services.AddSingleton(httpContextFactory);
-                         }
+                .UseKestrel(o =>
+                {
+                    o.ListenOptions.Add(_listenOptions);
+                })
+                .ConfigureServices(services =>
+                {
+                    if (httpContextFactory != null)
+                    {
+                        services.AddSingleton(httpContextFactory);
+                    }
 
-                         services.AddSingleton<IStartup>(this);
-                         services.AddSingleton<ILoggerFactory>(new KestrelTestLoggerFactory(context.ErrorLogger));
-                         services.AddSingleton<IServer>(sp =>
-                         {
-                             // Manually configure options on the TestServiceContext.
-                             // We're doing this so we can use the same instance that was passed in
-                             var configureOptions = sp.GetServices<IConfigureOptions<KestrelServerOptions>>();
-                             foreach (var c in configureOptions)
-                             {
-                                 c.Configure(context.ServerOptions);
-                             }
-                             return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), context);
-                         });
-                     })
-                     .UseSetting(WebHostDefaults.ApplicationKey, typeof(TestServer).GetTypeInfo().Assembly.FullName)
-                     .Build();
+                    services.AddSingleton<IStartup>(this);
+                    services.AddSingleton<ILoggerFactory>(new KestrelTestLoggerFactory(context.ErrorLogger));
+                    services.AddSingleton<IServer>(sp =>
+                    {
+                        // Manually configure options on the TestServiceContext.
+                        // We're doing this so we can use the same instance that was passed in
+                        var configureOptions = sp.GetServices<IConfigureOptions<KestrelServerOptions>>();
+                        foreach (var c in configureOptions)
+                        {
+                            c.Configure(context.ServerOptions);
+                        }
+                        return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), context);
+                    });
+                })
+                .UseSetting(WebHostDefaults.ApplicationKey, typeof(TestServer).GetTypeInfo().Assembly.FullName)
+                .Build();
 
             _host.Start();
         }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
@@ -49,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                     _trace.ApplicationNeverCompleted(reference.ConnectionId);
                 }
 
-                // If both conditions are false, the connection was removed during the heartbeat.
+                // If both conditions are false, the connection was removed during the walk.
             }
         }
     }
