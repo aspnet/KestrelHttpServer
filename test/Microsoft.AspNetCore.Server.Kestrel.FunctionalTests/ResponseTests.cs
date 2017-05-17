@@ -2086,7 +2086,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 lifetime.RequestAborted.Register(() => registrationWh.Set());
 
                 await request.Body.CopyToAsync(Stream.Null);
-                connectionCloseWh.Wait(1000);
+                Assert.True(connectionCloseWh.Wait(10_000));
 
                 try
                 {
@@ -2115,7 +2115,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "Hello");
 
-                    requestStartWh.Wait(1000);
+                    Assert.True(requestStartWh.Wait(10_000));
                 }
 
                 connectionCloseWh.Set();
