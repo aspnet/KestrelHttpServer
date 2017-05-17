@@ -2063,7 +2063,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
-        public async Task FailedWritesResultInAbortedRequest(ListenOptions listenOptions)
+        public async Task ThrowsOnWriteAfterRequestIsAborted(ListenOptions listenOptions)
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
@@ -2072,7 +2072,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var writeTcs = new TaskCompletionSource<object>();
             var requestAbortedWh = new ManualResetEventSlim();
-            var connectionCloseWh = new ManualResetEventSlim();
             var requestStartWh = new ManualResetEventSlim();
 
             using (var server = new TestServer(async httpContext =>
@@ -2113,8 +2112,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     Assert.True(requestStartWh.Wait(TimeSpan.FromSeconds(10)));
                 }
-
-                connectionCloseWh.Set();
 
                 // Write failed - can throw TaskCanceledException or OperationCanceledException,
                 // dependending on how far the canceled write goes.
