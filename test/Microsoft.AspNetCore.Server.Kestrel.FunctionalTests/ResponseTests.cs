@@ -2083,6 +2083,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var lifetime = httpContext.Features.Get<IHttpRequestLifetimeFeature>();
 
                 lifetime.RequestAborted.Register(() => requestAbortedWh.Set());
+                Assert.True(requestAbortedWh.Wait(TimeSpan.FromSeconds(10)));
 
                 try
                 {
