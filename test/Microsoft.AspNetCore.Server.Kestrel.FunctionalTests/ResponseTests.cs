@@ -2063,10 +2063,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ThrowsOnWriteAfterRequestIsAborted(ListenOptions listenOptions)
+        public async Task ThrowsOnWriteWithRequestAbortedTokenAfterRequestIsAborted(ListenOptions listenOptions)
         {
             // This should match _maxBytesPreCompleted in SocketOutput
             var maxBytesPreCompleted = 65536;
+
             // Ensure string is long enough to disable write-behind buffering
             var largeString = new string('a', maxBytesPreCompleted + 1);
 
@@ -2087,11 +2088,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 try
                 {
-                    // Ensure write is long enough to disable write-behind buffering
-                    for (var i = 0; i < 100; i++)
-                    {
-                        await response.WriteAsync(largeString, lifetime.RequestAborted);
-                    }
+                    await response.WriteAsync(largeString, lifetime.RequestAborted);
                 }
                 catch (Exception ex)
                 {
