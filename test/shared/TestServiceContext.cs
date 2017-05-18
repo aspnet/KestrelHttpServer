@@ -18,6 +18,7 @@ namespace Microsoft.AspNetCore.Testing
             ThreadPool = new LoggingThreadPool(Log);
             SystemClock = new MockSystemClock();
             DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
+            HeartbeatManager = new HeartbeatManager(Log);
             ConnectionManager = new FrameConnectionManager(Log);
             DateHeaderValue = DateHeaderValueManager.GetDateHeaderValues().String;
             HttpParserFactory = frameAdapter => new HttpParser<FrameAdapter>(frameAdapter.Frame.ServiceContext.Log.IsEnabled(LogLevel.Information));

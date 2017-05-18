@@ -45,7 +45,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             var frameHeartbeatManager = new FrameHeartbeatManager(serviceContext.ConnectionManager);
             _heartbeat = new Heartbeat(
-                new IHeartbeatHandler[] { serviceContext.DateHeaderValueManager, frameHeartbeatManager },
+                new IHeartbeatHandler[]
+                {
+                    serviceContext.DateHeaderValueManager,
+                    frameHeartbeatManager,
+                    serviceContext.HeartbeatManager
+                },
                 serviceContext.SystemClock, Trace);
 
             Features = new FeatureCollection();
@@ -71,6 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             var systemClock = new SystemClock();
             var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+            var heartbeatManager = new HeartbeatManager(trace);
 
             // TODO: This logic will eventually move into the IConnectionHandler<T> and off
             // the service context once we get to https://github.com/aspnet/KestrelHttpServer/issues/1662
@@ -95,6 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 ThreadPool = threadPool,
                 SystemClock = systemClock,
                 DateHeaderValueManager = dateHeaderValueManager,
+                HeartbeatManager = heartbeatManager,
                 ConnectionManager = connectionManager,
                 ServerOptions = serverOptions
             };
