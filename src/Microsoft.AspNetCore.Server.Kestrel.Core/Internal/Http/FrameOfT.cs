@@ -200,7 +200,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         await messageBodyTask;
 
                         // ForZeroContentLength does not complete the reader nor the writer
-                        if (!messageBody.IsEmpty)
+                        if (_keepAlive && !messageBody.IsEmpty)
                         {
                             RequestBodyPipe.Reset();
                         }

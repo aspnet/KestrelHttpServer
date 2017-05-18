@@ -1371,8 +1371,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private IPipe CreateRequestBodyPipe()
             => ConnectionInformation.PipeFactory.Create(new PipeOptions
             {
-                ReaderScheduler = ServiceContext.InlineScheduler,
-                WriterScheduler = ServiceContext.InlineScheduler,
+                ReaderScheduler = ServiceContext.ThreadPool,
+                WriterScheduler = ConnectionInformation.InputWriterScheduler,
                 MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
                 MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
             });

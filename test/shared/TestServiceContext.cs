@@ -16,7 +16,6 @@ namespace Microsoft.AspNetCore.Testing
             ErrorLogger = new TestApplicationErrorLogger();
             Log = new TestKestrelTrace(ErrorLogger);
             ThreadPool = new LoggingThreadPool(Log);
-            InlineScheduler = new InlineLoggingThreadPool(Log);
             SystemClock = new MockSystemClock();
             DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
             ConnectionManager = new FrameConnectionManager(Log);
