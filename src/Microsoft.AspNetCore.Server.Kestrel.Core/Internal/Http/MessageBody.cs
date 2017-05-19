@@ -50,8 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     var result = await awaitable;
                     var readableBuffer = result.Buffer;
                     var consumed = readableBuffer.Start;
-                    // TODO: set to readableBuffer.Start after https://github.com/dotnet/corefxlab/issues/1540 is fixed
-                    var examined = readableBuffer.IsEmpty ? readableBuffer.End : readableBuffer.Start;
+                    var examined = readableBuffer.End;
 
                     try
                     {
@@ -191,11 +190,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected void Copy(ReadableBuffer readableBuffer, WritableBuffer writableBuffer)
         {
-            // TODO: remove IsEmpty check after https://github.com/dotnet/corefxlab/issues/1547 is fixed
-            if (!readableBuffer.IsEmpty)
-            {
-                writableBuffer.Write(readableBuffer.ToArray());
-            }
+            writableBuffer.Write(readableBuffer.ToArray());
         }
 
         private void TryProduceContinue()

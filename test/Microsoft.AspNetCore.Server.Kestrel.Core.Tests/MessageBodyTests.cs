@@ -378,12 +378,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Setup(m => m.WriteAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), CancellationToken.None))
                 .Callback((byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
                 {
-                    // TODO: remove this once https://github.com/dotnet/corefxlab/issues/1540 is fixed
-                    if (count > 0)
-                    {
-                        writeTcs.SetResult(buffer);
-                        writeCount++;
-                    }
+                    writeTcs.SetResult(buffer);
+                    writeCount++;
                 })
                 .Returns(TaskCache.CompletedTask);
 
