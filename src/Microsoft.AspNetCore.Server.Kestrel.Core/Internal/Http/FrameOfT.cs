@@ -159,7 +159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 }
 
                                 // An upgraded request has no defined request body length.
-                                // Cancel any pending reads so the request body pipe can be drained.
+                                // Cancel any pending read so the request body pipe can be drained.
                                 if (_upgrade)
                                 {
                                     Input.CancelPendingRead();
@@ -240,6 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 try
                 {
                     Input.Complete();
+
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {

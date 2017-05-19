@@ -9,11 +9,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -454,6 +457,57 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
+        [Fact]
+        public async Task StartAsyncReturnsAfterCancelingInput()
+        {
+            using (var input = new TestInput())
+            {
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
+                var stream = new FrameRequestStream();
+                stream.StartAcceptingReads(body);
+
+                var bodyTask = body.StartAsync();
+
+                // Add some input and consume it, to ensure StartAsync is in the loop
+                input.Add("a");
+                Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
+
+                // Cancel input and verify the body task ends
+                input.Pipe.Reader.CancelPendingRead();
+
+                await bodyTask.TimeoutAfter(TimeSpan.FromSeconds(10));
+            }
+        }
+
+        [Fact]
+        public async Task CopyToAsyncReturnsAfterCancelingRequestBodyPipe()
+        {
+            using (var input = new TestInput())
+            {
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
+                var stream = new FrameRequestStream();
+                stream.StartAcceptingReads(body);
+
+                var bodyTask = body.StartAsync();
+
+                input.Add("a");
+
+                var writeEvent = new ManualResetEventSlim();
+
+                var copyToAsyncTask = stream.CopyToAsync(new OnWriteStream(writeEvent));
+                Assert.True(writeEvent.Wait(TimeSpan.FromSeconds(10)));
+                Assert.False(copyToAsyncTask.IsCompleted);
+
+                // Cancel input and verify the body task ends
+                input.FrameContext.RequestBodyPipe.Reader.CancelPendingRead();
+
+                await copyToAsyncTask.TimeoutAfter(TimeSpan.FromSeconds(10));
+
+                input.Fin();
+                await bodyTask.TimeoutAfter(TimeSpan.FromSeconds(10));
+            }
+        }
+
         private void AssertASCII(string expected, ArraySegment<byte> actual)
         {
             var encoding = Encoding.ASCII;
@@ -542,6 +596,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public override bool CanWrite => true;
             public override long Length { get; }
             public override long Position { get; set; }
+        }
+
+        private class OnWriteStream : Stream
+        {
+            private readonly ManualResetEventSlim _writeEvent;
+
+            public OnWriteStream(ManualResetEventSlim writeEvent) => _writeEvent = writeEvent;
+
+            public override bool CanWrite => true;
+
+            public override bool CanRead { get; }
+
+            public override bool CanSeek { get; }
+
+            public override long Length { get; }
+
+            public override long Position { get; set; }
+
+            public override void Flush() => throw new NotImplementedException();
+
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotImplementedException();
+
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotImplementedException();
+
+            public override void SetLength(long value) => throw new NotImplementedException();
+
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotImplementedException();
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                _writeEvent.Set();
+                return Task.CompletedTask;
+            }
         }
     }
 }
