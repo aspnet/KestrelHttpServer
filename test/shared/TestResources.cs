@@ -8,7 +8,7 @@ namespace Microsoft.AspNetCore.Testing
 {
     public static class TestResources
     {
-        private static readonly string _testCertificatePath = Path.Combine(AppContext.BaseDirectory, "testCert.pfx");
+        private static readonly string _testCertificatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "testCert.pfx");
 
         public static string TestCertificatePath => _testCertificatePath;
     }
