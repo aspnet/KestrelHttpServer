@@ -55,6 +55,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     try
                     {
+                        if (_canceled)
+                        {
+                            break;
+                        }
+
                         if (!readableBuffer.IsEmpty)
                         {
                             var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
@@ -75,10 +80,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             {
                                 break;
                             }
-                        }
-                        else if (_canceled)
-                        {
-                            break;
                         }
                         else if (result.IsCompleted)
                         {

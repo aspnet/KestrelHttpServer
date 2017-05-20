@@ -454,7 +454,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task StartAsyncDoesNotReturnsAfterCancelingInput()
+        public async Task StartAsyncDoesNotReturnAfterCancelingInput()
         {
             using (var input = new TestInput())
             {
@@ -480,24 +480,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task StartAsyncReturnsAfterCancelingMessageBody()
+        public async Task StartAsyncReturnsAfterCanceling()
         {
             using (var input = new TestInput())
             {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
                 var bodyTask = body.StartAsync();
 
-                // Add some input and consume it, to ensure StartAsync is in the loop
+                // Add some input and consume it to ensure StartAsync is in the loop
                 input.Add("a");
                 Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
 
-                // Cancel body and verify the task ends
                 body.Cancel();
+
+                // Add some more data. Checking for cancelation and exiting the loop
+                // should take priority over reading this data.
+                input.Add("b");
+
+                // Unblock the loop
                 input.Pipe.Reader.CancelPendingRead();
+
                 await bodyTask.TimeoutAfter(TimeSpan.FromSeconds(10));
+
+                // There shouldn't be any additional data available
+                Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1));
             }
         }
 
@@ -589,39 +598,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public override bool CanWrite => true;
             public override long Length { get; }
             public override long Position { get; set; }
-        }
-
-        private class OnWriteStream : Stream
-        {
-            private readonly ManualResetEventSlim _writeEvent;
-
-            public OnWriteStream(ManualResetEventSlim writeEvent) => _writeEvent = writeEvent;
-
-            public override bool CanWrite => true;
-
-            public override bool CanRead { get; }
-
-            public override bool CanSeek { get; }
-
-            public override long Length { get; }
-
-            public override long Position { get; set; }
-
-            public override void Flush() => throw new NotImplementedException();
-
-            public override int Read(byte[] buffer, int offset, int count) => throw new NotImplementedException();
-
-            public override long Seek(long offset, SeekOrigin origin) => throw new NotImplementedException();
-
-            public override void SetLength(long value) => throw new NotImplementedException();
-
-            public override void Write(byte[] buffer, int offset, int count) => throw new NotImplementedException();
-
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                _writeEvent.Set();
-                return Task.CompletedTask;
-            }
         }
     }
 }
