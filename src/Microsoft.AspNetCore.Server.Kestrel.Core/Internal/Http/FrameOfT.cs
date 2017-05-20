@@ -158,8 +158,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     await ProduceEnd();
                                 }
 
+                                if (!_keepAlive)
+                                {
+                                    messageBody.Cancel();
+                                }
+
                                 // An upgraded request has no defined request body length.
-                                // Cancel any pending read so the request body pipe can be drained.
+                                // Cancel any pending read so the read loop ends.
                                 if (_upgrade)
                                 {
                                     Input.CancelPendingRead();

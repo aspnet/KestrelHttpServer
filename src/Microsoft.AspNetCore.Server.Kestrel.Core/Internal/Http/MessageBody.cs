@@ -18,6 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private readonly Frame _context;
         private bool _send100Continue = true;
+        private volatile bool _canceled;
 
         protected MessageBody(Frame context)
         {
@@ -75,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 break;
                             }
                         }
-                        else if (result.IsCancelled)
+                        else if (_canceled)
                         {
                             break;
                         }
@@ -98,6 +99,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _context.RequestBodyPipe.Writer.Complete(error);
             }
+        }
+
+        public void Cancel()
+        {
+            _canceled = true;
         }
 
         public virtual async Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
@@ -148,7 +154,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
                         }
                     }
-                    else if (result.IsCompleted || result.IsCancelled)
+                    else if (result.IsCompleted)
                     {
                         return;
                     }
@@ -166,16 +172,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             try
             {
-                while (true)
+                ReadResult result;
+                do
                 {
-                    var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                    result = await _context.RequestBodyPipe.Reader.ReadAsync();
                     _context.RequestBodyPipe.Reader.Advance(result.Buffer.End);
-
-                    if (result.IsCompleted)
-                    {
-                        return;
-                    }
-                }
+                } while (!result.IsCompleted);
             }
             catch (Exception ex)
             {

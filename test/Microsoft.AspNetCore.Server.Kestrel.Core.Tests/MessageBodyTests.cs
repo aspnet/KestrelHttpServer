@@ -454,11 +454,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task StartAsyncReturnsAfterCancelingInput()
+        public async Task StartAsyncDoesNotReturnsAfterCancelingInput()
         {
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
+                var stream = new FrameRequestStream();
+                stream.StartAcceptingReads(body);
+
+                var bodyTask = body.StartAsync();
+
+                // Add some input and consume it to ensure StartAsync is in the loop
+                input.Add("a");
+                Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
+
+                input.Pipe.Reader.CancelPendingRead();
+
+                // Add more input and verify is read
+                input.Add("b");
+                Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
+
+                // All input was read, body task should complete
+                await bodyTask;
+            }
+        }
+
+        [Fact]
+        public async Task StartAsyncReturnsAfterCancelingMessageBody()
+        {
+            using (var input = new TestInput())
+            {
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.FrameContext);
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
@@ -468,38 +494,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 input.Add("a");
                 Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
 
-                // Cancel input and verify the body task ends
+                // Cancel body and verify the task ends
+                body.Cancel();
                 input.Pipe.Reader.CancelPendingRead();
-
-                await bodyTask.TimeoutAfter(TimeSpan.FromSeconds(10));
-            }
-        }
-
-        [Fact]
-        public async Task CopyToAsyncReturnsAfterCancelingRequestBodyPipe()
-        {
-            using (var input = new TestInput())
-            {
-                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
-                var stream = new FrameRequestStream();
-                stream.StartAcceptingReads(body);
-
-                var bodyTask = body.StartAsync();
-
-                input.Add("a");
-
-                var writeEvent = new ManualResetEventSlim();
-
-                var copyToAsyncTask = stream.CopyToAsync(new OnWriteStream(writeEvent));
-                Assert.True(writeEvent.Wait(TimeSpan.FromSeconds(10)));
-                Assert.False(copyToAsyncTask.IsCompleted);
-
-                // Cancel input and verify the body task ends
-                input.FrameContext.RequestBodyPipe.Reader.CancelPendingRead();
-
-                await copyToAsyncTask.TimeoutAfter(TimeSpan.FromSeconds(10));
-
-                input.Fin();
                 await bodyTask.TimeoutAfter(TimeSpan.FromSeconds(10));
             }
         }
