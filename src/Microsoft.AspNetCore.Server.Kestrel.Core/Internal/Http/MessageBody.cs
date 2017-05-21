@@ -193,7 +193,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected void Copy(ReadableBuffer readableBuffer, WritableBuffer writableBuffer)
         {
-            writableBuffer.Write(readableBuffer.ToArray());
+            if (readableBuffer.IsSingleSpan)
+            {
+                writableBuffer.Write(readableBuffer.First.Span);
+            }
+            else
+            {
+                foreach (var memory in readableBuffer)
+                {
+                    writableBuffer.Write(memory.Span);
+                }
+            }
         }
 
         private void TryProduceContinue()
