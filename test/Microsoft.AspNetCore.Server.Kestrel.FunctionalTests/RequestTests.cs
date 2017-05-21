@@ -1367,7 +1367,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.Send(
+                    await connection.SendAll(
                         "POST / HTTP/1.0",
                         "Host:",
                         "Content-Length: 5",
@@ -1400,7 +1400,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.Send(
+                    await connection.SendAll(
                         "GET / HTTP/1.1",
                         "Host:",
                         "Connection: upgrade",
