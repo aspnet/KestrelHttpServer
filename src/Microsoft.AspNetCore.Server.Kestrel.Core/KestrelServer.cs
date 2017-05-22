@@ -20,7 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     public class KestrelServer : IServer
     {
         private readonly List<ITransport> _transports = new List<ITransport>();
-        private readonly Heartbeat _heartbeat;
+        private readonly FrameHeartbeatManager _frameHeartbeatManager;
+        private readonly IHeartbeat _heartbeat;
         private readonly IServerAddressesFeature _serverAddresses;
         private readonly ITransportFactory _transportFactory;
 
@@ -40,13 +41,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 throw new ArgumentNullException(nameof(transportFactory));
             }
 
+            _frameHeartbeatManager = new FrameHeartbeatManager(serviceContext.ConnectionManager);
+            _heartbeat = serviceContext.Heartbeat;
+            _heartbeat.AddHandler(_frameHeartbeatManager);
+
             _transportFactory = transportFactory;
             ServiceContext = serviceContext;
-
-            var frameHeartbeatManager = new FrameHeartbeatManager(serviceContext.ConnectionManager);
-            _heartbeat = new Heartbeat(
-                new IHeartbeatHandler[] { serviceContext.DateHeaderValueManager, frameHeartbeatManager },
-                serviceContext.SystemClock, Trace);
 
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
@@ -71,6 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             var systemClock = new SystemClock();
             var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
+            var heartbeat = new Heartbeat(new IHeartbeatHandler[] { dateHeaderValueManager }, systemClock, trace);
 
             // TODO: This logic will eventually move into the IConnectionHandler<T> and off
             // the service context once we get to https://github.com/aspnet/KestrelHttpServer/issues/1662
@@ -94,6 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 HttpParserFactory = frameParser => new HttpParser<FrameAdapter>(frameParser.Frame.ServiceContext.Log.IsEnabled(LogLevel.Information)),
                 ThreadPool = threadPool,
                 SystemClock = systemClock,
+                Heartbeat = heartbeat,
                 DateHeaderValueManager = dateHeaderValueManager,
                 ConnectionManager = connectionManager,
                 ServerOptions = serverOptions

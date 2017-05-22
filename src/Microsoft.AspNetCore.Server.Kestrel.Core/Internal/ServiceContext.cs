@@ -17,6 +17,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public ISystemClock SystemClock { get; set; }
 
+        public IHeartbeat Heartbeat { get; set; }
+
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 
         public FrameConnectionManager ConnectionManager { get; set; }

@@ -91,21 +91,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private TestServer CreateServer()
         {
+            var serviceContext = new TestServiceContext();
+
+            // Use real SystemClock so timeouts trigger.
+            serviceContext.SystemClock = new SystemClock();
+            serviceContext.Heartbeat = new Heartbeat(new IHeartbeatHandler[] { }, serviceContext.SystemClock, serviceContext.Log);
+            serviceContext.ServerOptions.AddServerHeader = false;
+            serviceContext.ServerOptions.Limits.RequestHeadersTimeout = RequestHeadersTimeout;
+
             return new TestServer(async httpContext =>
             {
                 await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
                 await httpContext.Response.WriteAsync("hello, world");
-            },
-            new TestServiceContext
-            {
-                // Use real SystemClock so timeouts trigger.
-                SystemClock = new SystemClock(),
-                ServerOptions =
-                {
-                    AddServerHeader = false,
-                    Limits = { RequestHeadersTimeout = RequestHeadersTimeout }
-                }
-            });
+            }, serviceContext);
         }
 
         private async Task ReceiveResponse(TestConnection connection)

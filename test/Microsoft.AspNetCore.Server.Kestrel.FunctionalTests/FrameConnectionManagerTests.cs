@@ -12,12 +12,17 @@ using Microsoft.AspNetCore.Testing.xunit;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class FrameConnectionManagerTests
     {
         private const int _applicationNeverCompletedId = 23;
+
+        private readonly ILoggerFactory _loggerFactory;
+
+        public FrameConnectionManagerTests(ITestOutputHelper output) => _loggerFactory = new LoggerFactory().AddXunit(output);
 
         [ConditionalFact]
         [NoDebuggerCondition]
@@ -31,6 +36,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var logWh = new SemaphoreSlim(0);
             var appStartedWh = new SemaphoreSlim(0);
 
+            var trueLogger = _loggerFactory.CreateLogger("Test");
+
             var mockLogger = new Mock<ILogger>();
             mockLogger
                 .Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>()))
@@ -38,8 +45,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             mockLogger
                 .Setup(logger => logger.Log(LogLevel.Critical, _applicationNeverCompletedId, It.IsAny<object>(), null,
                     It.IsAny<Func<object, Exception, string>>()))
-                .Callback(() =>
+                .Callback<LogLevel, EventId, object, Exception, Func<object, Exception, string>>((logLevel, id, state, exception, formatter) =>
                 {
+                    trueLogger.Log(logLevel, id ,state, exception, formatter);
                     logWh.Release();
                 });
 

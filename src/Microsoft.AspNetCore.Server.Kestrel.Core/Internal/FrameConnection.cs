@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class FrameConnection : IConnectionContext, ITimeoutControl
+    public class FrameConnection : IConnectionContext, ITimeoutControl, IHeartbeatHandler
     {
         private readonly FrameConnectionContext _context;
         private List<IAdaptedConnection> _adaptedConnections;
@@ -68,6 +68,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private async Task ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
         {
+            long heartbeatId = -1;
+
             try
             {
                 Log.ConnectionStart(ConnectionId);
@@ -104,7 +106,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 // Do this before the first await so we don't yield control to the transport until we've
                 // added the connection to the connection manager
                 _context.ServiceContext.ConnectionManager.AddConnection(_context.FrameConnectionId, this);
+
                 _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
+                heartbeatId = _context.ServiceContext.Heartbeat.AddHandler(this);
 
                 if (adaptedPipeline != null)
                 {
@@ -123,6 +127,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
             finally
             {
+                if (heartbeatId > -1)
+                {
+                    _context.ServiceContext.Heartbeat.RemoveHandler(heartbeatId);
+                }
+
                 _context.ServiceContext.ConnectionManager.RemoveConnection(_context.FrameConnectionId);
                 DisposeAdaptedConnections();
 
@@ -220,7 +229,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public void Tick(DateTimeOffset now)
+        public void OnHeartbeat(DateTimeOffset now)
         {
             Debug.Assert(_frame != null, $"nameof({_frame}) is null");
 
