@@ -306,7 +306,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseKestrel()
                 .ConfigureLogging(builder => builder
                     .AddProvider(new KestrelTestLoggerProvider(testLogger))
-                    .SetMinimalLevel(LogLevel.Debug))
+                    .SetMinimumLevel(LogLevel.Debug))
                 .Configure(ConfigureEchoAddress);
 
             using (var host = hostBuilder.Build())
