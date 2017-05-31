@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     {
         private const int MaxRetries = 10;
 
-        private readonly Action<ILoggerBuilder> _configureLoggingDelegate;
+        private readonly Action<ILoggingBuilder> _configureLoggingDelegate;
 
         public AddressRegistrationTests(ITestOutputHelper output) => _configureLoggingDelegate = builder => builder.AddXunit(output);
 
