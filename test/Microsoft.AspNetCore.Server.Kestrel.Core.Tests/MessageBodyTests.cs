@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
@@ -508,6 +509,56 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 // There shouldn't be any additional data available
                 Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1));
+            }
+        }
+
+        [Fact]
+        public async Task LogsWhenStartsReadingRequestBody()
+        {
+            using (var input = new TestInput())
+            {
+                var mockLogger = new Mock<IKestrelTrace>();
+                input.FrameContext.ServiceContext.Log = mockLogger.Object;
+                input.FrameContext.ConnectionIdFeature = "ConnectionId";
+                input.FrameContext.TraceIdentifier = "RequestId";
+
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
+                var stream = new FrameRequestStream();
+                stream.StartAcceptingReads(body);
+
+                var bodyTask = body.StartAsync();
+
+                mockLogger.Verify(logger => logger.RequestBodyStart("ConnectionId", "RequestId"));
+
+                input.Fin();
+                await bodyTask;
+            }
+        }
+
+        [Fact]
+        public async Task LogsWhenStopsReadingRequestBody()
+        {
+            using (var input = new TestInput())
+            {
+                var logEvent = new ManualResetEventSlim();
+                var mockLogger = new Mock<IKestrelTrace>();
+                mockLogger
+                    .Setup(logger => logger.RequestBodyDone("ConnectionId", "RequestId"))
+                    .Callback(() => logEvent.Set());
+                input.FrameContext.ServiceContext.Log = mockLogger.Object;
+                input.FrameContext.ConnectionIdFeature = "ConnectionId";
+                input.FrameContext.TraceIdentifier = "RequestId";
+
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "2" }, input.FrameContext);
+                var stream = new FrameRequestStream();
+                stream.StartAcceptingReads(body);
+
+                var bodyTask = body.StartAsync();
+
+                input.Fin();
+                await bodyTask;
+
+                mockLogger.Verify(logger => logger.RequestBodyDone("ConnectionId", "RequestId"));
             }
         }
 
