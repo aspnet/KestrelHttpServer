@@ -8,5 +8,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void SetTimeout(long ticks, TimeoutAction timeoutAction);
         void ResetTimeout(long ticks, TimeoutAction timeoutAction);
         void CancelTimeout();
+
+        void StartMeteringReads();
+        void StopMeteringReads();
+        void BytesRead(int count);
     }
 }

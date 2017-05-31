@@ -193,7 +193,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ServerOptions =
                 {
                     AddServerHeader = false,
-                    Limits = { KeepAliveTimeout = KeepAliveTimeout }
+                    Limits =
+                    {
+                        KeepAliveTimeout = KeepAliveTimeout
+                    }
                 }
             });
         }

@@ -100,6 +100,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log);
             RequestBodyPipe = CreateRequestBodyPipe();
+
+            RequestBodyTimeoutMinimumTime = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumTime;
+            RequestBodyTimeoutMaximumTime = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MaximumTime;
+            RequestBodyTimeoutMinimumRate = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumRate;
         }
 
         public IPipe RequestBodyPipe { get; }
@@ -299,6 +303,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected FrameRequestHeaders FrameRequestHeaders { get; } = new FrameRequestHeaders();
 
         protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
+
+        public TimeSpan RequestBodyTimeoutMinimumTime { get; set; }
+        public TimeSpan? RequestBodyTimeoutMaximumTime { get; set; }
+        public double? RequestBodyTimeoutMinimumRate { get; set; }
 
         public void InitializeStreams(MessageBody messageBody)
         {

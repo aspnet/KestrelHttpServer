@@ -31,6 +31,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private Task _lifetimeTask;
 
+        private bool _meteringReads;
+        private long _meteringStartTicks;
+        private long _bytesReadSinceLastTick;
+
         public FrameConnection(FrameConnectionContext context)
         {
             _context = context;
@@ -142,7 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void OnConnectionClosed(Exception ex)
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
@@ -152,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public Task StopAsync()
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             _frame.Stop();
 
@@ -161,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Abort(Exception ex)
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
@@ -169,7 +173,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public Task AbortAsync(Exception ex)
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             // Abort the connection (if not already aborted)
             _frame.Abort(ex);
@@ -179,14 +183,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Timeout()
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             _frame.SetBadRequestState(RequestRejectionReason.RequestTimeout);
         }
 
         private async Task<Stream> ApplyConnectionAdaptersAsync()
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             var features = new FeatureCollection();
             var connectionAdapters = _context.ConnectionAdapters;
@@ -231,12 +235,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Tick(DateTimeOffset now)
         {
-            Debug.Assert(_frame != null, $"nameof({_frame}) is null");
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             var timestamp = now.Ticks;
 
-            // TODO: Use PlatformApis.VolatileRead equivalent again
-            if (timestamp > Interlocked.Read(ref _timeoutTimestamp))
+            if (_meteringReads)
+            {
+                var elapsed = TimeSpan.FromTicks(timestamp - _meteringStartTicks);
+
+                if (elapsed > _frame.RequestBodyTimeoutMinimumTime)
+                {
+                    Log.LogDebug("Request body over minimum time.");
+
+                    var rate = _bytesReadSinceLastTick / TimeSpan.FromTicks(timestamp - _lastTimestamp).TotalSeconds;
+                    Log.LogDebug($"Incoming data rate: {rate}.");
+
+                    if (!_frame.RequestBodyTimeoutMaximumTime.HasValue ||
+                        !_frame.RequestBodyTimeoutMinimumRate.HasValue ||
+                        elapsed > _frame.RequestBodyTimeoutMaximumTime ||
+                        rate < _frame.RequestBodyTimeoutMinimumRate)
+                    {
+                        Log.LogDebug($"Request body over maximum time or under minimum rate. Aborting.");
+                        _frame.Abort(error: null);
+                    }
+                }
+
+                Interlocked.Exchange(ref _bytesReadSinceLastTick, 0);
+            }
+            else if (timestamp > Interlocked.Read(ref _timeoutTimestamp)) // TODO: Use PlatformApis.VolatileRead equivalent again
             {
                 CancelTimeout();
 
@@ -274,6 +300,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             // Add Heartbeat.Interval since this can be called right before the next heartbeat.
             Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + ticks + Heartbeat.Interval.Ticks);
+        }
+
+        public void StartMeteringReads()
+        {
+            Log.LogDebug("Started metering reads.");
+            _meteringReads = true;
+            Interlocked.Exchange(ref _meteringStartTicks, _lastTimestamp);
+        }
+
+        public void StopMeteringReads()
+        {
+            Log.LogDebug("Stopped metering reads.");
+            _meteringReads = false;
+        }
+
+        public void BytesRead(int count)
+        {
+            Interlocked.Add(ref _bytesReadSinceLastTick, count);
         }
     }
 }

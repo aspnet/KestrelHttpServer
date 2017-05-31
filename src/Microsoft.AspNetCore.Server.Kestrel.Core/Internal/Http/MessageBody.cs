@@ -34,6 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private async Task PumpAsync()
         {
+            _context.TimeoutControl.StartMeteringReads();
+
             Exception error = null;
 
             try
@@ -98,6 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             finally
             {
                 _context.RequestBodyPipe.Writer.Complete(error);
+                _context.TimeoutControl.StopMeteringReads();
             }
         }
 
@@ -191,6 +194,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected void Copy(ReadableBuffer readableBuffer, WritableBuffer writableBuffer)
         {
+            _context.TimeoutControl.BytesRead(readableBuffer.Length);
+
             if (readableBuffer.IsSingleSpan)
             {
                 writableBuffer.Write(readableBuffer.First.Span);

@@ -18,5 +18,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks
         public void SetTimeout(long ticks, TimeoutAction timeoutAction)
         {
         }
+
+        public void StartMeteringReads()
+        {
+        }
+
+        public void StopMeteringReads()
+        {
+        }
+
+        public void BytesRead(int count)
+        {
+        }
     }
 }

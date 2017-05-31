@@ -34,7 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ConnectionInformation = new MockConnectionInformation
                 {
                     PipeFactory = _pipelineFactory
-                }
+                },
+                TimeoutControl = Mock.Of<ITimeoutControl>()
             });
             FrameContext.FrameControl = this;
         }
