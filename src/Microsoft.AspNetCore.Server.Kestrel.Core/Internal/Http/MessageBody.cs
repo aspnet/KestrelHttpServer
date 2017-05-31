@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -16,6 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly MessageBody _zeroContentLengthKeepAlive = new ForZeroContentLength(keepAlive: true);
 
         private readonly Frame _context;
+
         private bool _send100Continue = true;
         private volatile bool _canceled;
 
@@ -32,8 +34,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual bool IsEmpty => false;
 
+        private IKestrelTrace Log => _context.ServiceContext.Log;
+
         private async Task PumpAsync()
         {
+            Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
             _context.TimeoutControl.StartMeteringReads();
 
             Exception error = null;
@@ -100,6 +105,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             finally
             {
                 _context.RequestBodyPipe.Writer.Complete(error);
+
+                Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
                 _context.TimeoutControl.StopMeteringReads();
             }
         }

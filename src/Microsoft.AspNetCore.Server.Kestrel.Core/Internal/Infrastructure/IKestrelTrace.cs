@@ -37,5 +37,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void HeartbeatSlow(TimeSpan interval, DateTimeOffset now);
 
         void ApplicationNeverCompleted(string connectionId);
+
+        void RequestBodyStart(string connectionId, string traceIdentifier);
+
+        void RequestBodyDone(string connectionId, string traceIdentifier);
+
+        void RequestBodyTimeout(string connectionId, string traceIdentifier, double seconds);
+
+        void RequestBodyMininumRateNotSatisfied(string connectionId, string traceIdentifier, double rate);
     }
 }

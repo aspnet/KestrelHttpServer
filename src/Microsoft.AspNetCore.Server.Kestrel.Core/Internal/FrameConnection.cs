@@ -245,18 +245,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 if (elapsed > _frame.RequestBodyTimeoutMinimumTime)
                 {
-                    Log.LogDebug("Request body over minimum time.");
-
-                    var rate = _bytesReadSinceLastTick / TimeSpan.FromTicks(timestamp - _lastTimestamp).TotalSeconds;
-                    Log.LogDebug($"Incoming data rate: {rate}.");
-
-                    if (!_frame.RequestBodyTimeoutMaximumTime.HasValue ||
-                        !_frame.RequestBodyTimeoutMinimumRate.HasValue ||
-                        elapsed > _frame.RequestBodyTimeoutMaximumTime ||
-                        rate < _frame.RequestBodyTimeoutMinimumRate)
+                    if (!_frame.RequestBodyTimeoutMaximumTime.HasValue || !_frame.RequestBodyTimeoutMinimumRate.HasValue)
                     {
-                        Log.LogDebug($"Request body over maximum time or under minimum rate. Aborting.");
+                        Log.RequestBodyTimeout(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumTime.TotalSeconds);
                         _frame.Abort(error: null);
+                    }
+                    else
+                    {
+                        var rate = _bytesReadSinceLastTick / TimeSpan.FromTicks(timestamp - _lastTimestamp).TotalSeconds;
+
+                        if (elapsed > _frame.RequestBodyTimeoutMaximumTime)
+                        {
+                            Log.RequestBodyTimeout(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMaximumTime.Value.TotalSeconds);
+                            _frame.Abort(error: null);
+                        }
+                        else if (rate < _frame.RequestBodyTimeoutMinimumRate)
+                        {
+                            Log.RequestBodyMininumRateNotSatisfied(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumRate.Value);
+                            _frame.Abort(error: null);
+                        }
                     }
                 }
 
@@ -304,14 +311,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void StartMeteringReads()
         {
-            Log.LogDebug("Started metering reads.");
             _meteringReads = true;
             Interlocked.Exchange(ref _meteringStartTicks, _lastTimestamp);
         }
 
         public void StopMeteringReads()
         {
-            Log.LogDebug("Stopped metering reads.");
             _meteringReads = false;
         }
 

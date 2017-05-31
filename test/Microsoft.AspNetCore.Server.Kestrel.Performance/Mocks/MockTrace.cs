@@ -36,5 +36,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public void RequestProcessingError(string connectionId, Exception ex) { }
         public void HeartbeatSlow(TimeSpan interval, DateTimeOffset now) { }
         public void ApplicationNeverCompleted(string connectionId) { }
+        public void RequestBodyStart(string connectionId, string traceIdentifier) { }
+        public void RequestBodyDone(string connectionId, string traceIdentifier) { }
+        public void RequestBodyTimeout(string connectionId, string traceIdentifier, double seconds) { }
+        public void RequestBodyMininumRateNotSatisfied(string connectionId, string traceIdentifier, double rate) { }
     }
 }
