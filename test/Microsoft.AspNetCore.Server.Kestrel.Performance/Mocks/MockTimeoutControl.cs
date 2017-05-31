@@ -19,11 +19,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks
         {
         }
 
-        public void StartMeteringReads()
+        public void StartTimingReads()
         {
         }
 
-        public void StopMeteringReads()
+        public void StopTimingReads()
         {
         }
 

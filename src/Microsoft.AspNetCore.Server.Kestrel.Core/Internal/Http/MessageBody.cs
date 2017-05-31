@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private async Task PumpAsync()
         {
             Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
-            _context.TimeoutControl.StartMeteringReads();
+            _context.TimeoutControl.StartTimingReads();
 
             Exception error = null;
 
@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _context.RequestBodyPipe.Writer.Complete(error);
 
                 Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
-                _context.TimeoutControl.StopMeteringReads();
+                _context.TimeoutControl.StopTimingReads();
             }
         }
 

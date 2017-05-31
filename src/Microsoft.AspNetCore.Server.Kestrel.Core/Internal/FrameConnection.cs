@@ -31,8 +31,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private Task _lifetimeTask;
 
-        private bool _meteringReads;
-        private long _meteringStartTicks;
+        private bool _timingReads;
+        private long _readTimingStartTicks;
         private long _bytesReadSinceLastTick;
 
         public FrameConnection(FrameConnectionContext context)
@@ -239,9 +239,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var timestamp = now.Ticks;
 
-            if (_meteringReads)
+            if (_timingReads)
             {
-                var elapsed = TimeSpan.FromTicks(timestamp - _meteringStartTicks);
+                var elapsed = TimeSpan.FromTicks(timestamp - _readTimingStartTicks);
 
                 if (elapsed > _frame.RequestBodyTimeoutMinimumTime)
                 {
@@ -309,15 +309,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + ticks + Heartbeat.Interval.Ticks);
         }
 
-        public void StartMeteringReads()
+        public void StartTimingReads()
         {
-            _meteringReads = true;
-            Interlocked.Exchange(ref _meteringStartTicks, _lastTimestamp);
+            _timingReads = true;
+            Interlocked.Exchange(ref _readTimingStartTicks, _lastTimestamp);
         }
 
-        public void StopMeteringReads()
+        public void StopTimingReads()
         {
-            _meteringReads = false;
+            _timingReads = false;
         }
 
         public void BytesRead(int count)

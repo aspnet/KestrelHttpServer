@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var now = DateTimeOffset.UtcNow;
 
             _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
-            _frameConnection.StartMeteringReads();
+            _frameConnection.StartTimingReads();
 
             // Tick beyond timeout
             _frameConnection.Tick(now + RequestBodyMinimumTime + Heartbeat.Interval);
@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var now = DateTimeOffset.UtcNow;
 
             _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
-            _frameConnection.StartMeteringReads();
+            _frameConnection.StartTimingReads();
 
             // Tick beyond maximum timeout w/ satisfactory data rate
             var future = now + RequestBodyMaximumTime + Heartbeat.Interval;
@@ -138,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var now = DateTimeOffset.UtcNow;
 
             _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
-            _frameConnection.StartMeteringReads();
+            _frameConnection.StartTimingReads();
 
             // Tick beyond minimum timeout w/ low data rate
             _frameConnection.BytesRead(1);
