@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
     public class RequestBodyTimeout
     {
-        public TimeSpan MinimumTime { get; set; }
+        public TimeSpan MinimumTime { get; set; } = TimeSpan.FromMinutes(2);
         public TimeSpan? MaximumTime { get; set; }
         public double? MinimumRate { get; set; }
     }

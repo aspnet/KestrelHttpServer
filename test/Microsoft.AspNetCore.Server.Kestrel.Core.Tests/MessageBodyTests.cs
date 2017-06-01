@@ -464,7 +464,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task StartAsyncDoesNotReturnAfterCancelingInput()
+        public async Task PumpAsyncDoesNotReturnAfterCancelingInput()
         {
             using (var input = new TestInput())
             {
@@ -472,7 +472,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                // Add some input and consume it to ensure StartAsync is in the loop
+                // Add some input and consume it to ensure PumpAsync is running
                 input.Add("a");
                 Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
 
@@ -486,7 +486,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task StartAsyncReturnsAfterCanceling()
+        public async Task PumpAsyncReturnsAfterCanceling()
         {
             using (var input = new TestInput())
             {
@@ -494,7 +494,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                // Add some input and consume it to ensure StartAsync is in the loop
+                // Add some input and consume it to ensure PumpAsync is running
                 input.Add("a");
                 Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
 
@@ -526,12 +526,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                var bodyTask = body.StartAsync();
+                // Add some input and consume it to ensure PumpAsync is running
+                input.Add("a");
+                Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
 
                 mockLogger.Verify(logger => logger.RequestBodyStart("ConnectionId", "RequestId"));
 
                 input.Fin();
-                await bodyTask;
             }
         }
 
@@ -553,12 +554,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var stream = new FrameRequestStream();
                 stream.StartAcceptingReads(body);
 
-                var bodyTask = body.StartAsync();
+                // Add some input and consume it to ensure PumpAsync is running
+                input.Add("a");
+                Assert.Equal(1, await stream.ReadAsync(new byte[1], 0, 1));
 
                 input.Fin();
-                await bodyTask;
 
-                mockLogger.Verify(logger => logger.RequestBodyDone("ConnectionId", "RequestId"));
+                Assert.True(logEvent.Wait(TimeSpan.FromSeconds(10)));
             }
         }
 
