@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,7 @@ namespace Microsoft.AspNetCore.Hosting
             return hostBuilder.ConfigureServices(services =>
             {
                 services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelServerOptionsSetup>();
+                services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelServerConfigureOptions>();
                 services.AddSingleton<IServer, KestrelServer>();
             });
         }

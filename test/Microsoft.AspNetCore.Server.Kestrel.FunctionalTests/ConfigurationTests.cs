@@ -11,15 +11,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Options.Infrastructure;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
+namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class ConfigurationTests
     {
@@ -37,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
         public async Task BindsKestrelHttpEndPointFromConfiguration(string endPointAddress, string requestAddress)
         {
             var hostBuilder = new WebHostBuilder()
-                .UseKestrelWithConfiguration()
+                .UseKestrel()
                 .UseConfiguration(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
                 {
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", $"{endPointAddress}" },
@@ -65,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
         public async Task BindsKestrelHttpsEndPointFromConfiguration_ReferencedCertificateFile()
         {
             var hostBuilder = new WebHostBuilder()
-                .UseKestrelWithConfiguration()
+                .UseKestrel()
                 .UseConfiguration(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
                 {
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", "127.0.0.1" },
@@ -90,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
         public async Task BindsKestrelHttpsEndPointFromConfiguration_InlineCertificateFile()
         {
             var hostBuilder = new WebHostBuilder()
-                .UseKestrelWithConfiguration()
+                .UseKestrel()
                 .UseConfiguration(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
                 {
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", "127.0.0.1" },
