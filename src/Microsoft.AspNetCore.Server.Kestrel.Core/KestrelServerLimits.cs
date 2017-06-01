@@ -235,6 +235,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
         }
 
+        /// <summary>
+        /// Gets or sets the default timeout for receiving the request body. Defaults to 2 minutes.
+        /// </summary>
         public RequestBodyTimeout DefaultRequestBodyTimeout { get; } = new RequestBodyTimeout();
     }
 }
