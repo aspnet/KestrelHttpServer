@@ -59,12 +59,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
             if (!IPAddress.TryParse(configAddress, out var address))
             {
-                throw new InvalidOperationException($"Invalid IP address in configuration: {configAddress}");
+                throw new InvalidOperationException(KestrelStrings.FormatInvalidIp(configAddress));
             }
 
             if (!int.TryParse(configPort, out var port))
             {
-                throw new InvalidOperationException($"Invalid port in configuration: {configPort}");
+                throw new InvalidOperationException(KestrelStrings.FormatInvalidPort(configPort));
             }
 
             options.Listen(address, port, listenOptions =>
@@ -94,12 +94,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
                         if (certificate == null)
                         {
-                            throw new InvalidOperationException($"No certificate found for endpoint '{endPoint.Key}'.");
+                            throw new InvalidOperationException(KestrelStrings.FormatNoCertForEndpoint(endPoint.Key));
                         }
                     }
                     catch (Exception ex)
                     {
-                        throw new InvalidOperationException("Unable to configure HTTPS endpoint. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054.", ex);
+                        throw new InvalidOperationException(KestrelStrings.UnableToConfigureHttps, ex);
                     }
 
                     listenOptions.UseHttps(certificate);
