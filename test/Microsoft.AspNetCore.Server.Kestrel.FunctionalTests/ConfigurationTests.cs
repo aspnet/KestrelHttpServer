@@ -28,6 +28,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             });
         }
 
+        [Fact]
+        public void BindsKestrelToInvalidIp_FailsToStart()
+        {
+            var hostBuilder = new WebHostBuilder()
+                .UseKestrel()
+                .UseConfiguration(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
+                {
+                    { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", "127.0" },
+                    { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Port", "0" }
+                }).Build())
+                .Configure(ConfigureEchoAddress);
+
+            Assert.Throws<InvalidOperationException>(() => hostBuilder.Start());
+        }
+
         [Theory]
         [InlineData("127.0.0.1", "127.0.0.1")]
         [InlineData("::1", "[::1]")]
@@ -110,6 +125,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private static int GetWebHostPort(IWebHost webHost)
             => webHost.ServerFeatures.Get<IServerAddressesFeature>().Addresses
                 .Select(serverAddress => new Uri(serverAddress).Port)
-                .FirstOrDefault();
+                .Single();
     }
 }
