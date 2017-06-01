@@ -12,23 +12,27 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
-    public class KestrelServerConfigureOptions : IConfigureOptions<KestrelServerOptions>
+    public class ConfigureDefaultKestrelServerOptions : ConfigureDefaultOptions<KestrelServerOptions>
     {
         private const string DefaultCertificateSubjectName = "CN=localhost";
         private const string DevelopmentSSLCertificateName = "localhost";
 
+        private readonly IServiceProvider _services;
         private readonly IHostingEnvironment _hostingEnvironment;
         private readonly IConfiguration _configurationRoot;
         private readonly ILoggerFactory _loggerFactory;
 
-        public KestrelServerConfigureOptions(
+        public ConfigureDefaultKestrelServerOptions(
+            IServiceProvider services,
             IHostingEnvironment hostingEnvironment,
             IConfiguration configurationRoot,
             ILoggerFactory loggerFactory)
         {
+            _services = services;
             _hostingEnvironment = hostingEnvironment;
             _configurationRoot = configurationRoot;
             _loggerFactory = loggerFactory;
@@ -36,6 +40,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public void Configure(KestrelServerOptions options)
         {
+            // Don't assume KestrelServerOptionsSetup has already set the services. Needed for UseHttps.
+            options.ApplicationServices = _services;
             BindConfiguration(options);
         }
 
