@@ -33,6 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private bool _timingReads;
         private bool _pauseTimingReads;
+        private long _readTimingStartTicks;
         private long _readTimingElapsed;
         private long _bytesReadSinceLastTick;
 
@@ -248,7 +249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     if (!_frame.RequestBodyTimeoutMaximumTime.HasValue || !_frame.RequestBodyTimeoutMinimumRate.HasValue)
                     {
-                        Log.RequestBodyTimeout(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumTime.TotalSeconds);
+                        Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumTime);
                         _frame.Abort(error: null);
                     }
                     else
@@ -257,19 +258,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                         if (_readTimingElapsed > _frame.RequestBodyTimeoutMaximumTime.Value.Ticks)
                         {
-                            Log.RequestBodyTimeout(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMaximumTime.Value.TotalSeconds);
+                            Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMaximumTime.Value);
                             _frame.Abort(error: null);
                         }
                         else if (rate < _frame.RequestBodyTimeoutMinimumRate)
                         {
-                            Log.RequestBodyMininumRateNotSatisfied(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumRate.Value);
+                            Log.RequestBodyMininumRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumRate.Value);
                             _frame.Abort(error: null);
                         }
                     }
                 }
 
-                // PauseTimingReads() cannot just set _timingReads to false - need to go through at least one tick
-                // before pausing, otherwise _readTimingElapsed might never be updated.
+                // PauseTimingReads() cannot just set _timingReads to false. It needs to go through at least one tick
+                // before pausing, otherwise _readTimingElapsed might never be updated if PauseTimingReads() is always
+                // called before the next tick.
                 if (_pauseTimingReads)
                 {
                     _timingReads = false;
@@ -318,8 +320,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + ticks + Heartbeat.Interval.Ticks);
         }
 
-        private long _readTimingStartTicks;
-
         public void StartTimingReads()
         {
             Interlocked.Exchange(ref _readTimingElapsed, 0);
@@ -334,13 +334,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void PauseTimingReads()
         {
-            Log.LogDebug($"Pausing.\r\nRequest body time: {TimeSpan.FromTicks(_readTimingElapsed)}.\r\nTime since request body start: {TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks)}");
+            Log.RequestBodyTimingPause(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_readTimingElapsed), TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks));
             _pauseTimingReads = true;
         }
 
         public void ResumeTimingReads()
         {
-            Log.LogDebug($"Resuming.\r\nRequest body time: {TimeSpan.FromTicks(_readTimingElapsed)}\r\nTime since request body start: {TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks)}");
+            Log.RequestBodyTimingResume(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_readTimingElapsed), TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks));
             _timingReads = true;
         }
 

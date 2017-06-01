@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         public TimeSpan? MaximumTime { get; set; }
 
         /// <summary>
-        /// The minimum incoming data rate that the request should be read at after
+        /// The minimum incoming data rate in bytes/second that the request should be read at after
         /// <see cref="MinimumTime"/> has elapsed.
         /// </summary>
         public double? MinimumRate { get; set; }
