@@ -129,4 +129,7 @@
   <data name="UnableToConfigureHttps" xml:space="preserve">
     <value>Unable to configure HTTPS endpoint. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054.</value>
   </data>
+  <data name="NoCertFoundLog" xml:space="preserve">
+    <value>No HTTPS certificate was found for development. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054.</value>
+  </data>
 </root>

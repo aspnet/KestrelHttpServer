@@ -66,6 +66,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         internal static string FormatUnableToConfigureHttps()
             => GetString("UnableToConfigureHttps");
 
+        /// <summary>
+        /// No HTTPS certificate was found for development. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054.
+        /// </summary>
+        internal static string NoCertFoundLog
+        {
+            get => GetString("NoCertFoundLog");
+        }
+
+        /// <summary>
+        /// No HTTPS certificate was found for development. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054.
+        /// </summary>
+        internal static string FormatNoCertFoundLog()
+            => GetString("NoCertFoundLog");
+
         private static string GetString(string name, params string[] formatterNames)
         {
             var value = _resourceManager.GetString(name);

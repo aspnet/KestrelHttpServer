@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                             if (certificate == null)
                             {
                                 var logger = _loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.KestrelServerConfigureOptions");
-                                logger.LogError("No HTTPS certificate was found for development. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054.");
+                                logger.LogError(KestrelStrings.NoCertFoundLog);
                             }
                         }
 
