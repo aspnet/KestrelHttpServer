@@ -43,10 +43,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", $"{endPointAddress}" },
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Port", "0" }
                 }).Build())
-                .ConfigureServices(services =>
-                {
-                    services.AddTransient(typeof(IConfigureOptions<KestrelServerOptions>), typeof(ConfigureDefaults<KestrelServerOptions>));
-                })
                 .Configure(ConfigureEchoAddress);
             
             using (var webHost = hostBuilder.Start())
@@ -79,10 +75,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
                     { "Certificates:TestCert:Path", "testCert.pfx" },
                     { "Certificates:TestCert:Password", "testPassword" }
                 }).Build())
-                .ConfigureServices(services =>
-                {
-                    services.AddTransient(typeof(IConfigureOptions<KestrelServerOptions>), typeof(ConfigureDefaults<KestrelServerOptions>));
-                })
                 .Configure(ConfigureEchoAddress);
             
             using (var webHost = hostBuilder.Start())
@@ -107,10 +99,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Configuration.Tests
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Certificate:Path", "testCert.pfx" },
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Certificate:Password", "testPassword" }
                 }).Build())
-                .ConfigureServices(services =>
-                {
-                    services.AddTransient(typeof(IConfigureOptions<KestrelServerOptions>), typeof(ConfigureDefaults<KestrelServerOptions>));
-                })
                 .Configure(ConfigureEchoAddress);
 
             using (var webHost = hostBuilder.Start())

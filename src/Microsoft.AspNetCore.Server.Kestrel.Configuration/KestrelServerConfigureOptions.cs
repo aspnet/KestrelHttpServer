@@ -8,15 +8,13 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Certificates.Configuration;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Options.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    internal class KestrelServerConfigureOptions : ConfigureDefaultOptions<KestrelServerOptions>
+    public class KestrelServerConfigureOptions : IConfigureOptions<KestrelServerOptions>
     {
         private const string DefaultCertificateSubjectName = "CN=localhost";
         private const string DevelopmentSSLCertificateName = "localhost";
@@ -35,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _loggerFactory = loggerFactory;
         }
 
-        public override void Configure(string name, KestrelServerOptions options)
+        public void Configure(KestrelServerOptions options)
         {
             BindConfiguration(options);
         }
