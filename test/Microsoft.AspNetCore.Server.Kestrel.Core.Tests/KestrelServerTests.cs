@@ -8,6 +8,7 @@ using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
@@ -100,9 +101,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void StartWithMaxRequestBufferSizeLessThanMaxRequestLineSizeThrows(long maxRequestBufferSize, int maxRequestLineSize)
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
-            var options = new KestrelServerOptions();
-            options.Limits.MaxRequestBufferSize = maxRequestBufferSize;
-            options.Limits.MaxRequestLineSize = maxRequestLineSize;
+            var options = new KestrelServerOptions
+            {
+                Limits =
+                {
+                    MaxRequestBufferSize = maxRequestBufferSize,
+                    MaxRequestLineSize = maxRequestLineSize
+                }
+            };
 
             using (var server = CreateServer(options, testLogger))
             {
@@ -121,10 +127,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void StartWithMaxRequestBufferSizeLessThanMaxRequestHeadersTotalSizeThrows(long maxRequestBufferSize, int maxRequestHeadersTotalSize)
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
-            var options = new KestrelServerOptions();
-            options.Limits.MaxRequestBufferSize = maxRequestBufferSize;
-            options.Limits.MaxRequestLineSize = (int)maxRequestBufferSize;
-            options.Limits.MaxRequestHeadersTotalSize = maxRequestHeadersTotalSize;
+            var options = new KestrelServerOptions
+            {
+                Limits =
+                {
+                    MaxRequestBufferSize = maxRequestBufferSize,
+                    MaxRequestLineSize = (int)maxRequestBufferSize,
+                    MaxRequestHeadersTotalSize = maxRequestHeadersTotalSize
+                }
+            };
 
             using (var server = CreateServer(options, testLogger))
             {
@@ -146,12 +157,100 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void StartWithNoTrasnportFactoryThrows()
+        public void StartWithNoTransportFactoryThrows()
         {
             var exception = Assert.Throws<ArgumentNullException>(() =>
                 new KestrelServer(Options.Create<KestrelServerOptions>(null), null, Mock.Of<ILoggerFactory>()));
 
             Assert.Equal("transportFactory", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(2, 1)]
+        [InlineData(1, 1)]
+        public void StartWithMaximumRequestBodyTimeoutSmallerThanOrEqualToMinimumRequestBodyTimeoutThrows(int minimumSeconds, int maximumSeconds)
+        {
+            var minimumTime = TimeSpan.FromSeconds(minimumSeconds);
+            var maximumTime = TimeSpan.FromSeconds(maximumSeconds);
+            var options = new KestrelServerOptions
+            {
+                Limits =
+                {
+                    DefaultRequestBodyTimeout =
+                    {
+                        MinimumTime = minimumTime,
+                        MaximumTime = maximumTime
+                    }
+                }
+            };
+
+            var mockTrace = new Mock<IKestrelTrace>();
+
+            using (var server = CreateServer(options, mockTrace.Object))
+            {
+                var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
+
+                Assert.Equal(
+                    CoreStrings.FormatMaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout(maximumTime, minimumTime),
+                    exception.Message);
+                mockTrace.Verify(logger => logger.Log(LogLevel.Critical, 0, It.IsAny<object>(), exception, It.IsAny<Func<object, Exception, string>>()));
+            }
+        }
+
+        [Fact]
+        public void StartWithMaximumRequestBodyTimeoutButNullRequestBodyMinimumRateThrows()
+        {
+            var options = new KestrelServerOptions
+            {
+                Limits =
+                {
+                    DefaultRequestBodyTimeout =
+                    {
+                        MinimumTime = TimeSpan.FromSeconds(1),
+                        MaximumTime = TimeSpan.FromSeconds(2)
+                    }
+                }
+            };
+
+            var mockTrace = new Mock<IKestrelTrace>();
+
+            using (var server = CreateServer(options, mockTrace.Object))
+            {
+                var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
+
+                Assert.Equal(
+                    CoreStrings.FormatMaxRequestBodyTimeoutAndMinRateMustBeSetTogether(),
+                    exception.Message);
+                mockTrace.Verify(logger => logger.Log(LogLevel.Critical, 0, It.IsAny<object>(), exception, It.IsAny<Func<object, Exception, string>>()));
+            }
+        }
+
+        [Fact]
+        public void StartWithRequestBodyMinimumRateButNullMaximumRequestBodyTimeoutThrows()
+        {
+            var options = new KestrelServerOptions
+            {
+                Limits =
+                {
+                    DefaultRequestBodyTimeout =
+                    {
+                        MinimumTime = TimeSpan.FromSeconds(1),
+                        MinimumRate = 1
+                    }
+                }
+            };
+
+            var mockTrace = new Mock<IKestrelTrace>();
+
+            using (var server = CreateServer(options, mockTrace.Object))
+            {
+                var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
+
+                Assert.Equal(
+                    CoreStrings.FormatMaxRequestBodyTimeoutAndMinRateMustBeSetTogether(),
+                    exception.Message);
+                mockTrace.Verify(logger => logger.Log(LogLevel.Critical, 0, It.IsAny<object>(), exception, It.IsAny<Func<object, Exception, string>>()));
+            }
         }
 
         private static KestrelServer CreateServer(KestrelServerOptions options, ILogger testLogger)

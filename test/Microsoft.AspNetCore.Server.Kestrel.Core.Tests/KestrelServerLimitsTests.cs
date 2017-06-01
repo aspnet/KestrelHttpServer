@@ -272,5 +272,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().MaxRequestBodySize = value);
             Assert.StartsWith(CoreStrings.NonNegativeNumberOrNullRequired, ex.Message);
         }
+
+        [Fact]
+        public void DefaultRequestBodyTimeoutDefault()
+        {
+            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().DefaultRequestBodyTimeout.MinimumTime);
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.MaximumTime);
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.MinimumRate);
+        }
     }
 }
