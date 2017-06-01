@@ -276,9 +276,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DefaultRequestBodyTimeoutDefault()
         {
-            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().DefaultRequestBodyTimeout.MinimumTime);
-            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.MaximumTime);
-            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.MinimumRate);
+            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().DefaultRequestBodyTimeout.Timeout);
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.ExtendedTimeout);
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.MinimumDataRate);
         }
     }
 }

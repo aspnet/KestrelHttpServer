@@ -209,17 +209,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     CoreStrings.FormatMaxRequestBufferSmallerThanRequestHeaderBuffer(Options.Limits.MaxRequestBufferSize.Value, Options.Limits.MaxRequestHeadersTotalSize));
             }
 
-            if (Options.Limits.DefaultRequestBodyTimeout.MaximumTime.HasValue &&
-                Options.Limits.DefaultRequestBodyTimeout.MaximumTime <= Options.Limits.DefaultRequestBodyTimeout.MinimumTime)
+            if (Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout.HasValue &&
+                Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout <= Options.Limits.DefaultRequestBodyTimeout.Timeout)
             {
                 throw new InvalidOperationException(
-                    CoreStrings.FormatMaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout(Options.Limits.DefaultRequestBodyTimeout.MaximumTime, Options.Limits.DefaultRequestBodyTimeout.MinimumTime));
+                    CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout, Options.Limits.DefaultRequestBodyTimeout.Timeout));
             }
 
-            if (Options.Limits.DefaultRequestBodyTimeout.MaximumTime.HasValue ^ Options.Limits.DefaultRequestBodyTimeout.MinimumRate.HasValue)
+            if (Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout.HasValue ^ Options.Limits.DefaultRequestBodyTimeout.MinimumDataRate.HasValue)
             {
                 throw new InvalidOperationException(
-                    CoreStrings.FormatMaxRequestBodyTimeoutAndMinRateMustBeSetTogether());
+                    CoreStrings.FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether());
             }
         }
     }

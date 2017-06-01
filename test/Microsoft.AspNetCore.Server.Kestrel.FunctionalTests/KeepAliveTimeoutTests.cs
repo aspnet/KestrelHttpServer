@@ -198,7 +198,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         KeepAliveTimeout = KeepAliveTimeout,
                         DefaultRequestBodyTimeout =
                         {
-                            MinimumTime = TimeSpan.MaxValue
+                            Timeout = TimeSpan.MaxValue
                         }
                     }
                 }

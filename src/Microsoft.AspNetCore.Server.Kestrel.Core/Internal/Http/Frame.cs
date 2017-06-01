@@ -101,9 +101,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log);
             RequestBodyPipe = CreateRequestBodyPipe();
 
-            RequestBodyTimeoutMinimumTime = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumTime;
-            RequestBodyTimeoutMaximumTime = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MaximumTime;
-            RequestBodyTimeoutMinimumRate = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumRate;
+            RequestBodyTimeout = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.Timeout;
+            RequestBodyExtendedTimeout = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.ExtendedTimeout;
+            RequestBodyMinimumDataRate = frameContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumDataRate;
         }
 
         public IPipe RequestBodyPipe { get; }
@@ -304,9 +304,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
 
-        public TimeSpan RequestBodyTimeoutMinimumTime { get; set; }
-        public TimeSpan? RequestBodyTimeoutMaximumTime { get; set; }
-        public double? RequestBodyTimeoutMinimumRate { get; set; }
+        public TimeSpan RequestBodyTimeout { get; set; }
+        public TimeSpan? RequestBodyExtendedTimeout { get; set; }
+        public double? RequestBodyMinimumDataRate { get; set; }
 
         public void InitializeStreams(MessageBody messageBody)
         {

@@ -168,18 +168,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(2, 1)]
         [InlineData(1, 1)]
-        public void StartWithMaximumRequestBodyTimeoutSmallerThanOrEqualToMinimumRequestBodyTimeoutThrows(int minimumSeconds, int maximumSeconds)
+        public void StartWithRequestBodyExtendedTimeoutSmallerThanOrEqualToRequestBodyTimeoutThrows(int timeoutSeconds, int extendedTimeoutSeconds)
         {
-            var minimumTime = TimeSpan.FromSeconds(minimumSeconds);
-            var maximumTime = TimeSpan.FromSeconds(maximumSeconds);
+            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            var extendedTimeout = TimeSpan.FromSeconds(extendedTimeoutSeconds);
             var options = new KestrelServerOptions
             {
                 Limits =
                 {
                     DefaultRequestBodyTimeout =
                     {
-                        MinimumTime = minimumTime,
-                        MaximumTime = maximumTime
+                        Timeout = timeout,
+                        ExtendedTimeout = extendedTimeout
                     }
                 }
             };
@@ -191,14 +191,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
 
                 Assert.Equal(
-                    CoreStrings.FormatMaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout(maximumTime, minimumTime),
+                    CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(extendedTimeout, timeout),
                     exception.Message);
                 mockTrace.Verify(logger => logger.Log(LogLevel.Critical, 0, It.IsAny<object>(), exception, It.IsAny<Func<object, Exception, string>>()));
             }
         }
 
         [Fact]
-        public void StartWithMaximumRequestBodyTimeoutButNullRequestBodyMinimumRateThrows()
+        public void StartWithRequestBodyExtendedTimeoutButNullRequestBodyMinimumDataRateThrows()
         {
             var options = new KestrelServerOptions
             {
@@ -206,8 +206,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 {
                     DefaultRequestBodyTimeout =
                     {
-                        MinimumTime = TimeSpan.FromSeconds(1),
-                        MaximumTime = TimeSpan.FromSeconds(2)
+                        Timeout = TimeSpan.FromSeconds(1),
+                        ExtendedTimeout = TimeSpan.FromSeconds(2)
                     }
                 }
             };
@@ -219,14 +219,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
 
                 Assert.Equal(
-                    CoreStrings.FormatMaxRequestBodyTimeoutAndMinRateMustBeSetTogether(),
+                    CoreStrings.FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether(),
                     exception.Message);
                 mockTrace.Verify(logger => logger.Log(LogLevel.Critical, 0, It.IsAny<object>(), exception, It.IsAny<Func<object, Exception, string>>()));
             }
         }
 
         [Fact]
-        public void StartWithRequestBodyMinimumRateButNullMaximumRequestBodyTimeoutThrows()
+        public void StartWithRequestBodyMinimumDataRateButNullRequestBodyExtendedTimeoutThrows()
         {
             var options = new KestrelServerOptions
             {
@@ -234,8 +234,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 {
                     DefaultRequestBodyTimeout =
                     {
-                        MinimumTime = TimeSpan.FromSeconds(1),
-                        MinimumRate = 1
+                        Timeout = TimeSpan.FromSeconds(1),
+                        MinimumDataRate = 1
                     }
                 }
             };
@@ -247,7 +247,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
 
                 Assert.Equal(
-                    CoreStrings.FormatMaxRequestBodyTimeoutAndMinRateMustBeSetTogether(),
+                    CoreStrings.FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether(),
                     exception.Message);
                 mockTrace.Verify(logger => logger.Log(LogLevel.Critical, 0, It.IsAny<object>(), exception, It.IsAny<Func<object, Exception, string>>()));
             }

@@ -991,32 +991,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("MaxRequestBodySizeCannotBeModifiedForUpgradedRequests");
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.MaximumTime ({maxRequestBodyTimeout}) must be greater than DefaultRequestBodyTimeout.MinimumTime ({minRequestBodyTimeout}).
+        /// DefaultRequestBodyTimeout.ExtendedTimeout ({extendedTimeout}) must be greater than DefaultRequestBodyTimeout.Timeout ({timeout}).
         /// </summary>
-        internal static string MaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout
+        internal static string RequestBodyExtendedTimeoutSmallerThanTimeout
         {
-            get => GetString("MaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout");
+            get => GetString("RequestBodyExtendedTimeoutSmallerThanTimeout");
         }
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.MaximumTime ({maxRequestBodyTimeout}) must be greater than DefaultRequestBodyTimeout.MinimumTime ({minRequestBodyTimeout}).
+        /// DefaultRequestBodyTimeout.ExtendedTimeout ({extendedTimeout}) must be greater than DefaultRequestBodyTimeout.Timeout ({timeout}).
         /// </summary>
-        internal static string FormatMaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout(object maxRequestBodyTimeout, object minRequestBodyTimeout)
-            => string.Format(CultureInfo.CurrentCulture, GetString("MaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout", "maxRequestBodyTimeout", "minRequestBodyTimeout"), maxRequestBodyTimeout, minRequestBodyTimeout);
+        internal static string FormatRequestBodyExtendedTimeoutSmallerThanTimeout(object extendedTimeout, object timeout)
+            => string.Format(CultureInfo.CurrentCulture, GetString("RequestBodyExtendedTimeoutSmallerThanTimeout", "extendedTimeout", "timeout"), extendedTimeout, timeout);
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.MaximumTime and DefaultRequestBodyTimeout.MinimumRate must be set together.
+        /// DefaultRequestBodyTimeout.ExtendedTimeout and DefaultRequestBodyTimeout.MinimumDataRate must be set together.
         /// </summary>
-        internal static string MaxRequestBodyTimeoutAndMinRateMustBeSetTogether
+        internal static string RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether
         {
-            get => GetString("MaxRequestBodyTimeoutAndMinRateMustBeSetTogether");
+            get => GetString("RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether");
         }
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.MaximumTime and DefaultRequestBodyTimeout.MinimumRate must be set together.
+        /// DefaultRequestBodyTimeout.ExtendedTimeout and DefaultRequestBodyTimeout.MinimumDataRate must be set together.
         /// </summary>
-        internal static string FormatMaxRequestBodyTimeoutAndMinRateMustBeSetTogether()
-            => GetString("MaxRequestBodyTimeoutAndMinRateMustBeSetTogether");
+        internal static string FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether()
+            => GetString("RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether");
 
         private static string GetString(string name, params string[] formatterNames)
         {

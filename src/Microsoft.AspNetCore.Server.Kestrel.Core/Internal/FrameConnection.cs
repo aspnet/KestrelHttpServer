@@ -245,25 +245,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 _readTimingElapsed += timestamp - _lastTimestamp;
 
-                if (_readTimingElapsed > _frame.RequestBodyTimeoutMinimumTime.Ticks)
+                if (_readTimingElapsed > _frame.RequestBodyTimeout.Ticks)
                 {
-                    if (!_frame.RequestBodyTimeoutMaximumTime.HasValue || !_frame.RequestBodyTimeoutMinimumRate.HasValue)
+                    if (!_frame.RequestBodyExtendedTimeout.HasValue || !_frame.RequestBodyMinimumDataRate.HasValue)
                     {
-                        Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumTime);
+                        Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeout);
                         _frame.Abort(error: null);
                     }
                     else
                     {
                         var rate = _bytesReadSinceLastTick / TimeSpan.FromTicks(timestamp - _lastTimestamp).TotalSeconds;
 
-                        if (_readTimingElapsed > _frame.RequestBodyTimeoutMaximumTime.Value.Ticks)
+                        if (_readTimingElapsed > _frame.RequestBodyExtendedTimeout.Value.Ticks)
                         {
-                            Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMaximumTime.Value);
+                            Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyExtendedTimeout.Value);
                             _frame.Abort(error: null);
                         }
-                        else if (rate < _frame.RequestBodyTimeoutMinimumRate)
+                        else if (rate < _frame.RequestBodyMinimumDataRate)
                         {
-                            Log.RequestBodyMininumRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMinimumRate.Value);
+                            Log.RequestBodyMininumRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate.Value);
                             _frame.Abort(error: null);
                         }
                     }

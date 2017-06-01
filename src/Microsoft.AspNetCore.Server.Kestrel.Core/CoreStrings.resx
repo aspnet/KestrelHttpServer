@@ -327,10 +327,10 @@
   <data name="MaxRequestBodySizeCannotBeModifiedForUpgradedRequests" xml:space="preserve">
     <value>The maximum request body size cannot be modified after the request has been upgraded.</value>
   </data>
-  <data name="MaxRequestBodyTimeoutSmallerThanMinRequestBodyTimeout" xml:space="preserve">
-    <value>DefaultRequestBodyTimeout.MaximumTime ({maxRequestBodyTimeout}) must be greater than DefaultRequestBodyTimeout.MinimumTime ({minRequestBodyTimeout}).</value>
+  <data name="RequestBodyExtendedTimeoutSmallerThanTimeout" xml:space="preserve">
+    <value>DefaultRequestBodyTimeout.ExtendedTimeout ({extendedTimeout}) must be greater than DefaultRequestBodyTimeout.Timeout ({timeout}).</value>
   </data>
-  <data name="MaxRequestBodyTimeoutAndMinRateMustBeSetTogether" xml:space="preserve">
-    <value>DefaultRequestBodyTimeout.MaximumTime and DefaultRequestBodyTimeout.MinimumRate must be set together.</value>
+  <data name="RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether" xml:space="preserve">
+    <value>DefaultRequestBodyTimeout.ExtendedTimeout and DefaultRequestBodyTimeout.MinimumDataRate must be set together.</value>
   </data>
 </root>
