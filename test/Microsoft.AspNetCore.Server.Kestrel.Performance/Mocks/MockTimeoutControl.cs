@@ -27,6 +27,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks
         {
         }
 
+        public void PauseTimingReads()
+        {
+        }
+
+        public void ResumeTimingReads()
+        {
+        }
+
         public void BytesRead(int count)
         {
         }

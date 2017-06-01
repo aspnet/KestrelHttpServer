@@ -10,6 +10,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void CancelTimeout();
 
         void StartTimingReads();
+        void PauseTimingReads();
+        void ResumeTimingReads();
         void StopTimingReads();
         void BytesRead(int count);
     }

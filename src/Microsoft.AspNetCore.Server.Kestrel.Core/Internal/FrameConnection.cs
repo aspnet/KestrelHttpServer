@@ -32,7 +32,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private Task _lifetimeTask;
 
         private bool _timingReads;
-        private long _readTimingStartTicks;
+        private bool _pauseTimingReads;
+        private long _readTimingElapsed;
         private long _bytesReadSinceLastTick;
 
         public FrameConnection(FrameConnectionContext context)
@@ -241,9 +242,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             if (_timingReads)
             {
-                var elapsed = TimeSpan.FromTicks(timestamp - _readTimingStartTicks);
+                _readTimingElapsed += timestamp - _lastTimestamp;
 
-                if (elapsed > _frame.RequestBodyTimeoutMinimumTime)
+                if (_readTimingElapsed > _frame.RequestBodyTimeoutMinimumTime.Ticks)
                 {
                     if (!_frame.RequestBodyTimeoutMaximumTime.HasValue || !_frame.RequestBodyTimeoutMinimumRate.HasValue)
                     {
@@ -254,7 +255,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     {
                         var rate = _bytesReadSinceLastTick / TimeSpan.FromTicks(timestamp - _lastTimestamp).TotalSeconds;
 
-                        if (elapsed > _frame.RequestBodyTimeoutMaximumTime)
+                        if (_readTimingElapsed > _frame.RequestBodyTimeoutMaximumTime.Value.Ticks)
                         {
                             Log.RequestBodyTimeout(_frame.ConnectionIdFeature, _frame.TraceIdentifier, _frame.RequestBodyTimeoutMaximumTime.Value.TotalSeconds);
                             _frame.Abort(error: null);
@@ -265,6 +266,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                             _frame.Abort(error: null);
                         }
                     }
+                }
+
+                // PauseTimingReads() cannot just set _timingReads to false - need to go through at least one tick
+                // before pausing, otherwise _readTimingElapsed might never be updated.
+                if (_pauseTimingReads)
+                {
+                    _timingReads = false;
+                    _pauseTimingReads = false;
                 }
 
                 Interlocked.Exchange(ref _bytesReadSinceLastTick, 0);
@@ -309,15 +318,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + ticks + Heartbeat.Interval.Ticks);
         }
 
+        private long _readTimingStartTicks;
+
         public void StartTimingReads()
         {
-            _timingReads = true;
+            Interlocked.Exchange(ref _readTimingElapsed, 0);
             Interlocked.Exchange(ref _readTimingStartTicks, _lastTimestamp);
+            _timingReads = true;
         }
 
         public void StopTimingReads()
         {
             _timingReads = false;
+        }
+
+        public void PauseTimingReads()
+        {
+            Log.LogDebug($"Pausing.\r\nRequest body time: {TimeSpan.FromTicks(_readTimingElapsed)}.\r\nTime since request body start: {TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks)}");
+            _pauseTimingReads = true;
+        }
+
+        public void ResumeTimingReads()
+        {
+            Log.LogDebug($"Resuming.\r\nRequest body time: {TimeSpan.FromTicks(_readTimingElapsed)}\r\nTime since request body start: {TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks)}");
+            _timingReads = true;
         }
 
         public void BytesRead(int count)

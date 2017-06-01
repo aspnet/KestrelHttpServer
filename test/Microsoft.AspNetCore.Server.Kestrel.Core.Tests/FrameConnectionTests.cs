@@ -73,7 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.StartTimingReads();
 
             // Tick beyond timeout
-            _frameConnection.Tick(now + RequestBodyMinimumTime + Heartbeat.Interval);
+            _frameConnection.Tick(now + RequestBodyMinimumTime + TimeSpan.FromSeconds(1));
 
             Assert.True(logEvent.Wait(TimeSpan.FromSeconds(10)));
 
@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.StartTimingReads();
 
             // Tick beyond maximum timeout w/ satisfactory data rate
-            var future = now + RequestBodyMaximumTime + Heartbeat.Interval;
+            var future = now + RequestBodyMaximumTime + TimeSpan.FromSeconds(1);
             _frameConnection.BytesRead((int)(RequestBodyMinimumRate * 2 * (future - now).TotalSeconds));
             _frameConnection.Tick(future);
 
@@ -142,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Tick beyond minimum timeout w/ low data rate
             _frameConnection.BytesRead(1);
-            _frameConnection.Tick(now + RequestBodyMinimumTime + Heartbeat.Interval);
+            _frameConnection.Tick(now + RequestBodyMinimumTime + TimeSpan.FromSeconds(1));
 
             Assert.True(logEvent.Wait(TimeSpan.FromSeconds(10)));
 

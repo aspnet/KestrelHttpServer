@@ -80,7 +80,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 writableBuffer.Commit();
                             }
 
-                            await writableBuffer.FlushAsync();
+                            var writeAwaitable = writableBuffer.FlushAsync();
+                            var backpressure = false;
+
+                            if (!writeAwaitable.IsCompleted)
+                            {
+                                // Backpressure, stop controlling incoming data rate until data is read.
+                                backpressure = true;
+                                _context.TimeoutControl.PauseTimingReads();
+                            }
+
+                            await writeAwaitable;
+
+                            if (backpressure)
+                            {
+                                _context.TimeoutControl.ResumeTimingReads();
+                            }
 
                             if (done)
                             {
