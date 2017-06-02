@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -21,7 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                  IHttpConnectionFeature,
                                  IHttpRequestLifetimeFeature,
                                  IHttpRequestIdentifierFeature,
-                                 IHttpMaxRequestBodySizeFeature
+                                 IHttpMaxRequestBodySizeFeature,
+                                 IHttpRequestBodyTimeoutFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -225,6 +227,51 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 MaxRequestBodySize = value;
             }
+        }
+
+        TimeSpan IHttpRequestBodyTimeoutFeature.Timeout => RequestBodyTimeout;
+
+        TimeSpan? IHttpRequestBodyTimeoutFeature.ExtendedTimeout => RequestBodyExtendedTimeout;
+
+        double? IHttpRequestBodyTimeoutFeature.MinimumDataRate => RequestBodyMinimumDataRate;
+
+        void IHttpRequestBodyTimeoutFeature.Configure(TimeSpan timeout)
+        {
+            if (timeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), CoreStrings.PositiveTimeSpanRequired);
+            }
+
+            RequestBodyTimeout = timeout;
+            RequestBodyExtendedTimeout = null;
+            RequestBodyMinimumDataRate = null;
+        }
+
+        void IHttpRequestBodyTimeoutFeature.Configure(TimeSpan timeout, TimeSpan extendedTimeout, double minimumDataRate)
+        {
+            if (timeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), CoreStrings.PositiveTimeSpanRequired);
+            }
+
+            if (extendedTimeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(extendedTimeout), CoreStrings.PositiveTimeSpanRequired);
+            }
+
+            if (minimumDataRate <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minimumDataRate), CoreStrings.PositiveNumberRequired);
+            }
+
+            if (extendedTimeout <= timeout)
+            {
+                throw new InvalidOperationException(CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(extendedTimeout, timeout));
+            }
+
+            RequestBodyTimeout = timeout;
+            RequestBodyExtendedTimeout = extendedTimeout;
+            RequestBodyMinimumDataRate = minimumDataRate;
         }
 
         object IFeatureCollection.this[Type key]

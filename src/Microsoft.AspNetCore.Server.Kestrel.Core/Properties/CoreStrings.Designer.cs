@@ -991,7 +991,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("MaxRequestBodySizeCannotBeModifiedForUpgradedRequests");
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.ExtendedTimeout ({extendedTimeout}) must be greater than DefaultRequestBodyTimeout.Timeout ({timeout}).
+        /// The request body extended timeout ({extendedTimeout}) must be greater than the request body timeout ({timeout}).
         /// </summary>
         internal static string RequestBodyExtendedTimeoutSmallerThanTimeout
         {
@@ -999,13 +999,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.ExtendedTimeout ({extendedTimeout}) must be greater than DefaultRequestBodyTimeout.Timeout ({timeout}).
+        /// The request body extended timeout ({extendedTimeout}) must be greater than the request body timeout ({timeout}).
         /// </summary>
         internal static string FormatRequestBodyExtendedTimeoutSmallerThanTimeout(object extendedTimeout, object timeout)
             => string.Format(CultureInfo.CurrentCulture, GetString("RequestBodyExtendedTimeoutSmallerThanTimeout", "extendedTimeout", "timeout"), extendedTimeout, timeout);
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.ExtendedTimeout and DefaultRequestBodyTimeout.MinimumDataRate must be set together.
+        /// The request body extended timeout and minimum data rate must both be set or null.
         /// </summary>
         internal static string RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether
         {
@@ -1013,10 +1013,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// DefaultRequestBodyTimeout.ExtendedTimeout and DefaultRequestBodyTimeout.MinimumDataRate must be set together.
+        /// The request body extended timeout and minimum data rate must both be set or null.
         /// </summary>
         internal static string FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether()
             => GetString("RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether");
+
+        /// <summary>
+        /// Value must be a positive TimeSpan.
+        /// </summary>
+        internal static string PositiveTimeSpanRequired
+        {
+            get => GetString("PositiveTimeSpanRequired");
+        }
+
+        /// <summary>
+        /// Value must be a positive TimeSpan.
+        /// </summary>
+        internal static string FormatPositiveTimeSpanRequired()
+            => GetString("PositiveTimeSpanRequired");
+
+        /// <summary>
+        /// Value must be null or a positive TimeSpan.
+        /// </summary>
+        internal static string PositiveTimeSpanOrNullRequired
+        {
+            get => GetString("PositiveTimeSpanOrNullRequired");
+        }
+
+        /// <summary>
+        /// Value must be null or a positive TimeSpan.
+        /// </summary>
+        internal static string FormatPositiveTimeSpanOrNullRequired()
+            => GetString("PositiveTimeSpanOrNullRequired");
 
         private static string GetString(string name, params string[] formatterNames)
         {

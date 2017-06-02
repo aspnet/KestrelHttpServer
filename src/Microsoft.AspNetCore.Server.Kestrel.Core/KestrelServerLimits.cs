@@ -37,6 +37,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private long? _maxConcurrentConnections = null;
         private long? _maxConcurrentUpgradedConnections = null;
 
+        // Default request body timeout
+        private TimeSpan _defaultRequestBodyTimeout = TimeSpan.FromMinutes(2);
+        private TimeSpan? _defaultRequestBodyExtendedTimeout = null;
+        private double? _defaultRequestBodyMinimumDataRate = null;
+
         /// <summary>
         /// Gets or sets the maximum size of the response buffer before write
         /// calls begin to block or return tasks that don't complete until the
@@ -236,8 +241,51 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Gets or sets the default timeout for receiving the request body. Defaults to 2 minutes.
+        /// Gets or sets the default timeout period for receiving the request body. Defaults to 2 minutes.
         /// </summary>
-        public RequestBodyTimeout DefaultRequestBodyTimeout { get; } = new RequestBodyTimeout();
+        public TimeSpan DefaultRequestBodyTimeout
+        {
+            get => _defaultRequestBodyTimeout;
+            set
+            {
+                if (value <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
+                }
+                _defaultRequestBodyTimeout = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the default timeout period for receiving the request body. Defaults to null.
+        /// </summary>
+        public TimeSpan? DefaultRequestBodyExtendedTimeout
+        {
+            get => _defaultRequestBodyExtendedTimeout;
+            set
+            {
+                if (value.HasValue && value <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanOrNullRequired);
+                }
+                _defaultRequestBodyExtendedTimeout = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the default request body minimum incoming data rate. Defaults to null.
+        /// </summary>
+        public double? DefaultRequestBodyMinimumDataRate
+        {
+            get => _defaultRequestBodyMinimumDataRate;
+            set
+            {
+                if (value.HasValue && value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveNumberOrNullRequired);
+                }
+                _defaultRequestBodyMinimumDataRate = value;
+            }
+        }
     }
 }

@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 }
             };
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.Timeout = RequestBodyTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = RequestBodyTimeout;
 
             _frameConnection = new FrameConnection(_frameConnectionContext);
         }
@@ -83,8 +83,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task AbortsConnectionWhenRequestBodyExceedsExtendedTimeout()
         {
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.ExtendedTimeout = RequestBodyExtendedTimeout;
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumDataRate = RequestBodyMinimumDataRate;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = RequestBodyExtendedTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = RequestBodyMinimumDataRate;
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -113,8 +113,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task AbortsConnectionWhenRequestBodyDoesNotSatisfyMinimumDataRate()
         {
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.ExtendedTimeout = RequestBodyExtendedTimeout;
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout.MinimumDataRate = RequestBodyMinimumDataRate;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = RequestBodyExtendedTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = RequestBodyMinimumDataRate;
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;

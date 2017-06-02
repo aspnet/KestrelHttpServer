@@ -176,11 +176,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 Limits =
                 {
-                    DefaultRequestBodyTimeout =
-                    {
-                        Timeout = timeout,
-                        ExtendedTimeout = extendedTimeout
-                    }
+                    DefaultRequestBodyTimeout = timeout,
+                    DefaultRequestBodyExtendedTimeout = extendedTimeout
                 }
             };
 
@@ -204,11 +201,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 Limits =
                 {
-                    DefaultRequestBodyTimeout =
-                    {
-                        Timeout = TimeSpan.FromSeconds(1),
-                        ExtendedTimeout = TimeSpan.FromSeconds(2)
-                    }
+                    DefaultRequestBodyTimeout =TimeSpan.FromSeconds(1),
+                    DefaultRequestBodyExtendedTimeout = TimeSpan.FromSeconds(2)
                 }
             };
 
@@ -232,11 +226,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 Limits =
                 {
-                    DefaultRequestBodyTimeout =
-                    {
-                        Timeout = TimeSpan.FromSeconds(1),
-                        MinimumDataRate = 1
-                    }
+                    DefaultRequestBodyTimeout = TimeSpan.FromSeconds(1),
+                    DefaultRequestBodyMinimumDataRate = 1
                 }
             };
 

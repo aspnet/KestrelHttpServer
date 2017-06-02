@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -141,6 +142,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public void ResetResetsRequestBodyTimeout()
+        {
+            _frame.RequestBodyTimeout = TimeSpan.MaxValue;
+
+            _frame.Reset();
+
+            Assert.Equal(_serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout, _frame.RequestBodyTimeout);
+        }
+
+        [Fact]
+        public void ResetResetsRequestBodyExtendedTimeout()
+        {
+            _frame.RequestBodyExtendedTimeout = TimeSpan.MaxValue;
+
+            _frame.Reset();
+
+            Assert.Null(_frame.RequestBodyExtendedTimeout);
+        }
+
+        [Fact]
+        public void ResetResetsRequestBodyMinimumDataRate()
+        {
+            _frame.RequestBodyMinimumDataRate = 42;
+
+            _frame.Reset();
+
+            Assert.Null(_frame.RequestBodyMinimumDataRate);
+        }
+
+        [Fact]
         public void TraceIdentifierCountsRequestsPerFrame()
         {
             var connectionId = _frameContext.ConnectionId;
@@ -241,6 +272,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Act/Assert
             Assert.True(_frame.HasResponseStarted);
             Assert.Throws<InvalidOperationException>(() => ((IHttpResponseFeature)_frame).OnStarting(_ => TaskCache.CompletedTask, null));
+        }
+
+        [Theory]
+        [MemberData(nameof(NonPositiveRequestBodyTimeoutData))]
+        public void ThrowsWhenConfiguringNonPositiveRequestBodyTimeout(TimeSpan value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(value));
+            Assert.Equal("timeout", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
+        }
+
+        [Theory]
+        [MemberData(nameof(NonPositiveRequestBodyTimeoutData))]
+        public void ThrowsWhenConfiguringNonPositiveRequestBodyExtendedTimeout(TimeSpan value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(TimeSpan.FromSeconds(5), value, 1));
+            Assert.Equal("extendedTimeout", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
+        }
+
+        [Theory]
+        [InlineData(double.MinValue)]
+        [InlineData(0)]
+        public void ThrowsWhenConfiguringNonPositiveRequestBodyMinimumDataRate(double value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), value));
+            Assert.Equal("minimumDataRate", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
+        }
+
+        [Fact]
+        public void ThrowsWhenConfiguringRequestBodyExtendedTimeoutSmallerThanRequestBodyTimeout()
+        {
+            var timeout = TimeSpan.FromSeconds(10);
+            var extendedTimeout = TimeSpan.FromSeconds(5);
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(timeout, extendedTimeout, 1));
+            Assert.Equal(CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(extendedTimeout, timeout), exception.Message);
         }
 
         [Fact]
@@ -843,6 +915,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 return data;
             }
         }
+
+        public static TheoryData<TimeSpan> NonPositiveRequestBodyTimeoutData => new TheoryData<TimeSpan>
+        {
+            TimeSpan.MinValue,
+            TimeSpan.FromTicks(-1),
+            TimeSpan.Zero
+        };
 
         private class RequestHeadersWrapper : IHeaderDictionary
         {

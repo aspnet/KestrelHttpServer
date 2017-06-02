@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -276,9 +275,102 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DefaultRequestBodyTimeoutDefault()
         {
-            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().DefaultRequestBodyTimeout.Timeout);
-            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.ExtendedTimeout);
-            Assert.Null(new KestrelServerLimits().DefaultRequestBodyTimeout.MinimumDataRate);
+            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().DefaultRequestBodyTimeout);
         }
+
+        [Theory]
+        [MemberData(nameof(DefaultRequestBodyTimeoutValidData))]
+        public void DefaultRequestBodyTimeoutValid(TimeSpan value)
+        {
+            var limits = new KestrelServerLimits
+            {
+                DefaultRequestBodyTimeout = value
+            };
+
+            Assert.Equal(value, limits.DefaultRequestBodyTimeout);
+        }
+
+        [Theory]
+        [MemberData(nameof(DefaultRequestBodyTimeoutInvalidData))]
+        public void DefaultRequestBodyTimeoutInvalid(TimeSpan value)
+        {
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().DefaultRequestBodyTimeout = value);
+            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, ex.Message);
+        }
+
+        [Fact]
+        public void DefaultRequestBodyExtendedTimeoutDefault()
+        {
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyExtendedTimeout);
+        }
+
+        [Theory]
+        [MemberData(nameof(DefaultExtendedRequestBodyTimeoutValidData))]
+        public void DefaultRequestBodyExtendedTimeoutValid(TimeSpan? value)
+        {
+            var limits = new KestrelServerLimits
+            {
+                DefaultRequestBodyExtendedTimeout = value
+            };
+
+            Assert.Equal(value, limits.DefaultRequestBodyExtendedTimeout);
+        }
+
+        [Theory]
+        [MemberData(nameof(DefaultRequestBodyTimeoutInvalidData))]
+        public void DefaultRequestBodyExtendedTimeoutInvalid(TimeSpan value)
+        {
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().DefaultRequestBodyExtendedTimeout = value);
+            Assert.StartsWith(CoreStrings.PositiveTimeSpanOrNullRequired, ex.Message);
+        }
+
+        [Fact]
+        public void DefaultRequestBodyMinimumDataRateDefault()
+        {
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyMinimumDataRate);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData(double.Epsilon)]
+        [InlineData(double.MaxValue)]
+        public void DefaultRequestBodyMinimumDataRateValid(double? value)
+        {
+            var limits = new KestrelServerLimits
+            {
+                DefaultRequestBodyMinimumDataRate = value
+            };
+
+            Assert.Equal(value, limits.DefaultRequestBodyMinimumDataRate);
+        }
+
+        [Theory]
+        [InlineData(double.MinValue)]
+        [InlineData(0)]
+        public void DefaultRequestBodyMinimumDataRateInvalid(double value)
+        {
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().DefaultRequestBodyMinimumDataRate = value);
+            Assert.StartsWith(CoreStrings.PositiveNumberOrNullRequired, ex.Message);
+        }
+
+        public static TheoryData<TimeSpan> DefaultRequestBodyTimeoutValidData => new TheoryData<TimeSpan>
+        {
+            TimeSpan.FromTicks(1),
+            TimeSpan.MaxValue
+        };
+
+        public static TheoryData<TimeSpan> DefaultRequestBodyTimeoutInvalidData => new TheoryData<TimeSpan>
+        {
+            TimeSpan.MinValue,
+            TimeSpan.FromTicks(-1),
+            TimeSpan.Zero
+        };
+
+        public static TheoryData<TimeSpan?> DefaultExtendedRequestBodyTimeoutValidData => new TheoryData<TimeSpan?>
+        {
+            null,
+            TimeSpan.FromTicks(1),
+            TimeSpan.MaxValue
+        };
     }
 }

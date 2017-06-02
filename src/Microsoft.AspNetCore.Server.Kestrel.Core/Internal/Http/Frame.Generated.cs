@@ -25,6 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly Type ISessionFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.ISessionFeature);
         private static readonly Type IHttpMaxRequestBodySizeFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature);
         private static readonly Type IHttpSendFileFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpSendFileFeature);
+        private static readonly Type IHttpRequestBodyTimeoutFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttpRequestBodyTimeoutFeature);
 
         private object _currentIHttpRequestFeature;
         private object _currentIHttpResponseFeature;
@@ -43,6 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private object _currentISessionFeature;
         private object _currentIHttpMaxRequestBodySizeFeature;
         private object _currentIHttpSendFileFeature;
+        private object _currentIHttpRequestBodyTimeoutFeature;
 
         private void FastReset()
         {
@@ -53,6 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _currentIHttpRequestLifetimeFeature = this;
             _currentIHttpConnectionFeature = this;
             _currentIHttpMaxRequestBodySizeFeature = this;
+            _currentIHttpRequestBodyTimeoutFeature = this;
             
             _currentIServiceProvidersFeature = null;
             _currentIHttpAuthenticationFeature = null;
@@ -135,6 +138,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (key == IHttpSendFileFeatureType)
             {
                 return _currentIHttpSendFileFeature;
+            }
+            if (key == IHttpRequestBodyTimeoutFeatureType)
+            {
+                return _currentIHttpRequestBodyTimeoutFeature;
             }
             return ExtraFeatureGet(key);
         }
@@ -227,6 +234,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _currentIHttpSendFileFeature = feature;
                 return;
+            }
+            if (key == IHttpRequestBodyTimeoutFeatureType)
+            {
+                _currentIHttpRequestBodyTimeoutFeature = feature;
+                return;
             };
             ExtraFeatureSet(key, feature);
         }
@@ -300,6 +312,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (_currentIHttpSendFileFeature != null)
             {
                 yield return new KeyValuePair<Type, object>(IHttpSendFileFeatureType, _currentIHttpSendFileFeature as global::Microsoft.AspNetCore.Http.Features.IHttpSendFileFeature);
+            }
+            if (_currentIHttpRequestBodyTimeoutFeature != null)
+            {
+                yield return new KeyValuePair<Type, object>(IHttpRequestBodyTimeoutFeatureType, _currentIHttpRequestBodyTimeoutFeature as global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttpRequestBodyTimeoutFeature);
             }
 
             if (MaybeExtra != null)

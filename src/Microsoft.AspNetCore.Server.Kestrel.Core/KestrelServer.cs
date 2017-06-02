@@ -209,14 +209,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     CoreStrings.FormatMaxRequestBufferSmallerThanRequestHeaderBuffer(Options.Limits.MaxRequestBufferSize.Value, Options.Limits.MaxRequestHeadersTotalSize));
             }
 
-            if (Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout.HasValue &&
-                Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout <= Options.Limits.DefaultRequestBodyTimeout.Timeout)
+            if (Options.Limits.DefaultRequestBodyExtendedTimeout.HasValue &&
+                Options.Limits.DefaultRequestBodyExtendedTimeout <= Options.Limits.DefaultRequestBodyTimeout)
             {
                 throw new InvalidOperationException(
-                    CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout, Options.Limits.DefaultRequestBodyTimeout.Timeout));
+                    CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(Options.Limits.DefaultRequestBodyExtendedTimeout, Options.Limits.DefaultRequestBodyTimeout));
             }
 
-            if (Options.Limits.DefaultRequestBodyTimeout.ExtendedTimeout.HasValue ^ Options.Limits.DefaultRequestBodyTimeout.MinimumDataRate.HasValue)
+            if (Options.Limits.DefaultRequestBodyExtendedTimeout.HasValue ^ Options.Limits.DefaultRequestBodyMinimumDataRate.HasValue)
             {
                 throw new InvalidOperationException(
                     CoreStrings.FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether());
