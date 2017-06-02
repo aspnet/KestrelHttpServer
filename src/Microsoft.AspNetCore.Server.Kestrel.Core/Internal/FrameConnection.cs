@@ -42,6 +42,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private PipeFactory PipeFactory => _context.ConnectionInformation.PipeFactory;
 
+        public bool TimedOut { get; private set; }
+
         // Internal for testing
         internal PipeOptions AdaptedInputPipeOptions => new PipeOptions
         {
@@ -238,6 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             // TODO: Use PlatformApis.VolatileRead equivalent again
             if (timestamp > Interlocked.Read(ref _timeoutTimestamp))
             {
+                TimedOut = true;
                 CancelTimeout();
 
                 if (_timeoutAction == TimeoutAction.SendTimeoutResponse)
@@ -270,6 +273,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private void AssignTimeout(long ticks, TimeoutAction timeoutAction)
         {
+            TimedOut = false;
             _timeoutAction = timeoutAction;
 
             // Add Heartbeat.Interval since this can be called right before the next heartbeat.
