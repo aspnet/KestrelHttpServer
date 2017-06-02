@@ -121,6 +121,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected string ConnectionId => _frameContext.ConnectionId;
 
         public string ConnectionIdFeature { get; set; }
+        public bool HasStartedConsumingRequestBody { get; set; }
+        public long? MaxRequestBodySize { get; set; }
 
         /// <summary>
         /// The request id. <seealso cref="HttpContext.TraceIdentifier"/>
@@ -310,8 +312,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void PauseStreams() => _frameStreams.Pause();
 
-        public void ResumeStreams() => _frameStreams.Resume();
-
         public void StopStreams() => _frameStreams.Stop();
 
         public void Reset()
@@ -326,6 +326,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             ResetFeatureCollection();
 
+            HasStartedConsumingRequestBody = false;
+            MaxRequestBodySize = ServerOptions.Limits.MaxRequestBodySize;
             TraceIdentifier = null;
             Scheme = null;
             Method = null;
@@ -368,7 +370,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _manuallySetRequestAbortToken = null;
             _abortedCts = null;
 
-            // Allow to bytes for \r\n after headers
+            // Allow two bytes for \r\n after headers
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestHeadersParsed = 0;
 
@@ -1370,9 +1372,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             => ConnectionInformation.PipeFactory.Create(new PipeOptions
             {
                 ReaderScheduler = ServiceContext.ThreadPool,
-                WriterScheduler = ConnectionInformation.InputWriterScheduler,
-                MaximumSizeHigh = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
-                MaximumSizeLow = ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+                WriterScheduler = InlineScheduler.Default,
+                MaximumSizeHigh = 1,
+                MaximumSizeLow = 1
             });
 
         private enum HttpRequestTarget

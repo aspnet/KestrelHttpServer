@@ -20,7 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                  IHttpUpgradeFeature,
                                  IHttpConnectionFeature,
                                  IHttpRequestLifetimeFeature,
-                                 IHttpRequestIdentifierFeature
+                                 IHttpRequestIdentifierFeature,
+                                 IHttpMaxRequestBodySizeFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -200,6 +201,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             get => TraceIdentifier;
             set => TraceIdentifier = value;
+        }
+
+        long? IHttpMaxRequestBodySizeFeature.MaxRequestBodySize
+        {
+            get => MaxRequestBodySize;
+            set
+            {
+                if (HasStartedConsumingRequestBody)
+                {
+                    throw new InvalidOperationException(CoreStrings.MaxRequestBodySizeCannotBeModifiedAfterRead);
+                }
+                if (_wasUpgraded)
+                {
+                    throw new InvalidOperationException(CoreStrings.MaxRequestBodySizeCannotBeModifiedForUpgradedRequests);
+                }
+
+                MaxRequestBodySize = value;
+            }
         }
 
         object IFeatureCollection.this[Type key]

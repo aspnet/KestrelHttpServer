@@ -24,6 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly Type IHttpWebSocketFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpWebSocketFeature);
         private static readonly Type ISessionFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.ISessionFeature);
         private static readonly Type IHttpSendFileFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpSendFileFeature);
+        private static readonly Type IHttpMaxRequestBodySizeFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.IHttpMaxRequestBodySizeFeature);
 
         private object _currentIHttpRequestFeature;
         private object _currentIHttpResponseFeature;
@@ -41,6 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private object _currentIHttpWebSocketFeature;
         private object _currentISessionFeature;
         private object _currentIHttpSendFileFeature;
+        private object _currentIHttpMaxRequestBodySizeFeature;
 
         private void FastReset()
         {
@@ -50,6 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _currentIHttpRequestIdentifierFeature = this;
             _currentIHttpRequestLifetimeFeature = this;
             _currentIHttpConnectionFeature = this;
+            _currentIHttpMaxRequestBodySizeFeature = this;
             
             _currentIServiceProvidersFeature = null;
             _currentIHttpAuthenticationFeature = null;
@@ -128,6 +131,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (key == IHttpSendFileFeatureType)
             {
                 return _currentIHttpSendFileFeature;
+            }
+            if (key == IHttpMaxRequestBodySizeFeatureType)
+            {
+                return _currentIHttpMaxRequestBodySizeFeature;
             }
             return ExtraFeatureGet(key);
         }
@@ -215,6 +222,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _currentIHttpSendFileFeature = feature;
                 return;
+            }
+            if (key == IHttpMaxRequestBodySizeFeatureType)
+            {
+                _currentIHttpMaxRequestBodySizeFeature = feature;
+                return;
             };
             ExtraFeatureSet(key, feature);
         }
@@ -284,6 +296,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (_currentIHttpSendFileFeature != null)
             {
                 yield return new KeyValuePair<Type, object>(IHttpSendFileFeatureType, _currentIHttpSendFileFeature as global::Microsoft.AspNetCore.Http.Features.IHttpSendFileFeature);
+            }
+            if (_currentIHttpMaxRequestBodySizeFeature != null)
+            {
+                yield return new KeyValuePair<Type, object>(IHttpMaxRequestBodySizeFeatureType, _currentIHttpMaxRequestBodySizeFeature as global::Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.IHttpMaxRequestBodySizeFeature);
             }
 
             if (MaybeExtra != null)
