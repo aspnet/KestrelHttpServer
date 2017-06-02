@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _loggerFactory = loggerFactory;
         }
 
-        public void Configure(KestrelServerOptions options)
+        public override void Configure(string name, KestrelServerOptions options)
         {
             // Don't assume KestrelServerOptionsSetup has already set the services. Needed for UseHttps.
             options.ApplicationServices = _services;

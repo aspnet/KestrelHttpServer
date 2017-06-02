@@ -30,6 +30,7 @@ namespace Microsoft.AspNetCore.Hosting
             return hostBuilder.ConfigureServices(services =>
             {
                 services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelServerOptionsSetup>();
+                // https://github.com/aspnet/DependencyInjection/issues/500
                 services.AddTransient<IConfigureOptions<KestrelServerOptions>, ConfigureDefaults<KestrelServerOptions>>();
                 services.AddTransient<ConfigureDefaultOptions<KestrelServerOptions>, ConfigureDefaultKestrelServerOptions>();
                 services.AddSingleton<IServer, KestrelServer>();

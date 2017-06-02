@@ -11,9 +11,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
@@ -35,12 +38,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseKestrel()
                 .UseConfiguration(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
                 {
-                    { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", "127.0" },
+                    { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", "ABCDEFGH" },
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Port", "0" }
                 }).Build())
+                .ConfigureServices(services =>
+                {
+                    // Microsoft.AspNetCore.dll does this
+                    services.AddTransient(typeof(IConfigureOptions<>), typeof(ConfigureDefaults<>));
+                })
                 .Configure(ConfigureEchoAddress);
 
-            Assert.Throws<InvalidOperationException>(() => hostBuilder.Start());
+            Assert.Throws<InvalidOperationException>(() => hostBuilder.Build());
         }
 
         [Theory]
@@ -55,6 +63,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Address", $"{endPointAddress}" },
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Port", "0" }
                 }).Build())
+                .ConfigureServices(services =>
+                {
+                    // Microsoft.AspNetCore.dll does this
+                    services.AddTransient(typeof(IConfigureOptions<>), typeof(ConfigureDefaults<>));
+                })
                 .Configure(ConfigureEchoAddress);
             
             using (var webHost = hostBuilder.Start())
@@ -87,6 +100,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     { "Certificates:TestCert:Path", "testCert.pfx" },
                     { "Certificates:TestCert:Password", "testPassword" }
                 }).Build())
+                .ConfigureServices(services =>
+                {
+                    // Microsoft.AspNetCore.dll does this
+                    services.AddTransient(typeof(IConfigureOptions<>), typeof(ConfigureDefaults<>));
+                })
                 .Configure(ConfigureEchoAddress);
             
             using (var webHost = hostBuilder.Start())
@@ -111,6 +129,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Certificate:Path", "testCert.pfx" },
                     { "Microsoft:AspNetCore:Server:Kestrel:Endpoints:0:Certificate:Password", "testPassword" }
                 }).Build())
+                .ConfigureServices(services =>
+                {
+                    // Microsoft.AspNetCore.dll does this
+                    services.AddTransient(typeof(IConfigureOptions<>), typeof(ConfigureDefaults<>));
+                })
                 .Configure(ConfigureEchoAddress);
 
             using (var webHost = hostBuilder.Start())
