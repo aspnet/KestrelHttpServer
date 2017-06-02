@@ -24,10 +24,4 @@
     <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets\Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Update="KestrelStrings.resx">
-      <Generator></Generator>
-    </EmbeddedResource>
-  </ItemGroup>
-
 </Project>
