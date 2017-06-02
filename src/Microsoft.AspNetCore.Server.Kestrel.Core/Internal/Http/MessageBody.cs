@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly Frame _context;
 
         private bool _send100Continue = true;
+        private bool _timingReads;
         private volatile bool _canceled;
 
         protected MessageBody(Frame context)
@@ -38,9 +39,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private async Task PumpAsync()
         {
-            Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
-            _context.TimeoutControl.StartTimingReads();
-
             Exception error = null;
 
             try
@@ -53,6 +51,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     {
                         TryProduceContinue();
                     }
+
+                    TryStartTimingReads();
 
                     var result = await awaitable;
                     var readableBuffer = result.Buffer;
@@ -257,6 +257,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected virtual void OnReadStart()
         {
+        }
+
+        private void TryStartTimingReads()
+        {
+            if (!_timingReads)
+            {
+                Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
+                _context.TimeoutControl.StartTimingReads();
+                _timingReads = true;
+            }
         }
 
         public static MessageBody For(
