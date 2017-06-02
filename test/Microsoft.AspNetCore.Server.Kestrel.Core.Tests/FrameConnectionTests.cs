@@ -119,19 +119,85 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
-            var now = DateTimeOffset.UtcNow;
-
             _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
             _frameConnection.StartTimingReads();
 
             // Tick beyond minimum timeout period w/ low data rate
-            now += RequestBodyTimeout + TimeSpan.FromSeconds(1);
+            var now = DateTimeOffset.UtcNow + RequestBodyTimeout + TimeSpan.FromSeconds(1);
             _frameConnection.BytesRead(1);
             _frameConnection.Tick(now);
 
             // Timed out
             mockLogger.Verify(logger =>
                 logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), RequestBodyMinimumDataRate), Times.Once);
+
+            // Frame.Abort() cancels the output
+            var result = await _frameConnection.Output.ReadAsync();
+            Assert.True(result.IsCancelled);
+
+            _frameConnection.OnConnectionClosed(null);
+            await _frameConnection.StopAsync();
+        }
+
+        [Fact]
+        public async Task DataRateIsAveragedOverTimeSpentReadingRequestBody()
+        {
+            var requestBodyTimeout = TimeSpan.FromSeconds(1);
+            var requestBodyExtendedTimeout = TimeSpan.MaxValue;
+            var requestBodyMinimumDataRate = 100;
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = requestBodyExtendedTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = requestBodyMinimumDataRate;
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
+            _frameConnection.StartTimingReads();
+
+            // Tick beyond timeout to start enforcing minimum data rate
+            // Assume rate has been satisfactory so far
+            var now = DateTimeOffset.UtcNow + requestBodyTimeout;
+            _frameConnection.BytesRead(100);
+            _frameConnection.Tick(now);
+
+            // Data rate: 200 bytes/second
+            now += TimeSpan.FromSeconds(1);
+            _frameConnection.BytesRead(300);
+            _frameConnection.Tick(now);
+
+            // Not timed out
+            mockLogger.Verify(logger =>
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+
+            // Data rate: 150 bytes/second
+            now += TimeSpan.FromSeconds(1);
+            _frameConnection.BytesRead(50);
+            _frameConnection.Tick(now);
+
+            // Not timed out
+            mockLogger.Verify(logger =>
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+
+
+            // Data rate: 115 bytes/second
+            now += TimeSpan.FromSeconds(1);
+            _frameConnection.BytesRead(10);
+            _frameConnection.Tick(now);
+
+            // Not timed out
+            mockLogger.Verify(logger =>
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+
+            // Data rate: 50 bytes/second
+            now += TimeSpan.FromSeconds(6);
+            _frameConnection.BytesRead(40);
+            _frameConnection.Tick(now);
+
+            // Timed out
+            mockLogger.Verify(logger =>
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
 
             // Frame.Abort() cancels the output
             var result = await _frameConnection.Output.ReadAsync();

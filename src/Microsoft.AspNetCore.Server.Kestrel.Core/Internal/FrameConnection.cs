@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private bool _pauseTimingReads;
         private long _readTimingStartTicks;
         private long _readTimingElapsed;
-        private long _bytesReadSinceLastTick;
+        private long _bytesRead;
 
         public FrameConnection(FrameConnectionContext context)
         {
@@ -254,7 +254,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     }
                     else
                     {
-                        var rate = _bytesReadSinceLastTick / TimeSpan.FromTicks(timestamp - _lastTimestamp).TotalSeconds;
+                        var rate = _bytesRead / (_readTimingElapsed / TimeSpan.TicksPerSecond);
 
                         if (_readTimingElapsed > _frame.RequestBodyExtendedTimeout.Value.Ticks)
                         {
@@ -277,8 +277,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     _timingReads = false;
                     _pauseTimingReads = false;
                 }
-
-                Interlocked.Exchange(ref _bytesReadSinceLastTick, 0);
             }
             else if (timestamp > Interlocked.Read(ref _timeoutTimestamp)) // TODO: Use PlatformApis.VolatileRead equivalent again
             {
@@ -323,6 +321,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void StartTimingReads()
         {
             Interlocked.Exchange(ref _readTimingElapsed, 0);
+            Interlocked.Exchange(ref _bytesRead, 0);
             Interlocked.Exchange(ref _readTimingStartTicks, _lastTimestamp);
             _timingReads = true;
         }
@@ -346,7 +345,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void BytesRead(int count)
         {
-            Interlocked.Add(ref _bytesReadSinceLastTick, count);
+            Interlocked.Add(ref _bytesRead, count);
         }
     }
 }
