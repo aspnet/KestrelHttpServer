@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
@@ -140,7 +141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// Gets or sets the maximum allowed size of any request body in bytes.
         /// When set to null, the maximunm request body size is unlimited.
         /// This limit has no affect on upgraded connections which are always unlmited.
-        /// This can be overridden by <see cref="Internal.Http.IHttpMaxRequestBodySizeFeature"/>
+        /// This can be overridden by <see cref="IHttpMaxRequestBodySizeFeature"/>.
         /// </summary>
         /// <remarks>
         /// Defaults to null (unlimited).

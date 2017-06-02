@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Features.Authentication;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace CodeGenerator
 {
@@ -45,13 +44,13 @@ namespace CodeGenerator
                 typeof(IItemsFeature),
                 typeof(ITlsConnectionFeature),
                 typeof(IHttpWebSocketFeature),
-                typeof(ISessionFeature)
+                typeof(ISessionFeature),
+                typeof(IHttpMaxRequestBodySizeFeature)
             };
 
             var rareFeatures = new[]
             {
-                typeof(IHttpSendFileFeature),
-                typeof(IHttpMaxRequestBodySizeFeature)
+                typeof(IHttpSendFileFeature)
             };
 
             var allFeatures = alwaysFeatures.Concat(commonFeatures).Concat(sometimesFeatures).Concat(rareFeatures);
