@@ -42,30 +42,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
-                _connectionContext = connectionHandler.OnConnection(this);
-
-                _input = _connectionContext.Input;
-                _output = _connectionContext.Output;
-
-                // Spawn send and receive logic
-                Task receiveTask = DoReceive();
-                Task sendTask = DoSend();
-
-                // If the sending task completes then close the receive
-                // We don't need to do this in the other direction because the kestrel
-                // will trigger the output closing once the input is complete.
-                if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
+                try
                 {
-                    // Tell the reader it's being aborted
+                    _connectionContext = connectionHandler.OnConnection(this);
+
+                    _input = _connectionContext.Input;
+                    _output = _connectionContext.Output;
+
+                    // Spawn send and receive logic
+                    Task receiveTask = DoReceive();
+                    Task sendTask = DoSend();
+
+                    // If the sending task completes then close the receive
+                    // We don't need to do this in the other direction because the kestrel
+                    // will trigger the output closing once the input is complete.
+                    if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
+                    {
+                        // Tell the reader it's being aborted
+                        _socket.Dispose();
+                    }
+
+                    // Now wait for both to complete
+                    await receiveTask;
+                    await sendTask;
+                }
+                finally
+                {
+                    // Dispose the socket(should noop if already called)
                     _socket.Dispose();
                 }
-
-                // Now wait for both to complete
-                await receiveTask;
-                await sendTask;
-
-                // Dispose the socket(should noop if already called)
-                _socket.Dispose();
             }
             catch (Exception)
             {
