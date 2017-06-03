@@ -107,16 +107,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                 var readableBuffer = result.Buffer;
                 try
                 {
+                    if (result.IsCompleted)
+                    {
+                        return 0;
+                    }
+
                     if (!readableBuffer.IsEmpty)
                     {
                         var count = Math.Min(readableBuffer.Length, buffer.Count);
                         readableBuffer = readableBuffer.Slice(0, count);
                         readableBuffer.CopyTo(buffer);
                         return count;
-                    }
-                    else if (result.IsCompleted)
-                    {
-                        return 0;
                     }
                 }
                 finally
