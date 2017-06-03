@@ -13,6 +13,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         private WaitCallback _runAction;
 
+#if net46
+        private bool AlreadyOnThreadPool => Thread.CurrentThread.IsThreadPoolThread;
+#else
+        // IsThreadPoolThread isn't available until .NET Standard 2.0, 
+        // however the non threadpool threads we use are named so this
+        // acts an approximation to it.
+        private bool AlreadyOnThreadPool => Thread.CurrentThread.Name == null;
+#endif
+
         public LoggingThreadPool(IKestrelTrace log)
         {
             _log = log;
@@ -42,7 +51,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public void Run(Action action)
         {
-            ThreadPool.QueueUserWorkItem(_runAction, action);
+            if (AlreadyOnThreadPool)
+            {
+                _runAction(action);
+            }
+            else
+            {
+                ThreadPool.QueueUserWorkItem(_runAction, action);
+            }
         }
 
         public void UnsafeRun(WaitCallback action, object state)
