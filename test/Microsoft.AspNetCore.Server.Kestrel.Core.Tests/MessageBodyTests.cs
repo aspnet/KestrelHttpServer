@@ -597,6 +597,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
+        [Fact]
+        public async Task DoesNotEnforceRequestBodyTimeoutOnUpgradeRequests()
+        {
+            using (var input = new TestInput())
+            {
+                var mockTimeoutControl = new Mock<ITimeoutControl>();
+                input.FrameContext.TimeoutControl = mockTimeoutControl.Object;
+
+                var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.Frame);
+
+                // Add some input and read it to start PumpAsync
+                input.Add("a");
+                Assert.Equal(1, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
+
+                input.Fin();
+
+                await Assert.ThrowsAsync<BadHttpRequestException>(async () => await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
+
+                mockTimeoutControl.Verify(timeoutControl => timeoutControl.StartTimingReads(), Times.Never);
+                mockTimeoutControl.Verify(timeoutControl => timeoutControl.StopTimingReads(), Times.Never);
+            }
+        }
+
         private void AssertASCII(string expected, ArraySegment<byte> actual)
         {
             var encoding = Encoding.ASCII;

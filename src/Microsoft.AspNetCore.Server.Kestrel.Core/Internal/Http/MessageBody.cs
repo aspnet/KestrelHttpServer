@@ -120,9 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             finally
             {
                 _context.RequestBodyPipe.Writer.Complete(error);
-
-                Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
-                _context.TimeoutControl.StopTimingReads();
+                TryStopTimingReads();
             }
         }
 
@@ -261,11 +259,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private void TryStartTimingReads()
         {
-            if (!_timingReads)
+            if (!RequestUpgrade && !_timingReads)
             {
                 Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
                 _context.TimeoutControl.StartTimingReads();
                 _timingReads = true;
+            }
+        }
+
+        private void TryStopTimingReads()
+        {
+            if (!RequestUpgrade)
+            {
+                Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
+                _context.TimeoutControl.StopTimingReads();
+                _timingReads = false;
             }
         }
 
