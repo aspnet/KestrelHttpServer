@@ -82,7 +82,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         }
                         else if (result.IsCompleted)
                         {
-                            _context.RejectRequest(RequestRejectionReason.UnexpectedEndOfRequestContent);
+                            _context.ThrowRequestRejected(RequestRejectionReason.UnexpectedEndOfRequestContent);
                         }
                     }
                     finally
@@ -263,12 +263,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // status code and then close the connection.
                 if (transferCoding != TransferCoding.Chunked)
                 {
-                    context.RejectRequest(RequestRejectionReason.FinalTransferCodingNotChunked, transferEncoding.ToString());
+                    context.ThrowRequestRejected(RequestRejectionReason.FinalTransferCodingNotChunked, transferEncoding.ToString());
                 }
 
                 if (upgrade)
                 {
-                    context.RejectRequest(RequestRejectionReason.UpgradeRequestCannotHavePayload);
+                    context.ThrowRequestRejected(RequestRejectionReason.UpgradeRequestCannotHavePayload);
                 }
 
                 return new ForChunkedEncoding(keepAlive, context);
@@ -284,7 +284,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 else if (upgrade)
                 {
-                    context.RejectRequest(RequestRejectionReason.UpgradeRequestCannotHavePayload);
+                    context.ThrowRequestRejected(RequestRejectionReason.UpgradeRequestCannotHavePayload);
                 }
 
                 return new ForContentLength(keepAlive, contentLength, context);
@@ -298,7 +298,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 if (HttpMethods.IsPost(context.Method) || HttpMethods.IsPut(context.Method))
                 {
                     var requestRejectionReason = httpVersion == HttpVersion.Http11 ? RequestRejectionReason.LengthRequired : RequestRejectionReason.LengthRequiredHttp10;
-                    context.RejectRequest(requestRejectionReason, context.Method);
+                    context.ThrowRequestRejected(requestRejectionReason, context.Method);
                 }
             }
 
@@ -388,7 +388,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 if (_contentLength > _context.MaxRequestBodySize)
                 {
-                    _context.RejectRequest(RequestRejectionReason.RequestBodyTooLarge);
+                    _context.ThrowRequestRejected(RequestRejectionReason.RequestBodyTooLarge);
                 }
             }
         }
@@ -501,7 +501,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 if (_consumedBytes > _context.MaxRequestBodySize)
                 {
-                    _context.RejectRequest(RequestRejectionReason.RequestBodyTooLarge);
+                    _context.ThrowRequestRejected(RequestRejectionReason.RequestBodyTooLarge);
                 }
             }
 
@@ -558,7 +558,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 // At this point, 10 bytes have been consumed which is enough to parse the max value "7FFFFFFF\r\n".
-                _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
+                _context.ThrowRequestRejected(RequestRejectionReason.BadChunkSizeData);
             }
 
             private void ParseExtension(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
@@ -652,7 +652,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 else
                 {
-                    _context.RejectRequest(RequestRejectionReason.BadChunkSuffix);
+                    _context.ThrowRequestRejected(RequestRejectionReason.BadChunkSuffix);
                 }
             }
 
@@ -708,7 +708,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     throw new IOException(CoreStrings.BadRequest_BadChunkSizeData, ex);
                 }
 
-                _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
+                _context.ThrowRequestRejected(RequestRejectionReason.BadChunkSizeData);
                 return -1; // can't happen, but compiler complains
             }
 
