@@ -316,6 +316,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyTimeout()
+        {
+            var timeout = TimeSpan.FromSeconds(10);
+
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(timeout);
+
+            Assert.Equal(timeout, _frame.RequestBodyTimeout);
+        }
+
+        [Fact]
+        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyExtendedTimeoutAndRequestBodyMinimumDateRate()
+        {
+            var timeout = TimeSpan.FromSeconds(10);
+            var extendedTimeout = TimeSpan.FromSeconds(20);
+            var minimumDataRate = 150;
+
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(timeout, extendedTimeout, minimumDataRate);
+
+            Assert.Equal(timeout, _frame.RequestBodyTimeout);
+            Assert.Equal(extendedTimeout, _frame.RequestBodyExtendedTimeout);
+            Assert.Equal(minimumDataRate, _frame.RequestBodyMinimumDataRate);
+        }
+
+        [Fact]
         public void ResetResetsRequestHeaders()
         {
             // Arrange
