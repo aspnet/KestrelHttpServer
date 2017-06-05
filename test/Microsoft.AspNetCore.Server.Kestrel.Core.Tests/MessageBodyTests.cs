@@ -154,8 +154,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 input.Add("80000000\r\n");
 
                 var buffer = new byte[1024];
-                var ex = await Assert.ThrowsAsync<OverflowException>(async () =>
+                var ex = await Assert.ThrowsAsync<IOException>(async () =>
                     await stream.ReadAsync(buffer, 0, buffer.Length));
+                Assert.IsType<OverflowException>(ex.InnerException);
+                Assert.Equal(CoreStrings.BadRequest_BadChunkSizeData, ex.Message);
             }
         }
 

@@ -21,8 +21,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         // Matches the default large_client_header_buffers in nginx.
         private int _maxRequestHeadersTotalSize = 32 * 1024;
 
-        // Disabled by default.
-        private long? _maxRequestBodySize = null;
+        // Matches the default maxAllowedContentLength in IIS (~28.6 MB)
+        // https://www.iis.net/configreference/system.webserver/security/requestfiltering/requestlimits#005
+        private long? _maxRequestBodySize = 30000000;
 
         // Matches the default LimitRequestFields in Apache httpd.
         private int _maxRequestHeaderCount = 100;
@@ -139,8 +140,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
         /// <summary>
         /// Gets or sets the maximum allowed size of any request body in bytes.
-        /// When set to null, the maximunm request body size is unlimited.
-        /// This limit has no affect on upgraded connections which are always unlmited.
+        /// When set to null, the maximum request body size is unlimited.
+        /// This limit has no affect on upgraded connections which are always unlimited.
         /// This can be overridden by <see cref="IHttpMaxRequestBodySizeFeature"/>.
         /// </summary>
         /// <remarks>
@@ -151,7 +152,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             get => _maxRequestBodySize;
             set
             {
-                if (value <= 0)
+                if (value < 0)
                 {
                     throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.NonNegativeNumberOrNullRequired);
                 }

@@ -325,6 +325,6 @@
     <value>The maximum request body size cannot be modified after the app has already started reading from the request body.</value>
   </data>
   <data name="MaxRequestBodySizeCannotBeModifiedForUpgradedRequests" xml:space="preserve">
-    <value>The maximum request body size cannot be modified after the request has be upgraded.</value>
+    <value>The maximum request body size cannot be modified after the request has been upgraded.</value>
   </data>
 </root>

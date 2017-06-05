@@ -54,6 +54,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RejectsRequestWithContentLengthHeaderExceedingPerRequestLimit()
         {
+            // 8 GiB
+            var globalMaxRequestBodySize = 0x200000000;
             // 4 GiB
             var perRequestMaxRequestBodySize = 0x100000000;
             BadHttpRequestException requestRejectedEx = null;
@@ -61,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-                Assert.Null(feature.MaxRequestBodySize);
+                Assert.Equal(globalMaxRequestBodySize, feature.MaxRequestBodySize);
 
                 // Disable the MaxRequestBodySize prior to calling Request.Body.ReadAsync();
                 feature.MaxRequestBodySize = perRequestMaxRequestBodySize;
@@ -70,7 +72,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 requestRejectedEx = await Assert.ThrowsAsync<BadHttpRequestException>(
                     async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
                 throw requestRejectedEx;
-            }))
+            },
+            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -97,43 +100,71 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task DoesNotRejectRequestWithContentLengthHeaderExceedingGlobalLimitIfLimitDisabledPerRequest()
         {
-            var globalMaxRequestBodySize = 0x10;
-            var payloadSize = globalMaxRequestBodySize + 1;
-            var payload = new string('A', payloadSize);
-
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-                Assert.Equal(globalMaxRequestBodySize, feature.MaxRequestBodySize);
+                Assert.Equal(0, feature.MaxRequestBodySize);
 
                 // Disable the MaxRequestBodySize prior to calling Request.Body.ReadAsync();
                 feature.MaxRequestBodySize = null;
 
-                var buffer = new byte[payloadSize];
+                var buffer = new byte[1];
 
-                Assert.Equal(payloadSize, await context.Request.Body.ReadAsync(buffer, 0, payloadSize));
-                Assert.All(buffer, b => Assert.Equal((byte)'A', b));
-                Assert.Equal(0, await context.Request.Body.ReadAsync(buffer, 0, payloadSize));
+                Assert.Equal(1, await context.Request.Body.ReadAsync(buffer, 0, 1));
+                Assert.Equal(buffer[0], (byte)'A');
+                Assert.Equal(0, await context.Request.Body.ReadAsync(buffer, 0, 1));
 
-                context.Response.ContentLength = payloadSize;
-                await context.Response.Body.WriteAsync(buffer, 0, payloadSize);
+                context.Response.ContentLength = 1;
+                await context.Response.Body.WriteAsync(buffer, 0, 1);
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
+            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
                     await connection.Send(
                         "POST / HTTP/1.1",
                         "Host:",
-                        "Content-Length: " + payloadSize,
+                        "Content-Length: 1",
                         "",
-                        payload);
+                        "A");
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: " + payloadSize,
+                        "Content-Length: 1",
                         "",
-                        payload);
+                        "A");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task DoesNotRejectBodylessGetRequestWithZeroMaxRequestBodySize()
+        {
+            using (var server = new TestServer(context => Task.CompletedTask,
+                new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "",
+                        "POST / HTTP/1.1",
+                        "Host:",
+                        "Content-Length: 1",
+                        "",
+                        "A");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "HTTP/1.1 413 Payload Too Large",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
                 }
             }
         }
@@ -152,7 +183,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 Assert.Equal(1, await context.Request.Body.ReadAsync(buffer, 0, 1));
 
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-                Assert.Null(feature.MaxRequestBodySize);
+                Assert.Equal(new KestrelServerLimits().MaxRequestBodySize, feature.MaxRequestBodySize);
 
                 invalidOpEx = Assert.Throws<InvalidOperationException>(() =>
                     feature.MaxRequestBodySize = perRequestMaxRequestBodySize);
@@ -191,7 +222,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var stream = await upgradeFeature.UpgradeAsync();
 
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-                Assert.Null(feature.MaxRequestBodySize);
+                Assert.Equal(new KestrelServerLimits().MaxRequestBodySize, feature.MaxRequestBodySize);
 
                 invalidOpEx = Assert.Throws<InvalidOperationException>(() =>
                     feature.MaxRequestBodySize = 0x10);

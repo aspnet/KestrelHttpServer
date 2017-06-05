@@ -400,6 +400,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             // byte consts don't have a data type annotation so we pre-cast it
             private const byte ByteCR = (byte)'\r';
+            // "7FFFFFFF\r\n" is the largest chunk size that could be returned as an int.
+            private const int MaxChunkPrefixBytes = 10;
 
             private int _inputLength;
             private long _consumedBytes;
@@ -520,7 +522,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var chunkSize = CalculateChunkSize(ch1, 0);
                 ch1 = ch2;
 
-                while (reader.ConsumedBytes < 10)
+                while (reader.ConsumedBytes < MaxChunkPrefixBytes)
                 {
                     if (ch1 == ';')
                     {
@@ -555,8 +557,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     ch1 = ch2;
                 }
 
-                // "7FFFFFFF\r\n" is the largest chunk size that could be returned as an int.
-                // At this point, 10 bytes have been consumed which is enough to to parse that size.
+                // At this point, 10 bytes have been consumed which is enough to parse the max value "7FFFFFFF\r\n".
                 _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
             }
 
@@ -684,20 +685,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             private int CalculateChunkSize(int extraHexDigit, int currentParsedSize)
             {
-                checked
+                try
                 {
-                    if (extraHexDigit >= '0' && extraHexDigit <= '9')
+                    checked
                     {
-                        return currentParsedSize * 0x10 + (extraHexDigit - '0');
+                        if (extraHexDigit >= '0' && extraHexDigit <= '9')
+                        {
+                            return currentParsedSize * 0x10 + (extraHexDigit - '0');
+                        }
+                        else if (extraHexDigit >= 'A' && extraHexDigit <= 'F')
+                        {
+                            return currentParsedSize * 0x10 + (extraHexDigit - ('A' - 10));
+                        }
+                        else if (extraHexDigit >= 'a' && extraHexDigit <= 'f')
+                        {
+                            return currentParsedSize * 0x10 + (extraHexDigit - ('a' - 10));
+                        }
                     }
-                    else if (extraHexDigit >= 'A' && extraHexDigit <= 'F')
-                    {
-                        return currentParsedSize * 0x10 + (extraHexDigit - ('A' - 10));
-                    }
-                    else if (extraHexDigit >= 'a' && extraHexDigit <= 'f')
-                    {
-                        return currentParsedSize * 0x10 + (extraHexDigit - ('a' - 10));
-                    }
+                }
+                catch (OverflowException ex)
+                {
+                    throw new IOException(CoreStrings.BadRequest_BadChunkSizeData, ex);
                 }
 
                 _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
