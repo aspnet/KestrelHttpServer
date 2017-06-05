@@ -56,6 +56,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Pipe.Writer.Complete();
         }
 
+        public void Cancel()
+        {
+            Pipe.Reader.CancelPendingRead();
+        }
+
         public void Dispose()
         {
             _pipelineFactory.Dispose();

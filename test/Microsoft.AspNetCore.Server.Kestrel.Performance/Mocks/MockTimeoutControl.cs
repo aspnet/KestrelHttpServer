@@ -7,6 +7,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks
 {
     public class MockTimeoutControl : ITimeoutControl
     {
+        public bool TimedOut { get; }
+
         public void CancelTimeout()
         {
         }

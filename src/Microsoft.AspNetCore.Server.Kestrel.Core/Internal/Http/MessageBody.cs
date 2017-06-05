@@ -55,6 +55,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     TryStartTimingReads();
 
                     var result = await awaitable;
+
+                    if (_context.TimeoutControl.TimedOut)
+                    {
+                        _context.RejectRequest(RequestRejectionReason.RequestTimeout);
+                    }
+
                     var readableBuffer = result.Buffer;
                     var consumed = readableBuffer.Start;
                     var examined = readableBuffer.End;

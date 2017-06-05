@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frameConnectionContext = new FrameConnectionContext
             {
-                ConnectionId = "ConnectionId",
+                ConnectionId = "0123456789",
                 ConnectionAdapters = new List<IConnectionAdapter>(),
                 ConnectionInformation = new MockConnectionInformation
                 {
@@ -56,32 +56,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task AbortsConnectionWhenRequestBodyExceedsTimeout()
+        public void TimesOutWhenRequestBodyExceedsTimeout()
         {
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
-            _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _frameConnection.Tick(now);
+
             _frameConnection.StartTimingReads();
 
             // Tick beyond timeout
-            var now = DateTimeOffset.UtcNow;
             _frameConnection.Tick(now + RequestBodyTimeout + TimeSpan.FromSeconds(1));
 
             // Timed out
+            Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), RequestBodyTimeout), Times.Once);
-
-            // Frame.Abort() cancels the output
-            var result = await _frameConnection.Output.ReadAsync();
-            Assert.True(result.IsCancelled);
-
-            _frameConnection.OnConnectionClosed(null);
-            await _frameConnection.StopAsync();
         }
 
         [Fact]
-        public async Task AbortsConnectionWhenRequestBodyExceedsExtendedTimeout()
+        public void TimesOutWhenRequestBodyExceedsExtendedTimeout()
         {
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = RequestBodyExtendedTimeout;
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = RequestBodyMinimumDataRate;
@@ -89,29 +87,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
-            _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _frameConnection.Tick(now);
+
             _frameConnection.StartTimingReads();
 
             // Tick beyond maximum timeout w/ satisfactory data rate
-            var now = DateTimeOffset.UtcNow;
             var future = now + RequestBodyExtendedTimeout + TimeSpan.FromSeconds(1);
             _frameConnection.BytesRead((int)(RequestBodyMinimumDataRate * 2 * (future - now).TotalSeconds));
             _frameConnection.Tick(future);
 
             // Timed out
+            Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), RequestBodyExtendedTimeout), Times.Once);
-
-            // Frame.Abort() cancels the output
-            var result = await _frameConnection.Output.ReadAsync();
-            Assert.True(result.IsCancelled);
-
-            _frameConnection.OnConnectionClosed(null);
-            await _frameConnection.StopAsync();
         }
 
         [Fact]
-        public async Task AbortsConnectionWhenRequestBodyDoesNotSatisfyMinimumDataRate()
+        public void TimesOutWhenRequestBodyDoesNotSatisfyMinimumDataRate()
         {
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = RequestBodyExtendedTimeout;
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = RequestBodyMinimumDataRate;
@@ -119,28 +115,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
-            _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _frameConnection.Tick(now);
+
             _frameConnection.StartTimingReads();
 
             // Tick beyond minimum timeout period w/ low data rate
-            var now = DateTimeOffset.UtcNow + RequestBodyTimeout + TimeSpan.FromSeconds(1);
+            now += RequestBodyTimeout + TimeSpan.FromSeconds(1);
             _frameConnection.BytesRead(1);
             _frameConnection.Tick(now);
 
             // Timed out
+            Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), RequestBodyMinimumDataRate), Times.Once);
-
-            // Frame.Abort() cancels the output
-            var result = await _frameConnection.Output.ReadAsync();
-            Assert.True(result.IsCancelled);
-
-            _frameConnection.OnConnectionClosed(null);
-            await _frameConnection.StopAsync();
         }
 
         [Fact]
-        public async Task DataRateIsAveragedOverTimeSpentReadingRequestBody()
+        public void DataRateIsAveragedOverTimeSpentReadingRequestBody()
         {
             var requestBodyTimeout = TimeSpan.FromSeconds(1);
             var requestBodyExtendedTimeout = TimeSpan.MaxValue;
@@ -153,12 +148,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
-            _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _frameConnection.Tick(now);
+
             _frameConnection.StartTimingReads();
 
             // Tick beyond timeout to start enforcing minimum data rate
             // Assume rate has been satisfactory so far
-            var now = DateTimeOffset.UtcNow + requestBodyTimeout;
+            now += requestBodyTimeout;
             _frameConnection.BytesRead(100);
             _frameConnection.Tick(now);
 
@@ -168,6 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Not timed out
+            Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
 
@@ -177,9 +178,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Not timed out
+            Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
-
 
             // Data rate: 115 bytes/second
             now += TimeSpan.FromSeconds(1);
@@ -187,6 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Not timed out
+            Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
 
@@ -196,28 +198,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Timed out
+            Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
                 logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
-
-            // Frame.Abort() cancels the output
-            var result = await _frameConnection.Output.ReadAsync();
-            Assert.True(result.IsCancelled);
-
-            _frameConnection.OnConnectionClosed(null);
-            await _frameConnection.StopAsync();
         }
 
         [Fact]
-        public async Task PausedTimeDoesNotCountAgainstRequestBodyTimeout()
+        public void PausedTimeDoesNotCountAgainstRequestBodyTimeout()
         {
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
-            _frameConnection.StartRequestProcessing(new DummyApplication(context => Task.CompletedTask));
-            _frameConnection.StartTimingReads();
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
 
+            // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
             _frameConnection.Tick(now);
+
+            _frameConnection.StartTimingReads();
 
             // Pause and tick within timeout period
             _frameConnection.PauseTimingReads();
@@ -225,6 +223,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Not timed out
+            Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
             // Tick while paused in what would be beyond the timeout period 
@@ -232,6 +231,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Not timed out
+            Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
             // Resume and tick within resumed timeout period
@@ -240,6 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Not timed out
+            Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
             // Tick beyond timeout period after resuming
@@ -247,14 +248,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Tick(now);
 
             // Timed out
+            Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Once);
-
-            // Frame.Abort() cancels the output
-            var result = await _frameConnection.Output.ReadAsync();
-            Assert.True(result.IsCancelled);
-
-            _frameConnection.OnConnectionClosed(null);
-            await _frameConnection.StopAsync();
         }
     }
 }
