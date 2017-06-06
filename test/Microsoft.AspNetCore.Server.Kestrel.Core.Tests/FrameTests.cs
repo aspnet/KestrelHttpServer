@@ -269,7 +269,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void ThrowsWhenConfiguringInvalidRequestBodyTimeout(TimeSpan value)
         {
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().RequestBodyTimeout = value);
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Timeout = value);
             Assert.Equal("value", exception.ParamName);
             Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
         }
@@ -279,7 +279,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var timeout = TimeSpan.FromSeconds(10);
 
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().RequestBodyTimeout = timeout;
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Timeout = timeout;
 
             Assert.Equal(timeout, _frame.RequestBodyTimeout);
         }

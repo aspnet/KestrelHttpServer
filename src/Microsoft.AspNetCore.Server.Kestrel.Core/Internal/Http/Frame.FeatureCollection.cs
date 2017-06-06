@@ -229,7 +229,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        TimeSpan IHttpRequestBodyTimeoutFeature.RequestBodyTimeout
+        TimeSpan IHttpRequestBodyTimeoutFeature.Timeout
         {
             get => RequestBodyTimeout;
             set

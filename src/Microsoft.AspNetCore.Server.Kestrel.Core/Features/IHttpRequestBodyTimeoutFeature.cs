@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
         /// <summary>
         /// The maximum amount of time in which the request body should be fully received.
         /// </summary>
-        TimeSpan RequestBodyTimeout { get; set; }
+        TimeSpan Timeout { get; set; }
 
         /// <summary>
         /// The minimum data rate in bytes/second at which the request body should be received.

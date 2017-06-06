@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(context =>
             {
                 // Set request body timeout to maximum value, to test that it is overridden before draining
-                context.Features.Get<IHttpRequestBodyTimeoutFeature>().RequestBodyTimeout = TimeSpan.MaxValue;
+                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = TimeSpan.MaxValue;
 
                 appRunningEvent.Set();
                 return Task.CompletedTask;
