@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         void RequestBodyTimeout(string connectionId, string traceIdentifier, TimeSpan timeout);
 
-        void RequestBodyMininumRateNotSatisfied(string connectionId, string traceIdentifier, double rate);
+        void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate);
 
         void RequestBodyTimingPause(string connectionId, string traceIdentifier, TimeSpan requestBodyTime, TimeSpan totalTime);
 

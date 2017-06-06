@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly Action<ILogger, string, string, TimeSpan, Exception> _requestBodyTimeout =
             LoggerMessage.Define<string, string, TimeSpan>(LogLevel.Information, 27, @"Connection id ""{ConnectionId}"", Request id ""{TraceIdentifier}"": request body not received within the specified timeout period ({Seconds}).");
 
-        private static readonly Action<ILogger, string, string, double, Exception> _requestBodyMinimumRateNotSatisfied =
+        private static readonly Action<ILogger, string, string, double, Exception> _requestBodyMinimumDataRateNotSatisfied =
             LoggerMessage.Define<string, string, double>(LogLevel.Information, 28, @"Connection id ""{ConnectionId}"", Request id ""{TraceIdentifier}"": request body incoming data rate dropped below {Rate} bytes/second.");
 
         private static readonly Action<ILogger, string, string, TimeSpan, TimeSpan, Exception> _requestBodyTimingPause =
@@ -169,9 +169,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _requestBodyTimeout(_logger, connectionId, traceIdentifier, timeout, null);
         }
 
-        public void RequestBodyMininumRateNotSatisfied(string connectionId, string traceIdentifier, double rate)
+        public void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate)
         {
-            _requestBodyMinimumRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
+            _requestBodyMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
         }
 
         public void RequestBodyTimingPause(string connectionId, string traceIdentifier, TimeSpan requestBodyTime, TimeSpan totalTime)

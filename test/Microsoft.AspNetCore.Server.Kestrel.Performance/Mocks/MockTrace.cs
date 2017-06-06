@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public void RequestBodyStart(string connectionId, string traceIdentifier) { }
         public void RequestBodyDone(string connectionId, string traceIdentifier) { }
         public void RequestBodyTimeout(string connectionId, string traceIdentifier, TimeSpan seconds) { }
-        public void RequestBodyMininumRateNotSatisfied(string connectionId, string traceIdentifier, double rate) { }
+        public void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate) { }
         public void RequestBodyTimingPause(string connectionId, string traceIdentifier, TimeSpan requestBodyTime, TimeSpan totalTime) { }
         public void RequestBodyTimingResume(string connectionId, string traceIdentifier, TimeSpan requestBodyTime, TimeSpan totalTime) { }
     }

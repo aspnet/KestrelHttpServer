@@ -274,7 +274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                     if (_readTimingElapsed > _frame.RequestBodyMinimumDataRateGracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate)
                     {
-                        Log.RequestBodyMininumRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate);
+                        Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate);
                         Timeout();
                         _timingReads = false;
                     }
