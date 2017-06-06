@@ -36,6 +36,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             _localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
             _remoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
+
+            OutputReaderScheduler = _transport.TransportFactory.Options.DispatchWritesToThreadPool ?
+                                    (IScheduler)TaskRunScheduler.Default : InlineScheduler.Default;
         }
 
         public async void Start(IConnectionHandler connectionHandler)
@@ -246,8 +249,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         public PipeFactory PipeFactory => _transport.TransportFactory.PipeFactory;
 
-        public IScheduler InputWriterScheduler => InlineScheduler.Default;
+        public IScheduler InputWriterScheduler { get; } = InlineScheduler.Default;
 
-        public IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
+        public IScheduler OutputReaderScheduler { get; }
     }
 }
