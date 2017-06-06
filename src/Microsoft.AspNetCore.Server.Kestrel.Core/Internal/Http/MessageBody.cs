@@ -19,7 +19,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly Frame _context;
 
         private bool _send100Continue = true;
-        private bool _timingReads;
         private volatile bool _canceled;
 
         protected MessageBody(Frame context)
@@ -43,17 +42,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             try
             {
+                var awaitable = _context.Input.ReadAsync();
+
+                if (!awaitable.IsCompleted)
+                {
+                    TryProduceContinue();
+                }
+
+                TryStartTimingReads();
+
                 while (true)
                 {
-                    var awaitable = _context.Input.ReadAsync();
-
-                    if (!awaitable.IsCompleted)
-                    {
-                        TryProduceContinue();
-                    }
-
-                    TryStartTimingReads();
-
                     var result = await awaitable;
 
                     if (_context.TimeoutControl.TimedOut)
@@ -112,6 +111,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             _context.ThrowRequestRejected(RequestRejectionReason.UnexpectedEndOfRequestContent);
                         }
+
+                        awaitable = _context.Input.ReadAsync();
                     }
                     finally
                     {
@@ -265,11 +266,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private void TryStartTimingReads()
         {
-            if (!RequestUpgrade && !_timingReads)
+            if (!RequestUpgrade)
             {
                 Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
                 _context.TimeoutControl.StartTimingReads();
-                _timingReads = true;
             }
         }
 
@@ -279,7 +279,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
                 _context.TimeoutControl.StopTimingReads();
-                _timingReads = false;
             }
         }
 

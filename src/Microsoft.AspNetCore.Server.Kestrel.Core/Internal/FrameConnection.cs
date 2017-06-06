@@ -204,6 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             TimedOut = true;
+            _timingReads = false;
             _frame.Stop();
         }
 
@@ -258,7 +259,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var timestamp = now.Ticks;
 
-            if (_timingReads)
+            if (timestamp > Interlocked.Read(ref _timeoutTimestamp)) // TODO: Use PlatformApis.VolatileRead equivalent again
+            {
+                CancelTimeout();
+
+                if (_timeoutAction == TimeoutAction.SendTimeoutResponse)
+                {
+                    SetTimeoutResponse();
+                }
+
+                Timeout();
+            }
+            else if (_timingReads)
             {
                 _readTimingElapsed += timestamp - _lastTimestamp;
 
@@ -266,7 +278,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeout);
                     Timeout();
-                    _timingReads = false;
                 }
                 else if (_frame.RequestBodyMinimumDataRate > 0)
                 {
@@ -276,7 +287,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     {
                         Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate);
                         Timeout();
-                        _timingReads = false;
                     }
                 }
 
@@ -288,17 +298,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     _timingReads = false;
                     _pauseTimingReads = false;
                 }
-            }
-            else if (timestamp > Interlocked.Read(ref _timeoutTimestamp)) // TODO: Use PlatformApis.VolatileRead equivalent again
-            {
-                CancelTimeout();
-
-                if (_timeoutAction == TimeoutAction.SendTimeoutResponse)
-                {
-                    SetTimeoutResponse();
-                }
-
-                Timeout();
             }
 
             Interlocked.Exchange(ref _lastTimestamp, timestamp);

@@ -6,7 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -15,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     public class RequestBodyTimeoutTests
     {
         [Fact]
-        public async Task RequestTimesOutIfRequestBodyNotReceivedWithinTimeoutPeriod()
+        public async Task RequestTimesOutWhenRequestBodyNotReceivedWithinTimeoutPeriod()
         {
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
@@ -58,9 +60,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task RequestTimesOutEvenIfNotConsumedByApp()
+        public async Task RequestTimesWhenNotDrainedWithinDrainTimeoutPeriod()
         {
-            var systemClock = new MockSystemClock();
+            // This test requires a real clock since we can't control when the drain timeout is set
+            var systemClock = new SystemClock();
             var serviceContext = new TestServiceContext
             {
                 SystemClock = systemClock,
@@ -71,6 +74,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context =>
             {
+                // Set request body timeout to maximum value, to test that it is overridden before draining
+                context.Features.Get<IHttpRequestBodyTimeoutFeature>().RequestBodyTimeout = TimeSpan.MaxValue;
+
                 appRunningEvent.Set();
                 return Task.CompletedTask;
             }, serviceContext))
@@ -85,14 +91,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout + TimeSpan.FromSeconds(1);
 
                     await connection.Receive(
                         "HTTP/1.1 408 Request Timeout",
-                        "");
-                    await connection.ReceiveForcedEnd(
                         "Connection: close",
-                        $"Date: {serviceContext.DateHeaderValue}",
+                        "");
+                    await connection.ReceiveStartsWith(
+                        "Date: ");
+                    await connection.ReceiveForcedEnd(
                         "Content-Length: 0",
                         "",
                         "");
