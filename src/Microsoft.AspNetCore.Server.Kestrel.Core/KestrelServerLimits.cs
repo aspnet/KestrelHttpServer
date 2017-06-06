@@ -39,8 +39,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
         // Request body timeout
         private TimeSpan _defaultRequestBodyTimeout = TimeSpan.FromMinutes(2);
-        private double? _defaultRequestBodyMinimumDataRate = null;
-        private TimeSpan? _defaultRequestBodyMinimumDataRateGracePeriod = null;
 
         /// <summary>
         /// Gets or sets the maximum size of the response buffer before write
@@ -257,37 +255,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Gets the default request body minimum data rate in bytes/second.
+        /// Gets or sets the default request body minimum data rate in bytes/second.
         /// </summary>
-        public double? DefaultRequestBodyMinimumDataRate => _defaultRequestBodyMinimumDataRate;
-
-        /// <summary>
-        /// Gets the default amount of time to delay enforcement of <see cref="DefaultRequestBodyMinimumDataRate" />.
-        /// </summary>
-        public TimeSpan? DefaultRequestBodyMinimumDataRateGracePeriod => _defaultRequestBodyMinimumDataRateGracePeriod;
-
-        /// <summary>
-        /// Sets the default request body minimum data rate. No minimum data rate is enforced by default.
-        /// </summary>
-        /// <param name="minimumDataRate">The minimum data rate in bytes/second at which the request body should be received.</param>
-        /// <param name="gracePeriod">
-        /// The amount of time to delay enforcement of <paramref name="minimumDataRate"/>.
-        /// When set to <see cref="TimeSpan.Zero"/>, enforcement begins when the server starts reading the request body.
-        /// </param>
-        public void SetDefaultRequestBodyMinimumDataRate(double minimumDataRate, TimeSpan gracePeriod)
-        {
-            if (minimumDataRate <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(minimumDataRate), CoreStrings.PositiveNumberRequired);
-            }
-
-            if (gracePeriod < TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.NonNegativeTimeSpanRequired);
-            }
-
-            _defaultRequestBodyMinimumDataRate = minimumDataRate;
-            _defaultRequestBodyMinimumDataRateGracePeriod = gracePeriod;
-        }
+        public MinimumDataRate DefaultRequestBodyMinimumDataRate { get; set; } = null;
     }
 }

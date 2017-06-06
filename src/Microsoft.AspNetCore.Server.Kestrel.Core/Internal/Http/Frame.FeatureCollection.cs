@@ -243,24 +243,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        double IHttpRequestBodyTimeoutFeature.MinimumDataRate => RequestBodyMinimumDataRate;
-
-        TimeSpan IHttpRequestBodyTimeoutFeature.MinimumDataRateGracePeriod => RequestBodyMinimumDataRateGracePeriod;
-
-        void IHttpRequestBodyTimeoutFeature.SetMinimumDataRate(double minimumDataRate, TimeSpan gracePeriod)
+        MinimumDataRate IHttpRequestBodyTimeoutFeature.MinimumDataRate
         {
-            if (minimumDataRate <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(minimumDataRate), CoreStrings.PositiveNumberRequired);
-            }
-
-            if (gracePeriod < TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.NonNegativeTimeSpanRequired);
-            }
-
-            RequestBodyMinimumDataRate = minimumDataRate;
-            RequestBodyMinimumDataRateGracePeriod = gracePeriod;
+            get => RequestBodyMinimumDataRate;
+            set => RequestBodyMinimumDataRate = value;
         }
 
         object IFeatureCollection.this[Type key]

@@ -154,21 +154,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void ResetResetsRequestBodyMinimumDataRate()
         {
-            _frame.RequestBodyMinimumDataRate = 42;
+            _frame.RequestBodyMinimumDataRate = new MinimumDataRate(1, TimeSpan.Zero);
 
             _frame.Reset();
 
-            Assert.Equal(0, _frame.RequestBodyMinimumDataRate);
-        }
-
-        [Fact]
-        public void ResetResetsRequestBodyMinimumDataRateGracePeriod()
-        {
-            _frame.RequestBodyMinimumDataRateGracePeriod = TimeSpan.FromSeconds(5);
-
-            _frame.Reset();
-
-            Assert.Equal(TimeSpan.MaxValue, _frame.RequestBodyMinimumDataRateGracePeriod);
+            Assert.Equal(_serviceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate, _frame.RequestBodyMinimumDataRate);
         }
 
         [Fact]
@@ -284,27 +274,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
         }
 
-        [Theory]
-        [InlineData(double.MinValue)]
-        [InlineData(0)]
-        public void ThrowsWhenConfiguringInvalidRequestBodyMinimumDataRateValue(double value)
-        {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().SetMinimumDataRate(value, TimeSpan.FromSeconds(1)));
-            Assert.Equal("minimumDataRate", exception.ParamName);
-            Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
-        }
-
-        [Theory]
-        [MemberData(nameof(InvalidRequestBodyMinimumDataRateGracePeriodData))]
-        public void ThrowsWhenConfiguringInvalidRequestBodyMinimumDataRateGracePeriod(TimeSpan value)
-        {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().SetMinimumDataRate(1, value));
-            Assert.Equal("gracePeriod", exception.ParamName);
-            Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
-        }
-
         [Fact]
         public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyTimeout()
         {
@@ -321,10 +290,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var minimumDataRate = 150;
             var gracePeriod = TimeSpan.FromSeconds(10);
 
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().SetMinimumDataRate(minimumDataRate, gracePeriod);
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().MinimumDataRate = new MinimumDataRate(minimumDataRate, gracePeriod);
 
-            Assert.Equal(minimumDataRate, _frame.RequestBodyMinimumDataRate);
-            Assert.Equal(gracePeriod, _frame.RequestBodyMinimumDataRateGracePeriod);
+            Assert.Equal(minimumDataRate, _frame.RequestBodyMinimumDataRate.Rate);
+            Assert.Equal(gracePeriod, _frame.RequestBodyMinimumDataRate.GracePeriod);
         }
 
         [Fact]
