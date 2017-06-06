@@ -16,10 +16,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class FrameConnectionTests : IDisposable
     {
-        private static readonly TimeSpan RequestBodyTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan RequestBodyExtendedTimeout = TimeSpan.FromSeconds(10);
-        private static readonly double RequestBodyMinimumDataRate = 100;
-
         private readonly PipeFactory _pipeFactory;
         private readonly FrameConnectionContext _frameConnectionContext;
         private readonly FrameConnection _frameConnection;
@@ -45,8 +41,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 }
             };
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = RequestBodyTimeout;
-
             _frameConnection = new FrameConnection(_frameConnectionContext);
         }
 
@@ -58,31 +52,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void TimesOutWhenRequestBodyExceedsTimeout()
         {
-            var mockLogger = new Mock<IKestrelTrace>();
-            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+            var requestBodyTimeout = TimeSpan.FromSeconds(5);
 
-            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
-
-            // Initialize timestamp
-            var now = DateTimeOffset.UtcNow;
-            _frameConnection.Tick(now);
-
-            _frameConnection.StartTimingReads();
-
-            // Tick beyond timeout
-            _frameConnection.Tick(now + RequestBodyTimeout + TimeSpan.FromSeconds(1));
-
-            // Timed out
-            Assert.True(_frameConnection.TimedOut);
-            mockLogger.Verify(logger =>
-                logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), RequestBodyTimeout), Times.Once);
-        }
-
-        [Fact]
-        public void TimesOutWhenRequestBodyExceedsExtendedTimeout()
-        {
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = RequestBodyExtendedTimeout;
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = RequestBodyMinimumDataRate;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -95,22 +67,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frameConnection.StartTimingReads();
 
-            // Tick beyond maximum timeout w/ satisfactory data rate
-            var future = now + RequestBodyExtendedTimeout + TimeSpan.FromSeconds(1);
-            _frameConnection.BytesRead((int)(RequestBodyMinimumDataRate * 2 * (future - now).TotalSeconds));
-            _frameConnection.Tick(future);
+            // Tick after timeout period
+            _frameConnection.Tick(now + requestBodyTimeout + TimeSpan.FromSeconds(1));
 
             // Timed out
             Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), RequestBodyExtendedTimeout), Times.Once);
+                logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), requestBodyTimeout), Times.Once);
         }
 
         [Fact]
         public void TimesOutWhenRequestBodyDoesNotSatisfyMinimumDataRate()
         {
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = RequestBodyExtendedTimeout;
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = RequestBodyMinimumDataRate;
+            var requestBodyMinimumDataRate = 100;
+            var requestBodyGracePeriod = TimeSpan.FromSeconds(5);
+            var requestBodyTimeout = TimeSpan.FromSeconds(10);
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.SetDefaultRequestBodyMinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -123,27 +97,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frameConnection.StartTimingReads();
 
-            // Tick beyond minimum timeout period w/ low data rate
-            now += RequestBodyTimeout + TimeSpan.FromSeconds(1);
+            // Tick after grace period w/ low data rate
+            now += requestBodyGracePeriod + TimeSpan.FromSeconds(1);
             _frameConnection.BytesRead(1);
             _frameConnection.Tick(now);
 
             // Timed out
             Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), RequestBodyMinimumDataRate), Times.Once);
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
         }
 
         [Fact]
-        public void DataRateIsAveragedOverTimeSpentReadingRequestBody()
+        public void MinimumDataRateNotEnforcedDuringGracePeriod()
         {
-            var requestBodyTimeout = TimeSpan.FromSeconds(1);
-            var requestBodyExtendedTimeout = TimeSpan.MaxValue;
             var requestBodyMinimumDataRate = 100;
+            var requestBodyGracePeriod = TimeSpan.FromSeconds(2);
+            var requestBodyTimeout = TimeSpan.MaxValue;
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyExtendedTimeout = requestBodyExtendedTimeout;
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate = requestBodyMinimumDataRate;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.SetDefaultRequestBodyMinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -156,9 +129,50 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frameConnection.StartTimingReads();
 
-            // Tick beyond timeout to start enforcing minimum data rate
-            // Assume rate has been satisfactory so far
-            now += requestBodyTimeout;
+            // Tick during grace period w/ low data rate
+            now += TimeSpan.FromSeconds(1);
+            _frameConnection.BytesRead(10);
+            _frameConnection.Tick(now);
+
+            // Not timed out
+            Assert.False(_frameConnection.TimedOut);
+            mockLogger.Verify(logger =>
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+
+            // Tick after grace period w/ low data rate
+            now += TimeSpan.FromSeconds(2);
+            _frameConnection.BytesRead(10);
+            _frameConnection.Tick(now);
+
+            // Timed out
+            Assert.True(_frameConnection.TimedOut);
+            mockLogger.Verify(logger =>
+                logger.RequestBodyMininumRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
+        }
+
+        [Fact]
+        public void DataRateIsAveragedOverTimeSpentReadingRequestBody()
+        {
+            var requestBodyMinimumDataRate = 100;
+            var requestBodyGracePeriod = TimeSpan.FromSeconds(1);
+            var requestBodyTimeout = TimeSpan.MaxValue;
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.SetDefaultRequestBodyMinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _frameConnection.Tick(now);
+
+            _frameConnection.StartTimingReads();
+
+            // Tick after grace period to start enforcing minimum data rate
+            now += requestBodyGracePeriod;
             _frameConnection.BytesRead(100);
             _frameConnection.Tick(now);
 
@@ -206,6 +220,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void PausedTimeDoesNotCountAgainstRequestBodyTimeout()
         {
+            var requestBodyTimeout = TimeSpan.FromSeconds(5);
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
+
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
@@ -226,8 +244,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
-            // Tick while paused in what would be beyond the timeout period 
-            now += RequestBodyTimeout;
+            // Tick after the timeout period while paused
+            now += requestBodyTimeout;
             _frameConnection.Tick(now);
 
             // Not timed out
@@ -243,8 +261,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
-            // Tick beyond timeout period after resuming
-            now += RequestBodyTimeout;
+            // Tick after timeout period after resuming
+            now += requestBodyTimeout;
             _frameConnection.Tick(now);
 
             // Timed out

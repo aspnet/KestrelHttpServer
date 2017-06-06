@@ -37,10 +37,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private long? _maxConcurrentConnections = null;
         private long? _maxConcurrentUpgradedConnections = null;
 
-        // Default request body timeout
+        // Request body timeout
         private TimeSpan _defaultRequestBodyTimeout = TimeSpan.FromMinutes(2);
-        private TimeSpan? _defaultRequestBodyExtendedTimeout = null;
         private double? _defaultRequestBodyMinimumDataRate = null;
+        private TimeSpan? _defaultRequestBodyMinimumDataRateGracePeriod = null;
 
         /// <summary>
         /// Gets or sets the maximum size of the response buffer before write
@@ -257,35 +257,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Gets or sets the default timeout period for receiving the request body. Defaults to null.
+        /// Gets the default request body minimum data rate.
         /// </summary>
-        public TimeSpan? DefaultRequestBodyExtendedTimeout
-        {
-            get => _defaultRequestBodyExtendedTimeout;
-            set
-            {
-                if (value.HasValue && value <= TimeSpan.Zero)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanOrNullRequired);
-                }
-                _defaultRequestBodyExtendedTimeout = value;
-            }
-        }
+        public double? DefaultRequestBodyMinimumDataRate => _defaultRequestBodyMinimumDataRate;
 
         /// <summary>
-        /// Gets or sets the default request body minimum incoming data rate. Defaults to null.
+        /// Gets the default grace period after which the request body minimum data rate is enforced.
         /// </summary>
-        public double? DefaultRequestBodyMinimumDataRate
+        public TimeSpan? DefaultRequestBodyMinimumDataRateGracePeriod => _defaultRequestBodyMinimumDataRateGracePeriod;
+
+        /// <summary>
+        /// Sets the default request body minimum data rate. No minimum data rate is enforced by default.
+        /// </summary>
+        public void SetDefaultRequestBodyMinimumDataRate(double minimumDataRate, TimeSpan gracePeriod)
         {
-            get => _defaultRequestBodyMinimumDataRate;
-            set
+            if (minimumDataRate <= 0)
             {
-                if (value.HasValue && value <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveNumberOrNullRequired);
-                }
-                _defaultRequestBodyMinimumDataRate = value;
+                throw new ArgumentOutOfRangeException(nameof(minimumDataRate), CoreStrings.PositiveNumberRequired);
             }
+
+            if (gracePeriod < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.NonNegativeTimeSpanRequired);
+            }
+
+            _defaultRequestBodyMinimumDataRate = minimumDataRate;
+            _defaultRequestBodyMinimumDataRateGracePeriod = gracePeriod;
         }
     }
 }

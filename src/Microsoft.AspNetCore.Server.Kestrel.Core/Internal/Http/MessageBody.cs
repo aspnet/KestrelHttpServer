@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     if (_context.TimeoutControl.TimedOut)
                     {
-                        _context.RejectRequest(RequestRejectionReason.RequestTimeout);
+                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
                     }
 
                     var readableBuffer = result.Buffer;

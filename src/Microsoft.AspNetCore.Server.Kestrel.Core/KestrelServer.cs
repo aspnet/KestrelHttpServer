@@ -208,19 +208,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 throw new InvalidOperationException(
                     CoreStrings.FormatMaxRequestBufferSmallerThanRequestHeaderBuffer(Options.Limits.MaxRequestBufferSize.Value, Options.Limits.MaxRequestHeadersTotalSize));
             }
-
-            if (Options.Limits.DefaultRequestBodyExtendedTimeout.HasValue &&
-                Options.Limits.DefaultRequestBodyExtendedTimeout <= Options.Limits.DefaultRequestBodyTimeout)
-            {
-                throw new InvalidOperationException(
-                    CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(Options.Limits.DefaultRequestBodyExtendedTimeout, Options.Limits.DefaultRequestBodyTimeout));
-            }
-
-            if (Options.Limits.DefaultRequestBodyExtendedTimeout.HasValue ^ Options.Limits.DefaultRequestBodyMinimumDataRate.HasValue)
-            {
-                throw new InvalidOperationException(
-                    CoreStrings.FormatRequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether());
-            }
         }
     }
 }

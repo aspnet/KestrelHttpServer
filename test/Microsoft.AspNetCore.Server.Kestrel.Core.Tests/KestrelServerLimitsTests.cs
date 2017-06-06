@@ -299,47 +299,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void DefaultRequestBodyExtendedTimeoutDefault()
-        {
-            Assert.Null(new KestrelServerLimits().DefaultRequestBodyExtendedTimeout);
-        }
-
-        [Theory]
-        [MemberData(nameof(DefaultExtendedRequestBodyTimeoutValidData))]
-        public void DefaultRequestBodyExtendedTimeoutValid(TimeSpan? value)
-        {
-            var limits = new KestrelServerLimits
-            {
-                DefaultRequestBodyExtendedTimeout = value
-            };
-
-            Assert.Equal(value, limits.DefaultRequestBodyExtendedTimeout);
-        }
-
-        [Theory]
-        [MemberData(nameof(DefaultRequestBodyTimeoutInvalidData))]
-        public void DefaultRequestBodyExtendedTimeoutInvalid(TimeSpan value)
-        {
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().DefaultRequestBodyExtendedTimeout = value);
-            Assert.StartsWith(CoreStrings.PositiveTimeSpanOrNullRequired, ex.Message);
-        }
-
-        [Fact]
         public void DefaultRequestBodyMinimumDataRateDefault()
         {
             Assert.Null(new KestrelServerLimits().DefaultRequestBodyMinimumDataRate);
         }
 
         [Theory]
-        [InlineData(null)]
         [InlineData(double.Epsilon)]
         [InlineData(double.MaxValue)]
-        public void DefaultRequestBodyMinimumDataRateValid(double? value)
+        public void DefaultRequestBodyMinimumDataRateValid(double value)
         {
-            var limits = new KestrelServerLimits
-            {
-                DefaultRequestBodyMinimumDataRate = value
-            };
+            var limits = new KestrelServerLimits();
+            limits.SetDefaultRequestBodyMinimumDataRate(value, TimeSpan.FromSeconds(1));
 
             Assert.Equal(value, limits.DefaultRequestBodyMinimumDataRate);
         }
@@ -349,8 +320,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [InlineData(0)]
         public void DefaultRequestBodyMinimumDataRateInvalid(double value)
         {
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().DefaultRequestBodyMinimumDataRate = value);
-            Assert.StartsWith(CoreStrings.PositiveNumberOrNullRequired, ex.Message);
+            var limits = new KestrelServerLimits();
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                limits.SetDefaultRequestBodyMinimumDataRate(value, TimeSpan.FromSeconds(1)));
+
+            Assert.Equal("minimumDataRate", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
+        }
+
+        [Fact]
+        public void DefaultRequestBodyMinimumDataRateGracePeriodDefault()
+        {
+            Assert.Null(new KestrelServerLimits().DefaultRequestBodyMinimumDataRateGracePeriod);
+        }
+
+        [Theory]
+        [MemberData(nameof(DefaultRequestBodyMinimumDataRateGracePeriodValidData))]
+        public void DefaultRequestBodyMinimumDataRateGracePeriodValid(TimeSpan value)
+        {
+            var limits = new KestrelServerLimits();
+            limits.SetDefaultRequestBodyMinimumDataRate(1, value);
+
+            Assert.Equal(value, limits.DefaultRequestBodyMinimumDataRateGracePeriod);
+        }
+
+        [Theory]
+        [MemberData(nameof(DefaultRequestBodyMinimumDataRateGracePeriodInvalidData))]
+        public void DefaultRequestBodyMinimumDataRateInvalid(TimeSpan value)
+        {
+            var limits = new KestrelServerLimits();
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                limits.SetDefaultRequestBodyMinimumDataRate(1, value));
+
+            Assert.Equal("gracePeriod", exception.ParamName);
+            Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
         }
 
         public static TheoryData<TimeSpan> DefaultRequestBodyTimeoutValidData => new TheoryData<TimeSpan>
@@ -366,11 +369,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             TimeSpan.Zero
         };
 
-        public static TheoryData<TimeSpan?> DefaultExtendedRequestBodyTimeoutValidData => new TheoryData<TimeSpan?>
+        public static TheoryData<TimeSpan> DefaultRequestBodyMinimumDataRateGracePeriodValidData => new TheoryData<TimeSpan>
         {
-            null,
+            TimeSpan.Zero,
             TimeSpan.FromTicks(1),
             TimeSpan.MaxValue
+        };
+
+        public static TheoryData<TimeSpan> DefaultRequestBodyMinimumDataRateGracePeriodInvalidData => new TheoryData<TimeSpan>
+        {
+            TimeSpan.MinValue,
+            TimeSpan.FromTicks(-1)
         };
     }
 }

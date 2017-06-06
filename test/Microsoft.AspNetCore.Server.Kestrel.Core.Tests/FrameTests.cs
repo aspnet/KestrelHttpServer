@@ -152,23 +152,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void ResetResetsRequestBodyExtendedTimeout()
-        {
-            _frame.RequestBodyExtendedTimeout = TimeSpan.MaxValue;
-
-            _frame.Reset();
-
-            Assert.Null(_frame.RequestBodyExtendedTimeout);
-        }
-
-        [Fact]
         public void ResetResetsRequestBodyMinimumDataRate()
         {
             _frame.RequestBodyMinimumDataRate = 42;
 
             _frame.Reset();
 
-            Assert.Null(_frame.RequestBodyMinimumDataRate);
+            Assert.Equal(0, _frame.RequestBodyMinimumDataRate);
+        }
+
+        [Fact]
+        public void ResetResetsRequestBodyMinimumDataRateGracePeriod()
+        {
+            _frame.RequestBodyMinimumDataRateGracePeriod = TimeSpan.FromSeconds(5);
+
+            _frame.Reset();
+
+            Assert.Equal(TimeSpan.MaxValue, _frame.RequestBodyMinimumDataRateGracePeriod);
         }
 
         [Fact]
@@ -275,44 +275,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(NonPositiveRequestBodyTimeoutData))]
-        public void ThrowsWhenConfiguringNonPositiveRequestBodyTimeout(TimeSpan value)
+        [MemberData(nameof(InvalidRequestBodyTimeoutData))]
+        public void ThrowsWhenConfiguringInvalidRequestBodyTimeout(TimeSpan value)
         {
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(value));
-            Assert.Equal("timeout", exception.ParamName);
-            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
-        }
-
-        [Theory]
-        [MemberData(nameof(NonPositiveRequestBodyTimeoutData))]
-        public void ThrowsWhenConfiguringNonPositiveRequestBodyExtendedTimeout(TimeSpan value)
-        {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(TimeSpan.FromSeconds(5), value, 1));
-            Assert.Equal("extendedTimeout", exception.ParamName);
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().RequestBodyTimeout = value);
+            Assert.Equal("value", exception.ParamName);
             Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
         }
 
         [Theory]
         [InlineData(double.MinValue)]
         [InlineData(0)]
-        public void ThrowsWhenConfiguringNonPositiveRequestBodyMinimumDataRate(double value)
+        public void ThrowsWhenConfiguringInvalidRequestBodyMinimumDataRateValue(double value)
         {
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), value));
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().SetMinimumDataRate(value, TimeSpan.FromSeconds(1)));
             Assert.Equal("minimumDataRate", exception.ParamName);
             Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
         }
 
-        [Fact]
-        public void ThrowsWhenConfiguringRequestBodyExtendedTimeoutSmallerThanRequestBodyTimeout()
+        [Theory]
+        [MemberData(nameof(InvalidRequestBodyMinimumDataRateGracePeriodData))]
+        public void ThrowsWhenConfiguringInvalidRequestBodyMinimumDataRateGracePeriod(TimeSpan value)
         {
-            var timeout = TimeSpan.FromSeconds(10);
-            var extendedTimeout = TimeSpan.FromSeconds(5);
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(timeout, extendedTimeout, 1));
-            Assert.Equal(CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(extendedTimeout, timeout), exception.Message);
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().SetMinimumDataRate(1, value));
+            Assert.Equal("gracePeriod", exception.ParamName);
+            Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
         }
 
         [Fact]
@@ -320,23 +310,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var timeout = TimeSpan.FromSeconds(10);
 
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(timeout);
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().RequestBodyTimeout = timeout;
 
             Assert.Equal(timeout, _frame.RequestBodyTimeout);
         }
 
         [Fact]
-        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyExtendedTimeoutAndRequestBodyMinimumDateRate()
+        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyMinimumDateRate()
         {
-            var timeout = TimeSpan.FromSeconds(10);
-            var extendedTimeout = TimeSpan.FromSeconds(20);
             var minimumDataRate = 150;
+            var gracePeriod = TimeSpan.FromSeconds(10);
 
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Configure(timeout, extendedTimeout, minimumDataRate);
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().SetMinimumDataRate(minimumDataRate, gracePeriod);
 
-            Assert.Equal(timeout, _frame.RequestBodyTimeout);
-            Assert.Equal(extendedTimeout, _frame.RequestBodyExtendedTimeout);
             Assert.Equal(minimumDataRate, _frame.RequestBodyMinimumDataRate);
+            Assert.Equal(gracePeriod, _frame.RequestBodyMinimumDataRateGracePeriod);
         }
 
         [Fact]
@@ -940,11 +928,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
-        public static TheoryData<TimeSpan> NonPositiveRequestBodyTimeoutData => new TheoryData<TimeSpan>
+        public static TheoryData<TimeSpan> InvalidRequestBodyTimeoutData => new TheoryData<TimeSpan>
         {
             TimeSpan.MinValue,
             TimeSpan.FromTicks(-1),
             TimeSpan.Zero
+        };
+
+        public static TheoryData<TimeSpan> InvalidRequestBodyMinimumDataRateGracePeriodData => new TheoryData<TimeSpan>
+        {
+            TimeSpan.MinValue,
+            TimeSpan.FromTicks(-1)
         };
 
         private class RequestHeadersWrapper : IHeaderDictionary

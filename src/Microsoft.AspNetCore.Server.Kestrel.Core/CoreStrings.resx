@@ -327,16 +327,10 @@
   <data name="MaxRequestBodySizeCannotBeModifiedForUpgradedRequests" xml:space="preserve">
     <value>The maximum request body size cannot be modified after the request has been upgraded.</value>
   </data>
-  <data name="RequestBodyExtendedTimeoutSmallerThanTimeout" xml:space="preserve">
-    <value>The request body extended timeout ({extendedTimeout}) must be greater than the request body timeout ({timeout}).</value>
-  </data>
-  <data name="RequestBodyExtendedTimeoutAndMinimumDataRateMustBeSetTogether" xml:space="preserve">
-    <value>The request body extended timeout and minimum data rate must both be set or null.</value>
-  </data>
   <data name="PositiveTimeSpanRequired" xml:space="preserve">
     <value>Value must be a positive TimeSpan.</value>
   </data>
-  <data name="PositiveTimeSpanOrNullRequired" xml:space="preserve">
-    <value>Value must be null or a positive TimeSpan.</value>
+  <data name="NonNegativeTimeSpanRequired" xml:space="preserve">
+    <value>Value must be a non-negative TimeSpan.</value>
   </data>
 </root>

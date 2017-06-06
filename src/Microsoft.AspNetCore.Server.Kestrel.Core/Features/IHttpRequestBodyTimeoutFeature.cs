@@ -11,36 +11,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
     public interface IHttpRequestBodyTimeoutFeature
     {
         /// <summary>
-        /// The minimum amount of time allowed for the request body to be entirely read.
+        /// The maximum amount of time in which the request body should be fully received.
         /// </summary>
-        TimeSpan Timeout { get; }
+        TimeSpan RequestBodyTimeout { get; set; }
 
         /// <summary>
-        /// The maximum amount of time allowed for the request body to be entirely read.
-        /// Only effective when <see cref="MinimumDataRate"/> is also set.
+        /// The minimum data rate at which the request body should be received.
         /// </summary>
-        TimeSpan? ExtendedTimeout { get; }
+        double MinimumDataRate { get; }
 
         /// <summary>
-        /// The minimum incoming data rate in bytes/second that the request should be read at after
-        /// <see cref="Timeout"/> has elapsed.
+        /// The period of time during which the minimum data rate will not be enforced.
         /// </summary>
-        double? MinimumDataRate { get; }
+        TimeSpan MinimumDataRateGracePeriod { get; }
 
         /// <summary>
-        /// Configures a simple timeout for the request body.
+        /// Sets the minimum incoming data rate at which the request body should be received.
         /// </summary>
-        /// <param name="timeout">The time within which the request body should be fully read.</param>
-        void Configure(TimeSpan timeout);
-
-        /// <summary>
-        /// Configures a timeout for the request body which can be extended based on the incoming data rate.
-        /// </summary>
-        /// <param name="timeout">The minimum amount of time within which the request body should be fully read.</param>
-        /// <param name="extendedTimeout">The extended amount of time within which the request body should be fully read,
-        /// as long as it is being received at the specified minimum data rate.</param>
-        /// <param name="minimumDataRate">The minimum incoming data rate the request body should be received after
-        /// the initial timeout period.</param>
-        void Configure(TimeSpan timeout, TimeSpan extendedTimeout, double minimumDataRate);
+        /// <param name="minimumDataRate">The minimum incoming data rate in bytes/second.</param>
+        /// <param name="gracePeriod">The period of time during which the minimum data rate will not be enforced.</param>
+        void SetMinimumDataRate(double minimumDataRate, TimeSpan gracePeriod);
     }
 }

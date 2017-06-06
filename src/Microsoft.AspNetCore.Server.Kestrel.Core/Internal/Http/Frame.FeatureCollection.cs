@@ -229,49 +229,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        TimeSpan IHttpRequestBodyTimeoutFeature.Timeout => RequestBodyTimeout;
-
-        TimeSpan? IHttpRequestBodyTimeoutFeature.ExtendedTimeout => RequestBodyExtendedTimeout;
-
-        double? IHttpRequestBodyTimeoutFeature.MinimumDataRate => RequestBodyMinimumDataRate;
-
-        void IHttpRequestBodyTimeoutFeature.Configure(TimeSpan timeout)
+        TimeSpan IHttpRequestBodyTimeoutFeature.RequestBodyTimeout
         {
-            if (timeout <= TimeSpan.Zero)
+            get => RequestBodyTimeout;
+            set
             {
-                throw new ArgumentOutOfRangeException(nameof(timeout), CoreStrings.PositiveTimeSpanRequired);
-            }
+                if (value <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
+                }
 
-            RequestBodyTimeout = timeout;
-            RequestBodyExtendedTimeout = null;
-            RequestBodyMinimumDataRate = null;
+                RequestBodyTimeout = value;
+            }
         }
 
-        void IHttpRequestBodyTimeoutFeature.Configure(TimeSpan timeout, TimeSpan extendedTimeout, double minimumDataRate)
+        double IHttpRequestBodyTimeoutFeature.MinimumDataRate => RequestBodyMinimumDataRate;
+
+        TimeSpan IHttpRequestBodyTimeoutFeature.MinimumDataRateGracePeriod => RequestBodyMinimumDataRateGracePeriod;
+
+        void IHttpRequestBodyTimeoutFeature.SetMinimumDataRate(double minimumDataRate, TimeSpan gracePeriod)
         {
-            if (timeout <= TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(timeout), CoreStrings.PositiveTimeSpanRequired);
-            }
-
-            if (extendedTimeout <= TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(extendedTimeout), CoreStrings.PositiveTimeSpanRequired);
-            }
-
             if (minimumDataRate <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(minimumDataRate), CoreStrings.PositiveNumberRequired);
             }
 
-            if (extendedTimeout <= timeout)
+            if (gracePeriod < TimeSpan.Zero)
             {
-                throw new InvalidOperationException(CoreStrings.FormatRequestBodyExtendedTimeoutSmallerThanTimeout(extendedTimeout, timeout));
+                throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.NonNegativeTimeSpanRequired);
             }
 
-            RequestBodyTimeout = timeout;
-            RequestBodyExtendedTimeout = extendedTimeout;
             RequestBodyMinimumDataRate = minimumDataRate;
+            RequestBodyMinimumDataRateGracePeriod = gracePeriod;
         }
 
         object IFeatureCollection.this[Type key]

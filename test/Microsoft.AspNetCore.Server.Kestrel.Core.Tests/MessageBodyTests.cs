@@ -522,9 +522,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 input.FrameContext.TimeoutControl = mockTimeoutControl.Object;
 
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "5" }, input.Frame);
-                var bodyTask = body.StartAsync();
 
-                // Add some input and consume it to ensure StartAsync is in the loop
+                // Add some input and read it to start PumpAsync
                 input.Add("a");
                 Assert.Equal(1, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
 
@@ -537,8 +536,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 var exception = await Assert.ThrowsAsync<BadHttpRequestException>(() => body.ReadAsync(new ArraySegment<byte>(new byte[1])));
                 Assert.Equal(StatusCodes.Status408RequestTimeout, exception.StatusCode);
-
-                await bodyTask;
             }
         }
 
@@ -552,9 +549,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 input.FrameContext.TimeoutControl = mockTimeoutControl.Object;
 
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "5" }, input.Frame);
-                var bodyTask = body.StartAsync();
 
-                // Add some input and consume it to ensure StartAsync is in the loop
+                // Add some input and read it to start PumpAsync
                 input.Add("a");
                 Assert.Equal(1, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
 
@@ -567,8 +563,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 var exception = await Assert.ThrowsAsync<BadHttpRequestException>(() => body.ConsumeAsync());
                 Assert.Equal(StatusCodes.Status408RequestTimeout, exception.StatusCode);
-
-                await bodyTask;
             }
         }
 
@@ -582,9 +576,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 input.FrameContext.TimeoutControl = mockTimeoutControl.Object;
 
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderContentLength = "5" }, input.Frame);
-                var bodyTask = body.StartAsync();
 
-                // Add some input and consume it to ensure StartAsync is in the loop
+                // Add some input and read it to start PumpAsync
                 input.Add("a");
                 Assert.Equal(1, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
 
@@ -600,8 +593,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     var exception = await Assert.ThrowsAsync<BadHttpRequestException>(() => body.CopyToAsync(ms));
                     Assert.Equal(StatusCodes.Status408RequestTimeout, exception.StatusCode);
                 }
-
-                await bodyTask;
             }
         }
 

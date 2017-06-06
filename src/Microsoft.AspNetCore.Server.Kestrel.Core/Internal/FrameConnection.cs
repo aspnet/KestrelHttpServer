@@ -264,28 +264,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 if (_readTimingElapsed > _frame.RequestBodyTimeout.Ticks)
                 {
-                    if (!_frame.RequestBodyExtendedTimeout.HasValue || !_frame.RequestBodyMinimumDataRate.HasValue)
+                    Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeout);
+                    Timeout();
+                    _timingReads = false;
+                }
+                else if (_frame.RequestBodyMinimumDataRate > 0)
+                {
+                    var rate = (_bytesRead / (_readTimingElapsed / TimeSpan.TicksPerSecond));
+
+                    if (_readTimingElapsed > _frame.RequestBodyMinimumDataRateGracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate)
                     {
-                        Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeout);
+                        Log.RequestBodyMininumRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate);
                         Timeout();
                         _timingReads = false;
-                    }
-                    else
-                    {
-                        var rate = _bytesRead / (_readTimingElapsed / TimeSpan.TicksPerSecond);
-
-                        if (_readTimingElapsed > _frame.RequestBodyExtendedTimeout.Value.Ticks)
-                        {
-                            Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyExtendedTimeout.Value);
-                            Timeout();
-                            _timingReads = false;
-                        }
-                        else if (rate < _frame.RequestBodyMinimumDataRate)
-                        {
-                            Log.RequestBodyMininumRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate.Value);
-                            Timeout();
-                            _timingReads = false;
-                        }
                     }
                 }
 
