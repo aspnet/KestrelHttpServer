@@ -219,7 +219,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 OnReadStart();
                 _context.HasStartedConsumingRequestBody = true;
-                var ignore = PumpAsync();
+                _ = PumpAsync();
             }
         }
 

@@ -739,6 +739,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frame.HasStartedConsumingRequestBody = true;
 
             // Assert
+            Assert.True(((IHttpMaxRequestBodySizeFeature)_frame).IsReadOnly);
             var ex = Assert.Throws<InvalidOperationException>(() => ((IHttpMaxRequestBodySizeFeature)_frame).MaxRequestBodySize = 1);
             Assert.Equal(CoreStrings.MaxRequestBodySizeCannotBeModifiedAfterRead, ex.Message);
         }

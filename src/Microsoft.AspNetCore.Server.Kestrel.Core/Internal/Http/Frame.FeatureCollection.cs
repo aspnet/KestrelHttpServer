@@ -203,6 +203,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             set => TraceIdentifier = value;
         }
 
+        bool IHttpMaxRequestBodySizeFeature.IsReadOnly => HasStartedConsumingRequestBody || _wasUpgraded;
+
         long? IHttpMaxRequestBodySizeFeature.MaxRequestBodySize
         {
             get => MaxRequestBodySize;

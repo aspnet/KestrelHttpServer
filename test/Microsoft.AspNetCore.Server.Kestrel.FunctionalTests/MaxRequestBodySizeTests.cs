@@ -184,6 +184,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
                 Assert.Equal(new KestrelServerLimits().MaxRequestBodySize, feature.MaxRequestBodySize);
+                Assert.True(feature.IsReadOnly);
 
                 invalidOpEx = Assert.Throws<InvalidOperationException>(() =>
                     feature.MaxRequestBodySize = perRequestMaxRequestBodySize);
@@ -223,6 +224,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
                 Assert.Equal(new KestrelServerLimits().MaxRequestBodySize, feature.MaxRequestBodySize);
+                Assert.True(feature.IsReadOnly);
 
                 invalidOpEx = Assert.Throws<InvalidOperationException>(() =>
                     feature.MaxRequestBodySize = 0x10);
