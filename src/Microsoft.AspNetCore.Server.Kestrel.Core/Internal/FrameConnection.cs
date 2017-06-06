@@ -42,6 +42,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _context = context;
         }
 
+        // For testing
+        internal Frame Frame => _frame;
+
         public bool TimedOut { get; private set; }
 
         public string ConnectionId => _context.ConnectionId;
@@ -151,8 +154,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 Input = input,
                 Output = output
             });
-
-            _frame.Reset();
         }
 
         public void OnConnectionClosed(Exception ex)
@@ -259,7 +260,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var timestamp = now.Ticks;
 
-            if (timestamp > Interlocked.Read(ref _timeoutTimestamp)) // TODO: Use PlatformApis.VolatileRead equivalent again
+            // TODO: Use PlatformApis.VolatileRead equivalent again
+            if (timestamp > Interlocked.Read(ref _timeoutTimestamp))
             {
                 CancelTimeout();
 

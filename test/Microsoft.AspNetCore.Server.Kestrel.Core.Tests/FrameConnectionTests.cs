@@ -60,6 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
             _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
@@ -90,6 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
             _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
@@ -122,6 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
             _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
@@ -164,6 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
             _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
@@ -228,6 +232,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
 
             _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
