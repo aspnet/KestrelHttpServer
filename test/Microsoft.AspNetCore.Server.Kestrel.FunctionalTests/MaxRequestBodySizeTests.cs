@@ -250,6 +250,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
+        public async Task EveryReadFailsWhenContentLengthHeaderExceedsGlobalLimit()
+        {
+            BadHttpRequestException requestRejectedEx1 = null;
+            BadHttpRequestException requestRejectedEx2 = null;
+
+            using (var server = new TestServer(async context =>
+            {
+                var buffer = new byte[1];
+                requestRejectedEx1 = await Assert.ThrowsAsync<BadHttpRequestException>(
+                    async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
+                requestRejectedEx2 = await Assert.ThrowsAsync<BadHttpRequestException>(
+                    async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
+                throw requestRejectedEx2;
+            },
+            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Host:",
+                        "Content-Length: " + (new KestrelServerLimits().MaxRequestBodySize + 1),
+                        "",
+                        "");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 413 Payload Too Large",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+
+            Assert.NotNull(requestRejectedEx1);
+            Assert.NotNull(requestRejectedEx2);
+            Assert.Equal(CoreStrings.BadRequest_RequestBodyTooLarge, requestRejectedEx1.Message);
+            Assert.Equal(CoreStrings.BadRequest_RequestBodyTooLarge, requestRejectedEx2.Message);
+        }
+
+        [Fact]
         public async Task ChunkFramingAndExtensionsCountTowardsRequestBodySize()
         {
             var chunkedPayload = "5;random chunk extension\r\nHello\r\n6\r\n World\r\n0\r\n\r\n";
@@ -405,6 +446,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             Assert.NotNull(requestRejectedEx);
             Assert.Equal(CoreStrings.BadRequest_RequestBodyTooLarge, requestRejectedEx.Message);
+        }
+
+        [Fact]
+        public async Task EveryReadFailsWhenChunkedPayloadExceedsGlobalLimit()
+        {
+            BadHttpRequestException requestRejectedEx1 = null;
+            BadHttpRequestException requestRejectedEx2 = null;
+
+            using (var server = new TestServer(async context =>
+            {
+                var buffer = new byte[1];
+                requestRejectedEx1 = await Assert.ThrowsAsync<BadHttpRequestException>(
+                    async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
+                requestRejectedEx2 = await Assert.ThrowsAsync<BadHttpRequestException>(
+                    async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
+                throw requestRejectedEx2;
+            },
+            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Host:",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "1\r\n");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 413 Payload Too Large",
+                        "Connection: close",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+
+            Assert.NotNull(requestRejectedEx1);
+            Assert.NotNull(requestRejectedEx2);
+            Assert.Equal(CoreStrings.BadRequest_RequestBodyTooLarge, requestRejectedEx1.Message);
+            Assert.Equal(CoreStrings.BadRequest_RequestBodyTooLarge, requestRejectedEx2.Message);
         }
     }
 }

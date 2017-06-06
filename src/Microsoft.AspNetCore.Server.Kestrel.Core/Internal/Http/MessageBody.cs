@@ -217,8 +217,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             if (!_context.HasStartedConsumingRequestBody)
             {
-                _context.HasStartedConsumingRequestBody = true;
                 OnReadStart();
+                _context.HasStartedConsumingRequestBody = true;
                 var ignore = PumpAsync();
             }
         }
