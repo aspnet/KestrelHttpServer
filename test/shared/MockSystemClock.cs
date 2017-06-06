@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Testing
             get
             {
                 UtcNowCalled++;
-                return new DateTimeOffset(_utcNowTicks, TimeSpan.Zero);
+                return new DateTimeOffset(Interlocked.Read(ref _utcNowTicks), TimeSpan.Zero);
             }
             set
             {
