@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
@@ -72,11 +71,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var appRunningEvent = new ManualResetEventSlim();
 
+            // TODO: set this via IHttpRequestBodyTimeoutFeature after https://github.com/aspnet/KestrelHttpServer/pull/1877 is merged.
+            // Set request body timeout to maximum value, to test that it is overridden before draining
+            serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = TimeSpan.MaxValue;
+
             using (var server = new TestServer(context =>
             {
-                // Set request body timeout to maximum value, to test that it is overridden before draining
-                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = TimeSpan.MaxValue;
-
                 appRunningEvent.Set();
                 return Task.CompletedTask;
             }, serviceContext))

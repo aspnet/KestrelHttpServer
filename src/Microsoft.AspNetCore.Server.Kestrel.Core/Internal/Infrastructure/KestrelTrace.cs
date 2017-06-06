@@ -66,12 +66,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly Action<ILogger, string, string, double, Exception> _requestBodyMinimumDataRateNotSatisfied =
             LoggerMessage.Define<string, string, double>(LogLevel.Information, 28, @"Connection id ""{ConnectionId}"", Request id ""{TraceIdentifier}"": request body incoming data rate dropped below {Rate} bytes/second.");
 
-        private static readonly Action<ILogger, string, string, TimeSpan, TimeSpan, Exception> _requestBodyTimingPause =
-            LoggerMessage.Define<string, string, TimeSpan, TimeSpan>(LogLevel.Trace, 29, @"Connection id ""{ConnectionId}"", Request id ""{TraceIdentifier}"": request body timing paused. Time spent reading request body: {RequestBodyTime}. Time since request body started: {TotalTime}.");
-
-        private static readonly Action<ILogger, string, string, TimeSpan, TimeSpan, Exception> _requestBodyTimingResume =
-            LoggerMessage.Define<string, string, TimeSpan, TimeSpan>(LogLevel.Trace, 30, @"Connection id ""{ConnectionId}"", Request id ""{TraceIdentifier}"": request body timing resumed. Time spent reading request body: {RequestBodyTime}. Time since request body started: {TotalTime}.");
-
         protected readonly ILogger _logger;
 
         public KestrelTrace(ILogger logger)
@@ -172,16 +166,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate)
         {
             _requestBodyMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
-        }
-
-        public void RequestBodyTimingPause(string connectionId, string traceIdentifier, TimeSpan requestBodyTime, TimeSpan totalTime)
-        {
-            _requestBodyTimingPause(_logger, connectionId, traceIdentifier, requestBodyTime, totalTime, null);
-        }
-
-        public void RequestBodyTimingResume(string connectionId, string traceIdentifier, TimeSpan requestBodyTime, TimeSpan totalTime)
-        {
-            _requestBodyTimingResume(_logger, connectionId, traceIdentifier, requestBodyTime, totalTime, null);
         }
 
         public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)

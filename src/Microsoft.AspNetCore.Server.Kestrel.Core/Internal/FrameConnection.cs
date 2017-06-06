@@ -29,13 +29,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private long _timeoutTimestamp = long.MaxValue;
         private TimeoutAction _timeoutAction;
 
-        private Task _lifetimeTask;
-
-        private bool _timingReads;
-        private bool _pauseTimingReads;
+        private object _readTimingLock = new object();
+        private bool _readTimingEnabled;
+        private bool _readTimingPauseRequested;
         private long _readTimingStartTicks;
         private long _readTimingElapsed;
-        private long _bytesRead;
+        private long _readTimingBytesRead;
+
+        private Task _lifetimeTask;
 
         public FrameConnection(FrameConnectionContext context)
         {
@@ -205,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             TimedOut = true;
-            _timingReads = false;
+            _readTimingEnabled = false;
             _frame.Stop();
         }
 
@@ -272,34 +273,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 Timeout();
             }
-            else if (_timingReads)
+            else
             {
-                _readTimingElapsed += timestamp - _lastTimestamp;
-
-                if (_readTimingElapsed > _frame.RequestBodyTimeout.Ticks)
+                lock (_readTimingLock)
                 {
-                    Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyTimeout);
-                    Timeout();
-                }
-                else if (_frame.RequestBodyMinimumDataRate?.Rate > 0)
-                {
-                    var elapsedSeconds = (double)_readTimingElapsed / TimeSpan.TicksPerSecond;
-                    var rate = _bytesRead / elapsedSeconds;
-
-                    if (_readTimingElapsed > _frame.RequestBodyMinimumDataRate.GracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate.Rate)
+                    if (_readTimingEnabled)
                     {
-                        Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate.Rate);
-                        Timeout();
-                    }
-                }
+                        _readTimingElapsed += timestamp - _lastTimestamp;
 
-                // PauseTimingReads() cannot just set _timingReads to false. It needs to go through at least one tick
-                // before pausing, otherwise _readTimingElapsed might never be updated if PauseTimingReads() is always
-                // called before the next tick.
-                if (_pauseTimingReads)
-                {
-                    _timingReads = false;
-                    _pauseTimingReads = false;
+                        if (_readTimingElapsed > _frame.RequestBodyTimeout.Ticks)
+                        {
+                            Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_frame.RequestBodyTimeout.Ticks));
+                            Timeout();
+                        }
+                        else if (_frame.RequestBodyMinimumDataRate?.Rate > 0)
+                        {
+                            var elapsedSeconds = (double)_readTimingElapsed / TimeSpan.TicksPerSecond;
+                            var rate = Interlocked.Read(ref _readTimingBytesRead) / elapsedSeconds;
+
+                            if (_readTimingElapsed > _frame.RequestBodyMinimumDataRate.GracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate.Rate)
+                            {
+                                Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate.Rate);
+                                Timeout();
+                            }
+                        }
+
+                        // PauseTimingReads() cannot just set _timingReads to false. It needs to go through at least one tick
+                        // before pausing, otherwise _readTimingElapsed might never be updated if PauseTimingReads() is always
+                        // called before the next tick.
+                        if (_readTimingPauseRequested)
+                        {
+                            _readTimingEnabled = false;
+                            _readTimingPauseRequested = false;
+                        }
+                    }
                 }
             }
 
@@ -333,32 +340,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void StartTimingReads()
         {
-            _readTimingElapsed = 0;
-            _bytesRead = 0;
-            _readTimingStartTicks = Interlocked.Read(ref _lastTimestamp);
-            _timingReads = true;
+            lock (_readTimingLock)
+            {
+                _readTimingElapsed = 0;
+                _readTimingBytesRead = 0;
+                _readTimingStartTicks = Interlocked.Read(ref _lastTimestamp);
+
+                _readTimingEnabled = true;
+            }
         }
 
         public void StopTimingReads()
         {
-            _timingReads = false;
+            lock (_readTimingLock)
+            {
+                _readTimingEnabled = false;
+            }
         }
 
         public void PauseTimingReads()
         {
-            Log.RequestBodyTimingPause(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_readTimingElapsed), TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks));
-            _pauseTimingReads = true;
+            lock (_readTimingLock)
+            {
+                _readTimingPauseRequested = true;
+            }
         }
 
         public void ResumeTimingReads()
         {
-            Log.RequestBodyTimingResume(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_readTimingElapsed), TimeSpan.FromTicks(_lastTimestamp - _readTimingStartTicks));
-            _timingReads = true;
+            lock (_readTimingLock)
+            {
+                _readTimingEnabled = true;
+            }
         }
 
         public void BytesRead(int count)
         {
-            Interlocked.Add(ref _bytesRead, count);
+            Interlocked.Add(ref _readTimingBytesRead, count);
         }
     }
 }

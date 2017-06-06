@@ -225,8 +225,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void PausedTimeDoesNotCountAgainstRequestBodyTimeout()
         {
             var requestBodyTimeout = TimeSpan.FromSeconds(5);
+            var systemClock = new MockSystemClock();
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -235,40 +237,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.Frame.Reset();
 
             // Initialize timestamp
-            var now = DateTimeOffset.UtcNow;
-            _frameConnection.Tick(now);
+            _frameConnection.Tick(systemClock.UtcNow);
 
             _frameConnection.StartTimingReads();
 
-            // Pause and tick within timeout period
+            // Tick at 1s, expected counted time is 1s
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Pause at 1.5s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
             _frameConnection.PauseTimingReads();
-            now += TimeSpan.FromSeconds(1);
-            _frameConnection.Tick(now);
+
+            // Tick at 2s, expected counted time is 2s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Tick at 6s, expected counted time is 2s
+            systemClock.UtcNow += TimeSpan.FromSeconds(4);
+            _frameConnection.Tick(systemClock.UtcNow);
 
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
-            // Tick after the timeout period while paused
-            now += requestBodyTimeout;
-            _frameConnection.Tick(now);
-
-            // Not timed out
-            Assert.False(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
-
-            // Resume and tick within resumed timeout period
+            // Resume at 6.5s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
             _frameConnection.ResumeTimingReads();
-            now += TimeSpan.FromSeconds(1);
-            _frameConnection.Tick(now);
+
+            // Tick at 7s, expected counted time is 3s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
+            _frameConnection.Tick(systemClock.UtcNow);
 
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
 
-            // Tick after timeout period after resuming
-            now += requestBodyTimeout;
-            _frameConnection.Tick(now);
+            // Tick just past 9s, expected counted time is just over 5s
+            systemClock.UtcNow += TimeSpan.FromSeconds(2) + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
 
             // Timed out
             Assert.True(_frameConnection.TimedOut);
