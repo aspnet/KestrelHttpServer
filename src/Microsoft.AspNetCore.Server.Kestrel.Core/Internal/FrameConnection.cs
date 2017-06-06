@@ -281,7 +281,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 }
                 else if (_frame.RequestBodyMinimumDataRate > 0)
                 {
-                    var rate = (_bytesRead / (_readTimingElapsed / TimeSpan.TicksPerSecond));
+                    var elapsedSeconds = (double)_readTimingElapsed / TimeSpan.TicksPerSecond;
+                    var rate = _bytesRead / elapsedSeconds;
 
                     if (_readTimingElapsed > _frame.RequestBodyMinimumDataRateGracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate)
                     {
@@ -330,9 +331,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void StartTimingReads()
         {
-            Interlocked.Exchange(ref _readTimingElapsed, 0);
-            Interlocked.Exchange(ref _bytesRead, 0);
-            Interlocked.Exchange(ref _readTimingStartTicks, _lastTimestamp);
+            _readTimingElapsed = 0;
+            _bytesRead = 0;
+            _readTimingStartTicks = Interlocked.Read(ref _lastTimestamp);
             _timingReads = true;
         }
 
