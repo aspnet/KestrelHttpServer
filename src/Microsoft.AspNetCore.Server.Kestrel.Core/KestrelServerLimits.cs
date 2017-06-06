@@ -257,18 +257,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Gets the default request body minimum data rate.
+        /// Gets the default request body minimum data rate in bytes/second.
         /// </summary>
         public double? DefaultRequestBodyMinimumDataRate => _defaultRequestBodyMinimumDataRate;
 
         /// <summary>
-        /// Gets the default grace period after which the request body minimum data rate is enforced.
+        /// Gets the default amount of time to delay enforcement of <see cref="DefaultRequestBodyMinimumDataRate" />.
         /// </summary>
         public TimeSpan? DefaultRequestBodyMinimumDataRateGracePeriod => _defaultRequestBodyMinimumDataRateGracePeriod;
 
         /// <summary>
         /// Sets the default request body minimum data rate. No minimum data rate is enforced by default.
         /// </summary>
+        /// <param name="minimumDataRate">The minimum data rate in bytes/second at which the request body should be received.</param>
+        /// <param name="gracePeriod">
+        /// The amount of time to delay enforcement of <paramref name="minimumDataRate"/>.
+        /// When set to <see cref="TimeSpan.Zero"/>, enforcement begins when the server starts reading the request body.
+        /// </param>
         public void SetDefaultRequestBodyMinimumDataRate(double minimumDataRate, TimeSpan gracePeriod)
         {
             if (minimumDataRate <= 0)
