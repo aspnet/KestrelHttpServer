@@ -381,8 +381,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _responseBytesWritten = 0;
             _requestCount++;
 
-            RequestBodyTimeout = ServerOptions.Limits.DefaultRequestBodyTimeout;
-            RequestBodyMinimumDataRate = ServerOptions.Limits.DefaultRequestBodyMinimumDataRate;
+            RequestBodyTimeout = ServerOptions.Limits.RequestBodyTimeout;
+            RequestBodyMinimumDataRate = ServerOptions.Limits.RequestBodyMinimumDataRate;
         }
 
         /// <summary>

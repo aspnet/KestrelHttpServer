@@ -12,11 +12,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
     {
         /// <summary>
         /// The maximum amount of time in which the request body should be fully received.
+        /// This limit has no effect on upgraded connections which are always unlimited.
         /// </summary>
         TimeSpan Timeout { get; set; }
 
         /// <summary>
         /// The minimum data rate in bytes/second at which the request body should be received.
+        /// Setting this property to null indicates no minimum data rate should be enforced.
+        /// This limit has no effect on upgraded connections which are always unlimited.
         /// </summary>
         MinimumDataRate MinimumDataRate { get; set; }
     }

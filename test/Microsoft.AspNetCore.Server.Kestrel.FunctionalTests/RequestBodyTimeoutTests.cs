@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout + TimeSpan.FromSeconds(1);
+                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.RequestBodyTimeout + TimeSpan.FromSeconds(1);
 
                     await connection.Receive(
                         "HTTP/1.1 408 Request Timeout",
@@ -73,7 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             // TODO: set this via IHttpRequestBodyTimeoutFeature after https://github.com/aspnet/KestrelHttpServer/pull/1877 is merged.
             // Set request body timeout to maximum value, to test that it is overridden before draining
-            serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout = TimeSpan.MaxValue;
+            serviceContext.ServerOptions.Limits.RequestBodyTimeout = TimeSpan.MaxValue;
 
             using (var server = new TestServer(context =>
             {
@@ -147,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout + TimeSpan.FromSeconds(1);
+                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.RequestBodyTimeout + TimeSpan.FromSeconds(1);
                     Assert.True(exceptionSwallowedEvent.Wait(TimeSpan.FromSeconds(10)));
 
                     await connection.Receive(

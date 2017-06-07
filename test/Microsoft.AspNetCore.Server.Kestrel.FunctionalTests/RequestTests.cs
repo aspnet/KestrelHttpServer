@@ -62,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseKestrel(options =>
                 {
                     options.Limits.MaxRequestBodySize = contentLength;
-                    options.Limits.DefaultRequestBodyTimeout = TimeSpan.MaxValue;
+                    options.Limits.RequestBodyTimeout = TimeSpan.MaxValue;
                 })
                 .UseUrls("http://127.0.0.1:0/")
                 .Configure(app =>

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -153,16 +154,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [InlineData(0)]
-        [InlineData(0.5)]
-        [InlineData(2.1)]
-        [InlineData(2.5)]
-        [InlineData(2.9)]
-        public void KeepAliveTimeoutValid(double seconds)
+        [MemberData(nameof(TimeoutValidData))]
+        public void KeepAliveTimeoutValid(TimeSpan value)
         {
-            var o = new KestrelServerLimits();
-            o.KeepAliveTimeout = TimeSpan.FromSeconds(seconds);
-            Assert.Equal(seconds, o.KeepAliveTimeout.TotalSeconds);
+            Assert.Equal(value, new KestrelServerLimits { KeepAliveTimeout = value }.KeepAliveTimeout);
+        }
+
+        [Theory]
+        [MemberData(nameof(TimeoutInvalidData))]
+        public void KeepAliveTimeoutInvalid(TimeSpan value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits { KeepAliveTimeout = value });
+
+            Assert.Equal("value", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
         }
 
         [Fact]
@@ -172,17 +177,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [InlineData(0)]
-        [InlineData(0.5)]
-        [InlineData(1.0)]
-        [InlineData(2.5)]
-        [InlineData(10)]
-        [InlineData(60)]
-        public void RequestHeadersTimeoutValid(double seconds)
+        [MemberData(nameof(TimeoutValidData))]
+        public void RequestHeadersTimeoutValid(TimeSpan value)
         {
-            var o = new KestrelServerLimits();
-            o.RequestHeadersTimeout = TimeSpan.FromSeconds(seconds);
-            Assert.Equal(seconds, o.RequestHeadersTimeout.TotalSeconds);
+            Assert.Equal(value, new KestrelServerLimits { RequestHeadersTimeout = value }.RequestHeadersTimeout);
+        }
+
+        [Theory]
+        [MemberData(nameof(TimeoutInvalidData))]
+        public void RequestHeadersTimeoutInvalid(TimeSpan value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits { RequestHeadersTimeout = value });
+
+            Assert.Equal("value", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
         }
 
         [Fact]
@@ -273,44 +281,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void DefaultRequestBodyTimeoutDefault()
+        public void RequestBodyTimeoutDefault()
         {
-            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().DefaultRequestBodyTimeout);
+            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().RequestBodyTimeout);
         }
 
         [Theory]
-        [MemberData(nameof(DefaultRequestBodyTimeoutValidData))]
-        public void DefaultRequestBodyTimeoutValid(TimeSpan value)
+        [MemberData(nameof(TimeoutValidData))]
+        public void RequestBodyTimeoutValid(TimeSpan value)
         {
             var limits = new KestrelServerLimits
             {
-                DefaultRequestBodyTimeout = value
+                RequestBodyTimeout = value
             };
 
-            Assert.Equal(value, limits.DefaultRequestBodyTimeout);
+            Assert.Equal(value, limits.RequestBodyTimeout);
         }
 
         [Theory]
-        [MemberData(nameof(DefaultRequestBodyTimeoutInvalidData))]
-        public void DefaultRequestBodyTimeoutInvalid(TimeSpan value)
+        [MemberData(nameof(TimeoutInvalidData))]
+        public void RequestBodyTimeoutInvalid(TimeSpan value)
         {
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().DefaultRequestBodyTimeout = value);
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().RequestBodyTimeout = value);
             Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, ex.Message);
         }
 
         [Fact]
-        public void DefaultRequestBodyMinimumDataRateDefault()
+        public void RequestBodyMinimumDataRateDefault()
         {
-            Assert.Null(new KestrelServerLimits().DefaultRequestBodyMinimumDataRate);
+            Assert.Null(new KestrelServerLimits().RequestBodyMinimumDataRate);
         }
 
-        public static TheoryData<TimeSpan> DefaultRequestBodyTimeoutValidData => new TheoryData<TimeSpan>
+        public static TheoryData<TimeSpan> TimeoutValidData => new TheoryData<TimeSpan>
         {
             TimeSpan.FromTicks(1),
-            TimeSpan.MaxValue
+            TimeSpan.MaxValue,
+            Timeout.InfiniteTimeSpan,
+            TimeSpan.FromMilliseconds(-1) // Same as Timeout.InfiniteTimeSpan
         };
 
-        public static TheoryData<TimeSpan> DefaultRequestBodyTimeoutInvalidData => new TheoryData<TimeSpan>
+        public static TheoryData<TimeSpan> TimeoutInvalidData => new TheoryData<TimeSpan>
         {
             TimeSpan.MinValue,
             TimeSpan.FromTicks(-1),

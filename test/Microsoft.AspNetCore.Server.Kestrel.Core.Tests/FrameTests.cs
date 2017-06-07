@@ -148,7 +148,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frame.Reset();
 
-            Assert.Equal(_serviceContext.ServerOptions.Limits.DefaultRequestBodyTimeout, _frame.RequestBodyTimeout);
+            Assert.Equal(_serviceContext.ServerOptions.Limits.RequestBodyTimeout, _frame.RequestBodyTimeout);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frame.Reset();
 
-            Assert.Equal(_serviceContext.ServerOptions.Limits.DefaultRequestBodyMinimumDataRate, _frame.RequestBodyMinimumDataRate);
+            Assert.Equal(_serviceContext.ServerOptions.Limits.RequestBodyMinimumDataRate, _frame.RequestBodyMinimumDataRate);
         }
 
         [Fact]
@@ -265,7 +265,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(InvalidRequestBodyTimeoutData))]
+        [MemberData(nameof(RequestBodyTimeoutDataInvalid))]
         public void ThrowsWhenConfiguringInvalidRequestBodyTimeout(TimeSpan value)
         {
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -274,26 +274,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
         }
 
-        [Fact]
-        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyTimeout()
+        [Theory]
+        [MemberData(nameof(RequestBodyTimeoutDataValid))]
+        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyTimeout(TimeSpan value)
         {
-            var timeout = TimeSpan.FromSeconds(10);
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Timeout = value;
 
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Timeout = timeout;
-
-            Assert.Equal(timeout, _frame.RequestBodyTimeout);
+            Assert.Equal(value, _frame.RequestBodyTimeout);
         }
 
-        [Fact]
-        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyMinimumDateRate()
+        [Theory]
+        [MemberData(nameof(RequestBodyMinimumDataRateData))]
+        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyMinimumDateRate(MinimumDataRate minimumDataRate)
         {
-            var minimumDataRate = 150;
-            var gracePeriod = TimeSpan.FromSeconds(10);
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().MinimumDataRate = minimumDataRate;
 
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().MinimumDataRate = new MinimumDataRate(minimumDataRate, gracePeriod);
-
-            Assert.Equal(minimumDataRate, _frame.RequestBodyMinimumDataRate.Rate);
-            Assert.Equal(gracePeriod, _frame.RequestBodyMinimumDataRate.GracePeriod);
+            Assert.Same(minimumDataRate, _frame.RequestBodyMinimumDataRate);
         }
 
         [Fact]
@@ -897,17 +893,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
-        public static TheoryData<TimeSpan> InvalidRequestBodyTimeoutData => new TheoryData<TimeSpan>
+        public static TheoryData<TimeSpan> RequestBodyTimeoutDataValid => new TheoryData<TimeSpan>
+        {
+            TimeSpan.FromTicks(1),
+            TimeSpan.MaxValue,
+            Timeout.InfiniteTimeSpan,
+            TimeSpan.FromMilliseconds(-1) // Same as Timeout.InfiniteTimeSpan
+        };
+
+        public static TheoryData<TimeSpan> RequestBodyTimeoutDataInvalid => new TheoryData<TimeSpan>
         {
             TimeSpan.MinValue,
             TimeSpan.FromTicks(-1),
             TimeSpan.Zero
         };
 
-        public static TheoryData<TimeSpan> InvalidRequestBodyMinimumDataRateGracePeriodData => new TheoryData<TimeSpan>
+        public static TheoryData<MinimumDataRate> RequestBodyMinimumDataRateData => new TheoryData<MinimumDataRate>
         {
-            TimeSpan.MinValue,
-            TimeSpan.FromTicks(-1)
+            null,
+            new MinimumDataRate(1, TimeSpan.Zero)
         };
 
         private class RequestHeadersWrapper : IHeaderDictionary

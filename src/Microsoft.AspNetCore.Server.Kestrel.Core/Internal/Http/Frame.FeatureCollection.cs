@@ -234,7 +234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             get => RequestBodyTimeout;
             set
             {
-                if (value <= TimeSpan.Zero)
+                if (value <= TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
                 {
                     throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
                 }
