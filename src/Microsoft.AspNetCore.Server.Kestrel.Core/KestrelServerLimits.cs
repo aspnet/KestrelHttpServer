@@ -141,8 +141,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <summary>
         /// Gets or sets the maximum allowed size of any request body in bytes.
         /// When set to null, the maximum request body size is unlimited.
-        /// This limit has no affect on upgraded connections which are always unlimited.
-        /// This can be overridden by <see cref="IHttpMaxRequestBodySizeFeature"/>.
+        /// This limit has no effect on upgraded connections which are always unlimited.
+        /// This can be overridden per-request via <see cref="IHttpMaxRequestBodySizeFeature"/>.
         /// </summary>
         /// <remarks>
         /// Defaults to null (unlimited).
