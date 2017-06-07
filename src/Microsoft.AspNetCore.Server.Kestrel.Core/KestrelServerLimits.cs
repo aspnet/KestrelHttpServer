@@ -37,6 +37,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private long? _maxConcurrentConnections = null;
         private long? _maxConcurrentUpgradedConnections = null;
 
+        private TimeSpan _requestBodyReadTimeout = TimeSpan.FromSeconds(60);
+
         /// <summary>
         /// Gets or sets the maximum size of the response buffer before write
         /// calls begin to block or return tasks that don't complete until the
@@ -232,6 +234,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.NonNegativeNumberOrNullRequired);
                 }
                 _maxConcurrentUpgradedConnections = value;
+            }
+        }
+
+        public TimeSpan RequestBodyReadTimeout
+        {
+            get => _requestBodyReadTimeout;
+            set
+            {
+                _requestBodyReadTimeout = value;
             }
         }
     }

@@ -47,7 +47,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         TryProduceContinue();
                     }
 
+                    _context.TimeoutControl.SetTimeout(_context.ServiceContext.ServerOptions.Limits.RequestBodyReadTimeout.Ticks, Infrastructure.TimeoutAction.SendTimeoutResponse);
                     var result = await awaitable;
+                    _context.TimeoutControl.CancelTimeout();
+
+                    if (_context.TimeoutControl.TimedOut)
+                    {
+                        _context.RejectRequest(RequestRejectionReason.RequestTimeout);
+                    }
+
                     var readableBuffer = result.Buffer;
                     var consumed = readableBuffer.Start;
                     var examined = readableBuffer.End;
