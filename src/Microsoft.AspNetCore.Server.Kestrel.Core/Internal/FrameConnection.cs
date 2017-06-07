@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private bool _readTimingEnabled;
         private bool _readTimingPauseRequested;
         private long _readTimingStartTicks;
-        private long _readTimingElapsed;
+        private long _readTimingElapsedTicks;
         private long _readTimingBytesRead;
 
         private Task _lifetimeTask;
@@ -279,19 +279,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     if (_readTimingEnabled)
                     {
-                        _readTimingElapsed += timestamp - _lastTimestamp;
+                        _readTimingElapsedTicks += timestamp - _lastTimestamp;
 
-                        if (_readTimingElapsed > _frame.RequestBodyTimeout.Ticks)
+                        if (_readTimingElapsedTicks > _frame.RequestBodyTimeout.Ticks)
                         {
                             Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_frame.RequestBodyTimeout.Ticks));
                             Timeout();
                         }
                         else if (_frame.RequestBodyMinimumDataRate?.Rate > 0)
                         {
-                            var elapsedSeconds = (double)_readTimingElapsed / TimeSpan.TicksPerSecond;
+                            var elapsedSeconds = (double)_readTimingElapsedTicks / TimeSpan.TicksPerSecond;
                             var rate = Interlocked.Read(ref _readTimingBytesRead) / elapsedSeconds;
 
-                            if (_readTimingElapsed > _frame.RequestBodyMinimumDataRate.GracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate.Rate)
+                            if (_readTimingElapsedTicks > _frame.RequestBodyMinimumDataRate.GracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate.Rate)
                             {
                                 Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate.Rate);
                                 Timeout();
@@ -342,7 +342,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             lock (_readTimingLock)
             {
-                _readTimingElapsed = 0;
+                _readTimingElapsedTicks = 0;
                 _readTimingBytesRead = 0;
                 _readTimingStartTicks = Interlocked.Read(ref _lastTimestamp);
 
@@ -371,6 +371,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             lock (_readTimingLock)
             {
                 _readTimingEnabled = true;
+
+                // In case pause and resume were both called between ticks
+                _readTimingPauseRequested = false;
             }
         }
 

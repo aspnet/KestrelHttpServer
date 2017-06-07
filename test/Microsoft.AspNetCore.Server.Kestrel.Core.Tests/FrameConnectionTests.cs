@@ -281,5 +281,58 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Once);
         }
+
+        [Fact]
+        public void NotPausedWhenResumeCalledBeforeNextTick()
+        {
+            var requestBodyTimeout = TimeSpan.FromSeconds(5);
+            var systemClock = new MockSystemClock();
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.SystemClock = systemClock;
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
+
+            // Initialize timestamp
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            _frameConnection.StartTimingReads();
+
+            // Tick at 1s, expected counted time is 1s
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Not timed out
+            Assert.False(_frameConnection.TimedOut);
+            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+
+            // Pause at 1.25s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.25);
+            _frameConnection.PauseTimingReads();
+
+            // Resume at 1.5s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.25);
+            _frameConnection.ResumeTimingReads();
+
+            // Tick at 2s, expected counted time is 2s
+            systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Not timed out
+            Assert.False(_frameConnection.TimedOut);
+            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+
+            // Tick just past 5s, expected counted time is just over 5s
+            systemClock.UtcNow += TimeSpan.FromSeconds(3) + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Timed out
+            Assert.True(_frameConnection.TimedOut);
+            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Once);
+        }
     }
 }
