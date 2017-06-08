@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 {
     internal class ClosedStream : Stream
     {
-        private static readonly Task<int> ZeroResultTask = Task.FromResult(default(int));
+        private static readonly Task<int> ZeroResultTask = Task.FromResult(result: 0);
 
         public override bool CanRead => true;
         public override bool CanSeek => false;
