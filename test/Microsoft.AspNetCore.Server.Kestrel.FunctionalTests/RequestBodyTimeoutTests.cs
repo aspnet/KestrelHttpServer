@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
@@ -18,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RequestTimesOutWhenRequestBodyNotReceivedWithinTimeoutPeriod()
         {
+            var requestBodyTimeout = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
             {
@@ -29,6 +31,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context =>
             {
+                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = requestBodyTimeout;
+
                 appRunningEvent.Set();
                 return context.Request.Body.ReadAsync(new byte[1], 0, 1);
             }, serviceContext))
@@ -43,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.RequestBodyTimeout + TimeSpan.FromSeconds(1);
+                    systemClock.UtcNow += requestBodyTimeout + TimeSpan.FromSeconds(1);
 
                     await connection.Receive(
                         "HTTP/1.1 408 Request Timeout",
@@ -71,12 +75,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var appRunningEvent = new ManualResetEventSlim();
 
-            // TODO: set this via IHttpRequestBodyTimeoutFeature after https://github.com/aspnet/KestrelHttpServer/pull/1877 is merged.
-            // Set request body timeout to maximum value, to test that it is overridden before draining
-            serviceContext.ServerOptions.Limits.RequestBodyTimeout = TimeSpan.MaxValue;
-
             using (var server = new TestServer(context =>
             {
+                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = TimeSpan.MaxValue;
+
                 appRunningEvent.Set();
                 return Task.CompletedTask;
             }, serviceContext))
@@ -109,6 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task ConnectionClosedEvenIfAppSwallowsException()
         {
+            var requestBodyTimeout = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
             {
@@ -121,6 +124,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(async context =>
             {
+                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = requestBodyTimeout;
+
                 appRunningEvent.Set();
 
                 try
@@ -147,7 +152,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += serviceContext.ServerOptions.Limits.RequestBodyTimeout + TimeSpan.FromSeconds(1);
+                    systemClock.UtcNow += requestBodyTimeout + TimeSpan.FromSeconds(1);
                     Assert.True(exceptionSwallowedEvent.Wait(TimeSpan.FromSeconds(10)));
 
                     await connection.Receive(
