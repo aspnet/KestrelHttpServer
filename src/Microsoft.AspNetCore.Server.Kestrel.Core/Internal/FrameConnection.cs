@@ -32,7 +32,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private object _readTimingLock = new object();
         private bool _readTimingEnabled;
         private bool _readTimingPauseRequested;
-        private long _readTimingStartTicks;
         private long _readTimingElapsedTicks;
         private long _readTimingBytesRead;
 
@@ -339,8 +338,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 _readTimingElapsedTicks = 0;
                 _readTimingBytesRead = 0;
-                _readTimingStartTicks = Interlocked.Read(ref _lastTimestamp);
-
                 _readTimingEnabled = true;
             }
         }
