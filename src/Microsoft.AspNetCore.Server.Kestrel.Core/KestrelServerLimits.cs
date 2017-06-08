@@ -147,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// This can be overridden per-request via <see cref="IHttpMaxRequestBodySizeFeature"/>.
         /// </summary>
         /// <remarks>
-        /// Defaults to 30000000, which is approximately 28.6MB.
+        /// Defaults to 30,000,000 bytes, which is approximately 28.6MB.
         /// </remarks>
         public long? MaxRequestBodySize
         {
