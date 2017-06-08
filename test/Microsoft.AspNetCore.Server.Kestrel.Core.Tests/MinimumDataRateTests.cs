@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class MinimumDataRateTests
     {
@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData(double.MaxValue)]
         public void RateValid(double value)
         {
-            Assert.Equal(value, new MinimumDataRate(value, TimeSpan.Zero).Rate);
+            Assert.Equal(value, new MinimumDataRate(rate: value, gracePeriod: TimeSpan.Zero).Rate);
         }
 
         [Theory]
@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData(0)]
         public void RateInvalid(double value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(value, TimeSpan.Zero));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(rate: value, gracePeriod: TimeSpan.Zero));
 
             Assert.Equal("rate", exception.ParamName);
             Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
@@ -32,14 +32,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(GracePeriodValidData))]
         public void GracePeriodValid(TimeSpan value)
         {
-            Assert.Equal(value, new MinimumDataRate(1, value).GracePeriod);
+            Assert.Equal(value, new MinimumDataRate(rate: 1, gracePeriod: value).GracePeriod);
         }
 
         [Theory]
         [MemberData(nameof(GracePeriodInvalidData))]
         public void GracePeriodInvalid(TimeSpan value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(1, value));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(rate: 1, gracePeriod: value));
 
             Assert.Equal("gracePeriod", exception.ParamName);
             Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);

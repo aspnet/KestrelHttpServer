@@ -144,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void ResetResetsRequestBodyMinimumDataRate()
         {
-            _frame.RequestBodyMinimumDataRate = new MinimumDataRate(1, TimeSpan.Zero);
+            _frame.RequestBodyMinimumDataRate = new MinimumDataRate(rate: 1, gracePeriod: TimeSpan.Zero);
 
             _frame.Reset();
 
@@ -882,7 +882,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public static TheoryData<MinimumDataRate> RequestBodyMinimumDataRateData => new TheoryData<MinimumDataRate>
         {
             null,
-            new MinimumDataRate(1, TimeSpan.Zero)
+            new MinimumDataRate(rate: 1, gracePeriod: TimeSpan.Zero)
         };
 
         private class RequestHeadersWrapper : IHeaderDictionary

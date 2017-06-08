@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
@@ -55,7 +56,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var requestBodyMinimumDataRate = 100;
             var requestBodyGracePeriod = TimeSpan.FromSeconds(5);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
+                new MinimumDataRate(rate: requestBodyMinimumDataRate, gracePeriod: requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -86,7 +88,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var requestBodyMinimumDataRate = 100;
             var requestBodyGracePeriod = TimeSpan.FromSeconds(2);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
+                new MinimumDataRate(rate: requestBodyMinimumDataRate, gracePeriod: requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -127,7 +130,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var requestBodyMinimumDataRate = 100;
             var requestBodyGracePeriod = TimeSpan.FromSeconds(1);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
+                new MinimumDataRate(rate: requestBodyMinimumDataRate, gracePeriod: requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -193,7 +197,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var requestBodyTimeout = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(100, TimeSpan.Zero);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
+                new MinimumDataRate(rate: 100, gracePeriod: TimeSpan.Zero);
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -260,7 +265,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var systemClock = new MockSystemClock();
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(100, TimeSpan.Zero);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
+                new MinimumDataRate(rate: 100, gracePeriod: TimeSpan.Zero);
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();

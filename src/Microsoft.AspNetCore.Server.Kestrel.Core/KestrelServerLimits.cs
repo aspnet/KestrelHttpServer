@@ -260,6 +260,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <remarks>
         /// Defaults to null.
         /// </remarks>
-        public MinimumDataRate RequestBodyMinimumDataRate { get; set; } = new MinimumDataRate(1, TimeSpan.FromSeconds(5));
+        public MinimumDataRate RequestBodyMinimumDataRate { get; set; } = new MinimumDataRate(rate: 1, gracePeriod: TimeSpan.FromSeconds(5));
     }
 }
