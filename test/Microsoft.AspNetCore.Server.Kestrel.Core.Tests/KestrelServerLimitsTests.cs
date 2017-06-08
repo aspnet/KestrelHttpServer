@@ -160,6 +160,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(value, new KestrelServerLimits { KeepAliveTimeout = value }.KeepAliveTimeout);
         }
 
+        [Fact]
+        public void KeepAliveTimeoutCanBeSetToInfinite()
+        {
+            Assert.Equal(TimeSpan.MaxValue, new KestrelServerLimits { KeepAliveTimeout = Timeout.InfiniteTimeSpan }.KeepAliveTimeout);
+        }
+
         [Theory]
         [MemberData(nameof(TimeoutInvalidData))]
         public void KeepAliveTimeoutInvalid(TimeSpan value)
@@ -181,6 +187,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void RequestHeadersTimeoutValid(TimeSpan value)
         {
             Assert.Equal(value, new KestrelServerLimits { RequestHeadersTimeout = value }.RequestHeadersTimeout);
+        }
+
+        [Fact]
+        public void RequestHeadersTimeoutCanBeSetToInfinite()
+        {
+            Assert.Equal(TimeSpan.MaxValue, new KestrelServerLimits { RequestHeadersTimeout = Timeout.InfiniteTimeSpan }.RequestHeadersTimeout);
         }
 
         [Theory]
@@ -292,8 +304,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             TimeSpan.FromTicks(1),
             TimeSpan.MaxValue,
+        };
+
+        public static TheoryData<TimeSpan> TimeoutInfiniteData => new TheoryData<TimeSpan>
+        {
             Timeout.InfiniteTimeSpan,
-            TimeSpan.FromMilliseconds(-1) // Same as Timeout.InfiniteTimeSpan
         };
 
         public static TheoryData<TimeSpan> TimeoutInvalidData => new TheoryData<TimeSpan>

@@ -177,7 +177,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 {
                     throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
                 }
-                _keepAliveTimeout = value;
+                _keepAliveTimeout = value != Timeout.InfiniteTimeSpan ? value : TimeSpan.MaxValue;
             }
         }
 
@@ -196,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 {
                     throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
                 }
-                _requestHeadersTimeout = value;
+                _requestHeadersTimeout = value != Timeout.InfiniteTimeSpan ? value : TimeSpan.MaxValue;
             }
         }
 
