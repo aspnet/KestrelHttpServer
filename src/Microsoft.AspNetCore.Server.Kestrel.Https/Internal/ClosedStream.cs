@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 {
     internal class ClosedStream : Stream
     {
-        private static readonly Task<int> CompletedIntTask = Task.FromResult(default(int));
+        private static readonly Task<int> ZeroResultTask = Task.FromResult(default(int));
 
         public override bool CanRead => true;
         public override bool CanSeek => false;
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            return CompletedIntTask;
+            return ZeroResultTask;
         }
 
         public override void Write(byte[] buffer, int offset, int count)
