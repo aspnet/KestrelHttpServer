@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                  IHttpRequestLifetimeFeature,
                                  IHttpRequestIdentifierFeature,
                                  IHttpMaxRequestBodySizeFeature,
-                                 IHttpRequestBodyTimeoutFeature
+                                 IHttpRequestBodyMinimumDataRateFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -229,21 +229,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        TimeSpan IHttpRequestBodyTimeoutFeature.Timeout
-        {
-            get => RequestBodyTimeout;
-            set
-            {
-                if (value <= TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
-                }
-
-                RequestBodyTimeout = value;
-            }
-        }
-
-        MinimumDataRate IHttpRequestBodyTimeoutFeature.MinimumDataRate
+        MinimumDataRate IHttpRequestBodyMinimumDataRateFeature.MinimumDataRate
         {
             get => RequestBodyMinimumDataRate;
             set => RequestBodyMinimumDataRate = value;

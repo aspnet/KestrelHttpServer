@@ -281,35 +281,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void RequestBodyTimeoutDefault()
-        {
-            Assert.Equal(TimeSpan.FromMinutes(2), new KestrelServerLimits().RequestBodyTimeout);
-        }
-
-        [Theory]
-        [MemberData(nameof(TimeoutValidData))]
-        public void RequestBodyTimeoutValid(TimeSpan value)
-        {
-            var limits = new KestrelServerLimits
-            {
-                RequestBodyTimeout = value
-            };
-
-            Assert.Equal(value, limits.RequestBodyTimeout);
-        }
-
-        [Theory]
-        [MemberData(nameof(TimeoutInvalidData))]
-        public void RequestBodyTimeoutInvalid(TimeSpan value)
-        {
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().RequestBodyTimeout = value);
-            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, ex.Message);
-        }
-
-        [Fact]
         public void RequestBodyMinimumDataRateDefault()
         {
-            Assert.Null(new KestrelServerLimits().RequestBodyMinimumDataRate);
+            Assert.NotNull(new KestrelServerLimits().RequestBodyMinimumDataRate);
+            Assert.Equal(1, new KestrelServerLimits().RequestBodyMinimumDataRate.Rate);
+            Assert.Equal(TimeSpan.FromSeconds(5), new KestrelServerLimits().RequestBodyMinimumDataRate.GracePeriod);
         }
 
         public static TheoryData<TimeSpan> TimeoutValidData => new TheoryData<TimeSpan>

@@ -274,7 +274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         options.Limits.MaxRequestHeadersTotalSize = (int)maxRequestBufferSize;
                     }
 
-                    options.Limits.RequestBodyTimeout = TimeSpan.MaxValue;
+                    options.Limits.RequestBodyMinimumDataRate = null;
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .Configure(app => app.Run(async context =>

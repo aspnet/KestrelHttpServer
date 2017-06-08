@@ -50,41 +50,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void TimesOutWhenRequestBodyExceedsTimeout()
-        {
-            var requestBodyTimeout = TimeSpan.FromSeconds(5);
-
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
-
-            var mockLogger = new Mock<IKestrelTrace>();
-            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
-
-            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
-            _frameConnection.Frame.Reset();
-
-            // Initialize timestamp
-            var now = DateTimeOffset.UtcNow;
-            _frameConnection.Tick(now);
-
-            _frameConnection.StartTimingReads();
-
-            // Tick after timeout period
-            _frameConnection.Tick(now + requestBodyTimeout + TimeSpan.FromSeconds(1));
-
-            // Timed out
-            Assert.True(_frameConnection.TimedOut);
-            mockLogger.Verify(logger =>
-                logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), requestBodyTimeout), Times.Once);
-        }
-
-        [Fact]
         public void TimesOutWhenRequestBodyDoesNotSatisfyMinimumDataRate()
         {
             var requestBodyMinimumDataRate = 100;
             var requestBodyGracePeriod = TimeSpan.FromSeconds(5);
-            var requestBodyTimeout = TimeSpan.FromSeconds(10);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -115,9 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var requestBodyMinimumDataRate = 100;
             var requestBodyGracePeriod = TimeSpan.FromSeconds(2);
-            var requestBodyTimeout = TimeSpan.MaxValue;
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -158,9 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var requestBodyMinimumDataRate = 100;
             var requestBodyGracePeriod = TimeSpan.FromSeconds(1);
-            var requestBodyTimeout = TimeSpan.MaxValue;
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(requestBodyMinimumDataRate, requestBodyGracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -227,7 +193,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var requestBodyTimeout = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(100, TimeSpan.Zero);
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -241,54 +207,60 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frameConnection.StartTimingReads();
 
-            // Tick at 1s, expected counted time is 1s
+            // Tick at 1s, expected counted time is 1s, expected data rate is 400 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _frameConnection.BytesRead(400);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Pause at 1.5s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
             _frameConnection.PauseTimingReads();
 
-            // Tick at 2s, expected counted time is 2s
+            // Tick at 2s, expected counted time is 2s, expected data rate is 400 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
             _frameConnection.Tick(systemClock.UtcNow);
 
-            // Tick at 6s, expected counted time is 2s
+            // Tick at 6s, expected counted time is 2s, expected data rate is 400 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(4);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+            mockLogger.Verify(
+                logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
+                Times.Never);
 
             // Resume at 6.5s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
             _frameConnection.ResumeTimingReads();
 
-            // Tick at 7s, expected counted time is 3s
-            systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
+            // Tick at 8s, expected counted time is 4s, expected data rate is 100 bytes/second
+            systemClock.UtcNow += TimeSpan.FromSeconds(1.5);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+            mockLogger.Verify(
+                logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
+                Times.Never);
 
-            // Tick just past 9s, expected counted time is just over 5s
-            systemClock.UtcNow += TimeSpan.FromSeconds(2) + TimeSpan.FromTicks(1);
+            // Tick at 9s, expected counted time is 9s, expected data rate drops below 100 bytes/second
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Timed out
             Assert.True(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Once);
+            mockLogger.Verify(
+                logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
+                Times.Once);
         }
 
         [Fact]
         public void NotPausedWhenResumeCalledBeforeNextTick()
         {
-            var requestBodyTimeout = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyTimeout = requestBodyTimeout;
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate = new MinimumDataRate(100, TimeSpan.Zero);
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -302,13 +274,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _frameConnection.StartTimingReads();
 
-            // Tick at 1s, expected counted time is 1s
+            // Tick at 1s, expected counted time is 1s, expected data rate is 100 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _frameConnection.BytesRead(100);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+            mockLogger.Verify(
+                logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
+                Times.Never);
 
             // Pause at 1.25s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.25);
@@ -318,21 +293,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             systemClock.UtcNow += TimeSpan.FromSeconds(0.25);
             _frameConnection.ResumeTimingReads();
 
-            // Tick at 2s, expected counted time is 2s
+            // Tick at 2s, expected counted time is 2s, expected data rate is 100 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
+            _frameConnection.BytesRead(100);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+            mockLogger.Verify(
+                logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
+                Times.Never);
 
-            // Tick just past 5s, expected counted time is just over 5s
-            systemClock.UtcNow += TimeSpan.FromSeconds(3) + TimeSpan.FromTicks(1);
+            // Tick at 3s, expected counted time is 3s, expected data rate drops below 100 bytes/second
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
             _frameConnection.Tick(systemClock.UtcNow);
 
             // Timed out
             Assert.True(_frameConnection.TimedOut);
-            mockLogger.Verify(logger => logger.RequestBodyTimeout(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Once);
+            mockLogger.Verify(
+                logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
+                Times.Once);
         }
     }
 }

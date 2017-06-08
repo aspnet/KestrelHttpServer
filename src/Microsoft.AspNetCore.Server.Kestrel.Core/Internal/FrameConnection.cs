@@ -281,17 +281,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     {
                         _readTimingElapsedTicks += timestamp - _lastTimestamp;
 
-                        if (_readTimingElapsedTicks > _frame.RequestBodyTimeout.Ticks)
-                        {
-                            Log.RequestBodyTimeout(_context.ConnectionId, _frame.TraceIdentifier, TimeSpan.FromTicks(_frame.RequestBodyTimeout.Ticks));
-                            Timeout();
-                        }
-                        else if (_frame.RequestBodyMinimumDataRate?.Rate > 0)
+                        if (_frame.RequestBodyMinimumDataRate?.Rate > 0 && _readTimingElapsedTicks > _frame.RequestBodyMinimumDataRate.GracePeriod.Ticks)
                         {
                             var elapsedSeconds = (double)_readTimingElapsedTicks / TimeSpan.TicksPerSecond;
                             var rate = Interlocked.Read(ref _readTimingBytesRead) / elapsedSeconds;
 
-                            if (_readTimingElapsedTicks > _frame.RequestBodyMinimumDataRate.GracePeriod.Ticks && rate < _frame.RequestBodyMinimumDataRate.Rate)
+                            if (rate < _frame.RequestBodyMinimumDataRate.Rate)
                             {
                                 Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, _frame.RequestBodyMinimumDataRate.Rate);
                                 Timeout();

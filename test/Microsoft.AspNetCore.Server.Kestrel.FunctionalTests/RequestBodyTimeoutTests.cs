@@ -17,9 +17,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     public class RequestBodyTimeoutTests
     {
         [Fact]
-        public async Task RequestTimesOutWhenRequestBodyNotReceivedWithinTimeoutPeriod()
+        public async Task RequestTimesOutWhenRequestBodyNotReceivedAtDesiredMinimumRate()
         {
-            var requestBodyTimeout = TimeSpan.FromSeconds(5);
+            var minimumDataRateGracePeriod = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
             {
@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context =>
             {
-                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = requestBodyTimeout;
+                context.Features.Get<IHttpRequestBodyMinimumDataRateFeature>().MinimumDataRate = new MinimumDataRate(1, minimumDataRateGracePeriod);
 
                 appRunningEvent.Set();
                 return context.Request.Body.ReadAsync(new byte[1], 0, 1);
@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += requestBodyTimeout + TimeSpan.FromSeconds(1);
+                    systemClock.UtcNow += minimumDataRateGracePeriod + TimeSpan.FromSeconds(1);
 
                     await connection.Receive(
                         "HTTP/1.1 408 Request Timeout",
@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context =>
             {
-                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = TimeSpan.MaxValue;
+                context.Features.Get<IHttpRequestBodyMinimumDataRateFeature>().MinimumDataRate = null;
 
                 appRunningEvent.Set();
                 return Task.CompletedTask;
@@ -111,7 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task ConnectionClosedEvenIfAppSwallowsException()
         {
-            var requestBodyTimeout = TimeSpan.FromSeconds(5);
+            var minimumDataRateGracePeriod = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
             {
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(async context =>
             {
-                context.Features.Get<IHttpRequestBodyTimeoutFeature>().Timeout = requestBodyTimeout;
+                context.Features.Get<IHttpRequestBodyMinimumDataRateFeature>().MinimumDataRate = new MinimumDataRate(1, minimumDataRateGracePeriod);
 
                 appRunningEvent.Set();
 
@@ -152,7 +152,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(appRunningEvent.Wait(TimeSpan.FromSeconds(10)));
-                    systemClock.UtcNow += requestBodyTimeout + TimeSpan.FromSeconds(1);
+                    systemClock.UtcNow += minimumDataRateGracePeriod + TimeSpan.FromSeconds(1);
                     Assert.True(exceptionSwallowedEvent.Wait(TimeSpan.FromSeconds(10)));
 
                     await connection.Receive(

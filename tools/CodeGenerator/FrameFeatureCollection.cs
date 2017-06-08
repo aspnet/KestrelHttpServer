@@ -46,13 +46,13 @@ namespace CodeGenerator
                 typeof(ITlsConnectionFeature),
                 typeof(IHttpWebSocketFeature),
                 typeof(ISessionFeature),
-                typeof(IHttpMaxRequestBodySizeFeature)
+                typeof(IHttpMaxRequestBodySizeFeature),
+                typeof(IHttpRequestBodyMinimumDataRateFeature),
             };
 
             var rareFeatures = new[]
             {
                 typeof(IHttpSendFileFeature),
-                typeof(IHttpRequestBodyTimeoutFeature),
             };
 
             var allFeatures = alwaysFeatures.Concat(commonFeatures).Concat(sometimesFeatures).Concat(rareFeatures);
@@ -68,7 +68,7 @@ namespace CodeGenerator
                 typeof(IHttpRequestLifetimeFeature),
                 typeof(IHttpConnectionFeature),
                 typeof(IHttpMaxRequestBodySizeFeature),
-                typeof(IHttpRequestBodyTimeoutFeature),
+                typeof(IHttpRequestBodyMinimumDataRateFeature),
             };
 
             return $@"// Copyright (c) .NET Foundation. All rights reserved.

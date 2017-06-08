@@ -39,9 +39,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private long? _maxConcurrentConnections = null;
         private long? _maxConcurrentUpgradedConnections = null;
 
-        // Request body timeout
-        private TimeSpan _requestBodyTimeout = TimeSpan.FromMinutes(2);
-
         /// <summary>
         /// Gets or sets the maximum size of the response buffer before write
         /// calls begin to block or return tasks that don't complete until the
@@ -255,35 +252,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Gets or sets the timeout period for receiving the request body.
-        /// This limit has no effect on upgraded connections which are always unlimited.
-        /// This can be overridden per-request via <see cref="IHttpRequestBodyTimeoutFeature"/>.
-        /// </summary>
-        /// <remarks>
-        /// Defaults to 2 minutes.
-        /// </remarks>
-        public TimeSpan RequestBodyTimeout
-        {
-            get => _requestBodyTimeout;
-            set
-            {
-                if (value <= TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.PositiveTimeSpanRequired);
-                }
-                _requestBodyTimeout = value;
-            }
-        }
-
-        /// <summary>
         /// Gets or sets the request body minimum data rate in bytes/second.
         /// Setting this property to null indicates no minimum data rate should be enforced.
         /// This limit has no effect on upgraded connections which are always unlimited.
-        /// This can be overridden per-request via <see cref="IHttpRequestBodyTimeoutFeature"/>.
+        /// This can be overridden per-request via <see cref="IHttpRequestBodyMinimumDataRateFeature"/>.
         /// </summary>
         /// <remarks>
         /// Defaults to null.
         /// </remarks>
-        public MinimumDataRate RequestBodyMinimumDataRate { get; set; } = null;
+        public MinimumDataRate RequestBodyMinimumDataRate { get; set; } = new MinimumDataRate(1, TimeSpan.FromSeconds(5));
     }
 }

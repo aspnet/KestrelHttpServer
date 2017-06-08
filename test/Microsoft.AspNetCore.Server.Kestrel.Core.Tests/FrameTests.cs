@@ -142,16 +142,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void ResetResetsRequestBodyTimeout()
-        {
-            _frame.RequestBodyTimeout = TimeSpan.MaxValue;
-
-            _frame.Reset();
-
-            Assert.Equal(_serviceContext.ServerOptions.Limits.RequestBodyTimeout, _frame.RequestBodyTimeout);
-        }
-
-        [Fact]
         public void ResetResetsRequestBodyMinimumDataRate()
         {
             _frame.RequestBodyMinimumDataRate = new MinimumDataRate(1, TimeSpan.Zero);
@@ -265,29 +255,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(RequestBodyTimeoutDataInvalid))]
-        public void ThrowsWhenConfiguringInvalidRequestBodyTimeout(TimeSpan value)
-        {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Timeout = value);
-            Assert.Equal("value", exception.ParamName);
-            Assert.StartsWith(CoreStrings.PositiveTimeSpanRequired, exception.Message);
-        }
-
-        [Theory]
-        [MemberData(nameof(RequestBodyTimeoutDataValid))]
-        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyTimeout(TimeSpan value)
-        {
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().Timeout = value;
-
-            Assert.Equal(value, _frame.RequestBodyTimeout);
-        }
-
-        [Theory]
         [MemberData(nameof(RequestBodyMinimumDataRateData))]
-        public void ConfiguringRequestBodyTimeoutFeatureSetsRequestBodyMinimumDateRate(MinimumDataRate minimumDataRate)
+        public void ConfiguringRequestBodyMinimumDataRateFeatureSetsRequestBodyMinimumDateRate(MinimumDataRate minimumDataRate)
         {
-            ((IFeatureCollection)_frame).Get<IHttpRequestBodyTimeoutFeature>().MinimumDataRate = minimumDataRate;
+            ((IFeatureCollection)_frame).Get<IHttpRequestBodyMinimumDataRateFeature>().MinimumDataRate = minimumDataRate;
 
             Assert.Same(minimumDataRate, _frame.RequestBodyMinimumDataRate);
         }
