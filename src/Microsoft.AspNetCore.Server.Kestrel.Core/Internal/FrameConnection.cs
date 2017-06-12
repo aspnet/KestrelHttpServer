@@ -35,6 +35,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private long _readTimingElapsedTicks;
         private long _readTimingBytesRead;
 
+        private object _writeTimingLock = new object();
+        private bool _writeTimingEnabled;
+        private long _writeTimingElapsedTicks;
+        private long _writeTimingTimeoutTicks;
+
         private Task _lifetimeTask;
 
         public FrameConnection(FrameConnectionContext context)
@@ -45,7 +50,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         // For testing
         internal Frame Frame => _frame;
         internal IDebugger Debugger { get; set; } = DebuggerWrapper.Singleton;
-
 
         public bool TimedOut { get; private set; }
 
@@ -185,6 +189,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _frame.Abort(ex);
         }
 
+        private void AbortWithPendingWrite(Exception ex)
+        {
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
+
+            // Abort the connection (if not already aborted)
+            _frame.Abort(ex, abortOutputWithError: true);
+        }
+
         public Task AbortAsync(Exception ex)
         {
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
@@ -262,6 +274,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var timestamp = now.Ticks;
 
+            CheckForTimeout(timestamp);
+            CheckForReadTimeout(timestamp);
+            CheckForWriteTimeout(timestamp);
+
+            Interlocked.Exchange(ref _lastTimestamp, timestamp);
+        }
+
+        private void CheckForTimeout(long timestamp)
+        {
+            if (TimedOut)
+            {
+                return;
+            }
+
             // TODO: Use PlatformApis.VolatileRead equivalent again
             if (timestamp > Interlocked.Read(ref _timeoutTimestamp))
             {
@@ -277,42 +303,68 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     Timeout();
                 }
             }
-            else
+        }
+
+        private void CheckForReadTimeout(long timestamp)
+        {
+            if (TimedOut || _timeoutTimestamp < long.MaxValue)
             {
-                lock (_readTimingLock)
+                return;
+            }
+
+            lock (_readTimingLock)
+            {
+                if (_readTimingEnabled)
                 {
-                    if (_readTimingEnabled)
+                    // Reference in local var to avoid torn reads in case the min rate is changed via IHttpMinRequestBodyDataRateFeature
+                    var minRequestBodyDataRate = _frame.MinRequestBodyDataRate;
+
+                    _readTimingElapsedTicks += timestamp - _lastTimestamp;
+
+                    if (minRequestBodyDataRate?.BytesPerSecond > 0 && _readTimingElapsedTicks > minRequestBodyDataRate.GracePeriod.Ticks)
                     {
-                        // Reference in local var to avoid torn reads in case the min rate is changed via IHttpMinRequestBodyDataRateFeature
-                        var minRequestBodyDataRate = _frame.MinRequestBodyDataRate;
+                        var elapsedSeconds = (double)_readTimingElapsedTicks / TimeSpan.TicksPerSecond;
+                        var rate = Interlocked.Read(ref _readTimingBytesRead) / elapsedSeconds;
 
-                        _readTimingElapsedTicks += timestamp - _lastTimestamp;
-
-                        if (minRequestBodyDataRate?.BytesPerSecond > 0 && _readTimingElapsedTicks > minRequestBodyDataRate.GracePeriod.Ticks)
+                        if (rate < minRequestBodyDataRate.BytesPerSecond && !Debugger.IsAttached)
                         {
-                            var elapsedSeconds = (double)_readTimingElapsedTicks / TimeSpan.TicksPerSecond;
-                            var rate = Interlocked.Read(ref _readTimingBytesRead) / elapsedSeconds;
-
-                            if (rate < minRequestBodyDataRate.BytesPerSecond && !Debugger.IsAttached)
-                            {
-                                Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, minRequestBodyDataRate.BytesPerSecond);
-                                Timeout();
-                            }
+                            Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _frame.TraceIdentifier, minRequestBodyDataRate.BytesPerSecond);
+                            Timeout();
                         }
+                    }
 
-                        // PauseTimingReads() cannot just set _timingReads to false. It needs to go through at least one tick
-                        // before pausing, otherwise _readTimingElapsed might never be updated if PauseTimingReads() is always
-                        // called before the next tick.
-                        if (_readTimingPauseRequested)
-                        {
-                            _readTimingEnabled = false;
-                            _readTimingPauseRequested = false;
-                        }
+                    // PauseTimingReads() cannot just set _timingReads to false. It needs to go through at least one tick
+                    // before pausing, otherwise _readTimingElapsed might never be updated if PauseTimingReads() is always
+                    // called before the next tick.
+                    if (_readTimingPauseRequested)
+                    {
+                        _readTimingEnabled = false;
+                        _readTimingPauseRequested = false;
                     }
                 }
             }
+        }
 
-            Interlocked.Exchange(ref _lastTimestamp, timestamp);
+        private void CheckForWriteTimeout(long timestamp)
+        {
+            if (TimedOut)
+            {
+                return;
+            }
+
+            lock (_writeTimingLock)
+            {
+                if (_writeTimingEnabled)
+                {
+                    _writeTimingElapsedTicks += timestamp - _lastTimestamp;
+
+                    if (_writeTimingElapsedTicks > _writeTimingTimeoutTicks && !Debugger.IsAttached)
+                    {
+                        TimedOut = true;
+                        AbortWithPendingWrite(new TimeoutException("The connection was aborted because the response could not be sent at the specified minimum data rate."));
+                    }
+                }
+            }
         }
 
         public void SetTimeout(long ticks, TimeoutAction timeoutAction)
@@ -380,6 +432,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void BytesRead(int count)
         {
             Interlocked.Add(ref _readTimingBytesRead, count);
+        }
+
+        public void StartTimingWrite(int size)
+        {
+            lock (_writeTimingLock)
+            {
+                var minResponseDataRate = _frame.MinResponseDataRate;
+
+                if (minResponseDataRate != null)
+                {
+                    _writeTimingElapsedTicks = 0;
+                    _writeTimingTimeoutTicks = Math.Max(
+                        minResponseDataRate.GracePeriod.Ticks,
+                        TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks);
+                    _writeTimingEnabled = true;
+                }
+            }
+        }
+
+        public void StopTimingWrite()
+        {
+            lock (_writeTimingLock)
+            {
+                _writeTimingEnabled = false;
+            }
         }
     }
 }
