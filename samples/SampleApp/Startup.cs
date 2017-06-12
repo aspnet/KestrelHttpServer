@@ -23,15 +23,14 @@ namespace SampleApp
 
             app.Run(async context =>
             {
-                var connectionFeature = context.Connection;
-                logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
-                    + $"{Environment.NewLine}"
-                    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
+                var chunkSize = 64 * 1024;
 
-                var response = $"hello, world{Environment.NewLine}";
-                context.Response.ContentLength = response.Length;
-                context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(response);
+                for (var i = 0; i < 128; i++)
+                {
+                    logger.LogDebug($"Write {i}");
+                    await context.Response.WriteAsync(new string('a', chunkSize)/*, context.RequestAborted*/);
+                    await Task.Delay(TimeSpan.FromMilliseconds(10));
+                }
             });
         }
 
@@ -54,6 +53,7 @@ namespace SampleApp
             var host = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>
                 {
+                    factory.SetMinimumLevel(LogLevel.Trace);
                     factory.AddConsole();
                 })
                 .UseKestrel(options =>
@@ -66,13 +66,13 @@ namespace SampleApp
                         // Uncomment the following to enable Nagle's algorithm for this endpoint.
                         //listenOptions.NoDelay = false;
 
-                        listenOptions.UseConnectionLogging();
+                        //listenOptions.UseConnectionLogging();
                     });
 
                     options.Listen(IPAddress.Loopback, basePort + 1, listenOptions =>
                     {
                         listenOptions.UseHttps("testCert.pfx", "testPassword");
-                        listenOptions.UseConnectionLogging();
+                        //listenOptions.UseConnectionLogging();
                     });
 
                     options.UseSystemd();

@@ -4,7 +4,6 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
@@ -29,6 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _socket = socket;
             _connectionId = connectionId;
             _log = log;
+
+            _pipe.OnWriterCompleted(DisposeSocket, this);
         }
 
         public async Task WriteOutputAsync()
@@ -54,6 +55,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
                         try
                         {
+                            if (_socket.IsClosed)
+                            {
+                                break;
+                            }
+
                             var writeResult = await writeReq.WriteAsync(_socket, buffer);
 
                             LogWriteInfo(writeResult.Status, writeResult.Error);
@@ -79,6 +85,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 {
                     _pipe.Advance(consumed);
                 }
+            }
+        }
+
+        private static void DisposeSocket(Exception ex, object state)
+        {
+            // If the pipe writer was closed with a TimeoutException, a write timed out.
+            // Disposing the socket will cancel the pending UvWriteReq.
+            if (ex is TimeoutException)
+            {
+                var libuvOutputConsumer = (LibuvOutputConsumer)state;
+                libuvOutputConsumer._socket.Dispose();
             }
         }
 

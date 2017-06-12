@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
-            Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log);
+            Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log, TimeoutControl);
             RequestBodyPipe = CreateRequestBodyPipe();
         }
 
@@ -302,6 +302,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public MinDataRate MinRequestBodyDataRate { get; set; }
 
+        public MinDataRate MinResponseDataRate { get; set; }
+
         public void InitializeStreams(MessageBody messageBody)
         {
             if (_frameStreams == null)
@@ -381,6 +383,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestCount++;
 
             MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
+            MinResponseDataRate = ServerOptions.Limits.MinResponseDataRate;
         }
 
         /// <summary>
@@ -410,7 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// <summary>
         /// Immediate kill the connection and poison the request and response streams.
         /// </summary>
-        public void Abort(Exception error)
+        public void Abort(Exception error, bool abortOutputWithError = false)
         {
             if (Interlocked.Exchange(ref _requestAborted, 1) == 0)
             {
@@ -418,7 +421,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 _frameStreams?.Abort(error);
 
-                Output.Abort();
+                Output.Abort(abortOutputWithError ? error : null);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
                 ServiceContext.ThreadPool.UnsafeRun(state => ((Frame)state).CancelRequestAbortedToken(), this);
@@ -1378,6 +1381,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 ReaderScheduler = ServiceContext.ThreadPool,
                 WriterScheduler = InlineScheduler.Default,
+                MaximumSizeHigh = 1,
+                MaximumSizeLow = 1
+            });
+
+        private IPipe CreateResponsePipe()
+            => ConnectionInformation.PipeFactory.Create(new PipeOptions
+            {
+                ReaderScheduler = ServiceContext.ThreadPool,
+                WriterScheduler = ServiceContext.ThreadPool,
                 MaximumSizeHigh = 1,
                 MaximumSizeLow = 1
             });
