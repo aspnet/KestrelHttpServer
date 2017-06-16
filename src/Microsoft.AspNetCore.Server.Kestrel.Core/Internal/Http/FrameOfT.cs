@@ -195,9 +195,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 RequestBodyPipe.Reader.Complete();
 
                                 // Wait for MessageBody.PumpAsync() to call RequestBodyPipe.Writer.Complete().
-                                messageBody.Cancel();
-                                Input.CancelPendingRead();
-                                await messageBody.PumpTask;
+                                await messageBody.StopAsync();
 
                                 // At this point both the request body pipe reader and writer should be completed.
                                 RequestBodyPipe.Reset();
