@@ -4,16 +4,7 @@
   </Target>
   <Target Name="StressTest" DependsOnTargets="Build">
     <ItemGroup>
-      <Iteration Include="0" />
-      <Iteration Include="1" />
-      <Iteration Include="2" />
-      <Iteration Include="3" />
-      <Iteration Include="4" />
-      <Iteration Include="5" />
-      <Iteration Include="6" />
-      <Iteration Include="7" />
-      <Iteration Include="8" />
-      <Iteration Include="9" />
+      <Iteration Include="0;1;2;3;4;5;6;7;8;9" />
     </ItemGroup>
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="TestProjects" Properties="FakeProperty=%(Iteration.Identity)" />
   </Target>
