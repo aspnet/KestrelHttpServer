@@ -10,13 +10,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
         /// <summary>
         /// Creates a new instance of <see cref="MinimumDataRate"/>.
         /// </summary>
-        /// <param name="rate">The minimum rate in bytes/second at which data should be processed.</param>
-        /// <param name="gracePeriod">The amount of time to delay enforcement of <paramref name="rate"/>.</param>
-        public MinimumDataRate(double rate, TimeSpan gracePeriod)
+        /// <param name="bytesPerSecond">The minimum rate in bytes/second at which data should be processed.</param>
+        /// <param name="gracePeriod">The amount of time to delay enforcement of <paramref name="bytesPerSecond"/>.</param>
+        public MinimumDataRate(double bytesPerSecond, TimeSpan gracePeriod)
         {
-            if (rate <= 0)
+            if (bytesPerSecond <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(rate), CoreStrings.PositiveNumberRequired);
+                throw new ArgumentOutOfRangeException(nameof(bytesPerSecond), CoreStrings.PositiveNumberRequired);
             }
 
             if (gracePeriod < TimeSpan.Zero)
@@ -24,14 +24,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
                 throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.NonNegativeTimeSpanRequired);
             }
 
-            Rate = rate;
+            BytesPerSecond = bytesPerSecond;
             GracePeriod = gracePeriod;
         }
 
         /// <summary>
         /// The minimum rate in bytes/second at which data should be processed.
         /// </summary>
-        public double Rate { get; }
+        public double BytesPerSecond { get; }
 
         /// <summary>
         /// The amount of time to delay enforcement of <see cref="MinimumDataRate" />.

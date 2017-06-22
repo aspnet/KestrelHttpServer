@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .UseKestrel(options =>
                 {
                     options.Limits.MaxRequestBodySize = contentLength;
-                    options.Limits.RequestBodyMinimumDataRate = null;
+                    options.Limits.MinRequestBodyDataRate = null;
                 })
                 .UseUrls("http://127.0.0.1:0/")
                 .Configure(app =>
@@ -1429,7 +1429,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(async context =>
             {
-                context.Features.Get<IHttpRequestBodyMinimumDataRateFeature>().MinimumDataRate = new MinimumDataRate(rate: double.MaxValue, gracePeriod: TimeSpan.Zero);
+                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate = new MinimumDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.Zero);
 
                 using (var stream = await context.Features.Get<IHttpUpgradeFeature>().UpgradeAsync())
                 {

@@ -84,22 +84,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void TimesOutWhenRequestBodyDoesNotSatisfyMinimumDataRate()
         {
-            var requestBodyMinimumDataRate = 100;
+            var bytesPerSecond = 100;
             var mockLogger = new Mock<IKestrelTrace>();
-            TickBodyWithMinimumDataRate(mockLogger.Object, requestBodyMinimumDataRate);
+            TickBodyWithMinimumDataRate(mockLogger.Object, bytesPerSecond);
 
             // Timed out
             Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Once);
         }
 
-        private void TickBodyWithMinimumDataRate(IKestrelTrace logger, int requestBodyMinimumDataRate)
+        private void TickBodyWithMinimumDataRate(IKestrelTrace logger, int bytesPerSecond)
         {
             var requestBodyGracePeriod = TimeSpan.FromSeconds(5);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
-                new MinimumDataRate(rate: requestBodyMinimumDataRate, gracePeriod: requestBodyGracePeriod);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
+                new MinimumDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: requestBodyGracePeriod);
 
             _frameConnectionContext.ServiceContext.Log = logger;
 
@@ -119,13 +119,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void MinimumDataRateNotEnforcedDuringGracePeriod()
+        public void RequestBodyMinimumDataRateNotEnforcedDuringGracePeriod()
         {
-            var requestBodyMinimumDataRate = 100;
-            var requestBodyGracePeriod = TimeSpan.FromSeconds(2);
+            var bytesPerSecond = 100;
+            var gracePeriod = TimeSpan.FromSeconds(2);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
-                new MinimumDataRate(rate: requestBodyMinimumDataRate, gracePeriod: requestBodyGracePeriod);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
+                new MinimumDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -147,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Never);
 
             // Tick after grace period w/ low data rate
             now += TimeSpan.FromSeconds(2);
@@ -157,17 +157,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Timed out
             Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Once);
         }
 
         [Fact]
-        public void DataRateIsAveragedOverTimeSpentReadingRequestBody()
+        public void RequestBodyDataRateIsAveragedOverTimeSpentReadingRequestBody()
         {
-            var requestBodyMinimumDataRate = 100;
-            var requestBodyGracePeriod = TimeSpan.FromSeconds(1);
+            var bytesPerSecond = 100;
+            var gracePeriod = TimeSpan.FromSeconds(1);
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
-                new MinimumDataRate(rate: requestBodyMinimumDataRate, gracePeriod: requestBodyGracePeriod);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
+                new MinimumDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -182,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.StartTimingReads();
 
             // Tick after grace period to start enforcing minimum data rate
-            now += requestBodyGracePeriod;
+            now += gracePeriod;
             _frameConnection.BytesRead(100);
             _frameConnection.Tick(now);
 
@@ -194,7 +194,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Never);
 
             // Data rate: 150 bytes/second
             now += TimeSpan.FromSeconds(1);
@@ -204,7 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Never);
 
             // Data rate: 115 bytes/second
             now += TimeSpan.FromSeconds(1);
@@ -214,7 +214,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Not timed out
             Assert.False(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Never);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Never);
 
             // Data rate: 50 bytes/second
             now += TimeSpan.FromSeconds(6);
@@ -224,17 +224,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Timed out
             Assert.True(_frameConnection.TimedOut);
             mockLogger.Verify(logger =>
-                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), requestBodyMinimumDataRate), Times.Once);
+                logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), bytesPerSecond), Times.Once);
         }
 
         [Fact]
-        public void PausedTimeDoesNotCountAgainstRequestBodyTimeout()
+        public void RequestBodyDataRateNotComputedOnPausedTime()
         {
             var requestBodyTimeout = TimeSpan.FromSeconds(5);
             var systemClock = new MockSystemClock();
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
-                new MinimumDataRate(rate: 100, gracePeriod: TimeSpan.Zero);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
+                new MinimumDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.Zero);
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -297,12 +297,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void NotPausedWhenResumeCalledBeforeNextTick()
+        public void ReadTimingNotPausedWhenResumeCalledBeforeNextTick()
         {
             var systemClock = new MockSystemClock();
 
-            _frameConnectionContext.ServiceContext.ServerOptions.Limits.RequestBodyMinimumDataRate =
-                new MinimumDataRate(rate: 100, gracePeriod: TimeSpan.Zero);
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
+                new MinimumDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.Zero);
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();

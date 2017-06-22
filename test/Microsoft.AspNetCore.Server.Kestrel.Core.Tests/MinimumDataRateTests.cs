@@ -12,19 +12,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(double.Epsilon)]
         [InlineData(double.MaxValue)]
-        public void RateValid(double value)
+        public void BytesPerSecondValid(double value)
         {
-            Assert.Equal(value, new MinimumDataRate(rate: value, gracePeriod: TimeSpan.Zero).Rate);
+            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.Zero).BytesPerSecond);
         }
 
         [Theory]
         [InlineData(double.MinValue)]
         [InlineData(0)]
-        public void RateInvalid(double value)
+        public void BytesPerSecondInvalid(double value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(rate: value, gracePeriod: TimeSpan.Zero));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.Zero));
 
-            Assert.Equal("rate", exception.ParamName);
+            Assert.Equal("bytesPerSecond", exception.ParamName);
             Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
         }
 
@@ -32,14 +32,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(GracePeriodValidData))]
         public void GracePeriodValid(TimeSpan value)
         {
-            Assert.Equal(value, new MinimumDataRate(rate: 1, gracePeriod: value).GracePeriod);
+            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value).GracePeriod);
         }
 
         [Theory]
         [MemberData(nameof(GracePeriodInvalidData))]
         public void GracePeriodInvalid(TimeSpan value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(rate: 1, gracePeriod: value));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value));
 
             Assert.Equal("gracePeriod", exception.ParamName);
             Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
