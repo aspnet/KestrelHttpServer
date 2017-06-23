@@ -229,10 +229,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        MinimumDataRate IHttpMinRequestBodyDataRateFeature.MinimumDataRate
+        double IHttpMinRequestBodyDataRateFeature.BytesPerSecond
         {
-            get => MinRequestBodyDataRate;
-            set => MinRequestBodyDataRate = value;
+            get => MinRequestBodyDataRate.BytesPerSecond;
+            set
+            {
+                if (value < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.NonNegativeNumberRequired);
+                }
+
+                MinRequestBodyDataRate.BytesPerSecond = value;
+            }
+        }
+
+        TimeSpan IHttpMinRequestBodyDataRateFeature.GracePeriod
+        {
+            get => MinRequestBodyDataRate.GracePeriod;
+            set
+            {
+                if (value < TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.NonNegativeTimeSpanRequired);
+                }
+
+                MinRequestBodyDataRate.GracePeriod = value;
+            }
         }
 
         object IFeatureCollection.this[Type key]

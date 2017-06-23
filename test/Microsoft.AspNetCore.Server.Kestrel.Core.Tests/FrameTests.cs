@@ -143,11 +143,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void ResetResetsMinRequestBodyDataRate()
         {
-            _frame.MinRequestBodyDataRate = new MinimumDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.Zero);
+            _frame.MinRequestBodyDataRate.BytesPerSecond = 1;
+            _frame.MinRequestBodyDataRate.GracePeriod = TimeSpan.Zero;
 
             _frame.Reset();
 
-            Assert.Equal(_serviceContext.ServerOptions.Limits.MinRequestBodyDataRate, _frame.MinRequestBodyDataRate);
+            Assert.Equal(_serviceContext.ServerOptions.Limits.MinRequestBodyDataRate.BytesPerSecond, _frame.MinRequestBodyDataRate.BytesPerSecond);
+            Assert.Equal(_serviceContext.ServerOptions.Limits.MinRequestBodyDataRate.GracePeriod, _frame.MinRequestBodyDataRate.GracePeriod);
         }
 
         [Fact]
@@ -255,11 +257,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         [Theory]
         [MemberData(nameof(MinRequestBodyDataRateData))]
-        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDateRate(MinimumDataRate minimumDataRate)
+        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDateRate(double bytesPerSecond, TimeSpan gracePeriod)
         {
-            ((IFeatureCollection)_frame).Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate = minimumDataRate;
+            var feature = ((IFeatureCollection)_frame).Get<IHttpMinRequestBodyDataRateFeature>();
+            feature.BytesPerSecond = bytesPerSecond;
+            feature.GracePeriod = gracePeriod;
 
-            Assert.Same(minimumDataRate, _frame.MinRequestBodyDataRate);
+            Assert.Equal(bytesPerSecond, _frame.MinRequestBodyDataRate.BytesPerSecond);
+            Assert.Equal(gracePeriod, _frame.MinRequestBodyDataRate.GracePeriod);
+        }
+
+        [Theory]
+        [InlineData(double.MinValue)]
+        public void ThrowsWhenMinRequestBodyDataRateBytesPerSecondIsSetToANegativeValue(double value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpMinRequestBodyDataRateFeature>().BytesPerSecond = value);
+
+            Assert.Equal("value", exception.ParamName);
+            Assert.StartsWith(CoreStrings.NonNegativeNumberRequired, exception.Message);
+        }
+
+        [Theory]
+        [MemberData(nameof(MinRequestBodyDataRateGracePeriodInvalidData))]
+        public void ThrowsWhenMinRequestBodyDataRateGracePeriodIsSetToANegativeValue(TimeSpan value)
+        {
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ((IFeatureCollection)_frame).Get<IHttpMinRequestBodyDataRateFeature>().GracePeriod = value);
+
+            Assert.Equal("value", exception.ParamName);
+            Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
         }
 
         [Fact]
@@ -863,25 +890,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
-        public static TheoryData<TimeSpan> RequestBodyTimeoutDataValid => new TheoryData<TimeSpan>
+        public static TheoryData<double, TimeSpan> MinRequestBodyDataRateData => new TheoryData<double, TimeSpan>
         {
-            TimeSpan.FromTicks(1),
-            TimeSpan.MaxValue,
-            Timeout.InfiniteTimeSpan,
-            TimeSpan.FromMilliseconds(-1) // Same as Timeout.InfiniteTimeSpan
+            { 0, TimeSpan.Zero },
+            { 1, TimeSpan.Zero }
         };
 
-        public static TheoryData<TimeSpan> RequestBodyTimeoutDataInvalid => new TheoryData<TimeSpan>
+        public static TheoryData<TimeSpan> MinRequestBodyDataRateGracePeriodInvalidData => new TheoryData<TimeSpan>
         {
             TimeSpan.MinValue,
-            TimeSpan.FromTicks(-1),
-            TimeSpan.Zero
-        };
-
-        public static TheoryData<MinimumDataRate> MinRequestBodyDataRateData => new TheoryData<MinimumDataRate>
-        {
-            null,
-            new MinimumDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.Zero)
+            TimeSpan.FromTicks(-1)
         };
 
         private class RequestHeadersWrapper : IHeaderDictionary

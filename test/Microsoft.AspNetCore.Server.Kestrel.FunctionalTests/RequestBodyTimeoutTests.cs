@@ -31,8 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context =>
             {
-                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate =
-                    new MinimumDataRate(bytesPerSecond: 1, gracePeriod: minimumDataRateGracePeriod);
+                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().GracePeriod = minimumDataRateGracePeriod;
 
                 appRunningEvent.Set();
                 return context.Request.Body.ReadAsync(new byte[1], 0, 1);
@@ -78,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context =>
             {
-                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate = null;
+                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().BytesPerSecond = 0;
 
                 appRunningEvent.Set();
                 return Task.CompletedTask;
@@ -125,8 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(async context =>
             {
-                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate =
-                    new MinimumDataRate(bytesPerSecond: 1, gracePeriod: minimumDataRateGracePeriod);
+                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().GracePeriod = minimumDataRateGracePeriod;
 
                 appRunningEvent.Set();
 

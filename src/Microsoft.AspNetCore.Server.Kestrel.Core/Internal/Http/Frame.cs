@@ -300,7 +300,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
 
-        public MinimumDataRate MinRequestBodyDataRate { get; set; }
+        public KestrelServerLimits.MinimumDataRate MinRequestBodyDataRate { get; } = new KestrelServerLimits.MinimumDataRate();
 
         public void InitializeStreams(MessageBody messageBody)
         {
@@ -379,7 +379,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _responseBytesWritten = 0;
             _requestCount++;
 
-            MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
+            MinRequestBodyDataRate.BytesPerSecond = ServerOptions.Limits.MinRequestBodyDataRate.BytesPerSecond;
+            MinRequestBodyDataRate.GracePeriod = ServerOptions.Limits.MinRequestBodyDataRate.GracePeriod;
         }
 
         /// <summary>

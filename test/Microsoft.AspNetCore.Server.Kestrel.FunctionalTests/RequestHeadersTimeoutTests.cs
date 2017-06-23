@@ -106,7 +106,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Limits =
                     {
                         RequestHeadersTimeout = RequestHeadersTimeout,
-                        MinRequestBodyDataRate = null
+                        MinRequestBodyDataRate =
+                        {
+                            BytesPerSecond = 0
+                        }
                     }
                 }
             });
