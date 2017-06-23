@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
+namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
     public class MinimumDataRate
     {
@@ -34,7 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
         public double BytesPerSecond { get; }
 
         /// <summary>
-        /// The amount of time to delay enforcement of <see cref="MinimumDataRate" />.
+        /// The amount of time to delay enforcement of <see cref="MinimumDataRate" />,
+        /// starting at the time data is first read or written.
         /// </summary>
         public TimeSpan GracePeriod { get; }
     }
