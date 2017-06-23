@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
 {
     /// <summary>
@@ -12,14 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
     {
         /// <summary>
         /// The minimum data rate in bytes/second at which the request body should be received.
-        /// Setting this property to zero effectively means no minimum data rate should be enforced.
+        /// Setting this property to null indicates no minimum data rate should be enforced.
         /// This limit has no effect on upgraded connections which are always unlimited.
         /// </summary>
-        double BytesPerSecond { get; set; }
-
-        /// <summary>
-        /// The amount of time to delay enforcement of the minimum data rate.
-        /// </summary>
-        TimeSpan GracePeriod { get; set; }
+        MinimumDataRate MinimumDataRate { get; set; }
     }
 }

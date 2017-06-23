@@ -253,52 +253,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
         /// <summary>
         /// Gets or sets the request body minimum data rate in bytes/second.
-        /// This limit has no effect on upgraded connections.
-        /// This limit can be overridden per-request via <see cref="IHttpMinRequestBodyDataRateFeature"/>.
+        /// Setting this property to null indicates no minimum data rate should be enforced.
+        /// This limit has no effect on upgraded connections which are always unlimited.
+        /// This can be overridden per-request via <see cref="IHttpMinRequestBodyDataRateFeature"/>.
         /// </summary>
         /// <remarks>
-        /// Defaults to 1 byte/second with a 5 second grace period during which the minimum data rate is not enforced.
+        /// Defaults to 1 byte/second with a 5 second grace period.
         /// </remarks>
-        public MinimumDataRate MinRequestBodyDataRate { get; } = new MinimumDataRate { BytesPerSecond = 1, GracePeriod = TimeSpan.FromSeconds(5) };
-
-        public class MinimumDataRate
-        {
-            private double _bytesPerSecond;
-            private TimeSpan _gracePeriod;
-
-            /// <summary>
-            /// The minimum rate in bytes/second at which data should be processed.
-            /// </summary>
-            public double BytesPerSecond
-            {
-                get => _bytesPerSecond;
-                set
-                {
-                    if (value < 0)
-                    {
-                        throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.NonNegativeNumberRequired);
-                    }
-
-                    _bytesPerSecond = value;
-                }
-            }
-
-            /// <summary>
-            /// The amount of time to delay enforcement of <see cref="MinimumDataRate" />.
-            /// </summary>
-            public TimeSpan GracePeriod
-            {
-                get => _gracePeriod;
-                set
-                {
-                    if (value < TimeSpan.Zero)
-                    {
-                        throw new ArgumentOutOfRangeException(nameof(value), CoreStrings.NonNegativeTimeSpanRequired);
-                    }
-
-                    _gracePeriod = value;
-                }
-            }
-        }
+        public MinimumDataRate MinRequestBodyDataRate { get; set; } = new MinimumDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.FromSeconds(5));
     }
 }

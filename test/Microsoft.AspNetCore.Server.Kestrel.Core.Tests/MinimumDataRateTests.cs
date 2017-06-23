@@ -10,41 +10,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     public class MinimumDataRateTests
     {
         [Theory]
-        [InlineData(0)]
         [InlineData(double.Epsilon)]
         [InlineData(double.MaxValue)]
         public void BytesPerSecondValid(double value)
         {
-            Assert.Equal(value, new KestrelServerLimits.MinimumDataRate { BytesPerSecond = value, GracePeriod = TimeSpan.Zero }.BytesPerSecond);
+            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.Zero).BytesPerSecond);
         }
 
         [Theory]
         [InlineData(double.MinValue)]
-        [InlineData(-double.Epsilon)]
+        [InlineData(0)]
         public void BytesPerSecondInvalid(double value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                new KestrelServerLimits.MinimumDataRate { BytesPerSecond = value, GracePeriod = TimeSpan.Zero });
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.Zero));
 
-            Assert.Equal("value", exception.ParamName);
-            Assert.StartsWith(CoreStrings.NonNegativeNumberRequired, exception.Message);
+            Assert.Equal("bytesPerSecond", exception.ParamName);
+            Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
         }
 
         [Theory]
         [MemberData(nameof(GracePeriodValidData))]
         public void GracePeriodValid(TimeSpan value)
         {
-            Assert.Equal(value, new KestrelServerLimits.MinimumDataRate { BytesPerSecond = 1, GracePeriod = value }.GracePeriod);
+            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value).GracePeriod);
         }
 
         [Theory]
         [MemberData(nameof(GracePeriodInvalidData))]
         public void GracePeriodInvalid(TimeSpan value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                new KestrelServerLimits.MinimumDataRate { BytesPerSecond = 1, GracePeriod = value });
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value));
 
-            Assert.Equal("value", exception.ParamName);
+            Assert.Equal("gracePeriod", exception.ParamName);
             Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
         }
 

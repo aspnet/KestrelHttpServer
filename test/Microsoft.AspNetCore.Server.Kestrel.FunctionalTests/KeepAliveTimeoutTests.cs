@@ -197,10 +197,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Limits =
                     {
                         KeepAliveTimeout = KeepAliveTimeout,
-                        MinRequestBodyDataRate =
-                        {
-                            BytesPerSecond = 0
-                        }
+                        MinRequestBodyDataRate = null
                     }
                 }
             });
