@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
@@ -11,17 +12,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// Creates a new instance of <see cref="MinimumDataRate"/>.
         /// </summary>
         /// <param name="bytesPerSecond">The minimum rate in bytes/second at which data should be processed.</param>
-        /// <param name="gracePeriod">The amount of time to delay enforcement of <paramref name="bytesPerSecond"/>.</param>
+        /// <param name="gracePeriod">The amount of time to delay enforcement of <paramref name="bytesPerSecond"/>,
+        /// starting at the time data is first read or written.</param>
         public MinimumDataRate(double bytesPerSecond, TimeSpan gracePeriod)
         {
-            if (bytesPerSecond <= 0)
+            if (bytesPerSecond < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(bytesPerSecond), CoreStrings.PositiveNumberRequired);
+                throw new ArgumentOutOfRangeException(nameof(bytesPerSecond), CoreStrings.NonNegativeNumberRequired);
             }
 
-            if (gracePeriod < TimeSpan.Zero)
+            if (gracePeriod <= Heartbeat.Interval)
             {
-                throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.NonNegativeTimeSpanRequired);
+                throw new ArgumentOutOfRangeException(nameof(gracePeriod), CoreStrings.FormatMinimumGracePeriodRequired(Heartbeat.Interval.TotalSeconds));
             }
 
             BytesPerSecond = bytesPerSecond;

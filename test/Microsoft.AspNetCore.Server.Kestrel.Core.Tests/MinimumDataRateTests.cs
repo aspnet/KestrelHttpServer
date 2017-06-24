@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -10,22 +10,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     public class MinimumDataRateTests
     {
         [Theory]
+        [InlineData(0)]
         [InlineData(double.Epsilon)]
         [InlineData(double.MaxValue)]
         public void BytesPerSecondValid(double value)
         {
-            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.Zero).BytesPerSecond);
+            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue).BytesPerSecond);
         }
 
         [Theory]
         [InlineData(double.MinValue)]
-        [InlineData(0)]
+        [InlineData(-double.Epsilon)]
         public void BytesPerSecondInvalid(double value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.Zero));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue));
 
             Assert.Equal("bytesPerSecond", exception.ParamName);
-            Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
+            Assert.StartsWith(CoreStrings.NonNegativeNumberRequired, exception.Message);
         }
 
         [Theory]
@@ -42,20 +43,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value));
 
             Assert.Equal("gracePeriod", exception.ParamName);
-            Assert.StartsWith(CoreStrings.NonNegativeTimeSpanRequired, exception.Message);
+            Assert.StartsWith(CoreStrings.FormatMinimumGracePeriodRequired(Heartbeat.Interval.TotalSeconds), exception.Message);
         }
 
         public static TheoryData<TimeSpan> GracePeriodValidData => new TheoryData<TimeSpan>
         {
-            TimeSpan.Zero,
-            TimeSpan.FromTicks(1),
+            Heartbeat.Interval + TimeSpan.FromTicks(1),
             TimeSpan.MaxValue
         };
 
         public static TheoryData<TimeSpan> GracePeriodInvalidData => new TheoryData<TimeSpan>
         {
             TimeSpan.MinValue,
-            TimeSpan.FromTicks(-1)
+            TimeSpan.FromTicks(-1),
+            TimeSpan.Zero,
+            Heartbeat.Interval
         };
     }
 }
