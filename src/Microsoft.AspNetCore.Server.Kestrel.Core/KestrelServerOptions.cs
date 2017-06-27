@@ -36,6 +36,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         public SchedulingMode ApplicationSchedulingMode { get; set; } = SchedulingMode.Default;
 
         /// <summary>
+        /// Gets or sets a value that controls whether synchronous IO is allowed for the <see cref="Http.Features.IHttpRequestFeature.Body"/> and <see cref="Http.Features.IHttpResponseFeature.Body"/> 
+        /// </summary>
+        public bool AllowSynchronousIO { get; set; }
+
+        /// <summary>
         /// Enables the Listen options callback to resolve and use services registered by the application during startup.
         /// Typically initialized by UseKestrel()"/>.
         /// </summary>

@@ -510,12 +510,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var testLogger = new TestApplicationErrorLogger();
             var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(httpContext =>
+            using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.ContentLength = 11;
-                httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello,"), 0, 6);
-                httpContext.Response.Body.Write(Encoding.ASCII.GetBytes(" world"), 0, 6);
-                return Task.CompletedTask;
+                await httpContext.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("hello,"), 0, 6);
+                await httpContext.Response.Body.WriteAsync(Encoding.ASCII.GetBytes(" world"), 0, 6);
             }, serviceContext))
             {
                 using (var connection = server.CreateConnection())
@@ -586,12 +585,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var testLogger = new TestApplicationErrorLogger();
             var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(httpContext =>
+            using (var server = new TestServer(async httpContext =>
             {
                 var response = Encoding.ASCII.GetBytes("hello, world");
                 httpContext.Response.ContentLength = 5;
-                httpContext.Response.Body.Write(response, 0, response.Length);
-                return Task.CompletedTask;
+                await httpContext.Response.Body.WriteAsync(response, 0, response.Length);
             }, serviceContext))
             {
                 using (var connection = server.CreateConnection())
@@ -967,12 +965,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var flushed = new SemaphoreSlim(0, 1);
 
-            using (var server = new TestServer(httpContext =>
+            using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.ContentLength = 12;
-                httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello, world"), 0, 12);
+                await httpContext.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("hello, world"), 0, 12);
                 flushed.Wait();
-                return Task.CompletedTask;
             }))
             {
                 using (var connection = server.CreateConnection())
@@ -1248,7 +1245,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task FirstWriteVerifiedAfterOnStarting()
         {
-            using (var server = new TestServer(httpContext =>
+            using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.OnStarting(() =>
                 {
@@ -1261,8 +1258,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.ContentLength = response.Length - 1;
 
                 // If OnStarting is not run before verifying writes, an error response will be sent.
-                httpContext.Response.Body.Write(response, 0, response.Length);
-                return Task.CompletedTask;
+                await httpContext.Response.Body.WriteAsync(response, 0, response.Length);
             }))
             {
                 using (var connection = server.CreateConnection())
@@ -1289,7 +1285,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task SubsequentWriteVerifiedAfterOnStarting()
         {
-            using (var server = new TestServer(httpContext =>
+            using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.OnStarting(() =>
                 {
@@ -1302,9 +1298,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.ContentLength = response.Length - 1;
 
                 // If OnStarting is not run before verifying writes, an error response will be sent.
-                httpContext.Response.Body.Write(response, 0, response.Length / 2);
-                httpContext.Response.Body.Write(response, response.Length / 2, response.Length - response.Length / 2);
-                return Task.CompletedTask;
+                await httpContext.Response.Body.WriteAsync(response, 0, response.Length / 2);
+                await httpContext.Response.Body.WriteAsync(response, response.Length / 2, response.Length - response.Length / 2);
             }))
             {
                 using (var connection = server.CreateConnection())
