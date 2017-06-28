@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -108,6 +109,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var stream = new FrameRequestStream(Mock.Of<IHttpBodyControlFeature>());
             await Assert.ThrowsAsync<NotSupportedException>(() => stream.FlushAsync());
+        }
+
+        [Fact]
+        public async Task SynchronousReadsThrowByDefault()
+        {
+            var allowSynchronousIO = false;
+            var mockBodyControl = new Mock<IHttpBodyControlFeature>();
+            mockBodyControl.Setup(m => m.AllowSynchronousIO).Returns(() => allowSynchronousIO);
+            var mockMessageBody = new Mock<MessageBody>((Frame)null);
+            mockMessageBody.Setup(m => m.ReadAsync(It.IsAny<ArraySegment<byte>>(), CancellationToken.None)).ReturnsAsync(0);
+
+            var stream = new FrameRequestStream(mockBodyControl.Object);
+            stream.StartAcceptingReads(mockMessageBody.Object);
+
+            Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1));
+
+            var ioEx = Assert.Throws<InvalidOperationException>(() => stream.Read(new byte[1], 0, 1));
+            Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+            allowSynchronousIO = true;
+            Assert.Equal(0, stream.Read(new byte[1], 0, 1));
         }
 
         [Fact]

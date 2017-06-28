@@ -34,7 +34,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             set => throw new NotSupportedException();
         }
 
-        // REVIEW: Should Flush() throw?
         public override void Flush()
         {
             FlushAsync(default(CancellationToken)).GetAwaiter().GetResult();

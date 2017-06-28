@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core
@@ -36,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         public SchedulingMode ApplicationSchedulingMode { get; set; } = SchedulingMode.Default;
 
         /// <summary>
-        /// Gets or sets a value that controls whether synchronous IO is allowed for the <see cref="Http.Features.IHttpRequestFeature.Body"/> and <see cref="Http.Features.IHttpResponseFeature.Body"/> 
+        /// Gets or sets a value that controls whether synchronous IO is allowed for the <see cref="HttpContext.Request"/> and <see cref="HttpContext.Response"/> 
         /// </summary>
         public bool AllowSynchronousIO { get; set; }
 

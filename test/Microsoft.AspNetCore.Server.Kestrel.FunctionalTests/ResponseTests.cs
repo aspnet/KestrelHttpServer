@@ -2330,6 +2330,81 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             Assert.Equal(2, callOrder.Pop());
         }
 
+
+        [Fact]
+        public async Task SynchronousWritesThrowByDefault()
+        {
+            using (var server = new TestServer(context =>
+            {
+                var helloBuffer = Encoding.ASCII.GetBytes("Hello");
+                context.Response.ContentLength = 5;
+
+                var ioEx = Assert.Throws<InvalidOperationException>(() => context.Response.Body.Write(helloBuffer, 0, 5));
+                Assert.Equal("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+                var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
+                Assert.False(bodyControlFeature.AllowSynchronousIO);
+
+                bodyControlFeature.AllowSynchronousIO = true;
+
+                // Write now now longer throws.
+                context.Response.Body.Write(helloBuffer, 0, 5);
+
+                return Task.CompletedTask;
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "",
+                        "");
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 5",
+                        "",
+                        "Hello");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task SynchronousWritesCanBeEnabledGlobally()
+        {
+            var testContext = new TestServiceContext
+            {
+                ServerOptions = { AllowSynchronousIO = true }
+            };
+
+            using (var server = new TestServer(context =>
+            {
+                var helloBuffer = Encoding.ASCII.GetBytes("Hello");
+                context.Response.ContentLength = 5;
+
+                context.Response.Body.Write(helloBuffer, 0, 5);
+
+                return Task.CompletedTask;
+            }, testContext))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "",
+                        "");
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 5",
+                        "",
+                        "Hello");
+                }
+            }
+        }
+
         public static TheoryData<string, StringValues, string> NullHeaderData
         {
             get
