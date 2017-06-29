@@ -46,9 +46,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             switch (EndPointInformation.Type)
             {
                 case ListenType.IPEndPoint:
-                    return ListenTcp(false);
+                    return ListenTcp(useFileHandle: false);
                 case ListenType.SocketPath:
-                    return ListenPipe(false);
+                    return ListenPipe(useFileHandle: false);
                 case ListenType.FileHandle:
                     return ListenHandle();
                 default:
@@ -119,16 +119,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 case FileHandleType.Auto:
                     break;
                 case FileHandleType.Tcp:
-                    return ListenTcp(true);
+                    return ListenTcp(useFileHandle: true);
                 case FileHandleType.Pipe:
-                    return ListenPipe(true);
+                    return ListenPipe(useFileHandle: true);
                 default:
                     throw new NotSupportedException();
             }
+
             UvStreamHandle handle;
             try
             {
-                handle = ListenTcp(true);
+                handle = ListenTcp(useFileHandle: true);
                 EndPointInformation.HandleType = FileHandleType.Tcp;
                 return handle;
             }
@@ -136,7 +137,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 Log.LogDebug(0, exception, "Listener.ListenHandle");
             }
-            handle = ListenPipe(true);
+
+            handle = ListenPipe(useFileHandle: true);
             EndPointInformation.HandleType = FileHandleType.Pipe;
             return handle;
         }

@@ -78,8 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             switch (EndPointInformation.HandleType)
             {
                 case FileHandleType.Auto:
-                    //  Handle type detection must be done by listener, refreshing endpoint information
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Cannot accept on a non-specific file handle, listen should be performed first.");
                 case FileHandleType.Tcp:
                     return AcceptTcp();
                 case FileHandleType.Pipe:

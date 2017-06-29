@@ -16,6 +16,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     /// </summary>
     public class ListenOptions : IEndPointInformation
     {
+        private FileHandleType _handleType;
+
         internal ListenOptions(IPEndPoint endPoint)
         {
             Type = ListenType.IPEndPoint;
@@ -53,8 +55,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// The type of interface being described: either an <see cref="IPEndPoint"/>, Unix domain socket path, or a file descriptor.
         /// </summary>
         public ListenType Type { get; }
-
-        private FileHandleType _handleType;
 
         public FileHandleType HandleType
         {
