@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task SynchronousWritesThrowByDefault()
+        public async Task SynchronousWritesThrowIfDisallowedByIHttpBodyControlFeature()
         {
             var allowSynchronousIO = false;
             var mockBodyControl = new Mock<IHttpBodyControlFeature>();

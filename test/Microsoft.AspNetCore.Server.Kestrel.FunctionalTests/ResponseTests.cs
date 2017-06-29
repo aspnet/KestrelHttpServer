@@ -2332,60 +2332,75 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
 
         [Fact]
-        public async Task SynchronousWritesThrowByDefault()
+        public async Task SynchronousWritesAllowedByDefault()
         {
-            using (var server = new TestServer(context =>
+            var firstRequest = true;
+
+            using (var server = new TestServer(async context =>
             {
-                var helloBuffer = Encoding.ASCII.GetBytes("Hello");
-                context.Response.ContentLength = 5;
-
-                var ioEx = Assert.Throws<InvalidOperationException>(() => context.Response.Body.Write(helloBuffer, 0, 5));
-                Assert.Equal("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
-
                 var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
-                Assert.False(bodyControlFeature.AllowSynchronousIO);
+                Assert.True(bodyControlFeature.AllowSynchronousIO);
 
-                bodyControlFeature.AllowSynchronousIO = true;
+                context.Response.ContentLength = 6;
 
-                // Write now now longer throws.
-                context.Response.Body.Write(helloBuffer, 0, 5);
+                if (firstRequest)
+                {
+                    context.Response.Body.Write(Encoding.ASCII.GetBytes("Hello1"), 0, 6);
+                    firstRequest = false;
+                }
+                else
+                {
+                    bodyControlFeature.AllowSynchronousIO = false;
 
-                return Task.CompletedTask;
+                    // Synchronous writes now throw.
+                    var ioEx = Assert.Throws<InvalidOperationException>(() => context.Response.Body.Write(Encoding.ASCII.GetBytes("What!?"), 0, 6));
+                    Assert.Equal("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+                    await context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello2"), 0, 6);
+                }
             }))
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
+                    await connection.SendEmptyGet();
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 5",
+                        "Content-Length: 6",
                         "",
-                        "Hello");
+                        "Hello1");
+
+                    await connection.SendEmptyGet();
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 6",
+                        "",
+                        "Hello2");
                 }
             }
         }
 
         [Fact]
-        public async Task SynchronousWritesCanBeEnabledGlobally()
+        public async Task SynchronousWritesCanBeDisallowedGlobally()
         {
             var testContext = new TestServiceContext
             {
-                ServerOptions = { AllowSynchronousIO = true }
+                ServerOptions = { AllowSynchronousIO = false }
             };
 
             using (var server = new TestServer(context =>
             {
-                var helloBuffer = Encoding.ASCII.GetBytes("Hello");
-                context.Response.ContentLength = 5;
+                var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
+                Assert.False(bodyControlFeature.AllowSynchronousIO);
 
-                context.Response.Body.Write(helloBuffer, 0, 5);
+                context.Response.ContentLength = 6;
 
-                return Task.CompletedTask;
+                // Synchronous writes now throw.
+                var ioEx = Assert.Throws<InvalidOperationException>(() => context.Response.Body.Write(Encoding.ASCII.GetBytes("What!?"), 0, 6));
+                Assert.Equal("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+                return context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello!"), 0, 6);
             }, testContext))
             {
                 using (var connection = server.CreateConnection())
@@ -2398,9 +2413,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 5",
+                        "Content-Length: 6",
                         "",
-                        "Hello");
+                        "Hello!");
                 }
             }
         }

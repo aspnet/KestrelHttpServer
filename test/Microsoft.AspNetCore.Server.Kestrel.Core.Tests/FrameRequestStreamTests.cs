@@ -112,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task SynchronousReadsThrowByDefault()
+        public async Task SynchronousReadsThrowIfDisallowedByIHttpBodyControlFeature()
         {
             var allowSynchronousIO = false;
             var mockBodyControl = new Mock<IHttpBodyControlFeature>();
@@ -127,6 +127,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var ioEx = Assert.Throws<InvalidOperationException>(() => stream.Read(new byte[1], 0, 1));
             Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+            var ioEx2 = Assert.Throws<InvalidOperationException>(() => stream.CopyTo(Stream.Null));
+            Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx2.Message);
 
             allowSynchronousIO = true;
             Assert.Equal(0, stream.Read(new byte[1], 0, 1));

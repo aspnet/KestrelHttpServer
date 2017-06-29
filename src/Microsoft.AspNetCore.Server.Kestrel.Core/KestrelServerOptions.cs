@@ -39,7 +39,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <summary>
         /// Gets or sets a value that controls whether synchronous IO is allowed for the <see cref="HttpContext.Request"/> and <see cref="HttpContext.Response"/> 
         /// </summary>
-        public bool AllowSynchronousIO { get; set; }
+        /// <remarks>
+        /// Defaults to true.
+        /// </remarks>
+        public bool AllowSynchronousIO { get; set; } = true;
 
         /// <summary>
         /// Enables the Listen options callback to resolve and use services registered by the application during startup.

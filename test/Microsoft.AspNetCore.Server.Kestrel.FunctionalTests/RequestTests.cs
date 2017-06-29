@@ -1481,33 +1481,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task SynchronousReadsThrowByDefault()
+        public async Task SynchronousReadsAllowedByDefault()
         {
-            using (var server = new TestServer(context =>
+            var firstRequest = true;
+
+            using (var server = new TestServer(async context =>
             {
-                var ioEx = Assert.Throws<InvalidOperationException>(() => context.Request.Body.Read(new byte[1], 0, 1));
-                Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
-
-                var ioEx2 = Assert.Throws<InvalidOperationException>(() => context.Request.Body.CopyTo(Stream.Null));
-                Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx2.Message);
-
                 var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
-                Assert.False(bodyControlFeature.AllowSynchronousIO);
+                Assert.True(bodyControlFeature.AllowSynchronousIO);
 
-                bodyControlFeature.AllowSynchronousIO = true;
-
-                // Read now no longer throws.
-                var buffer = new byte[5];
+                var buffer = new byte[6];
                 var offset = 0;
-                while (offset < 5)
+
+                // The request body is 5 bytes long. The 6th byte (buffer[5]) is only used for writing the response body.
+                buffer[5] = (byte)(firstRequest ? '1' : '2');
+
+                if (firstRequest)
                 {
-                    offset += context.Request.Body.Read(buffer, offset, 5 - offset);
+                    while (offset < 5)
+                    {
+                        offset += context.Request.Body.Read(buffer, offset, 5 - offset);
+                    }
+
+                    firstRequest = false;
+                }
+                else
+                {
+                    bodyControlFeature.AllowSynchronousIO = false;
+
+                    // Synchronous reads now throw.
+                    var ioEx = Assert.Throws<InvalidOperationException>(() => context.Request.Body.Read(new byte[1], 0, 1));
+                    Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+                    var ioEx2 = Assert.Throws<InvalidOperationException>(() => context.Request.Body.CopyTo(Stream.Null));
+                    Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx2.Message);
+
+                    while (offset < 5)
+                    {
+                        offset += await context.Request.Body.ReadAsync(buffer, offset, 5 - offset);
+                    }
                 }
 
-                Assert.Equal(0, context.Request.Body.Read(new byte[1], 0, 1));
-                Assert.Equal("Hello", Encoding.ASCII.GetString(buffer));
+                Assert.Equal(0, await context.Request.Body.ReadAsync(new byte[1], 0, 1));
+                Assert.Equal("Hello", Encoding.ASCII.GetString(buffer, 0, 5));
 
-                return Task.CompletedTask;
+                context.Response.ContentLength = 6;
+                await context.Response.Body.WriteAsync(buffer, 0, 6);
             }))
             {
                 using (var connection = server.CreateConnection())
@@ -1517,38 +1536,54 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "Host:",
                         "Content-Length: 5",
                         "",
+                        "HelloPOST / HTTP/1.1",
+                        "Host:",
+                        "Content-Length: 5",
+                        "",
                         "Hello");
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
+                        "Content-Length: 6",
                         "",
-                        "");
+                        "Hello1HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 6",
+                        "",
+                        "Hello2");
                 }
             }
         }
 
         [Fact]
-        public async Task SynchronousReadsCanBeEnabledGlobally()
+        public async Task SynchronousReadsCanBeDisallowedGlobally()
         {
             var testContext = new TestServiceContext
             {
-                ServerOptions = { AllowSynchronousIO = true }
+                ServerOptions = { AllowSynchronousIO = false }
             };
 
-            using (var server = new TestServer(context =>
+            using (var server = new TestServer(async context =>
             {
+                var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
+                Assert.False(bodyControlFeature.AllowSynchronousIO);
+
+                // Synchronous reads now throw.
+                var ioEx = Assert.Throws<InvalidOperationException>(() => context.Request.Body.Read(new byte[1], 0, 1));
+                Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+
+                var ioEx2 = Assert.Throws<InvalidOperationException>(() => context.Request.Body.CopyTo(Stream.Null));
+                Assert.Equal("Synchronous operations are disallowed. Call ReadAsync or set AllowSynchronousIO to true instead.", ioEx2.Message);
+
                 var buffer = new byte[5];
                 var offset = 0;
                 while (offset < 5)
                 {
-                    offset += context.Request.Body.Read(buffer, offset, 5 - offset);
+                    offset += await context.Request.Body.ReadAsync(buffer, offset, 5 - offset);
                 }
 
-                Assert.Equal(0, context.Request.Body.Read(new byte[1], 0, 1));
+                Assert.Equal(0, await context.Request.Body.ReadAsync(new byte[1], 0, 1));
                 Assert.Equal("Hello", Encoding.ASCII.GetString(buffer));
-
-                return Task.CompletedTask;
             }, testContext))
             {
                 using (var connection = server.CreateConnection())
