@@ -143,7 +143,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void ResetResetsMinRequestBodyDataRate()
         {
-            _frame.MinRequestBodyDataRate = new MinimumDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue);
+            _frame.MinRequestBodyDataRate = new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue);
 
             _frame.Reset();
 
@@ -255,11 +255,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         [Theory]
         [MemberData(nameof(MinRequestBodyDataRateData))]
-        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDateRate(MinimumDataRate minimumDataRate)
+        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDataRate(MinDataRate minDataRate)
         {
-            ((IFeatureCollection)_frame).Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate = minimumDataRate;
+            ((IFeatureCollection)_frame).Get<IHttpMinRequestBodyDataRateFeature>().MinDataRate = minDataRate;
 
-            Assert.Same(minimumDataRate, _frame.MinRequestBodyDataRate);
+            Assert.Same(minDataRate, _frame.MinRequestBodyDataRate);
         }
 
         [Fact]
@@ -878,10 +878,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             TimeSpan.Zero
         };
 
-        public static TheoryData<MinimumDataRate> MinRequestBodyDataRateData => new TheoryData<MinimumDataRate>
+        public static TheoryData<MinDataRate> MinRequestBodyDataRateData => new TheoryData<MinDataRate>
         {
             null,
-            new MinimumDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue)
+            new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue)
         };
 
         private class RequestHeadersWrapper : IHeaderDictionary

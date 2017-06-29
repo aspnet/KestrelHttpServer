@@ -229,7 +229,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        MinimumDataRate IHttpMinRequestBodyDataRateFeature.MinimumDataRate
+        MinDataRate IHttpMinRequestBodyDataRateFeature.MinDataRate
         {
             get => MinRequestBodyDataRate;
             set => MinRequestBodyDataRate = value;

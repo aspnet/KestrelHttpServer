@@ -299,7 +299,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected FrameResponseHeaders FrameResponseHeaders { get; } = new FrameResponseHeaders();
 
-        public MinimumDataRate MinRequestBodyDataRate { get; set; }
+        public MinDataRate MinRequestBodyDataRate { get; set; }
 
         public void InitializeStreams(MessageBody messageBody)
         {

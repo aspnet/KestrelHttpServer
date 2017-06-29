@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
-    public class MinimumDataRateTests
+    public class MinDataRateTests
     {
         [Theory]
         [InlineData(0)]
@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [InlineData(double.MaxValue)]
         public void BytesPerSecondValid(double value)
         {
-            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue).BytesPerSecond);
+            Assert.Equal(value, new MinDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue).BytesPerSecond);
         }
 
         [Theory]
@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [InlineData(-double.Epsilon)]
         public void BytesPerSecondInvalid(double value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue));
 
             Assert.Equal("bytesPerSecond", exception.ParamName);
             Assert.StartsWith(CoreStrings.NonNegativeNumberRequired, exception.Message);
@@ -33,14 +33,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(GracePeriodValidData))]
         public void GracePeriodValid(TimeSpan value)
         {
-            Assert.Equal(value, new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value).GracePeriod);
+            Assert.Equal(value, new MinDataRate(bytesPerSecond: 1, gracePeriod: value).GracePeriod);
         }
 
         [Theory]
         [MemberData(nameof(GracePeriodInvalidData))]
         public void GracePeriodInvalid(TimeSpan value)
         {
-            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinimumDataRate(bytesPerSecond: 1, gracePeriod: value));
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinDataRate(bytesPerSecond: 1, gracePeriod: value));
 
             Assert.Equal("gracePeriod", exception.ParamName);
             Assert.StartsWith(CoreStrings.FormatMinimumGracePeriodRequired(Heartbeat.Interval.TotalSeconds), exception.Message);

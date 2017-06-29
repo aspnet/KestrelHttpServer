@@ -1429,8 +1429,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(async context =>
             {
-                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().MinimumDataRate =
-                    new MinimumDataRate(bytesPerSecond: double.MaxValue, gracePeriod: Heartbeat.Interval + TimeSpan.FromTicks(1));
+                context.Features.Get<IHttpMinRequestBodyDataRateFeature>().MinDataRate =
+                    new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: Heartbeat.Interval + TimeSpan.FromTicks(1));
 
                 using (var stream = await context.Features.Get<IHttpUpgradeFeature>().UpgradeAsync())
                 {

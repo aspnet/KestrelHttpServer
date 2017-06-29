@@ -71,11 +71,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockDebugger = new Mock<IDebugger>();
             mockDebugger.SetupGet(g => g.IsAttached).Returns(true);
             _frameConnection.Debugger = mockDebugger.Object;
-            var requestBodyMinimumDataRate = 100;
+            var bytesPerSecond = 100;
             var mockLogger = new Mock<IKestrelTrace>();
             mockLogger.Setup(l => l.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>())).Throws(new InvalidOperationException("Should not log"));
 
-            TickBodyWithMinimumDataRate(mockLogger.Object, requestBodyMinimumDataRate);
+            TickBodyWithMinimumDataRate(mockLogger.Object, bytesPerSecond);
 
             Assert.False(_frameConnection.TimedOut);
         }
@@ -95,10 +95,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private void TickBodyWithMinimumDataRate(IKestrelTrace logger, int bytesPerSecond)
         {
-            var requestBodyGracePeriod = TimeSpan.FromSeconds(5);
+            var gracePeriod = TimeSpan.FromSeconds(5);
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
-                new MinimumDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: requestBodyGracePeriod);
+                new MinDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
 
             _frameConnectionContext.ServiceContext.Log = logger;
 
@@ -112,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _frameConnection.StartTimingReads();
 
             // Tick after grace period w/ low data rate
-            now += requestBodyGracePeriod + TimeSpan.FromSeconds(1);
+            now += gracePeriod + TimeSpan.FromSeconds(1);
             _frameConnection.BytesRead(1);
             _frameConnection.Tick(now);
         }
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var gracePeriod = TimeSpan.FromSeconds(2);
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
-                new MinimumDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
+                new MinDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -166,7 +166,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var gracePeriod = TimeSpan.FromSeconds(2);
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
-                new MinimumDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
+                new MinDataRate(bytesPerSecond: bytesPerSecond, gracePeriod: gracePeriod);
 
             var mockLogger = new Mock<IKestrelTrace>();
             _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
@@ -242,7 +242,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var systemClock = new MockSystemClock();
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
-                new MinimumDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+                new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();
@@ -310,7 +310,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var systemClock = new MockSystemClock();
 
             _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
-                new MinimumDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+                new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
             _frameConnectionContext.ServiceContext.SystemClock = systemClock;
 
             var mockLogger = new Mock<IKestrelTrace>();

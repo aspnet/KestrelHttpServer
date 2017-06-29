@@ -13,6 +13,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
         /// Setting this property to null indicates no minimum data rate should be enforced.
         /// This limit has no effect on upgraded connections which are always unlimited.
         /// </summary>
-        MinimumDataRate MinimumDataRate { get; set; }
+        MinDataRate MinDataRate { get; set; }
     }
 }

@@ -260,6 +260,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <remarks>
         /// Defaults to 1 byte/second with a 5 second grace period.
         /// </remarks>
-        public MinimumDataRate MinRequestBodyDataRate { get; set; } = new MinimumDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.FromSeconds(5));
+        public MinDataRate MinRequestBodyDataRate { get; set; } = new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.FromSeconds(5));
     }
 }
