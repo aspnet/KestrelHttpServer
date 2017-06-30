@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
@@ -44,8 +45,11 @@ namespace SampleApp
             var configuration = new ConfigurationBuilder()
                 .AddEnvironmentVariables()
                 .Build();
-            if (!ushort.TryParse(configuration["BASE_PORT"], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var basePort))
+
+            if (!ushort.TryParse(configuration["BASE_PORT"], NumberStyles.None, CultureInfo.InvariantCulture, out var basePort))
+            {
                 basePort = 5000;
+            }
 
             var host = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>
