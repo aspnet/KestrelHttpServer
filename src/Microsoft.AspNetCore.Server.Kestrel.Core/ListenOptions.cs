@@ -62,9 +62,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             set
             {
                 if (value == _handleType)
+                {
                     return;
+                }
                 if (Type != ListenType.FileHandle || _handleType != FileHandleType.Auto)
+                {
                     throw new InvalidOperationException();
+                }
+
                 switch (value)
                 {
                     case FileHandleType.Tcp:
