@@ -260,6 +260,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <remarks>
         /// Defaults to 240 bytes/second with a 5 second grace period.
         /// </remarks>
-        public MinDataRate MinRequestBodyDataRate { get; set; } = new MinDataRate(bytesPerSecond: 240, gracePeriod: TimeSpan.FromSeconds(5));
+        public MinDataRate MinRequestBodyDataRate { get; set; } =
+            // Matches the default IIS minBytesPerSecond
+            new MinDataRate(bytesPerSecond: 240, gracePeriod: TimeSpan.FromSeconds(5));
     }
 }
