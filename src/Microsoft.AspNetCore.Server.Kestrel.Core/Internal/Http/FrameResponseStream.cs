@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             if (!_bodyControl.AllowSynchronousIO)
             {
-                throw new InvalidOperationException("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.");
+                throw new InvalidOperationException(CoreStrings.SynchronousWritesDisallowed);
             }
 
             WriteAsync(buffer, offset, count, default(CancellationToken)).GetAwaiter().GetResult();

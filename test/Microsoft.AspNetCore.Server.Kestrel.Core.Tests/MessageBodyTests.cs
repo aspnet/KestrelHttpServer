@@ -29,18 +29,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderContentLength = "5" }, input.Frame);
-                var stream = new FrameRequestStream(Mock.Of<IHttpBodyControlFeature>());
+                var mockBodyControl = new Mock<IHttpBodyControlFeature>();
+                mockBodyControl.Setup(m => m.AllowSynchronousIO).Returns(true);
+                var stream = new FrameRequestStream(mockBodyControl.Object);
                 stream.StartAcceptingReads(body);
 
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
 
-                var count = await stream.ReadAsync(buffer, 0, buffer.Length);
+                var count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
 
-                count = await stream.ReadAsync(buffer, 0, buffer.Length);
+                count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
 
                 await body.StopAsync();
@@ -79,20 +81,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders { HeaderTransferEncoding = "chunked" }, input.Frame);
-                var stream = new FrameRequestStream(Mock.Of<IHttpBodyControlFeature>());
+                var mockBodyControl = new Mock<IHttpBodyControlFeature>();
+                mockBodyControl.Setup(m => m.AllowSynchronousIO).Returns(true);
+                var stream = new FrameRequestStream(mockBodyControl.Object);
                 stream.StartAcceptingReads(body);
 
                 input.Add("5\r\nHello\r\n");
 
                 var buffer = new byte[1024];
 
-                var count = await stream.ReadAsync(buffer, 0, buffer.Length);
+                var count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
 
                 input.Add("0\r\n\r\n");
 
-                count = await stream.ReadAsync(buffer, 0, buffer.Length);
+                count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(0, count);
 
                 await body.StopAsync();
@@ -200,14 +204,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders { HeaderConnection = "upgrade" }, input.Frame);
-                var stream = new FrameRequestStream(Mock.Of<IHttpBodyControlFeature>());
+                var mockBodyControl = new Mock<IHttpBodyControlFeature>();
+                mockBodyControl.Setup(m => m.AllowSynchronousIO).Returns(true);
+                var stream = new FrameRequestStream(mockBodyControl.Object);
                 stream.StartAcceptingReads(body);
 
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
 
-                var count = await stream.ReadAsync(buffer, 0, buffer.Length);
+                var count = stream.Read(buffer, 0, buffer.Length);
                 Assert.Equal(5, count);
                 AssertASCII("Hello", new ArraySegment<byte>(buffer, 0, count));
 
