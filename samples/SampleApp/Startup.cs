@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace SampleApp
@@ -40,6 +41,12 @@ namespace SampleApp
                 Console.WriteLine("Unobserved exception: {0}", e.Exception);
             };
 
+            var configuration = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+            if (!ushort.TryParse(configuration["BASE_PORT"], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var basePort))
+                basePort = 5000;
+
             var host = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>
                 {
@@ -50,7 +57,7 @@ namespace SampleApp
                     // Run callbacks on the transport thread
                     options.ApplicationSchedulingMode = SchedulingMode.Inline;
 
-                    options.Listen(IPAddress.Loopback, 5000, listenOptions =>
+                    options.Listen(IPAddress.Loopback, basePort, listenOptions =>
                     {
                         // Uncomment the following to enable Nagle's algorithm for this endpoint.
                         //listenOptions.NoDelay = false;
@@ -58,7 +65,7 @@ namespace SampleApp
                         listenOptions.UseConnectionLogging();
                     });
 
-                    options.Listen(IPAddress.Loopback, 5001, listenOptions =>
+                    options.Listen(IPAddress.Loopback, basePort + 1, listenOptions =>
                     {
                         listenOptions.UseHttps("testCert.pfx", "testPassword");
                         listenOptions.UseConnectionLogging();
