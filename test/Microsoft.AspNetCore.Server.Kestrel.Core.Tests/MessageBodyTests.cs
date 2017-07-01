@@ -256,13 +256,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             using (var input = new TestInput())
             {
                 var body = MessageBody.For(httpVersion, new FrameRequestHeaders(), input.Frame);
-                var stream = new FrameRequestStream(Mock.Of<IHttpBodyControlFeature>());
+                var mockBodyControl = new Mock<IHttpBodyControlFeature>();
+                mockBodyControl.Setup(m => m.AllowSynchronousIO).Returns(true);
+                var stream = new FrameRequestStream(mockBodyControl.Object);
                 stream.StartAcceptingReads(body);
 
                 input.Add("Hello");
 
                 var buffer = new byte[1024];
-                Assert.Equal(0, await stream.ReadAsync(buffer, 0, buffer.Length));
+                Assert.Equal(0, stream.Read(buffer, 0, buffer.Length));
 
                 await body.StopAsync();
             }
