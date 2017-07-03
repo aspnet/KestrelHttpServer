@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private const int _semaphoreWaitTimeout = 2500;
 
         private readonly ITestOutputHelper _output;
-       
+
         public RequestTests(ITestOutputHelper output)
         {
             _output = output;
@@ -451,7 +451,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 connectionClosing.Release();
             }
 
-            Assert.False(loggedHigherThanDebug, "Logged event should have been higher than debug.");
+            Assert.False(loggedHigherThanDebug, "Logged event should not have been higher than debug.");
         }
 
         [Fact]
