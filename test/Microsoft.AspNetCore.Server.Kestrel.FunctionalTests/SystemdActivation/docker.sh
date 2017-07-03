@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# adding dotnet to the path. it is needed to run toolset csc.
+export PATH=$HOME/.dotnet:$PATH
+
 set -e
 
 scriptDir=$(dirname "${BASH_SOURCE[0]}")
