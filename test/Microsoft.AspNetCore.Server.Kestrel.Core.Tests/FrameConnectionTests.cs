@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
@@ -363,6 +364,81 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             mockLogger.Verify(
                 logger => logger.RequestBodyMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public void WriteTimingAbortsConnectionWhenWriteDoesNotCompleteWithMinimumDataRate()
+        {
+            var systemClock = new MockSystemClock();
+            var aborted = new ManualResetEventSlim();
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinResponseDataRate =
+                new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+            _frameConnectionContext.ServiceContext.SystemClock = systemClock;
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
+            _frameConnection.Frame.RequestAborted.Register(() =>
+            {
+                aborted.Set();
+            });
+
+            // Initialize timestamp
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Should complete within 4 seconds
+            _frameConnection.StartTimingWrite(400);
+
+            // Tick just past 4s
+            systemClock.UtcNow += TimeSpan.FromSeconds(4) + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            Assert.True(_frameConnection.TimedOut);
+            Assert.True(aborted.Wait(TimeSpan.FromSeconds(10)));
+        }
+
+        [Fact]
+        public void WriteTimingAbortsConnectionWhenSmallWriteDoesNotCompleteWithinGracePeriod()
+        {
+            var systemClock = new MockSystemClock();
+            var aborted = new ManualResetEventSlim();
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinResponseDataRate =
+                new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+            _frameConnectionContext.ServiceContext.SystemClock = systemClock;
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.CreateFrame(new DummyApplication(context => Task.CompletedTask), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
+            _frameConnection.Frame.RequestAborted.Register(() =>
+            {
+                aborted.Set();
+            });
+
+            // Initialize timestamp
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Should complete within 1 second, but grace period is 2 seconds
+            _frameConnection.StartTimingWrite(100);
+
+            // Tick just past 1s
+            systemClock.UtcNow += TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Still within grace period, not timed out
+            Assert.False(_frameConnection.TimedOut);
+
+            // Tick just past 2s
+            systemClock.UtcNow += TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            Assert.True(_frameConnection.TimedOut);
+            Assert.True(aborted.Wait(TimeSpan.FromSeconds(10)));
         }
     }
 }

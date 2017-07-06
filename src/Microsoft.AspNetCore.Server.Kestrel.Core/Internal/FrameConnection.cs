@@ -189,7 +189,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _frame.Abort(ex);
         }
 
-        private void AbortWithPendingWrite(Exception ex)
+        private void AbortWithOutputError(Exception ex)
         {
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
@@ -361,7 +361,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     if (_writeTimingElapsedTicks > _writeTimingTimeoutTicks && !Debugger.IsAttached)
                     {
                         TimedOut = true;
-                        AbortWithPendingWrite(new TimeoutException("The connection was aborted because the response could not be sent at the specified minimum data rate."));
+                        AbortWithOutputError(new TimeoutException("The connection was aborted because the response could not be sent at the specified minimum data rate."));
                     }
                 }
             }

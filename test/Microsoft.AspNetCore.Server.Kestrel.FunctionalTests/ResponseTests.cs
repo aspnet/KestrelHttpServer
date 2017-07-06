@@ -2371,7 +2371,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     // Synchronous writes now throw.
                     var ioEx = Assert.Throws<InvalidOperationException>(() => context.Response.Body.Write(Encoding.ASCII.GetBytes("What!?"), 0, 6));
-                    Assert.Equal("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+                    Assert.Equal(CoreStrings.SynchronousWritesDisallowed, ioEx.Message);
 
                     await context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello2"), 0, 6);
                 }
@@ -2415,7 +2415,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // Synchronous writes now throw.
                 var ioEx = Assert.Throws<InvalidOperationException>(() => context.Response.Body.Write(Encoding.ASCII.GetBytes("What!?"), 0, 6));
-                Assert.Equal("Synchronous operations are disallowed. Call WriteAsync or set AllowSynchronousIO to true instead.", ioEx.Message);
+                Assert.Equal(CoreStrings.SynchronousWritesDisallowed, ioEx.Message);
 
                 return context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello!"), 0, 6);
             }, testContext))
@@ -2433,6 +2433,53 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "Content-Length: 6",
                         "",
                         "Hello!");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
+        {
+            var testContext = new TestServiceContext
+            {
+                SystemClock = new SystemClock(),
+                ServerOptions =
+                {
+                    Limits =
+                    {
+                        MinResponseDataRate = new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.FromSeconds(2))
+                    }
+                }
+            };
+
+            var aborted = new ManualResetEventSlim();
+
+            using (var server = new TestServer(async context =>
+            {
+                context.RequestAborted.Register(() =>
+                {
+                    aborted.Set();
+                });
+
+                var chunk = new string('a', 64 * 1024);
+
+                while (true)
+                {
+                    await context.Response.WriteAsync(chunk, context.RequestAborted);
+                }
+            }, testContext))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    connection.Socket.ReceiveBufferSize = 1;
+
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "",
+                        "");
+
+                    Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
                 }
             }
         }
