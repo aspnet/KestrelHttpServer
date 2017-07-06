@@ -52,24 +52,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private OutputProducer CreateOutputProducer(PipeOptions pipeOptions)
         {
-            var pipe = _pipeFactory.Create(pipeOptions);
+            var responsePipe = _pipeFactory.Create(pipeOptions);
+            var outputPipe = _pipeFactory.Create(pipeOptions);
             var serviceContext = new TestServiceContext();
-            var frameContext = new FrameContext
-            {
-                ServiceContext = serviceContext,
-                ConnectionInformation = new MockConnectionInformation
-                {
-                    PipeFactory = _pipeFactory
-                }
-            };
-            var frame = new Frame<object>(null, frameContext);
             var socketOutput = new OutputProducer(
-                pipe,
+                responsePipe,
+                outputPipe,
                 "0",
-                Mock.Of<ITimeoutControl>(),
                 serviceContext.Log,
-                _pipeFactory,
-                serviceContext.ThreadPool);
+                Mock.Of<ITimeoutControl>());
 
             return socketOutput;
         }

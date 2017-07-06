@@ -97,17 +97,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
+            RequestBodyPipe = CreateRequestBodyPipe();
+            ResponsePipe = CreateResponsePipe();
+
             Output = new OutputProducer(
+                ResponsePipe,
                 frameContext.Output,
                 frameContext.ConnectionId,
-                TimeoutControl,
                 frameContext.ServiceContext.Log,
-                frameContext.ConnectionInformation.PipeFactory,
-                frameContext.ServiceContext.ThreadPool);
-            RequestBodyPipe = CreateRequestBodyPipe();
+                TimeoutControl);
         }
 
         public IPipe RequestBodyPipe { get; }
+        public IPipe ResponsePipe { get; }
 
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
         public IConnectionInformation ConnectionInformation => _frameContext.ConnectionInformation;
@@ -1387,6 +1389,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 ReaderScheduler = ServiceContext.ThreadPool,
                 WriterScheduler = InlineScheduler.Default,
+                MaximumSizeHigh = 1,
+                MaximumSizeLow = 1
+            });
+
+        private IPipe CreateResponsePipe()
+            => ConnectionInformation.PipeFactory.Create(new PipeOptions
+            {
+                ReaderScheduler = ServiceContext.ThreadPool,
+                WriterScheduler = ServiceContext.ThreadPool,
                 MaximumSizeHigh = 1,
                 MaximumSizeLow = 1
             });

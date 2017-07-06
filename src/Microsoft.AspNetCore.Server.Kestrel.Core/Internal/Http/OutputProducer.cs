@@ -23,10 +23,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private bool _started = false;
         private bool _completed = false;
 
-        private readonly IPipe _pipe;
-        private readonly IPipe _innerPipe;
+        private readonly IPipe _responsePipe;
+        private readonly IPipe _outputPipe;
         private readonly object _pipeLock = new object();
-        private bool _innerPipeWriterCompleted;
+        private bool _responsePipeWriterCompleted;
 
         // https://github.com/dotnet/corefxlab/issues/1334
         // Pipelines don't support multiple awaiters on flush
@@ -36,27 +36,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private Action _flushCompleted;
 
         public OutputProducer(
-            IPipe pipe,
+            IPipe responsePipe,
+            IPipe outputPipe,
             string connectionId,
-            ITimeoutControl timeoutControl,
             IKestrelTrace log,
-            PipeFactory pipeFactory,
-            IScheduler writerScheduler)
+            ITimeoutControl timeoutControl)
         {
-            _pipe = pipe;
+            _responsePipe = responsePipe;
+            _outputPipe = outputPipe;
             _connectionId = connectionId;
             _timeoutControl = timeoutControl;
             _log = log;
             _flushCompleted = OnFlushCompleted;
 
-            _innerPipe = pipeFactory.Create(new PipeOptions
-            {
-                ReaderScheduler = InlineScheduler.Default,
-                WriterScheduler = writerScheduler,
-                MaximumSizeHigh = 1,
-                MaximumSizeLow = 1
-            });
-            _innerPipe.Reader.OnWriterCompleted(OnInnerPipeWriterCompleted, this);
+            _responsePipe.Reader.OnWriterCompleted(OnInnerPipeWriterCompleted, this);
         }
 
         public Task WriteAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken))
@@ -85,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return;
                 }
 
-                var buffer = _innerPipe.Writer.Alloc(1);
+                var buffer = _responsePipe.Writer.Alloc(1);
                 callback(buffer, state);
                 buffer.Commit();
             }
@@ -104,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 _log.ConnectionDisconnect(_connectionId);
                 _completed = true;
-                _innerPipe.Writer.Complete();
+                _responsePipe.Writer.Complete();
             }
         }
 
@@ -122,8 +115,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _log.ConnectionDisconnect(_connectionId);
                 _completed = true;
 
-                _innerPipe.Reader.CancelPendingRead();
-                _innerPipe.Writer.Complete(error);
+                _responsePipe.Reader.CancelPendingRead();
+                _responsePipe.Writer.Complete(error);
             }
         }
 
@@ -143,7 +136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return Task.CompletedTask;
                 }
 
-                writableBuffer = _innerPipe.Writer.Alloc(1);
+                writableBuffer = _responsePipe.Writer.Alloc(1);
                 var writer = new WritableBufferWriter(writableBuffer);
                 if (buffer.Count > 0)
                 {
@@ -218,8 +211,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             lock (outputProducer._pipeLock)
             {
-                outputProducer._innerPipeWriterCompleted = true;
-                outputProducer._pipe.Writer.Complete(ex);
+                outputProducer._responsePipeWriterCompleted = true;
+                outputProducer._outputPipe.Writer.Complete(ex);
             }
         }
 
@@ -231,7 +224,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 while (true)
                 {
-                    var result = await _innerPipe.Reader.ReadAsync();
+                    var result = await _responsePipe.Reader.ReadAsync();
                     var readableBuffer = result.Buffer;
 
                     try
@@ -247,12 +240,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                             lock (_pipeLock)
                             {
-                                if (_innerPipeWriterCompleted)
+                                if (_responsePipeWriterCompleted)
                                 {
                                     break;
                                 }
 
-                                writableBuffer = _pipe.Writer.Alloc(1);
+                                writableBuffer = _outputPipe.Writer.Alloc(1);
 
                                 if (readableBuffer.IsSingleSpan)
                                 {
@@ -288,7 +281,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     }
                     finally
                     {
-                        _innerPipe.Reader.Advance(readableBuffer.End);
+                        _responsePipe.Reader.Advance(readableBuffer.End);
                     }
                 }
             }
@@ -298,7 +291,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
             finally
             {
-                _innerPipe.Reader.Complete(error);
+                _responsePipe.Reader.Complete(error);
             }
         }
     }
