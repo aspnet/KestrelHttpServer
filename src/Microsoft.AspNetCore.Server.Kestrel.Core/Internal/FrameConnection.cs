@@ -443,7 +443,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         minResponseDataRate.GracePeriod.Ticks,
                         TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks);
                     var timeoutTimestamp = (_writeTimingTimeouts.Count == 0
-                            ?_lastTimestamp
+                            ? _lastTimestamp
                             : _writeTimingTimeouts.Last()) + timeoutTicks;
 
                     // Add Heartbeat.Interval since this can be called right before the next heartbeat.
