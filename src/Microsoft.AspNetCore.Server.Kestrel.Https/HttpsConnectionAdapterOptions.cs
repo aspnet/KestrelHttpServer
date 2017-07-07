@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         public Func<X509Certificate2, X509Chain, SslPolicyErrors, bool> ClientCertificateValidation { get; set; }
 
         /// <summary>
-        /// Specifies allowable SSL protocols to be used for authentication. Defaults to either <see cref="SslProtocols.Tls12" /> or <see cref="SslProtocols.Tls11"/>.
+        /// Specifies allowable SSL protocols. Defaults to <see cref="SslProtocols.Tls12" /> and <see cref="SslProtocols.Tls11"/>.
         /// </summary>
         public SslProtocols SslProtocols { get; set; }
 
