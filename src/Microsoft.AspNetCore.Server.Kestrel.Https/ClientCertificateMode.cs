@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         NoCertificate,
 
         /// <summary>
-        /// A client certificate will be requested, however, authentication will not fail if a certificate is not provided by the client.
+        /// A client certificate will be requested; however, authentication will not fail if a certificate is not provided by the client.
         /// </summary>
         AllowCertificate,
 
