@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
@@ -2440,6 +2441,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
+            var chunkSize = 64 * 1024;
+            var chunks = 128;
+
             var testContext = new TestServiceContext
             {
                 SystemClock = new SystemClock(),
@@ -2461,11 +2465,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     aborted.Set();
                 });
 
-                var chunk = new string('a', 64 * 1024);
+                context.Response.ContentLength = chunks * chunkSize;
 
-                for (var i = 0; i < 128; i++)
+                for (var i = 0; i < chunks; i++)
                 {
-                    await context.Response.WriteAsync(chunk, context.RequestAborted);
+                    await context.Response.WriteAsync(new string('a', chunkSize), context.RequestAborted);
                 }
             }, testContext))
             {
@@ -2480,6 +2484,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
+
+                    await connection.Receive(
+                        "HTTP/1.1 200 OK",
+                        "");
+                    await connection.ReceiveStartsWith("Date: ");
+                    await connection.Receive(
+                        $"Content-Length: {chunks * chunkSize}",
+                        "",
+                        "");
+
+                    await Assert.ThrowsAsync<EqualException>(async () => await connection.Receive(
+                        new string('a', chunks * chunkSize)));
 
                     await Assert.ThrowsAsync<IOException>(async () =>
                         await connection.Send(
