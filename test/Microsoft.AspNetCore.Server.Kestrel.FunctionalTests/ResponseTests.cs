@@ -2495,14 +2495,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     await Assert.ThrowsAsync<EqualException>(async () => await connection.Receive(
-                        new string('a', chunks * chunkSize)));
-
-                    await Assert.ThrowsAsync<IOException>(async () =>
-                        await connection.Send(
-                            "GET / HTTP/1.1",
-                            "Host:",
-                            "",
-                            ""));
+                        new string('a', chunks * chunkSize)).TimeoutAfter(TimeSpan.FromSeconds(10)));
                 }
             }
         }
