@@ -9,8 +9,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks
     {
         public bool TimedOut { get; }
 
-        public bool WriteTimedOut { get; }
-
         public void CancelTimeout()
         {
         }
