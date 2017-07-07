@@ -33,11 +33,7 @@ namespace Microsoft.AspNetCore.Testing
             HttpParserFactory = frameAdapter => new HttpParser<FrameAdapter>(frameAdapter.Frame.ServiceContext.Log.IsEnabled(LogLevel.Information));
             ServerOptions = new KestrelServerOptions
             {
-                AddServerHeader = false,
-                Limits =
-                {
-                    MinResponseDataRate = new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue)
-                }
+                AddServerHeader = false
             };
         }
 
