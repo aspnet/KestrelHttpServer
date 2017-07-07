@@ -413,7 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// <summary>
         /// Immediate kill the connection and poison the request and response streams.
         /// </summary>
-        public void Abort(Exception error, bool abortOutputWithError = false)
+        public void Abort(Exception error)
         {
             if (Interlocked.Exchange(ref _requestAborted, 1) == 0)
             {
@@ -421,7 +421,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 _frameStreams?.Abort(error);
 
-                Output.Abort(abortOutputWithError ? error : null);
+                Output.Abort(error);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
                 ServiceContext.ThreadPool.UnsafeRun(state => ((Frame)state).CancelRequestAbortedToken(), this);

@@ -38,7 +38,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
             while (true)
             {
-                var result = await _pipe.ReadAsync();
+                ReadResult result;
+
+                try
+                {
+                    result = await _pipe.ReadAsync();
+                }
+                catch
+                {
+                    // Handled in OnWriterCompleted
+                    return;
+                }
+
                 var buffer = result.Buffer;
                 var consumed = buffer.End;
 
@@ -90,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private static void OnWriterCompleted(Exception ex, object state)
         {
-            // Cut off writes if the writer is completed with an error.
+            // Cut off writes if the writer is completed with an error. If a write request is pending, this will cancel it.
             if (ex != null)
             {
                 var libuvOutputConsumer = (LibuvOutputConsumer)state;
