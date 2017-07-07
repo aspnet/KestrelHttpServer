@@ -39,6 +39,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
             => string.Format(CultureInfo.CurrentCulture, GetString("InvalidServerCertificateEku", "thumbprint"), thumbprint);
 
         /// <summary>
+        /// Certificate {thumbprint} cannot be used as an SSL server certificate. It has a Key Usage extension but the usages do not include digitalSignature and keyEncipherment.
+        /// </summary>
+        internal static string InvalidServerCertificateKeyUsages
+        {
+            get => GetString("InvalidServerCertificateKeyUsages");
+        }
+
+        /// <summary>
+        /// Certificate {thumbprint} cannot be used as an SSL server certificate. It has a Key Usage extension but the usages do not include digitalSignature and keyEncipherment.
+        /// </summary>
+        internal static string FormatInvalidServerCertificateKeyUsages(object thumbprint)
+            => string.Format(CultureInfo.CurrentCulture, GetString("InvalidServerCertificateKeyUsages", "thumbprint"), thumbprint);
+
+        /// <summary>
         /// The server certificate parameter is required.
         /// </summary>
         internal static string ServiceCertificateRequired

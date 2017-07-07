@@ -27,7 +27,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         /// Specifies the server certificate used to authenticate HTTPS connections.
         /// </para>
         /// <para>
-        /// If the server certificate has an Extended Key Usage extension, the usages must include Server Authentication (OID 1.3.6.1.5.5.7.3.1).
+        /// If the server certificate has an <seealso cref="X509EnhancedKeyUsageExtension"/> extension, 
+        /// the usages must include Server Authentication (OID 1.3.6.1.5.5.7.3.1).
+        /// </para>
+        /// <para>
+        /// If the server certificate has an <seealso cref="X509KeyUsageExtension"/> extension, 
+        /// the usages must include <see cref="X509KeyUsageFlags.DigitalSignature"/> and <see cref="X509KeyUsageFlags.KeyEncipherment"/>.
         /// </para>
         /// </summary>
         public X509Certificate2 ServerCertificate { get; set; }

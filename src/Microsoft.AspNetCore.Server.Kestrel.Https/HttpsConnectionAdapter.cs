@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net.Security;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
@@ -132,7 +133,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
 
         private static void EnsureCertificateIsAllowedForServerAuth(X509Certificate2 certificate)
         {
-            /* If the Extended Key Usage extension is included, then we check that the serverAuth usage is included. (http://oid-info.com/get/1.3.6.1.5.5.7.3.1)
+            /* Key Usage:
+             * 
+             * If the Key Usage extension is included, then we assert that the digitalSignature and keyEncipherment are specified.
+             * If the Key Usage extension is not included, then we assume the certificate is allowed for all usages.
+             * 
+             * From https://tools.ietf.org/html/rfc3280#section-4.2.1.3 "Certificate Extensions: Key Usage"
+             * 
+             * The key usage extension defines the purpose (e.g., encipherment,
+             * signature, certificate signing) of the key contained in the
+             * certificate.  The usage restriction might be employed when a key that
+             * could be used for more than one operation is to be restricted.
+             *
+             * Extended Key Usage:
+             * 
+             * If the Extended Key Usage extension is included, then we assert that the serverAuth usage is included. (http://oid-info.com/get/1.3.6.1.5.5.7.3.1)
              * If the Extended Key Usage extension is not included, then we assume the certificate is allowed for all usages.
              * 
              * See also https://blogs.msdn.microsoft.com/kaushal/2012/02/17/client-certificates-vs-server-certificates/
@@ -145,25 +160,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
              * as long as the intended purpose is present.  Certificate using
              * applications MAY require that a particular purpose be indicated in
              * order for the certificate to be acceptable to that application.
+             * 
+             *  If a certificate contains both a key usage extension and an extended
+             *  key usage extension, then both extensions MUST be processed
+             *  independently and the certificate MUST only be used for a purpose
+             *  consistent with both extensions.  If there is no purpose consistent
+             *  with both extensions, then the certificate MUST NOT be used for any
+             *  purpose.
              */
 
-            var hasEkuExtension = false;
-
-            foreach (var extension in certificate.Extensions.OfType<X509EnhancedKeyUsageExtension>())
+            foreach (var extension in certificate.Extensions)
             {
-                hasEkuExtension = true;
-                foreach (var oid in extension.EnhancedKeyUsages)
+                if (extension is X509EnhancedKeyUsageExtension eku)
                 {
-                    if (oid.Value.Equals(ServerAuthenticationOid, StringComparison.Ordinal))
+                    if (!eku.EnhancedKeyUsages.OfType<Oid>().Any(oid => oid.Value.Equals(ServerAuthenticationOid, StringComparison.Ordinal)))
                     {
-                        return;
+                        throw new CryptographicException(HttpsStrings.FormatInvalidServerCertificateEku(certificate.Thumbprint));
                     }
                 }
-            }
-
-            if (hasEkuExtension)
-            {
-                throw new InvalidOperationException(HttpsStrings.FormatInvalidServerCertificateEku(certificate.Thumbprint));
+                else if (extension is X509KeyUsageExtension ku)
+                {
+                    const X509KeyUsageFlags mask = X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment;
+                    if ((ku.KeyUsages & mask) != mask)
+                    {
+                        throw new CryptographicException(HttpsStrings.FormatInvalidServerCertificateKeyUsages(certificate.Thumbprint));
+                    }
+                }
             }
         }
 
