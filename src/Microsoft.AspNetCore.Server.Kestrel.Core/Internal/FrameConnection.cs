@@ -218,7 +218,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
             TimedOut = true;
-            _readTimingEnabled = false;
             _frame.Stop();
         }
 
@@ -359,7 +358,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 if (_writeTimingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
                     TimedOut = true;
-                    AbortWithOutputError(new TimeoutException("The connection was aborted because the response could not be sent at the specified minimum data rate."));
+                    AbortWithOutputError(new TimeoutException("The connection was aborted because the response was not received at the specified minimum data rate."));
                 }
             }
         }
@@ -445,11 +444,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                     if (_writeTimingWrites == 0)
                     {
-                        _writeTimingTimeoutTimestamp = _lastTimestamp;
+                        // Add Heartbeat.Interval since this can be called right before the next heartbeat.
+                        _writeTimingTimeoutTimestamp = _lastTimestamp + Heartbeat.Interval.Ticks;
                     }
 
-                    // Add Heartbeat.Interval since this can be called right before the next heartbeat.
-                    _writeTimingTimeoutTimestamp += timeoutTicks + Heartbeat.Interval.Ticks;
+                    _writeTimingTimeoutTimestamp += timeoutTicks;
                     _writeTimingWrites++;
                 }
             }

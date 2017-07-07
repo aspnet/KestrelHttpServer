@@ -522,8 +522,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Complete the first write, this should have no effect on the timeout
             _frameConnection.StopTimingWrite();
 
-            // Tick just past 8s plus Heartbeat.Interval, when the second write should have completed
-            systemClock.UtcNow += TimeSpan.FromSeconds(3) + Heartbeat.Interval + TimeSpan.FromTicks(1);
+            // Tick just past +3s, when the second write should have completed
+            systemClock.UtcNow += TimeSpan.FromSeconds(3) + TimeSpan.FromTicks(1);
             _frameConnection.Tick(systemClock.UtcNow);
 
             Assert.True(_frameConnection.TimedOut);
