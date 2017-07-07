@@ -4,12 +4,12 @@
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
 {
     /// <summary>
-    /// Feature to set the minimum data rate at which the the request body should be received.
+    /// Feature to set the minimum data rate at which the the request body must be sent by the client.
     /// </summary>
     public interface IHttpMinRequestBodyDataRateFeature
     {
         /// <summary>
-        /// The minimum data rate in bytes/second at which the request body should be received.
+        /// The minimum data rate in bytes/second at which the request body must be sent by the client.
         /// Setting this property to null indicates no minimum data rate should be enforced.
         /// This limit has no effect on upgraded connections which are always unlimited.
         /// </summary>
