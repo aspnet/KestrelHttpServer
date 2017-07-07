@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _connectionId = connectionId;
             _log = log;
 
-            _pipe.OnWriterCompleted(DisposeSocket, this);
+            _pipe.OnWriterCompleted(OnWriterCompleted, this);
         }
 
         public async Task WriteOutputAsync()
@@ -88,11 +88,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        private static void DisposeSocket(Exception ex, object state)
+        private static void OnWriterCompleted(Exception ex, object state)
         {
-            // If the pipe writer was closed with a TimeoutException, a write timed out.
-            // Disposing the socket will cancel the pending UvWriteReq.
-            if (ex is TimeoutException)
+            // Cut off writes if the writer is completed with an error.
+            if (ex != null)
             {
                 var libuvOutputConsumer = (LibuvOutputConsumer)state;
                 libuvOutputConsumer._socket.Dispose();
