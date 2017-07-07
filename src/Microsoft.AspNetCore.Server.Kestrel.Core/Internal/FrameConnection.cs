@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -38,6 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private object _writeTimingLock = new object();
         private readonly Queue<long> _writeTimingTimeouts = new Queue<long>();
+        private long _writeTimingLastTimeoutTimestamp;
 
         private Task _lifetimeTask;
 
@@ -442,14 +442,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     var timeoutTicks = Math.Max(
                         minResponseDataRate.GracePeriod.Ticks,
                         TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks);
-                    var timeoutTimestamp = (_writeTimingTimeouts.Count == 0
-                            ? _lastTimestamp
-                            : _writeTimingTimeouts.Last()) + timeoutTicks;
+
+                    if (_writeTimingTimeouts.Count == 0)
+                    {
+                        _writeTimingLastTimeoutTimestamp = _lastTimestamp;
+                    }
 
                     // Add Heartbeat.Interval since this can be called right before the next heartbeat.
-                    timeoutTimestamp += Heartbeat.Interval.Ticks;
+                    _writeTimingLastTimeoutTimestamp += timeoutTicks + Heartbeat.Interval.Ticks;
 
-                    _writeTimingTimeouts.Enqueue(timeoutTimestamp);
+                    _writeTimingTimeouts.Enqueue(_writeTimingLastTimeoutTimestamp);
                 }
             }
         }
