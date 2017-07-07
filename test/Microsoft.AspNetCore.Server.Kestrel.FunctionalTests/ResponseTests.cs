@@ -2463,7 +2463,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 var chunk = new string('a', 64 * 1024);
 
-                while (true)
+                for (var i = 0; i < 128; i++)
                 {
                     await context.Response.WriteAsync(chunk, context.RequestAborted);
                 }
@@ -2480,6 +2480,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
+
+                    await Assert.ThrowsAsync<IOException>(async () =>
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            ""));
                 }
             }
         }
