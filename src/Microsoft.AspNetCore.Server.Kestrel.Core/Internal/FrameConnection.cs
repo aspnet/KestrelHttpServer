@@ -36,8 +36,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private long _readTimingBytesRead;
 
         private object _writeTimingLock = new object();
-        private readonly Queue<long> _writeTimingTimeouts = new Queue<long>();
-        private long _writeTimingLastTimeoutTimestamp;
+        private int _writeTimingWrites;
+        private long _writeTimingTimeoutTimestamp;
 
         private Task _lifetimeTask;
 
@@ -356,13 +356,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             lock (_writeTimingLock)
             {
-                if (_writeTimingTimeouts.Count > 0)
+                if (_writeTimingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
-                    if (timestamp > _writeTimingTimeouts.Peek() && !Debugger.IsAttached)
-                    {
-                        TimedOut = true;
-                        AbortWithOutputError(new TimeoutException("The connection was aborted because the response could not be sent at the specified minimum data rate."));
-                    }
+                    TimedOut = true;
+                    AbortWithOutputError(new TimeoutException("The connection was aborted because the response could not be sent at the specified minimum data rate."));
                 }
             }
         }
@@ -446,15 +443,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         minResponseDataRate.GracePeriod.Ticks,
                         TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks);
 
-                    if (_writeTimingTimeouts.Count == 0)
+                    if (_writeTimingWrites == 0)
                     {
-                        _writeTimingLastTimeoutTimestamp = _lastTimestamp;
+                        _writeTimingTimeoutTimestamp = _lastTimestamp;
                     }
 
                     // Add Heartbeat.Interval since this can be called right before the next heartbeat.
-                    _writeTimingLastTimeoutTimestamp += timeoutTicks + Heartbeat.Interval.Ticks;
-
-                    _writeTimingTimeouts.Enqueue(_writeTimingLastTimeoutTimestamp);
+                    _writeTimingTimeoutTimestamp += timeoutTicks + Heartbeat.Interval.Ticks;
+                    _writeTimingWrites++;
                 }
             }
         }
@@ -463,7 +459,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             lock (_writeTimingLock)
             {
-                _writeTimingTimeouts.Dequeue();
+                _writeTimingWrites--;
             }
         }
     }

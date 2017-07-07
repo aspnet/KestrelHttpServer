@@ -482,5 +482,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.True(_frameConnection.TimedOut);
             Assert.True(aborted.Wait(TimeSpan.FromSeconds(10)));
         }
+
+        [Fact]
+        public void WriteTimingTimeoutPushedOnConcurrentWrite()
+        {
+            var systemClock = new MockSystemClock();
+            var aborted = new ManualResetEventSlim();
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinResponseDataRate =
+                new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+            _frameConnectionContext.ServiceContext.SystemClock = systemClock;
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.CreateFrame(new DummyApplication(), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
+            _frameConnection.Frame.RequestAborted.Register(() =>
+            {
+                aborted.Set();
+            });
+
+            // Initialize timestamp
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Should complete within 5 seconds, but the timeout is adjusted by adding Heartbeat.Interval
+            _frameConnection.StartTimingWrite(500);
+
+            // Start a concurrent write after 3 seconds, which should complete within 3 seconds (adjusted by Heartbeat.Interval)
+            _frameConnection.StartTimingWrite(300);
+
+            // Tick just past 5s plus Heartbeat.Interval, when the first write should have completed
+            systemClock.UtcNow += TimeSpan.FromSeconds(5) + Heartbeat.Interval + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Not timed out because the timeout was pushed by the second write
+            Assert.False(_frameConnection.TimedOut);
+
+            // Complete the first write, this should have no effect on the timeout
+            _frameConnection.StopTimingWrite();
+
+            // Tick just past 8s plus Heartbeat.Interval, when the second write should have completed
+            systemClock.UtcNow += TimeSpan.FromSeconds(3) + Heartbeat.Interval + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            Assert.True(_frameConnection.TimedOut);
+            Assert.True(aborted.Wait(TimeSpan.FromSeconds(10)));
+        }
     }
 }
