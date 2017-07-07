@@ -367,6 +367,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public void ReadTimingNotEnforcedWhenTimeoutIsSet()
+        {
+            var systemClock = new MockSystemClock();
+            var timeout = TimeSpan.FromSeconds(5);
+
+            _frameConnectionContext.ServiceContext.ServerOptions.Limits.MinRequestBodyDataRate =
+                new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+            _frameConnectionContext.ServiceContext.SystemClock = systemClock;
+
+            var mockLogger = new Mock<IKestrelTrace>();
+            _frameConnectionContext.ServiceContext.Log = mockLogger.Object;
+
+            _frameConnection.CreateFrame(new DummyApplication(), _frameConnectionContext.Input.Reader, _frameConnectionContext.Output);
+            _frameConnection.Frame.Reset();
+
+            var startTime = systemClock.UtcNow;
+
+            // Initialize timestamp
+            _frameConnection.Tick(startTime);
+
+            _frameConnection.StartTimingReads();
+
+            _frameConnection.SetTimeout(timeout.Ticks, TimeoutAction.CloseConnection);
+
+            // Tick beyond grace period with low data rate
+            systemClock.UtcNow += TimeSpan.FromSeconds(3);
+            _frameConnection.BytesRead(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Not timed out
+            Assert.False(_frameConnection.TimedOut);
+
+            // Tick just past timeout period, adjusted by Heartbeat.Interval
+            systemClock.UtcNow = startTime + timeout + Heartbeat.Interval + TimeSpan.FromTicks(1);
+            _frameConnection.Tick(systemClock.UtcNow);
+
+            // Timed out
+            Assert.True(_frameConnection.TimedOut);
+        }
+
+        [Fact]
         public void WriteTimingAbortsConnectionWhenWriteDoesNotCompleteWithMinimumDataRate()
         {
             var systemClock = new MockSystemClock();

@@ -274,8 +274,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             var timestamp = now.Ticks;
 
             CheckForTimeout(timestamp);
-            CheckForReadTimeout(timestamp);
-            CheckForWriteTimeout(timestamp);
+            CheckForReadDataRateTimeout(timestamp);
+            CheckForWriteDataRateTimeout(timestamp);
 
             Interlocked.Exchange(ref _lastTimestamp, timestamp);
         }
@@ -304,9 +304,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        private void CheckForReadTimeout(long timestamp)
+        private void CheckForReadDataRateTimeout(long timestamp)
         {
-            if (TimedOut || _timeoutTimestamp < long.MaxValue)
+            // The only time when both a timeout is set and the read data rate could be enforced is
+            // when draining the request body. Since there's already a (short) timeout set for draining,
+            // it's safe to not check the data rate at this point.
+            if (TimedOut || Interlocked.Read(ref _timeoutTimestamp) != long.MaxValue)
             {
                 return;
             }
@@ -344,7 +347,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        private void CheckForWriteTimeout(long timestamp)
+        private void CheckForWriteDataRateTimeout(long timestamp)
         {
             if (TimedOut)
             {
