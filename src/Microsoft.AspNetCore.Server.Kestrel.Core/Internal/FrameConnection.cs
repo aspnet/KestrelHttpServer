@@ -350,7 +350,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 if (_writeTimingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
                     TimedOut = true;
-                    Abort(new TimeoutException("The connection was aborted because the response was not received at the specified minimum data rate."));
+                    Log.ResponseMininumDataRateNotSatisfied(_frame.ConnectionIdFeature, _frame.TraceIdentifier);
+                    Abort(new TimeoutException());
                 }
             }
         }

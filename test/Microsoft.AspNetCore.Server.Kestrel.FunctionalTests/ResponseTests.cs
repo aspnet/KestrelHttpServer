@@ -2444,8 +2444,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var chunkSize = 64 * 1024;
             var chunks = 128;
 
+            var messageLogged = new ManualResetEventSlim();
+
+            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            mockKestrelTrace
+                .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback(() => messageLogged.Set());
+
             var testContext = new TestServiceContext
             {
+                Log = mockKestrelTrace.Object,
                 SystemClock = new SystemClock(),
                 ServerOptions =
                 {
@@ -2496,6 +2504,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     await Assert.ThrowsAsync<EqualException>(async () => await connection.Receive(
                         new string('a', chunks * chunkSize)).TimeoutAfter(TimeSpan.FromSeconds(10)));
+
+                    Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
                 }
             }
         }
