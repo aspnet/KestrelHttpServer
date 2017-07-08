@@ -78,8 +78,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
                 // Assert
                 await writeTask.TimeoutAfter(TimeSpan.FromSeconds(5));
-
-                await _mockLibuv.OnPostTask;
             }
         }
 
