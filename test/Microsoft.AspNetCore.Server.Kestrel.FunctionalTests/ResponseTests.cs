@@ -7,7 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +22,8 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
+using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -2503,9 +2508,85 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     await Assert.ThrowsAsync<EqualException>(async () => await connection.Receive(
-                        new string('a', chunks * chunkSize)).TimeoutAfter(TimeSpan.FromSeconds(10)));
+                        new string('a', chunks * chunkSize)).TimeoutAfter(TimeSpan.FromSeconds(30)));
 
                     Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
+                }
+            }
+        }
+
+        [Fact]
+        public async Task HttpsConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
+        {
+            const int chunkSize = 64 * 1024;
+            const int chunks = 128;
+
+            var certificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
+
+            var messageLogged = new ManualResetEventSlim();
+            var aborted = new ManualResetEventSlim();
+
+            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            mockKestrelTrace
+                .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback(() => messageLogged.Set());
+
+            var testContext = new TestServiceContext
+            {
+                Log = mockKestrelTrace.Object,
+                SystemClock = new SystemClock(),
+                ServerOptions =
+                {
+                    Limits =
+                    {
+                        MinResponseDataRate = new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.FromSeconds(2))
+                    }
+                }
+            };
+
+            var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
+            {
+                ConnectionAdapters =
+                {
+                    new HttpsConnectionAdapter(new HttpsConnectionAdapterOptions { ServerCertificate = certificate })
+                }
+            };
+
+            using (var server = new TestServer(async context =>
+            {
+                context.RequestAborted.Register(() =>
+                {
+                    aborted.Set();
+                });
+
+                context.Response.ContentLength = chunks * chunkSize;
+
+                for (var i = 0; i < chunks; i++)
+                {
+                    await context.Response.WriteAsync(new string('a', chunkSize), context.RequestAborted);
+                }
+            }, testContext, listenOptions))
+            {
+                using (var client = new TcpClient())
+                {
+                    await client.ConnectAsync(IPAddress.Loopback, server.Port);
+
+                    using (var sslStream = new SslStream(client.GetStream(), false, (sender, cert, chain, errors) => true, null))
+                    {
+                        await sslStream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
+
+                        var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
+                        await sslStream.WriteAsync(request, 0, request.Length);
+
+                        Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
+
+                        using (var reader = new StreamReader(sslStream, encoding: Encoding.ASCII, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: false))
+                        {
+                            await reader.ReadToEndAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
+                        }
+
+                        Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
+                    }
                 }
             }
         }
