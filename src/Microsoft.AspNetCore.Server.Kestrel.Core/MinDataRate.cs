@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         {
             if (bytesPerSecond <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(bytesPerSecond), CoreStrings.PositiveNumberRequired);
+                throw new ArgumentOutOfRangeException(nameof(bytesPerSecond), CoreStrings.PositiveNumberOrNullMinDataRateRequired);
             }
 
             if (gracePeriod <= Heartbeat.Interval)

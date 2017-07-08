@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinDataRate(bytesPerSecond: value, gracePeriod: TimeSpan.MaxValue));
 
             Assert.Equal("bytesPerSecond", exception.ParamName);
-            Assert.StartsWith(CoreStrings.PositiveNumberRequired, exception.Message);
+            Assert.StartsWith(CoreStrings.PositiveNumberOrNullMinDataRateRequired, exception.Message);
         }
 
         [Theory]
