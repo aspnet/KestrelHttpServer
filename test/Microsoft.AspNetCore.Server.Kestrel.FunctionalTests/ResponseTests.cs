@@ -2488,8 +2488,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    connection.Socket.ReceiveBufferSize = 1;
-
                     await connection.Send(
                         "GET / HTTP/1.1",
                         "Host:",
@@ -2507,8 +2505,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
 
-                    await Assert.ThrowsAsync<EqualException>(async () => await connection.Receive(
-                        new string('a', chunks * chunkSize)).TimeoutAfter(TimeSpan.FromSeconds(30)));
+                    await Assert.ThrowsAsync<EqualException>(async () => await connection.ReceiveForcedEnd(
+                        new string('a', chunks * chunkSize)));
 
                     Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
                 }
