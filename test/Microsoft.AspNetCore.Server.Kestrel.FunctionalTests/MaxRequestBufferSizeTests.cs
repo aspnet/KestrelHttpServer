@@ -32,7 +32,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private readonly Action<ILoggingBuilder> _configureLoggingDelegate;
 
-        public MaxRequestBufferSizeTests(ITestOutputHelper output) =>_configureLoggingDelegate = builder => builder.AddXunit(output);
+        public MaxRequestBufferSizeTests(ITestOutputHelper output)
+        {
+            _configureLoggingDelegate = builder => builder.AddXunit(output);
+        }
 
         public static IEnumerable<object[]> LargeUploadData
         {
