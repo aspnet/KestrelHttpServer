@@ -529,5 +529,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.True(_frameConnection.TimedOut);
             Assert.True(aborted.Wait(TimeSpan.FromSeconds(10)));
         }
+
+        [Fact]
+        public async Task StartRequestProcessingCreatesLogScopeWithConnectionId()
+        {
+            await _frameConnection.ProcessRequestsAsync(new DummyApplication());
+        }
     }
 }
