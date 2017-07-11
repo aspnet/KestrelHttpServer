@@ -25,7 +25,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private readonly ITransportFactory _transportFactory;
 
         private bool _hasStarted;
-        private int _stopped;
+        private int _stopping;
+        private readonly TaskCompletionSource<object> _stoppedTcs = new TaskCompletionSource<object>();
 
         public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory)
             : this(transportFactory, CreateServiceContext(options, loggerFactory))
@@ -154,8 +155,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         // Graceful shutdown if possible
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            if (Interlocked.Exchange(ref _stopped, 1) == 1)
+            if (Interlocked.Exchange(ref _stopping, 1) == 1)
             {
+                await _stoppedTcs.Task;
                 return;
             }
 
@@ -183,6 +185,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
             _heartbeat.Dispose();
+
+            _stoppedTcs.TrySetResult(null);
         }
 
         // Ungraceful shutdown
