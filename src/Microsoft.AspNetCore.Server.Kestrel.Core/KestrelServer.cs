@@ -157,34 +157,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         {
             if (Interlocked.Exchange(ref _stopping, 1) == 1)
             {
-                await _stoppedTcs.Task;
+                await _stoppedTcs.Task.ConfigureAwait(false);
                 return;
             }
 
-            var tasks = new Task[_transports.Count];
-            for (int i = 0; i < _transports.Count; i++)
+            try
             {
-                tasks[i] = _transports[i].UnbindAsync();
-            }
-            await Task.WhenAll(tasks).ConfigureAwait(false);
-
-            if (!await ConnectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
-            {
-                Trace.NotAllConnectionsClosedGracefully();
-
-                if (!await ConnectionManager.AbortAllConnectionsAsync().ConfigureAwait(false))
+                var tasks = new Task[_transports.Count];
+                for (int i = 0; i < _transports.Count; i++)
                 {
-                    Trace.NotAllConnectionsAborted();
+                    tasks[i] = _transports[i].UnbindAsync();
                 }
-            }
+                await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            for (int i = 0; i < _transports.Count; i++)
+                if (!await ConnectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    Trace.NotAllConnectionsClosedGracefully();
+
+                    if (!await ConnectionManager.AbortAllConnectionsAsync().ConfigureAwait(false))
+                    {
+                        Trace.NotAllConnectionsAborted();
+                    }
+                }
+
+                for (int i = 0; i < _transports.Count; i++)
+                {
+                    tasks[i] = _transports[i].StopAsync();
+                }
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+
+                _heartbeat.Dispose();
+            }
+            catch (Exception ex)
             {
-                tasks[i] = _transports[i].StopAsync();
+                _stoppedTcs.TrySetException(ex);
+                throw;
             }
-            await Task.WhenAll(tasks).ConfigureAwait(false);
-
-            _heartbeat.Dispose();
 
             _stoppedTcs.TrySetResult(null);
         }
