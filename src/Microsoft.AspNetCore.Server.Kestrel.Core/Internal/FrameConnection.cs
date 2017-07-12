@@ -81,10 +81,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void StartRequestProcessing<TContext>(IHttpApplication<TContext> application)
         {
-            _lifetimeTask = ProcessRequestsAsync<TContext>(application);
+            _lifetimeTask = ProcessRequestsAsync(application);
         }
 
-        internal async Task ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
+        private async Task ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
         {
             using (BeginConnectionScope())
             {

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
@@ -533,7 +534,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task StartRequestProcessingCreatesLogScopeWithConnectionId()
         {
-            await _frameConnection.ProcessRequestsAsync(new DummyApplication());
+            _frameConnection.StartRequestProcessing(new DummyApplication());
+
+            _frameConnection.OnConnectionClosed(ex: null);
+
+            await _frameConnection.StopAsync().TimeoutAfter(TimeSpan.FromSeconds(5));
+            
+            var scopeObjects = ((TestKestrelTrace)_frameConnectionContext.ServiceContext.Log)
+                                    .Logger
+                                    .Scopes
+                                    .OfType<IReadOnlyList<KeyValuePair<string, object>>>()
+                                    .ToList();
+
+            Assert.Equal(1, scopeObjects.Count);
+            var pairs = scopeObjects[0].ToDictionary(p => p.Key, p => p.Value);
+            Assert.True(pairs.ContainsKey("ConnectionId"));
+            Assert.Equal(_frameConnection.ConnectionId, pairs["ConnectionId"]);
         }
     }
 }

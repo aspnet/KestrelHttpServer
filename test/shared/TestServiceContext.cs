@@ -13,8 +13,20 @@ namespace Microsoft.AspNetCore.Testing
     public class TestServiceContext : ServiceContext
     {
         public TestServiceContext()
-            : this(new LoggerFactory(new[] { new KestrelTestLoggerProvider() }))
         {
+            var logger = new TestApplicationErrorLogger();
+            var kestrelTrace = new TestKestrelTrace(logger);
+            LoggerFactory = new LoggerFactory(new[] { new KestrelTestLoggerProvider(logger) });
+            Log = kestrelTrace;
+            ThreadPool = new LoggingThreadPool(Log);
+            SystemClock = new MockSystemClock();
+            DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
+            ConnectionManager = new FrameConnectionManager(Log, ResourceCounter.Unlimited, ResourceCounter.Unlimited);
+            HttpParserFactory = frameAdapter => new HttpParser<FrameAdapter>(frameAdapter.Frame.ServiceContext.Log.IsEnabled(LogLevel.Information));
+            ServerOptions = new KestrelServerOptions
+            {
+                AddServerHeader = false
+            };
         }
 
         public TestServiceContext(ILoggerFactory loggerFactory)
