@@ -689,7 +689,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             private void ReadChunkedData(ReadableBuffer buffer, WritableBuffer writableBuffer, out ReadCursor consumed, out ReadCursor examined)
             {
-                var actual = Math.Min(buffer.Length, _inputLength);
+                var actual = (int)Math.Min(buffer.Length, _inputLength);
                 consumed = buffer.Move(buffer.Start, actual);
                 examined = consumed;
 
