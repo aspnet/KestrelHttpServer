@@ -78,21 +78,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Benchmark(OperationsPerInvoke = Iterations)]
-        public unsafe byte[] KestrelBytesToStringVectorized()
-        {
-            for (uint i = 0; i < Iterations; i++)
-            {
-                fixed (byte* pBytes = &_asciiBytes[0])
-                fixed (char* pString = _asciiString)
-                {
-                    TryGetAsciiStringVectorized(pBytes, pString, _asciiBytes.Length);
-                }
-            }
-
-            return _asciiBytes;
-        }
-
-        [Benchmark(OperationsPerInvoke = Iterations)]
         public unsafe byte[] KestrelBytesToStringVectorCheck()
         {
             for (uint i = 0; i < Iterations; i++)
@@ -107,170 +92,251 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             return _asciiBytes;
         }
 
+        [Benchmark(OperationsPerInvoke = Iterations)]
+        public unsafe byte[] KestrelBytesToStringVectorized()
+        {
+            for (uint i = 0; i < Iterations; i++)
+            {
+                fixed (byte* pBytes = &_asciiBytes[0])
+                fixed (char* pString = _asciiString)
+                {
+                    TryGetAsciiStringVectorized(pBytes, pString, _asciiBytes.Length);
+                }
+            }
+
+            return _asciiBytes;
+        }
+
         public static unsafe bool TryGetAsciiStringVectorized(byte* input, char* output, int count)
         {
-            var pInput = input;
-            var pOutput = output;
-            var pEnd = pInput + count;
+            const long LongHighBits = unchecked((long)0x8080808080808080L);
+            const long IntHighBits = unchecked((int)0x80808080);
+            const long ShortHighBits = unchecked((short)0x8080);
 
-            bool isValid = true;
+            // Calcuate end position
+            var end = input + count;
+            // Start as valid
+            var isValid = true;
 
             if (Vector.IsHardwareAccelerated && count >= Vector<sbyte>.Count)
             {
+                // Jump forward to vector code to reduced cost when smaller than vector size
+                // - by default, forward jumps are predicted non-taken and near code is hotter in instruction decode
+                // When larger than Vector, vectorization will be able to make the cost back
                 goto Vectorized;
             }
 
-         NonVectorized:
-            while (pInput <= pEnd - sizeof(long))
+        NonVectorized:
+            if (IntPtr.Size == 8) // Use Intrinsic switch for branch elimination
             {
-                var in0 = *(long*)(pInput);
-                isValid &= (((in0 - 0x0101010101010101L) | in0) & unchecked((long)0x8080808080808080L)) == 0;
+                // 64-bit: Loop longs by default
+                while (input <= end - sizeof(long))
+                {
+                    var in0 = *(long*)(input);
+                    // Validate: bytes != 0 && bytes <= 127
+                    //  Subtract 1 from all bytes to move 0 to high bits
+                    //  bitwise or with self to catch all > 127 bytes
+                    //  mask off high bits and check if 0
+                    isValid &= (((in0 - 0x0101010101010101L) | in0) & LongHighBits) == 0;
 
-                *(pOutput) = (char)*(pInput);
-                *(pOutput + 1) = (char)*(pInput + 1);
-                *(pOutput + 2) = (char)*(pInput + 2);
-                *(pOutput + 3) = (char)*(pInput + 3);
-                *(pOutput + 4) = (char)*(pInput + 4);
-                *(pOutput + 5) = (char)*(pInput + 5);
-                *(pOutput + 6) = (char)*(pInput + 6);
-                *(pOutput + 7) = (char)*(pInput + 7);
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
+                    *(output + 4) = (char)*(input + 4);
+                    *(output + 5) = (char)*(input + 5);
+                    *(output + 6) = (char)*(input + 6);
+                    *(output + 7) = (char)*(input + 7);
 
-                pInput += sizeof(long);
-                pOutput += sizeof(long);
+                    input += sizeof(long);
+                    output += sizeof(long);
+                }
+                if (input <= end - sizeof(int))
+                {
+                    var in0 = *(int*)(input);
+                    isValid &= (((in0 - 0x01010101) | in0) & IntHighBits) == 0;
+
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
+
+                    input += sizeof(int);
+                    output += sizeof(int);
+                }
             }
-            if (pInput <= pEnd - sizeof(int))
+            else
             {
-                var in0 = *(int*)(pInput);
-                isValid &= (((in0 - 0x01010101) | in0) & unchecked((int)0x80808080)) == 0;
+                // 32-bit: Loop ints by default
+                while (input <= end - sizeof(int))
+                {
+                    var in0 = *(int*)(input);
+                    isValid &= (((in0 - 0x01010101) | in0) & IntHighBits) == 0;
 
-                *(pOutput) = (char)*(pInput);
-                *(pOutput + 1) = (char)*(pInput + 1);
-                *(pOutput + 2) = (char)*(pInput + 2);
-                *(pOutput + 3) = (char)*(pInput + 3);
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
 
-                pInput += sizeof(int);
-                pOutput += sizeof(int);
+                    input += sizeof(int);
+                    output += sizeof(int);
+                }
             }
-            if (pInput <= pEnd - sizeof(short))
+            if (input <= end - sizeof(short))
             {
-                var in0 = *(short*)(pInput);
-                isValid &= (((short)(in0 - 0x0101) | in0) & unchecked((short)0x8080)) == 0;
+                var in0 = *(short*)(input);
+                isValid &= (((short)(in0 - 0x0101) | in0) & ShortHighBits) == 0;
 
-                *(pOutput) = (char)*(pInput);
-                *(pOutput + 1) = (char)*(pInput + 1);
+                *(output) = (char)*(input);
+                *(output + 1) = (char)*(input + 1);
 
-                pInput += sizeof(short);
-                pOutput += sizeof(short);
+                input += sizeof(short);
+                output += sizeof(short);
             }
-            if (pInput < pEnd)
+            if (input < end)
             {
-                isValid &= *(pInput) > 0;
-                *pOutput = (char)*pInput;
+                isValid &= *(input) > 0;
+                *output = (char)*input;
             }
 
             return isValid;
 
         Vectorized:
+            // do/while as entry condition already checked
             do
             {
-                var in0 = Unsafe.AsRef<Vector<sbyte>>(pInput);
+                var in0 = Unsafe.AsRef<Vector<sbyte>>(input);
+                // Vectorized byte range check, signed byte > 0 for 1-127
                 isValid &= Vector.GreaterThanAll(in0, Vector<sbyte>.Zero);
+                // Vectorized widen, byte vector to two short vectors
+                Vector.Widen(in0, out Unsafe.AsRef<Vector<short>>(output), out Unsafe.AsRef<Vector<short>>(output + Vector<short>.Count));
 
-                Vector.Widen(in0, out Unsafe.AsRef<Vector<short>>(pOutput), out Unsafe.AsRef<Vector<short>>(pOutput + Vector<short>.Count));
-
-                pInput += Vector<sbyte>.Count;
-                pOutput += Vector<sbyte>.Count;
-            } while (pInput < pEnd - Vector<sbyte>.Count);
+                input += Vector<sbyte>.Count;
+                output += Vector<sbyte>.Count;
+            } while (input < end - Vector<sbyte>.Count);
 
             goto NonVectorized;
         }
 
         public static unsafe bool TryGetAsciiStringVectorCheck(byte* input, char* output, int count)
         {
-            var pInput = input;
-            var pOutput = output;
-            var pEnd = pInput + count;
+            const long LongHighBits = unchecked((long)0x8080808080808080L);
+            const long IntHighBits = unchecked((int)0x80808080);
+            const long ShortHighBits = unchecked((short)0x8080);
 
+            // Calcuate end position
+            var end = input + count;
+            // Start as valid
             bool isValid = true;
 
             if (Vector.IsHardwareAccelerated && count >= Vector<sbyte>.Count)
             {
+                // Jump forward to vector code to reduced cost when smaller than vector size
+                // - by default, forward jumps are predicted non-taken and near code is hotter in instruction decode
+                // When larger than Vector, vectorization will be able to make the cost back
                 goto Vectorized;
             }
 
-            NonVectorized:
-            while (pInput <= pEnd - sizeof(long))
+        NonVectorized:
+            if (IntPtr.Size == 8) // Use Intrinsic switch for branch elimination
             {
-                var in0 = *(long*)(pInput);
-                isValid &= (((in0 - 0x0101010101010101L) | in0) & unchecked((long)0x8080808080808080L)) == 0;
+                // 64-bit: Loop longs by default
+                while (input <= end - sizeof(long))
+                {
+                    var in0 = *(long*)(input);
+                    // Validate: bytes != 0 && bytes <= 127
+                    //  Subtract 1 from all bytes to move 0 to high bits
+                    //  bitwise or with self to catch all > 127 bytes
+                    //  mask off high bits and check if 0
+                    isValid &= (((in0 - 0x0101010101010101L) | in0) & LongHighBits) == 0;
 
-                *(pOutput) = (char)*(pInput);
-                *(pOutput + 1) = (char)*(pInput + 1);
-                *(pOutput + 2) = (char)*(pInput + 2);
-                *(pOutput + 3) = (char)*(pInput + 3);
-                *(pOutput + 4) = (char)*(pInput + 4);
-                *(pOutput + 5) = (char)*(pInput + 5);
-                *(pOutput + 6) = (char)*(pInput + 6);
-                *(pOutput + 7) = (char)*(pInput + 7);
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
+                    *(output + 4) = (char)*(input + 4);
+                    *(output + 5) = (char)*(input + 5);
+                    *(output + 6) = (char)*(input + 6);
+                    *(output + 7) = (char)*(input + 7);
 
-                pInput += sizeof(long);
-                pOutput += sizeof(long);
+                    input += sizeof(long);
+                    output += sizeof(long);
+                }
+                if (input <= end - sizeof(int))
+                {
+                    var in0 = *(int*)(input);
+                    isValid &= (((in0 - 0x01010101) | in0) & IntHighBits) == 0;
+
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
+
+                    input += sizeof(int);
+                    output += sizeof(int);
+                }
             }
-            if (pInput <= pEnd - sizeof(int))
+            else
             {
-                var in0 = *(int*)(pInput);
-                isValid &= (((in0 - 0x01010101) | in0) & unchecked((int)0x80808080)) == 0;
+                // 32-bit: Loop ints by default
+                while (input <= end - sizeof(int))
+                {
+                    var in0 = *(int*)(input);
+                    isValid &= (((in0 - 0x01010101) | in0) & IntHighBits) == 0;
 
-                *(pOutput) = (char)*(pInput);
-                *(pOutput + 1) = (char)*(pInput + 1);
-                *(pOutput + 2) = (char)*(pInput + 2);
-                *(pOutput + 3) = (char)*(pInput + 3);
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
 
-                pInput += sizeof(int);
-                pOutput += sizeof(int);
+                    input += sizeof(int);
+                    output += sizeof(int);
+                }
             }
-            if (pInput <= pEnd - sizeof(short))
+            if (input <= end - sizeof(short))
             {
-                var in0 = *(short*)(pInput);
-                isValid &= (((short)(in0 - 0x0101) | in0) & unchecked((short)0x8080)) == 0;
+                var in0 = *(short*)(input);
+                isValid &= (((short)(in0 - 0x0101) | in0) & ShortHighBits) == 0;
 
-                *(pOutput) = (char)*(pInput);
-                *(pOutput + 1) = (char)*(pInput + 1);
+                *(output) = (char)*(input);
+                *(output + 1) = (char)*(input + 1);
 
-                pInput += sizeof(short);
-                pOutput += sizeof(short);
+                input += sizeof(short);
+                output += sizeof(short);
             }
-            if (pInput < pEnd)
+            if (input < end)
             {
-                isValid &= *(pInput) > 0;
-                *pOutput = (char)*pInput;
+                isValid &= *(input) > 0;
+                *output = (char)*input;
             }
-
             return isValid;
 
-            Vectorized:
+        Vectorized:
+            // do/while as entry condition already checked
             do
             {
-                var in0 = Unsafe.AsRef<Vector<sbyte>>(pInput);
+                // Vectorized byte range check, signed byte > 0 for 1-127
+                var in0 = Unsafe.AsRef<Vector<sbyte>>(input);
                 isValid &= Vector.GreaterThanAll(in0, Vector<sbyte>.Zero);
 
                 var i = 0;
                 do
                 {
-                    *(pOutput) = (char)*(pInput);
-                    *(pOutput + 1) = (char)*(pInput + 1);
-                    *(pOutput + 2) = (char)*(pInput + 2);
-                    *(pOutput + 3) = (char)*(pInput + 3);
-                    *(pOutput + 4) = (char)*(pInput + 4);
-                    *(pOutput + 5) = (char)*(pInput + 5);
-                    *(pOutput + 6) = (char)*(pInput + 6);
-                    *(pOutput + 7) = (char)*(pInput + 7);
+                    // Unrolled byte-wise widen
+                    *(output) = (char)*(input);
+                    *(output + 1) = (char)*(input + 1);
+                    *(output + 2) = (char)*(input + 2);
+                    *(output + 3) = (char)*(input + 3);
+                    *(output + 4) = (char)*(input + 4);
+                    *(output + 5) = (char)*(input + 5);
+                    *(output + 6) = (char)*(input + 6);
+                    *(output + 7) = (char)*(input + 7);
 
                     i += sizeof(long);
-                    pInput += sizeof(long);
-                    pOutput += sizeof(long);
+                    input += sizeof(long);
+                    output += sizeof(long);
                 } while (i < Vector<sbyte>.Count);
-            } while (pInput < pEnd - Vector<sbyte>.Count);
+            } while (input < end - Vector<sbyte>.Count);
 
             goto NonVectorized;
         }
