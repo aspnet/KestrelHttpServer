@@ -92,6 +92,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             return _asciiBytes;
         }
 
+        [Benchmark(OperationsPerInvoke = Iterations)]
+        public unsafe byte[] KestrelBytesToStringVectorCheck()
+        {
+            for (uint i = 0; i < Iterations; i++)
+            {
+                fixed (byte* pBytes = &_asciiBytes[0])
+                fixed (char* pString = _asciiString)
+                {
+                    TryGetAsciiStringVectorCheck(pBytes, pString, _asciiBytes.Length);
+                }
+            }
+
+            return _asciiBytes;
+        }
+
         public static unsafe bool TryGetAsciiStringVectorized(byte* input, char* output, int count)
         {
             var pInput = input;
@@ -165,6 +180,96 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 pInput += Vector<sbyte>.Count;
                 pOutput += Vector<sbyte>.Count;
+            } while (pInput < pEnd - Vector<sbyte>.Count);
+
+            goto NonVectorized;
+        }
+
+        public static unsafe bool TryGetAsciiStringVectorCheck(byte* input, char* output, int count)
+        {
+            var pInput = input;
+            var pOutput = output;
+            var pEnd = pInput + count;
+
+            bool isValid = true;
+
+            if (Vector.IsHardwareAccelerated && count >= Vector<sbyte>.Count)
+            {
+                goto Vectorized;
+            }
+
+            NonVectorized:
+            while (pInput <= pEnd - sizeof(long))
+            {
+                var in0 = *(long*)(pInput);
+                isValid &= (((in0 - 0x0101010101010101L) | in0) & unchecked((long)0x8080808080808080L)) == 0;
+
+                *(pOutput) = (char)*(pInput);
+                *(pOutput + 1) = (char)*(pInput + 1);
+                *(pOutput + 2) = (char)*(pInput + 2);
+                *(pOutput + 3) = (char)*(pInput + 3);
+                *(pOutput + 4) = (char)*(pInput + 4);
+                *(pOutput + 5) = (char)*(pInput + 5);
+                *(pOutput + 6) = (char)*(pInput + 6);
+                *(pOutput + 7) = (char)*(pInput + 7);
+
+                pInput += sizeof(long);
+                pOutput += sizeof(long);
+            }
+            if (pInput <= pEnd - sizeof(int))
+            {
+                var in0 = *(int*)(pInput);
+                isValid &= (((in0 - 0x01010101) | in0) & unchecked((int)0x80808080)) == 0;
+
+                *(pOutput) = (char)*(pInput);
+                *(pOutput + 1) = (char)*(pInput + 1);
+                *(pOutput + 2) = (char)*(pInput + 2);
+                *(pOutput + 3) = (char)*(pInput + 3);
+
+                pInput += sizeof(int);
+                pOutput += sizeof(int);
+            }
+            if (pInput <= pEnd - sizeof(short))
+            {
+                var in0 = *(short*)(pInput);
+                isValid &= (((short)(in0 - 0x0101) | in0) & unchecked((short)0x8080)) == 0;
+
+                *(pOutput) = (char)*(pInput);
+                *(pOutput + 1) = (char)*(pInput + 1);
+
+                pInput += sizeof(short);
+                pOutput += sizeof(short);
+            }
+            if (pInput < pEnd)
+            {
+                isValid &= *(pInput) > 0;
+                *pOutput = (char)*pInput;
+            }
+
+            return isValid;
+
+            Vectorized:
+            do
+            {
+                var in0 = Unsafe.AsRef<Vector<sbyte>>(pInput);
+                isValid &= Vector.GreaterThanAll(in0, Vector<sbyte>.Zero);
+
+                var i = 0;
+                do
+                {
+                    *(pOutput) = (char)*(pInput);
+                    *(pOutput + 1) = (char)*(pInput + 1);
+                    *(pOutput + 2) = (char)*(pInput + 2);
+                    *(pOutput + 3) = (char)*(pInput + 3);
+                    *(pOutput + 4) = (char)*(pInput + 4);
+                    *(pOutput + 5) = (char)*(pInput + 5);
+                    *(pOutput + 6) = (char)*(pInput + 6);
+                    *(pOutput + 7) = (char)*(pInput + 7);
+
+                    i += sizeof(long);
+                    pInput += sizeof(long);
+                    pOutput += sizeof(long);
+                } while (i < Vector<sbyte>.Count);
             } while (pInput < pEnd - Vector<sbyte>.Count);
 
             goto NonVectorized;
@@ -264,6 +369,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             VerifyString(verification, '\0');
             BlankString(' ');
             KestrelBytesToStringVectorized();
+            VerifyString(verification, ' ');
+
+            BlankString('\0');
+            KestrelBytesToStringVectorCheck();
+            VerifyString(verification, '\0');
+            BlankString(' ');
+            KestrelBytesToStringVectorCheck();
             VerifyString(verification, ' ');
         }
 
