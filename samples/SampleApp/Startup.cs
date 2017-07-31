@@ -2,59 +2,37 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace SampleApp
 {
     public class Startup
     {
-
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.Configure<FormOptions>(x =>
-            {
-                x.ValueLengthLimit = int.MaxValue;
-                x.MultipartBodyLengthLimit = int.MaxValue; // In case of multipart
-                x.BufferBody = false;
-            });
-        }
-
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
-            app.Run(Handler);
-        }
+            var logger = loggerFactory.CreateLogger("Default");
 
-        private static async Task Handler(HttpContext context)
-        {
-            if (context.Request.HasFormContentType)
+            app.Run(async context =>
             {
-                var stream = context.Request.Body;
-           //     stream = context.Request.Form.Files[0].OpenReadStream();
+                var connectionFeature = context.Connection;
+                logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
+                    + $"{Environment.NewLine}"
+                    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
 
-                var buffer = new byte[128];
-                int bytesRead;
-                do
-                {
-                    bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                } while (bytesRead != 0);
-            }
-            var response = @"<form enctype=""multipart/form-data"" action=""/"" method=""POST"">
-<input type=""hidden"" name=""MAX_FILE_SIZE"" value=""100000"" />
-Choose a file to upload: <input name=""uploadedfile"" type=""file"" /><br />
-<input type=""submit"" value=""Upload File"" />
-</form>";
-            context.Response.ContentLength = response.Length;
-            context.Response.ContentType = "text/html";
-            await context.Response.WriteAsync(response);
-
+                var response = $"hello, world{Environment.NewLine}";
+                context.Response.ContentLength = response.Length;
+                context.Response.ContentType = "text/plain";
+                await context.Response.WriteAsync(response);
+            });
         }
 
         public static void Main(string[] args)
@@ -64,19 +42,49 @@ Choose a file to upload: <input name=""uploadedfile"" type=""file"" /><br />
                 Console.WriteLine("Unobserved exception: {0}", e.Exception);
             };
 
+            var configuration = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            if (!ushort.TryParse(configuration["BASE_PORT"], NumberStyles.None, CultureInfo.InvariantCulture, out var basePort))
+            {
+                basePort = 5000;
+            }
+
             var host = new WebHostBuilder()
-                .ConfigureLogging(factory =>
+                .ConfigureLogging((_, factory) =>
                 {
                     factory.AddConsole();
                 })
                 .UseKestrel(options =>
                 {
-#if !NETCOREAPP1_1
-                    options.Limits.MaxRequestBodySize = null;
-#endif
-                    options.Limits.MaxRequestBufferSize = null;
+                    // Run callbacks on the transport thread
+                    options.ApplicationSchedulingMode = SchedulingMode.Inline;
+
+                    options.Listen(IPAddress.Loopback, basePort, listenOptions =>
+                    {
+                        // Uncomment the following to enable Nagle's algorithm for this endpoint.
+                        //listenOptions.NoDelay = false;
+
+                        listenOptions.UseConnectionLogging();
+                    });
+
+                    options.Listen(IPAddress.Loopback, basePort + 1, listenOptions =>
+                    {
+                        listenOptions.UseHttps("testCert.pfx", "testPassword");
+                        listenOptions.UseConnectionLogging();
+                    });
+
+                    options.UseSystemd();
+
+                    // The following section should be used to demo sockets
+                    //options.ListenUnixSocket("/tmp/kestrel-test.sock");
                 })
-                .UseUrls("http://*:5000")
+                .UseLibuv(options =>
+                {
+                    // Uncomment the following line to change the default number of libuv threads for all endpoints.
+                    // options.ThreadCount = 4;
+                })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .Build();
