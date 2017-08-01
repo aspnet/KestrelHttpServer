@@ -334,13 +334,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        /// <summary>
-        /// Primary loop which consumes socket input, parses it for protocol framing, and invokes the
-        /// application delegate for as long as the socket is intended to remain open.
-        /// The resulting Task from this loop is preserved in a field which is used when the server needs
-        /// to drain and close all currently active connections.
-        /// </summary>
-        public abstract Task ProcessRequestsAsync();
+        public abstract Task ProcessRequestAsync();
 
         public void OnStarting(Func<object, Task> callback, object state)
         {

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,6 +37,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private readonly Http2Frame _incomingFrame = new Http2Frame();
         private readonly Http2Frame _outgoingFrame = new Http2Frame();
+
+        private Http2Stream _currentHeadersStream;
 
         private bool _requestProcessingStopping;
 
@@ -148,6 +151,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
+        public async Task WriteGoAwayAsync(int lastStreamId, Http2ConnectionError errorCode, CancellationToken cancellationToken)
+        {
+            await _outputSem.WaitAsync();
+
+            try
+            {
+                _outgoingFrame.PrepareGoAway(lastStreamId, errorCode);
+                await WriteAsync(_outgoingFrame.Raw);
+            }
+            finally
+            {
+                _outputSem.Release();
+            }
+        }
+
+        private async Task ConnectionErrorAsync(int lastStreamId, Http2ConnectionError errorCode, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await WriteGoAwayAsync(_incomingFrame.StreamId, Http2ConnectionError.PROTOCOL_ERROR, default(CancellationToken));
+            throw new Http2ConnectionErrorException(errorCode);
+        }
+
         public async Task ProcessAsync<TContext>(IHttpApplication<TContext> application)
         {
             try
@@ -246,6 +270,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // TODO: error if reading headers and not CONTINUATION frame with END_HEADERS flag is received
             // TODO: error if reading headers and frame type other than CONTINUATION is received
 
+            if (_currentHeadersStream != null && (_incomingFrame.StreamId != _currentHeadersStream.StreamId || _incomingFrame.Type != Http2FrameType.CONTINUATION))
+            {
+                return ConnectionErrorAsync(_incomingFrame.StreamId, Http2ConnectionError.PROTOCOL_ERROR);
+            }
+
             switch (_incomingFrame.Type)
             {
                 case Http2FrameType.DATA:
@@ -285,8 +314,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task ProcessHeadersFrameAsync<TContext>(IHttpApplication<TContext> application)
         {
-            var payload = _incomingFrame.Payload;
-            var stream = new Http2Stream<TContext>(
+            Debug.Assert(_currentHeadersStream == null, $"{nameof(_currentHeadersStream)} must be null when processing new headers");
+
+            _currentHeadersStream = new Http2Stream<TContext>(
                 application,
                 ConnectionId,
                 _incomingFrame.StreamId,
@@ -294,13 +324,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _context.ConnectionInformation,
                 timeoutControl: this,
                 frameWriter: this);
-            _streams[_incomingFrame.StreamId] = stream;
-            stream.Reset();
+            _currentHeadersStream.Reset();
 
-            // TODO: support CONTINUATION frames
-            _hpackDecoder.Decode(_incomingFrame.HeaderBlockFragment, stream.RequestHeaders);
+            _hpackDecoder.Decode(_incomingFrame.HeaderBlockFragment, _currentHeadersStream.RequestHeaders);
 
-            _ = stream.ProcessRequestsAsync();
+            if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS)
+            {
+                _streams[_incomingFrame.StreamId] = _currentHeadersStream;
+                _ = _currentHeadersStream.ProcessRequestAsync();
+                _currentHeadersStream = null;
+            }
+            else
+            {
+                // TODO: support CONTINUATION frames
+            }
 
             return Task.CompletedTask;
         }

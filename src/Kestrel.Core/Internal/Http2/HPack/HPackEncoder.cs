@@ -14,6 +14,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
     {
         private IEnumerator<KeyValuePair<string, string>> _enumerator;
 
+        public bool BeginEncode(IHeaderDictionary headers, Span<byte> buffer, out int length)
+        {
+            _enumerator = EnumerateHeaders(headers).GetEnumerator();
+            _enumerator.MoveNext();
+
+            return Encode(buffer, out length);
+        }
+
         public bool BeginEncode(int statusCode, IHeaderDictionary headers, Span<byte> buffer, out int length)
         {
             _enumerator = EnumerateHeaders(headers).GetEnumerator();
