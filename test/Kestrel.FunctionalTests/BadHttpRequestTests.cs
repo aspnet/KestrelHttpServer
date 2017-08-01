@@ -4,9 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
@@ -167,6 +170,86 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             mockLogger.Verify(logger => logger.Log(LogLevel.Information, badRequestEventId, It.IsAny<object>(), It.IsAny<BadHttpRequestException>(), It.IsAny<Func<object, Exception, string>>()));
 
             Assert.Equal(LogLevel.Information, maxLogLevel);
+        }
+
+        [Fact]
+        public async Task OverlongHeaderIsRejected()
+        {
+            using (var server = CreateServer())
+            {
+                using (var client = server.CreateConnection())
+                {
+                    await client.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "Connection: close");
+
+                    var payload = new string('x', 102400);
+                    client.Socket.Send(Encoding.ASCII.GetBytes(String.Format("Range: {0}\r\n\r\n", payload)));
+
+                    await client.ReceiveStartsWith("HTTP/1.1 431");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task HostHeaderAcceptedWithPeriod()
+        {
+            using (var server = CreateServer())
+            {
+                using (var client = server.CreateConnection())
+                {
+                    await client.Send(
+                        "GET / HTTP/1.1",
+                        "Host: .",
+                        "Connection: close\r\n\r\n");
+
+                    await client.ReceiveStartsWith("HTTP/1.1 200");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task UnprintableCharactersAreFiltered()
+        {
+            using (var server = CreateServer())
+            {
+                using (var client = server.CreateConnection())
+                {
+                    await client.Send(
+                        "GET /\x0D\0x0ALocation:http://www.contoso.com/ HTTP/1.1",
+                        "Host:\r\n\r\n");
+
+                    await client.ReceiveStartsWith("HTTP/1.1 400");
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData("[0x00]", 400)]
+        public async Task ArbitraryHttpMethodsAreRejected(string method, int statusCode)
+        {
+            using (var server = CreateServer())
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                      $"{method} / HTTP/1.1",
+                      "Host:\r\n\r\n");
+
+                    await connection.ReceiveStartsWith($"HTTP/1.1 {statusCode}");
+                }
+            };
+        }
+
+        private TestServer CreateServer()
+        {
+            return new TestServer(async httpContext => {
+                var readBuffer = new byte[128];
+                var readBytes = await httpContext.Request.Body.ReadAsync(readBuffer, 0, readBuffer.Length);
+
+                await httpContext.Response.WriteAsync("");
+            });
         }
 
         private async Task TestBadRequest(string request, string expectedResponseStatusCode, string expectedExceptionMessage, string expectedAllowHeader = null)
