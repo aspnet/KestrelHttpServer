@@ -20,7 +20,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2Connection : IHttp2FrameWriter, ITimeoutControl
+    public class Http2Connection : IHttp2FrameWriter, ITimeoutControl, IHttp2StreamLifetimeHandler
     {
         public static byte[] Preface { get; } = new byte[]
         {
@@ -323,6 +323,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _context.ServiceContext,
                 _context.ConnectionInformation,
                 timeoutControl: this,
+                streamLifetimeHandler: this,
                 frameWriter: this);
             _currentHeadersStream.Reset();
 
@@ -436,6 +437,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             var writeableBuffer = Output.Alloc(1);
             writeableBuffer.Write(data);
             await writeableBuffer.FlushAsync();
+        }
+
+        void IHttp2StreamLifetimeHandler.OnStreamCompleted(int streamId)
+        {
+            _streams.Remove(streamId);
         }
 
         void ITimeoutControl.SetTimeout(long ticks, TimeoutAction timeoutAction)

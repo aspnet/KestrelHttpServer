@@ -24,8 +24,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             ServiceContext serviceContext,
             IConnectionInformation connectionInformation,
             ITimeoutControl timeoutControl,
+            IHttp2StreamLifetimeHandler streamLifetimeHandler,
             IHttp2FrameWriter frameWriter)
-            : base(connectionId, streamId, serviceContext, connectionInformation, timeoutControl, frameWriter)
+            : base(connectionId, streamId, serviceContext, connectionInformation, timeoutControl, streamLifetimeHandler, frameWriter)
         {
             _application = application;
         }
@@ -161,16 +162,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 try
                 {
-                    // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
                         await TryProduceInvalidRequestResponse();
-                        //Output.Dispose();
                     }
                 }
                 catch (Exception ex)
                 {
                     Log.LogWarning(0, ex, CoreStrings.ConnectionShutdownError);
+                }
+                finally
+                {
+                    StreamLifetimeHandler.OnStreamCompleted(StreamId);
                 }
             }
         }

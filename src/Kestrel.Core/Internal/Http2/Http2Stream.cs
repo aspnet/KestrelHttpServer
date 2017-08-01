@@ -68,6 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             ServiceContext serviceContext,
             IConnectionInformation connectionInformation,
             ITimeoutControl timeoutControl,
+            IHttp2StreamLifetimeHandler streamLifetimeHandler,
             IHttp2FrameWriter frameWriter)
         {
             ConnectionId = connectionId;
@@ -78,6 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             ServerOptions = ServiceContext.ServerOptions;
             HttpStreamControl = this;
+            StreamLifetimeHandler = streamLifetimeHandler;
             Output = frameWriter;
             RequestBodyPipe = CreateRequestBodyPipe();
         }
@@ -97,6 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private KestrelServerOptions ServerOptions { get; }
 
         public IFeatureCollection ConnectionFeatures { get; set; }
+        protected IHttp2StreamLifetimeHandler StreamLifetimeHandler { get; set; }
         public IHttp2FrameWriter Output { get; }
 
         protected IKestrelTrace Log => ServiceContext.Log;
