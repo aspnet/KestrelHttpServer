@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         private State _state = State.Ready;
         // TODO: add new HTTP/2 header size limit and allocate accordingly
-        private byte[] _stringOctets = new byte[4096];
+        private byte[] _stringOctets = new byte[Http2Frame.DefaultFrameSize];
         private string _headerName = string.Empty;
         private string _headerValue = string.Empty;
         private int _stringLength;

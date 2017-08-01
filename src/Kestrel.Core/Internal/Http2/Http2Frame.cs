@@ -8,9 +8,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public partial class Http2Frame
     {
+        public  const int DefaultFrameSize = 16384;
         public const int HeaderLength = 9;
 
-        private const int DefaultFrameSize = 16384;
         private const int LengthOffset = 0;
         private const int TypeOffset = 3;
         private const int FlagsOffset = 4;

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -22,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly IPipe _outputPipe;
         private readonly Http2ConnectionContext _connectionContext;
         private readonly Http2PeerSettings _clientSettings;
+        private readonly HPackEncoder _hpackEncoder;
 
         public Http2ConnectionTests()
         {
@@ -39,6 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 Output = _outputPipe
             };
             _clientSettings = new Http2PeerSettings();
+            _hpackEncoder = new HPackEncoder();
         }
 
         public void Dispose()
@@ -84,6 +87,109 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _inputPipe.Writer.Complete();
 
             connection.Stop();
+            await connectionTask;
+        }
+
+        [Fact]
+        public async Task DecodesHeaders()
+        {
+            var requestHeaders = new Dictionary<string, string>
+            {
+                [":method"] = "GET",
+                [":path"] = "/",
+                [":authority"] = "127.0.0.1:5000",
+                [":scheme"] = "https",
+                ["user-agent"] = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/54.0",
+                ["accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                ["accept-language"] = "en-US,en;q=0.5",
+                ["accept-encoding"] = "gzip, deflate, br",
+                ["upgrade-insecure-requests"] = "1",
+            };
+
+            var receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var headersRead = new SemaphoreSlim(0);
+
+            var connection = new Http2Connection(_connectionContext);
+            var connectionTask = connection.ProcessAsync(new DummyApplication(context =>
+            {
+                foreach (var header in context.Request.Headers)
+                {
+                    receivedHeaders[header.Key] = header.Value.ToString();
+                }
+
+                headersRead.Release();
+
+                return Task.CompletedTask;
+            }));
+
+            await SendPreambleAsync();
+            await SendClientSettingsAsync();
+            await ReceiveSettingsAck();
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, MakeHeaders(requestHeaders));
+
+            await headersRead.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+
+            foreach (var header in requestHeaders)
+            {
+                Assert.True(receivedHeaders.TryGetValue(header.Key, out var value), header.Key);
+                Assert.Equal(header.Value, value, ignoreCase: true);
+            }
+
+            _inputPipe.Writer.Complete();
+
+            await connectionTask;
+        }
+
+        [Fact]
+        public async Task DecodesHeadersWithContinuations()
+        {
+            var requestHeaders = new Dictionary<string, string>
+            {
+                [":method"] = "GET",
+                [":path"] = "/",
+                [":authority"] = "127.0.0.1:5000",
+                [":scheme"] = "https",
+                // Should go into first continuation
+                ["a"] = new string('a', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8),
+                // Should go into second continuation
+                ["b"] = new string('b', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8),
+            };
+
+            var receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var headersRead = new SemaphoreSlim(0);
+
+            var connection = new Http2Connection(_connectionContext);
+            var connectionTask = connection.ProcessAsync(new DummyApplication(context =>
+            {
+                foreach (var header in context.Request.Headers)
+                {
+                    receivedHeaders[header.Key] = header.Value.ToString();
+                }
+
+                headersRead.Release();
+
+                return Task.CompletedTask;
+            }));
+
+            await SendPreambleAsync();
+            await SendClientSettingsAsync();
+            await ReceiveSettingsAck();
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE | Http2HeadersFrameFlags.END_STREAM, MakeHeaders(requestHeaders));
+            await SendContinuationAsync(1, Http2ContinuationFrameFlags.NONE);
+            await SendContinuationAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
+
+            await headersRead.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+
+            foreach (var header in requestHeaders)
+            {
+                Assert.True(receivedHeaders.TryGetValue(header.Key, out var value), header.Key);
+                Assert.Equal(header.Value, value, ignoreCase: true);
+            }
+
+            _inputPipe.Writer.Complete();
+
             await connectionTask;
         }
 
@@ -135,6 +241,70 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _inputPipe.Writer.Complete();
         }
 
+        [Fact]
+        public async Task ConnectionErrorOnHeadersFramesInterleavedWithOtherContinuation()
+        {
+            var connection = new Http2Connection(_connectionContext);
+            var connectionTask = connection.ProcessAsync(new DummyApplication());
+
+            await SendPreambleAsync();
+            await SendClientSettingsAsync();
+            await ReceiveSettingsAck();
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, MakeHeaders(new Dictionary<string, string>
+            {
+                [":method"] = "GET",
+                [":path"] = "/",
+                [":authority"] = "127.0.0.1:5000",
+                [":scheme"] = "https",
+                // Should go into continuation
+                ["a"] = new string('a', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8),
+            }));
+            await SendContinuationAsync(3, Http2ContinuationFrameFlags.END_HEADERS);
+
+            var responseFrame = await ReceiveFrameAsync();
+
+            Assert.Equal(Http2FrameType.GOAWAY, responseFrame.Type);
+            Assert.Equal(3, responseFrame.GoAwayLastStreamId);
+            Assert.Equal(Http2ConnectionError.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
+
+            await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => connectionTask);
+
+            _inputPipe.Writer.Complete();
+        }
+
+        [Fact]
+        public async Task ConnectionErrorOnContinuationFrameWithoutPriorHeadersFrame()
+        {
+            var connection = new Http2Connection(_connectionContext);
+            var connectionTask = connection.ProcessAsync(new DummyApplication());
+
+            await SendPreambleAsync();
+            await SendClientSettingsAsync();
+            await ReceiveSettingsAck();
+
+            Assert.False(_hpackEncoder.BeginEncode(MakeHeaders(new Dictionary<string, string>
+            {
+                [":method"] = "GET",
+                [":path"] = "/",
+                [":authority"] = "127.0.0.1:5000",
+                [":scheme"] = "https",
+                // Should go into continuation
+                ["a"] = new string('a', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8),
+            }), new byte[Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength], out var length));
+            await SendContinuationAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
+
+            var responseFrame = await ReceiveFrameAsync();
+
+            Assert.Equal(Http2FrameType.GOAWAY, responseFrame.Type);
+            Assert.Equal(1, responseFrame.GoAwayLastStreamId);
+            Assert.Equal(Http2ConnectionError.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
+
+            await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => connectionTask);
+
+            _inputPipe.Writer.Complete();
+        }
+
         private IHeaderDictionary MakeHeaders(Dictionary<string, string> headerData)
         {
             var headers = new FrameRequestHeaders();
@@ -165,11 +335,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private Task SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, IHeaderDictionary headers)
         {
-            var hpackEncoder = new HPackEncoder();
             var frame = new Http2Frame();
 
             frame.PrepareHeaders(flags, streamId);
-            Assert.True(hpackEncoder.BeginEncode(headers, frame.Payload, out var length));
+            Assert.Equal(
+                (flags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS,
+                _hpackEncoder.BeginEncode(headers, frame.Payload, out var length));
+
+            frame.Length = length;
+
+            return SendAsync(frame.Raw);
+        }
+
+        private Task SendContinuationAsync(int streamId, Http2ContinuationFrameFlags flags)
+        {
+            var frame = new Http2Frame();
+
+            frame.PrepareContinuation(flags, streamId);
+            Assert.Equal(
+                (flags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS,
+                _hpackEncoder.Encode(frame.Payload, out var length));
             frame.Length = length;
 
             return SendAsync(frame.Raw);
