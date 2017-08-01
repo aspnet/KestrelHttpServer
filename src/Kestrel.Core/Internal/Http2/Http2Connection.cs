@@ -280,6 +280,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return ProcessSettingsFrameAsync();
                 case Http2FrameType.PING:
                     return ProcessPingFrameAsync();
+                case Http2FrameType.GOAWAY:
+                    return ProcessGoAwayFrameAsync();
                 case Http2FrameType.CONTINUATION:
                     return ProcessContinuationFrameAsync<TContext>(application);
             }
@@ -411,6 +413,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 _outputSem.Release();
             }
+        }
+
+        private Task ProcessGoAwayFrameAsync()
+        {
+            Stop();
+            return Task.CompletedTask;
         }
 
         private Task ProcessContinuationFrameAsync<TContext>(IHttpApplication<TContext> application)

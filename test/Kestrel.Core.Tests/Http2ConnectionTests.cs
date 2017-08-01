@@ -194,6 +194,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task ConnectionStoppedOnGoAwayFrame()
+        {
+            var connection = new Http2Connection(_connectionContext);
+            var connectionTask = connection.ProcessAsync(new DummyApplication());
+
+            await SendPreambleAsync();
+            await SendClientSettingsAsync();
+            await ReceiveSettingsAck();
+
+            await SendGoAwayAsync();
+
+            await connectionTask;
+        }
+
+        [Fact]
         public async Task ConnectionErrorOnHeadersFramesInterleavedWithOtherFrames()
         {
             var connection = new Http2Connection(_connectionContext);
@@ -368,6 +383,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             frame.Length = data.Length;
             data.CopyTo(frame.Payload);
 
+            return SendAsync(frame.Raw);
+        }
+
+        private Task SendGoAwayAsync()
+        {
+            var frame = new Http2Frame();
+            frame.PrepareGoAway(0, Http2ConnectionError.NO_ERROR);
             return SendAsync(frame.Raw);
         }
 
