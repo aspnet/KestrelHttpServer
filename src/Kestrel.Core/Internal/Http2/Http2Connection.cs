@@ -151,6 +151,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
+        public async Task WriteSettingsAckAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await _outputSem.WaitAsync();
+
+            try
+            {
+                _outgoingFrame.PrepareSettings(Http2SettingsFrameFlags.ACK);
+                await WriteAsync(_outgoingFrame.Raw);
+            }
+            finally
+            {
+                _outputSem.Release();
+            }
+        }
+
+        public async Task WritePingAsync(Http2PingFrameFlags flags, Span<byte> payload, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await _outputSem.WaitAsync();
+
+            try
+            {
+                _outgoingFrame.PreparePing(Http2PingFrameFlags.ACK);
+                _incomingFrame.Payload.CopyTo(_outgoingFrame.Payload);
+                await WriteAsync(_outgoingFrame.Raw);
+            }
+            finally
+            {
+                _outputSem.Release();
+            }
+        }
+
         public async Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode, CancellationToken cancellationToken)
         {
             await _outputSem.WaitAsync();
@@ -346,26 +377,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
-        private async Task ProcessSettingsFrameAsync()
+        private Task ProcessSettingsFrameAsync()
         {
             if (_currentHeadersStream != null)
             {
-                await ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             ReadSettings();
 
-            await _outputSem.WaitAsync();
-
-            try
-            {
-                _outgoingFrame.PrepareSettings(Http2SettingsFrameFlags.ACK);
-                await WriteAsync(_outgoingFrame.Raw);
-            }
-            finally
-            {
-                _outputSem.Release();
-            }
+            return WriteSettingsAckAsync();
         }
 
         private void ReadSettings()
@@ -409,25 +430,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private async Task ProcessPingFrameAsync()
+        private Task ProcessPingFrameAsync()
         {
             if (_currentHeadersStream != null)
             {
-                await ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            await _outputSem.WaitAsync();
-
-            try
-            {
-                _outgoingFrame.PreparePing(Http2PingFrameFlags.ACK);
-                _incomingFrame.Payload.CopyTo(_outgoingFrame.Payload);
-                await WriteAsync(_outgoingFrame.Raw);
-            }
-            finally
-            {
-                _outputSem.Release();
-            }
+            return WritePingAsync(Http2PingFrameFlags.ACK, _incomingFrame.Payload);
         }
 
         private Task ProcessGoAwayFrameAsync()
