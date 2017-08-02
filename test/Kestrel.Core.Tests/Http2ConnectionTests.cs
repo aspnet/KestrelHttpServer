@@ -225,7 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             Assert.Equal(Http2FrameType.GOAWAY, responseFrame.Type);
             Assert.Equal(1, responseFrame.GoAwayLastStreamId);
-            Assert.Equal(Http2ConnectionError.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
+            Assert.Equal(Http2ErrorCode.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
 
             await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => connectionTask);
 
@@ -249,7 +249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             Assert.Equal(Http2FrameType.GOAWAY, responseFrame.Type);
             Assert.Equal(3, responseFrame.GoAwayLastStreamId);
-            Assert.Equal(Http2ConnectionError.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
+            Assert.Equal(Http2ErrorCode.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
 
             await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => connectionTask);
 
@@ -281,7 +281,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             Assert.Equal(Http2FrameType.GOAWAY, responseFrame.Type);
             Assert.Equal(3, responseFrame.GoAwayLastStreamId);
-            Assert.Equal(Http2ConnectionError.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
+            Assert.Equal(Http2ErrorCode.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
 
             await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => connectionTask);
 
@@ -313,7 +313,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             Assert.Equal(Http2FrameType.GOAWAY, responseFrame.Type);
             Assert.Equal(1, responseFrame.GoAwayLastStreamId);
-            Assert.Equal(Http2ConnectionError.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
+            Assert.Equal(Http2ErrorCode.PROTOCOL_ERROR, responseFrame.GoAwayErrorCode);
 
             await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => connectionTask);
 
@@ -388,7 +388,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private Task SendGoAwayAsync()
         {
             var frame = new Http2Frame();
-            frame.PrepareGoAway(0, Http2ConnectionError.NO_ERROR);
+            frame.PrepareGoAway(0, Http2ErrorCode.NO_ERROR);
             return SendAsync(frame.Raw);
         }
 

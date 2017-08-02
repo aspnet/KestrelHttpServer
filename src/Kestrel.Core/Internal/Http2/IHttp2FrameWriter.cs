@@ -17,6 +17,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers, CancellationToken cancellationToken = default(CancellationToken));
         Task WriteDataAsync(int streamId, Span<byte> data, CancellationToken cancellationToken = default(CancellationToken));
         Task WriteDataAsync(int streamId, Span<byte> data, bool endStream, CancellationToken cancellationToken = default(CancellationToken));
-        Task WriteGoAwayAsync(int lastStreamId, Http2ConnectionError errorCode, CancellationToken cancellationToken = default(CancellationToken));
+        Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

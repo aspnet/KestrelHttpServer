@@ -151,7 +151,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public async Task WriteGoAwayAsync(int lastStreamId, Http2ConnectionError errorCode, CancellationToken cancellationToken)
+        public async Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode, CancellationToken cancellationToken)
         {
             await _outputSem.WaitAsync();
 
@@ -166,9 +166,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private async Task ConnectionErrorAsync(Http2ConnectionError errorCode, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task ConnectionErrorAsync(Http2ErrorCode errorCode, CancellationToken cancellationToken = default(CancellationToken))
         {
-            await WriteGoAwayAsync(_incomingFrame.StreamId, Http2ConnectionError.PROTOCOL_ERROR, cancellationToken);
+            await WriteGoAwayAsync(_incomingFrame.StreamId, Http2ErrorCode.PROTOCOL_ERROR, cancellationToken);
             throw new Http2ConnectionErrorException(errorCode);
         }
 
@@ -293,7 +293,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                return ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
@@ -312,7 +312,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
             else
             {
-                return ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
         }
 
@@ -320,7 +320,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                return ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             _currentHeadersStream = new Http2Stream<TContext>(
@@ -350,7 +350,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                await ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+                await ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             ReadSettings();
@@ -413,7 +413,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                await ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+                await ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             await _outputSem.WaitAsync();
@@ -440,7 +440,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream == null ||  _incomingFrame.StreamId != _currentHeadersStream.StreamId)
             {
-                return ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             _hpackDecoder.Decode(_incomingFrame.HeaderBlockFragment, _currentHeadersStream.RequestHeaders);

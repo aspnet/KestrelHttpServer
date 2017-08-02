@@ -17,9 +17,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public Http2ConnectionError GoAwayErrorCode
+        public Http2ErrorCode GoAwayErrorCode
         {
-            get => (Http2ConnectionError)((Payload[4] << 24) | (Payload[5] << 16) | (Payload[6] << 16) | Payload[7]);
+            get => (Http2ErrorCode)((Payload[4] << 24) | (Payload[5] << 16) | (Payload[6] << 16) | Payload[7]);
             set
             {
                 Payload[4] = (byte)(((uint)value >> 24) & 0xff);
@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public void PrepareGoAway(int lastStreamId, Http2ConnectionError errorCode)
+        public void PrepareGoAway(int lastStreamId, Http2ErrorCode errorCode)
         {
             Length = 8;
             Type = Http2FrameType.GOAWAY;
