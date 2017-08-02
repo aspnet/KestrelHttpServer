@@ -126,7 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendClientSettingsAsync();
             await ReceiveSettingsAck();
 
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, MakeHeaders(requestHeaders));
+            Assert.True(await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, MakeHeaders(requestHeaders)));
 
             await headersRead.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
 
@@ -176,9 +176,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendClientSettingsAsync();
             await ReceiveSettingsAck();
 
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE | Http2HeadersFrameFlags.END_STREAM, MakeHeaders(requestHeaders));
-            await SendContinuationAsync(1, Http2ContinuationFrameFlags.NONE);
-            await SendContinuationAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
+            Assert.False(await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE | Http2HeadersFrameFlags.END_STREAM, MakeHeaders(requestHeaders)));
+            Assert.False(await SendContinuationAsync(1, Http2ContinuationFrameFlags.NONE));
+            Assert.True(await SendContinuationAsync(1, Http2ContinuationFrameFlags.END_HEADERS));
 
             await headersRead.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
 
@@ -266,7 +266,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendClientSettingsAsync();
             await ReceiveSettingsAck();
 
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, MakeHeaders(new Dictionary<string, string>
+            Assert.False(await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, MakeHeaders(new Dictionary<string, string>
             {
                 [":method"] = "GET",
                 [":path"] = "/",
@@ -274,8 +274,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 [":scheme"] = "https",
                 // Should go into continuation
                 ["a"] = new string('a', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8),
-            }));
-            await SendContinuationAsync(3, Http2ContinuationFrameFlags.END_HEADERS);
+            })));
+            Assert.True(await SendContinuationAsync(3, Http2ContinuationFrameFlags.END_HEADERS));
 
             var responseFrame = await ReceiveFrameAsync();
 
@@ -348,31 +348,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(frame.Raw);
         }
 
-        private Task SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, IHeaderDictionary headers)
+        private async Task<bool> SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, IHeaderDictionary headers)
         {
             var frame = new Http2Frame();
 
             frame.PrepareHeaders(flags, streamId);
-            Assert.Equal(
-                (flags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS,
-                _hpackEncoder.BeginEncode(headers, frame.Payload, out var length));
-
+            var done = _hpackEncoder.BeginEncode(headers, frame.Payload, out var length);
             frame.Length = length;
 
-            return SendAsync(frame.Raw);
+            await SendAsync(frame.Raw);
+
+            return done;
         }
 
-        private Task SendContinuationAsync(int streamId, Http2ContinuationFrameFlags flags)
+        private async Task<bool> SendContinuationAsync(int streamId, Http2ContinuationFrameFlags flags)
         {
             var frame = new Http2Frame();
 
             frame.PrepareContinuation(flags, streamId);
-            Assert.Equal(
-                (flags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS,
-                _hpackEncoder.Encode(frame.Payload, out var length));
+            var done =_hpackEncoder.Encode(frame.Payload, out var length);
             frame.Length = length;
 
-            return SendAsync(frame.Raw);
+            await SendAsync(frame.Raw);
+
+            return done;
         }
 
         private Task SendDataAsync(int streamId, Span<byte> data)

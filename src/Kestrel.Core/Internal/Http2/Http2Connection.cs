@@ -289,8 +289,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
-        private async Task ProcessDataFrameAsync()
+        private Task ProcessDataFrameAsync()
         {
+            if (_currentHeadersStream != null)
+            {
+                return ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+            }
+
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
                 var endStream = (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
@@ -298,16 +303,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 if ((_incomingFrame.DataFlags & Http2DataFrameFlags.PADDED) == Http2DataFrameFlags.PADDED)
                 {
                     var padLength = _incomingFrame.Payload[0];
-                    await stream.MessageBody.OnDataAsync(_incomingFrame.Payload.Slice(1, _incomingFrame.Length - padLength - 1), endStream);
+                    return stream.MessageBody.OnDataAsync(_incomingFrame.Payload.Slice(1, _incomingFrame.Length - padLength - 1), endStream);
                 }
                 else
                 {
-                    await stream.MessageBody.OnDataAsync(_incomingFrame.Payload, endStream);
+                    return stream.MessageBody.OnDataAsync(_incomingFrame.Payload, endStream);
                 }
             }
             else
             {
-                // TODO: error
+                return ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
             }
         }
 
@@ -343,6 +348,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private async Task ProcessSettingsFrameAsync()
         {
+            if (_currentHeadersStream != null)
+            {
+                await ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+            }
+
             ReadSettings();
 
             await _outputSem.WaitAsync();
@@ -401,6 +411,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private async Task ProcessPingFrameAsync()
         {
+            if (_currentHeadersStream != null)
+            {
+                await ConnectionErrorAsync(Http2ConnectionError.PROTOCOL_ERROR);
+            }
+
             await _outputSem.WaitAsync();
 
             try
