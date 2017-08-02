@@ -34,6 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Length = 8;
             Type = Http2FrameType.GOAWAY;
             Flags = 0;
+            StreamId = 0;
             GoAwayLastStreamId = lastStreamId;
             GoAwayErrorCode = errorCode;
         }

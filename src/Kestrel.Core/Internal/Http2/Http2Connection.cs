@@ -3,19 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
-using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
@@ -38,8 +31,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2Frame _outgoingFrame = new Http2Frame();
 
         private Http2Stream _currentHeadersStream;
+        private int _lastStreamId;
 
-        private bool _requestProcessingStopping;
+        private bool _stopping;
 
         private readonly Dictionary<int, Http2Stream> _streams = new Dictionary<int, Http2Stream>();
 
@@ -62,27 +56,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void Abort(Exception ex)
         {
-            _requestProcessingStopping = true;
+            _stopping = true;
             _frameWriter.Abort(ex);
         }
 
         public void Stop()
         {
-            _requestProcessingStopping = true;
+            _stopping = true;
             Input.CancelPendingRead();
-        }
-
-        private async Task ConnectionErrorAsync(Http2ErrorCode errorCode)
-        {
-            await _frameWriter.WriteGoAwayAsync(_incomingFrame.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
-            throw new Http2ConnectionErrorException(errorCode);
         }
 
         public async Task ProcessAsync<TContext>(IHttpApplication<TContext> application)
         {
+            var errorCode = Http2ErrorCode.NO_ERROR;
+
             try
             {
-                while (!_requestProcessingStopping)
+                while (!_stopping)
                 {
                     var result = await Input.ReadAsync();
                     var readableBuffer = result.Buffer;
@@ -109,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
 
-                while (!_requestProcessingStopping)
+                while (!_stopping)
                 {
                     var result = await Input.ReadAsync();
                     var readableBuffer = result.Buffer;
@@ -137,8 +127,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
             }
+            catch (Http2ConnectionErrorException ex)
+            {
+                errorCode = ex.ErrorCode;
+                throw;
+            }
             finally
             {
+                await _frameWriter.WriteGoAwayAsync(_lastStreamId, errorCode);
+
                 Input.Complete();
                 Output.Complete();
             }
@@ -199,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
@@ -218,7 +215,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
             else
             {
-                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
         }
 
@@ -226,7 +223,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             _currentHeadersStream = new Http2Stream<TContext>(
@@ -240,11 +237,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 frameWriter: _frameWriter);
             _currentHeadersStream.Reset();
 
+            _lastStreamId = _incomingFrame.StreamId;
+
             _hpackDecoder.Decode(_incomingFrame.HeaderBlockFragment, _currentHeadersStream.RequestHeaders);
 
             if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS)
             {
-                _streams[_incomingFrame.StreamId] = _currentHeadersStream;
+                _streams[_currentHeadersStream.StreamId] = _currentHeadersStream;
                 _ = _currentHeadersStream.ProcessRequestAsync();
                 _currentHeadersStream = null;
             }
@@ -256,7 +255,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             ReadSettings();
@@ -309,7 +308,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream != null)
             {
-                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             return _frameWriter.WritePingAsync(Http2PingFrameFlags.ACK, _incomingFrame.Payload);
@@ -325,14 +324,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_currentHeadersStream == null ||  _incomingFrame.StreamId != _currentHeadersStream.StreamId)
             {
-                return ConnectionErrorAsync(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             _hpackDecoder.Decode(_incomingFrame.HeaderBlockFragment, _currentHeadersStream.RequestHeaders);
 
             if ((_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS)
             {
-                _streams[_incomingFrame.StreamId] = _currentHeadersStream;
+                _streams[_currentHeadersStream.StreamId] = _currentHeadersStream;
                 _ = _currentHeadersStream.ProcessRequestAsync();
                 _currentHeadersStream = null;
             }

@@ -10,6 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2ConnectionErrorException(Http2ErrorCode errorCode)
             : base($"HTTP/2 connection error: {errorCode}")
         {
+            ErrorCode = errorCode;
         }
+
+        public Http2ErrorCode ErrorCode { get; }
     }
 }
