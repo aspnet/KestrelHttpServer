@@ -630,7 +630,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             await ProduceStart(appCompleted: true);
 
             // Force flush
-            await Output.FlushAsync();
+            await Output.FlushAsync(default(CancellationToken));
 
             await WriteSuffix();
         }
@@ -642,7 +642,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
             }
 
-            return Output.WriteDataAsync(StreamId, Span<byte>.Empty, endStream: true);
+            return Output.WriteDataAsync(StreamId, Span<byte>.Empty, endStream: true, cancellationToken: default(CancellationToken));
         }
 
         private Task CreateResponseHeader(bool appCompleted)

@@ -12,13 +12,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public interface IHttp2FrameWriter
     {
         void Abort(Exception error);
-        Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken));
-        Task Write100ContinueAsync(int streamId, CancellationToken cancellationToken = default(CancellationToken));
-        Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers, CancellationToken cancellationToken = default(CancellationToken));
-        Task WriteDataAsync(int streamId, Span<byte> data, CancellationToken cancellationToken = default(CancellationToken));
-        Task WriteDataAsync(int streamId, Span<byte> data, bool endStream, CancellationToken cancellationToken = default(CancellationToken));
-        Task WriteSettingsAckAsync(CancellationToken cancellationToken = default(CancellationToken));
-        Task WritePingAsync(Http2PingFrameFlags flags, Span<byte> payload, CancellationToken cancellationToken = default(CancellationToken));
-        Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode, CancellationToken cancellationToken = default(CancellationToken));
+        Task FlushAsync(CancellationToken cancellationToken);
+        Task Write100ContinueAsync(int streamId);
+        Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers);
+        Task WriteDataAsync(int streamId, Span<byte> data, CancellationToken cancellationToken);
+        Task WriteDataAsync(int streamId, Span<byte> data, bool endStream, CancellationToken cancellationToken);
+        Task WriteSettingsAckAsync();
+        Task WritePingAsync(Http2PingFrameFlags flags, Span<byte> payload);
+        Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode);
     }
 }
