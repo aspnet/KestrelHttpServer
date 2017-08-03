@@ -2,29 +2,38 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
     public class DynamicTable
     {
-        private readonly LinkedList<HeaderField> _table = new LinkedList<HeaderField>();
-
+        private readonly HeaderField[] _buffer;
         private int _maxSize = 4096;
         private int _size;
+        private int _count;
+        private int _insertIndex;
+        private int _removeIndex;
+
+        public DynamicTable(int maxSize)
+        {
+            _buffer = new HeaderField[maxSize];
+            _maxSize = maxSize;
+        }
+
+        public int Count => _count;
+
+        public int Size => _size;
 
         public HeaderField this[int index]
         {
             get
             {
-                var node = _table.First;
-
-                for (var i = 0; i < index; i++)
+                if (index >= _count)
                 {
-                    node = node.Next;
+                    throw new IndexOutOfRangeException();
                 }
 
-                return node.Value;
+                return _buffer[_insertIndex == 0 ? _buffer.Length - 1 : _insertIndex - index - 1];
             }
         }
 
@@ -33,8 +42,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             var entrySize = name.Length + value.Length + 32;
             EnsureSize(_maxSize - entrySize);
 
-            _table.AddFirst(new HeaderField(name, value));
+            if (_maxSize < entrySize)
+            {
+                throw new InvalidOperationException($"Unable to add entry of size {entrySize} to dynamic table of size {_maxSize}.");
+            }
+
+            _buffer[_insertIndex] = new HeaderField(name, value);
+            _insertIndex = (_insertIndex + 1) % _buffer.Length;
             _size += entrySize;
+            _count++;
         }
 
         public void Resize(int maxSize)
@@ -45,10 +61,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public void EnsureSize(int size)
         {
-            while (_size > size)
+            while (_count > 0 && _size > size)
             {
-                _size -= _table.Last.Value.Name.Length + _table.Last.Value.Value.Length + 32;
-                _table.RemoveLast();
+                _size -= _buffer[_removeIndex].Name.Length + _buffer[_removeIndex].Value.Length + 32;
+                _count--;
+                _removeIndex = (_removeIndex + 1) % _buffer.Length;
             }
         }
     }

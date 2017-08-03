@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private const int DynamicTableSizeUpdatePrefix = 5;
         private const int StringLengthPrefix = 7;
 
-        private readonly DynamicTable _dynamicTable = new DynamicTable();
+        private readonly DynamicTable _dynamicTable = new DynamicTable(4096);
         private readonly IntegerDecoder _integerDecoder = new IntegerDecoder();
 
         private State _state = State.Ready;
