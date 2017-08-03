@@ -321,16 +321,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        /// <summary>
-        /// Immediate kill the connection and poison the request and response streams.
-        /// </summary>
         public void Abort(Exception error)
         {
             if (Interlocked.Exchange(ref _requestAborted, 1) == 0)
             {
                 _streams?.Abort(error);
-
-                Output.Abort(error);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
                 ServiceContext.ThreadPool.UnsafeRun(state => ((Http2Stream)state).CancelRequestAbortedToken(), this);

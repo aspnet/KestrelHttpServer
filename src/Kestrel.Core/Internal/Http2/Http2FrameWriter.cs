@@ -106,6 +106,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
+        public async Task WriteRstStreamAsync(int streamId, Http2ErrorCode errorCode)
+        {
+            await _outputSem.WaitAsync();
+
+            try
+            {
+                _outgoingFrame.PrepareRstStream(streamId, errorCode);
+                await WriteAsync(_outgoingFrame.Raw);
+            }
+            finally
+            {
+                _outputSem.Release();
+            }
+        }
+
         public async Task WriteSettingsAckAsync()
         {
             await _outputSem.WaitAsync();
