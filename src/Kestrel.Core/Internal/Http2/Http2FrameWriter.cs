@@ -22,6 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly IPipe _output;
         private readonly ILogger _logger;
 
+        private bool _completed;
+
         public Http2FrameWriter(IPipe output, ILogger logger)
         {
             _output = output;
@@ -33,7 +35,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public void Abort(Exception ex)
         {
             _output.Reader.CancelPendingRead();
-            _output.Writer.Complete(ex);
+
+            _outputSem.Wait();
+
+            try
+            {
+                _completed = true;
+                _output.Writer.Complete(ex);
+            }
+            finally
+            {
+                _outputSem.Release();
+            }
         }
 
         public Task FlushAsync(CancellationToken cancellationToken)
@@ -169,6 +182,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private async Task WriteAsync(Span<byte> data, CancellationToken cancellationToken = default(CancellationToken))
         {
+            if (_completed)
+            {
+                return;
+            }
+
             var writeableBuffer = _output.Writer.Alloc(1);
             writeableBuffer.Write(data);
             await writeableBuffer.FlushAsync(cancellationToken);

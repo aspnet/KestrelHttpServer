@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 {
-    public class TlsConnectionAdapter : IConnectionAdapter, IAlpnHandler
+    public class TlsConnectionAdapter : IConnectionAdapter
     {
         private static readonly ClosedAdaptedConnection _closedAdaptedConnection = new ClosedAdaptedConnection();
         private static readonly HashSet<string> _serverProtocols = new HashSet<string>(new[] { "h2", "http/1.1" });
@@ -51,33 +51,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 
         public bool IsHttps => true;
 
-        public IEnumerable<string> ServerProtocols => _serverProtocols;
-
         public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
         {
             // Don't trust TlsStream not to block.
             return Task.Run(() => InnerOnConnectionAsync(context));
         }
 
-        public bool OnProtocolSelected(string protocol)
-        {
-            var supportedProtocol = _serverProtocols.Contains(protocol);
-
-            if (supportedProtocol)
-            {
-                _applicationProtocol = protocol;
-            }
-
-            return supportedProtocol;
-        }
-
         private async Task<IAdaptedConnection> InnerOnConnectionAsync(ConnectionAdapterContext context)
         {
-            var tlsStream = new TlsStream(context.ConnectionStream, _options.CertificatePath, _options.PrivateKeyPath, alpnHandler: this);
+            var tlsStream = new TlsStream(context.ConnectionStream, _options.CertificatePath, _options.PrivateKeyPath, _serverProtocols);
 
             try
             {
                 await tlsStream.DoHandshakeAsync();
+                _applicationProtocol = tlsStream.GetNegotiatedApplicationProtocol();
             }
             catch (IOException ex)
             {

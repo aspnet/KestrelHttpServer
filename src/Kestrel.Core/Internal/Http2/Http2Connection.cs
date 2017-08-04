@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
@@ -112,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         {
                             if (Http2FrameReader.ReadFrame(readableBuffer, _incomingFrame, out consumed, out examined))
                             {
-                                Log.LogTrace($"Received {_incomingFrame.Type} frame with flags 0x{_incomingFrame.Flags:x} and length {_incomingFrame.Length} for stream ID {_incomingFrame.StreamId}");
+                                Log.LogTrace($"Connection id {ConnectionId} received {_incomingFrame.Type} frame with flags 0x{_incomingFrame.Flags:x} and length {_incomingFrame.Length} for stream ID {_incomingFrame.StreamId}");
                                 await ProcessFrameAsync<TContext>(application);
                             }
                         }
@@ -127,17 +128,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
             }
+            catch (ConnectionAbortedException)
+            {
+                // TODO: log
+            }
             catch (Http2ConnectionErrorException ex)
             {
+                // TODO: log
                 errorCode = ex.ErrorCode;
-                throw;
+            }
+            catch (Exception)
+            {
+                // TODO: log
+                errorCode = Http2ErrorCode.INTERNAL_ERROR;
             }
             finally
             {
-                await _frameWriter.WriteGoAwayAsync(_lastStreamId, errorCode);
-
-                Input.Complete();
-                Output.Complete();
+                try
+                {
+                    await _frameWriter.WriteGoAwayAsync(_lastStreamId, errorCode);
+                }
+                finally
+                {
+                    Input.Complete();
+                    _frameWriter.Abort(ex: null);
+                }
             }
         }
 

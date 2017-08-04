@@ -12,14 +12,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 {
     public static class OpenSsl
     {
-        public const int BIO_C_SET_BUF_MEM_EOF_RETURN = 130;
-        private const int SSL_TLSEXT_ERR_OK = 0;
-        private const int SSL_TLSEXT_ERR_NOACK = 3;
+        public const int OPENSSL_NPN_NEGOTIATED = 1;
+        public const int SSL_TLSEXT_ERR_OK = 0;
+        public const int SSL_TLSEXT_ERR_NOACK = 3;
+
+        private const int BIO_C_SET_BUF_MEM_EOF_RETURN = 130;
         private const int SSL_CTRL_SET_ECDH_AUTO = 94;
 
-        public static void SSL_library_init()
+        public static int SSL_library_init()
         {
-            NativeMethods.SSL_library_init();
+            return NativeMethods.SSL_library_init();
         }
 
         public static void SSL_load_error_strings()
@@ -66,45 +68,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate int alpn_select_cb_t(IntPtr ssl, IntPtr pout, IntPtr outlen, IntPtr pin, int inlen, IntPtr arg);
+        public unsafe delegate int alpn_select_cb_t(IntPtr ssl, out byte* @out, out byte outlen, byte* @in, uint inlen, IntPtr arg);
 
-        public static void SSL_CTX_set_alpn_select_cb(IntPtr ctx, IAlpnHandler handler)
+        public unsafe static void SSL_CTX_set_alpn_select_cb(IntPtr ctx, alpn_select_cb_t cb, IntPtr arg)
         {
-            GCHandle handle = GCHandle.Alloc(handler);
-            NativeMethods.SSL_CTX_set_alpn_select_cb(ctx, AlpnSelectCallback, (IntPtr)handle);
+            NativeMethods.SSL_CTX_set_alpn_select_cb(ctx, cb, arg);
         }
 
-        private static unsafe int AlpnSelectCallback(IntPtr ssl, IntPtr ppout, IntPtr poutlen, IntPtr pin, int inlen, IntPtr arg)
+        public static unsafe int SSL_select_next_proto(out byte* @out, out byte outlen, byte* server, uint server_len, byte* client, uint client_len)
         {
-            var handler = ((GCHandle)arg).Target as IAlpnHandler;
-
-            var server = ToWireFormat(handler.ServerProtocols);
-
-            fixed (byte* serverPtr = server)
-            {
-                NativeMethods.SSL_select_next_proto(ppout, poutlen, (IntPtr)serverPtr, (uint)server.Length, pin, (uint)inlen);
-            }
-
-            var pout = Marshal.ReadIntPtr(ppout);
-            var outlen = Marshal.ReadByte(poutlen);
-
-            var protocol = Marshal.PtrToStringAnsi(pout, outlen);
-
-            return handler.OnProtocolSelected(protocol) ? SSL_TLSEXT_ERR_OK : SSL_TLSEXT_ERR_NOACK;
+            return NativeMethods.SSL_select_next_proto(out @out, out outlen, server, server_len, client, client_len);
         }
 
-        private static byte[] ToWireFormat(IEnumerable<string> protocols)
+        public static unsafe void SSL_get0_alpn_selected(IntPtr ssl, out string protocol)
         {
-            var buffer = new byte[protocols.Count() + protocols.Sum(protocol => protocol.Length)];
+            NativeMethods.SSL_get0_alpn_selected(ssl, out var data, out var length);
 
-            var offset = 0;
-            foreach (var protocol in protocols)
-            {
-                buffer[offset++] = (byte)protocol.Length;
-                offset += Encoding.ASCII.GetBytes(protocol, 0, protocol.Length, buffer, offset);
-            }
-
-            return buffer;
+            protocol = data != null
+                ? Marshal.PtrToStringAnsi((IntPtr)data, length)
+                : null;
         }
 
         public static IntPtr SSL_new(IntPtr ctx)
@@ -192,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
         private class NativeMethods
         {
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
-            public static extern void SSL_library_init();
+            public static extern int SSL_library_init();
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern void SSL_load_error_strings();
@@ -219,7 +201,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             public static extern void SSL_CTX_set_alpn_select_cb(IntPtr ctx, alpn_select_cb_t cb, IntPtr arg);
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
-            public static extern int SSL_select_next_proto(IntPtr @out, IntPtr outlen, IntPtr server, uint server_len, IntPtr client, uint client_len);
+            public static extern unsafe int SSL_select_next_proto(out byte* @out, out byte outlen, byte* server, uint server_len, byte* client, uint client_len);
+
+            [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
+            public static extern unsafe void SSL_get0_alpn_selected(IntPtr ssl, out byte* data, out int len);
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern IntPtr SSL_new(IntPtr ctx);

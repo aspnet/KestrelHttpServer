@@ -4,6 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,15 +14,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 {
     public class TlsStream : Stream
     {
+        private static unsafe OpenSsl.alpn_select_cb_t _alpnSelectCallback = AlpnSelectCallback;
+
         private readonly Stream _innerStream;
-        private readonly IAlpnHandler _alpnHandler;
+        private readonly byte[] _protocols;
+        private readonly GCHandle _protocolsHandle;
 
         private IntPtr _ctx;
         private IntPtr _ssl;
         private IntPtr _inputBio;
         private IntPtr _outputBio;
-
-        private readonly SemaphoreSlim _inputAvailable = new SemaphoreSlim(0);
 
         private readonly byte[] _inputBuffer = new byte[1024 * 1024];
         private readonly byte[] _outputBuffer = new byte[1024 * 1024];
@@ -32,10 +36,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             OpenSsl.OpenSSL_add_all_algorithms();
         }
 
-        public TlsStream(Stream innerStream, string certificatePath, string privateKeyPath, IAlpnHandler alpnHandler)
+        public TlsStream(Stream innerStream, string certificatePath, string privateKeyPath, IEnumerable<string> protocols)
         {
             _innerStream = innerStream;
-            _alpnHandler = alpnHandler;
+            _protocols = ToWireFormat(protocols);
+            _protocolsHandle = GCHandle.Alloc(_protocols);
 
             _ctx = OpenSsl.SSL_CTX_new(OpenSsl.TLSv1_2_method());
 
@@ -56,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
                 throw new Exception("Unable to load private key file.");
             }
 
-            OpenSsl.SSL_CTX_set_alpn_select_cb(_ctx, _alpnHandler);
+            OpenSsl.SSL_CTX_set_alpn_select_cb(_ctx, _alpnSelectCallback, GCHandle.ToIntPtr(_protocolsHandle));
 
             _ssl = OpenSsl.SSL_new(_ctx);
 
@@ -134,28 +139,74 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 
             var count = 0;
 
-            while ((count = await _innerStream.ReadAsync(_inputBuffer, 0, _inputBuffer.Length)) > 0)
+            try
             {
-                OpenSsl.BIO_write(_inputBio, _inputBuffer, 0, count);
-                var ret = OpenSsl.SSL_do_handshake(_ssl);
-
-                if (ret != 1)
+                while ((count = await _innerStream.ReadAsync(_inputBuffer, 0, _inputBuffer.Length, cancellationToken)) > 0)
                 {
-                    var error = OpenSsl.SSL_get_error(_ssl,  ret);
-
-                    if (error != 2)
+                    if (count == 0)
                     {
-                        throw new Exception($"{nameof(OpenSsl.SSL_do_handshake)} failed: {error}.");
+                        throw new IOException("TLS handshake failed: the inner stream was closed.");
+                    }
+
+                    OpenSsl.BIO_write(_inputBio, _inputBuffer, 0, count);
+
+                    var ret = OpenSsl.SSL_do_handshake(_ssl);
+
+                    if (ret != 1)
+                    {
+                        var error = OpenSsl.SSL_get_error(_ssl, ret);
+
+                        if (error != 2)
+                        {
+                            throw new IOException($"TLS handshake failed: {nameof(OpenSsl.SSL_do_handshake)} error {error}.");
+                        }
+                    }
+
+                    await FlushAsync(cancellationToken);
+
+                    if (ret == 1)
+                    {
+                        return;
                     }
                 }
-
-                await FlushAsync(cancellationToken);
-
-                if (ret == 1)
-                {
-                    return;
-                }
             }
+            finally
+            {
+                _protocolsHandle.Free();
+            }
+        }
+
+        public string GetNegotiatedApplicationProtocol()
+        {
+            OpenSsl.SSL_get0_alpn_selected(_ssl, out var protocol);
+            return protocol;
+        }
+
+        private static unsafe int AlpnSelectCallback(IntPtr ssl, out byte* @out, out byte outlen, byte* @in, uint inlen, IntPtr arg)
+        {
+            var protocols = GCHandle.FromIntPtr(arg);
+            var server = (byte[])protocols.Target;
+
+            fixed (byte* serverPtr = server)
+            {
+                return OpenSsl.SSL_select_next_proto(out @out, out outlen, serverPtr, (uint)server.Length, @in, (uint)inlen) == OpenSsl.OPENSSL_NPN_NEGOTIATED
+                    ? OpenSsl.SSL_TLSEXT_ERR_OK
+                    : OpenSsl.SSL_TLSEXT_ERR_NOACK;
+            }
+        }
+
+        private static byte[] ToWireFormat(IEnumerable<string> protocols)
+        {
+            var buffer = new byte[protocols.Count() + protocols.Sum(protocol => protocol.Length)];
+
+            var offset = 0;
+            foreach (var protocol in protocols)
+            {
+                buffer[offset++] = (byte)protocol.Length;
+                offset += Encoding.ASCII.GetBytes(protocol, 0, protocol.Length, buffer, offset);
+            }
+
+            return buffer;
         }
     }
 }
