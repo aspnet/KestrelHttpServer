@@ -100,6 +100,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
 
+                if (!_stopping)
+                {
+                    await _frameWriter.WriteSettingsAsync(_serverSettings);
+                }
+
                 while (!_stopping)
                 {
                     var result = await Input.ReadAsync();
@@ -278,6 +283,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             if (_currentHeadersStream != null)
             {
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            if ((_incomingFrame.SettingsFlags & Http2SettingsFrameFlags.ACK) == Http2SettingsFrameFlags.ACK)
+            {
+                // TODO: keep track of this
+                return Task.CompletedTask;
             }
 
             ReadSettings();

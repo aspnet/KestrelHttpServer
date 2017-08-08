@@ -167,13 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task SETTINGS_Received_Sends_ACK()
         {
-            await SendPreambleAsync();
-            await SendClientSettingsAsync();
-
-            await ExpectAsync(Http2FrameType.SETTINGS,
-                withLength: 0,
-                withFlags: (byte)Http2SettingsFrameFlags.ACK,
-                withStreamId: 0);
+            await InitializeConnectionAsync();
 
             await StopConnectionAsync(expectedLastStreamId: 0);
         }
@@ -248,6 +242,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             await SendPreambleAsync();
             await SendClientSettingsAsync();
+
+            await ExpectAsync(Http2FrameType.SETTINGS,
+                withLength: 0,
+                withFlags: 0,
+                withStreamId: 0);
 
             await ExpectAsync(Http2FrameType.SETTINGS,
                 withLength: 0,

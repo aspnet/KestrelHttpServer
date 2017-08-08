@@ -114,6 +114,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
+        public Task WriteSettingsAsync(Http2PeerSettings settings)
+        {
+            lock (_writeLock)
+            {
+                // TODO: actually send settings
+                _outgoingFrame.PrepareSettings(Http2SettingsFrameFlags.NONE);
+                return WriteAsync(_outgoingFrame.Raw);
+            }
+        }
+
         public Task WriteSettingsAckAsync()
         {
             lock (_writeLock)
