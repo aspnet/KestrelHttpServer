@@ -43,7 +43,9 @@ namespace TlsApp
                 })
                 .UseKestrel(options =>
                 {
-                    options.Listen(IPAddress.Loopback, 5000, listenOptions =>
+                    options.Listen(IPAddress.Loopback, 5000);
+
+                    options.Listen(IPAddress.Loopback, 5001, listenOptions =>
                     {
                         listenOptions.UseTls("cert.pem", "key.pem");
                     });

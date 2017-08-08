@@ -144,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
                     }
 
-                    if (_frame.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol == "h2" &&
+                    if (_frame.ConnectionFeatures?.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol == "h2" &&
                         Interlocked.Exchange(ref _http2ConnectionStartedOrAborted, 1) == 0)
                     {
                         await _http2Connection.ProcessAsync(application);
