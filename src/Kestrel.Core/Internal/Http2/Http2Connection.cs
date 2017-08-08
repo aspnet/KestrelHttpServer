@@ -3,12 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
@@ -226,15 +226,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             var endStream = (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
 
-            if ((_incomingFrame.DataFlags & Http2DataFrameFlags.PADDED) == Http2DataFrameFlags.PADDED)
-            {
-                var padLength = _incomingFrame.Payload[0];
-                return streamInfo.Stream.MessageBody.OnDataAsync(_incomingFrame.Payload.Slice(1, _incomingFrame.Length - padLength - 1), endStream);
-            }
-            else
-            {
-                return streamInfo.Stream.MessageBody.OnDataAsync(_incomingFrame.Payload, endStream);
-            }
+            return streamInfo.Stream.MessageBody.OnDataAsync(_incomingFrame.DataPayload, endStream);
         }
 
         private Task ProcessHeadersFrameAsync<TContext>(IHttpApplication<TContext> application)

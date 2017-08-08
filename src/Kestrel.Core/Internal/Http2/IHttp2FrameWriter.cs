@@ -5,7 +5,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {

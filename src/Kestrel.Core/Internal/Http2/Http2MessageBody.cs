@@ -3,11 +3,10 @@
 
 using System;
 using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
@@ -22,11 +21,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
         }
 
-        public async Task OnDataAsync(Span<byte> data, bool endStream)
+        public async Task OnDataAsync(ArraySegment<byte> data, bool endStream)
         {
             try
             {
-                if (!data.IsEmpty)
+                if (data.Count > 0)
                 {
                     var writableBuffer = _context.RequestBodyPipe.Writer.Alloc(1);
                     bool done;

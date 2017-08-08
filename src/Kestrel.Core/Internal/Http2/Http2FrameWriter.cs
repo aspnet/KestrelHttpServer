@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
 
         private readonly Http2Frame _outgoingFrame = new Http2Frame();
-        private readonly SemaphoreSlim _outputSem = new SemaphoreSlim(1);
+        private readonly object _writeLock = new object();
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly IPipe _output;
         private readonly ILogger _logger;
@@ -34,18 +34,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void Abort(Exception ex)
         {
-            _output.Reader.CancelPendingRead();
-
-            _outputSem.Wait();
-
-            try
+            lock (_writeLock)
             {
                 _completed = true;
+                _output.Reader.CancelPendingRead();
                 _output.Writer.Complete(ex);
-            }
-            finally
-            {
-                _outputSem.Release();
             }
         }
 
@@ -59,38 +52,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
-        public async Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers)
+        public Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers)
         {
-            await _outputSem.WaitAsync();
-
-            try
+            lock (_writeLock)
             {
                 _outgoingFrame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS, streamId);
 
                 var done = _hpackEncoder.BeginEncode(statusCode, headers, _outgoingFrame.Payload, out var payloadLength);
                 _outgoingFrame.Length = payloadLength;
-                await WriteAsync(_outgoingFrame.Raw);
 
                 if (!done)
                 {
                     // TODO: send CONTINUATION frames
                     throw new NotSupportedException();
                 }
-            }
-            finally
-            {
-                _outputSem.Release();
+
+                return WriteAsync(_outgoingFrame.Raw);
             }
         }
 
         public Task WriteDataAsync(int streamId, Span<byte> data, CancellationToken cancellationToken)
             => WriteDataAsync(streamId, data, endStream: false, cancellationToken: cancellationToken);
 
-        public async Task WriteDataAsync(int streamId, Span<byte> data, bool endStream, CancellationToken cancellationToken)
+        public Task WriteDataAsync(int streamId, Span<byte> data, bool endStream, CancellationToken cancellationToken)
         {
-            await _outputSem.WaitAsync();
+            var tasks = new List<Task>();
 
-            try
+            lock (_writeLock)
             {
                 _outgoingFrame.PrepareData(streamId);
 
@@ -99,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     data.Slice(0, _outgoingFrame.Length).CopyTo(_outgoingFrame.Payload);
                     data = data.Slice(_outgoingFrame.Length);
 
-                    await WriteAsync(_outgoingFrame.Raw, cancellationToken);
+                    tasks.Add(WriteAsync(_outgoingFrame.Raw, cancellationToken));
                 }
 
                 _outgoingFrame.Length = data.Length;
@@ -111,76 +99,50 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 data.CopyTo(_outgoingFrame.Payload);
 
-                await WriteAsync(_outgoingFrame.Raw, cancellationToken);
-            }
-            finally
-            {
-                _outputSem.Release();
+                tasks.Add(WriteAsync(_outgoingFrame.Raw, cancellationToken));
+
+                return Task.WhenAll(tasks);
             }
         }
 
-        public async Task WriteRstStreamAsync(int streamId, Http2ErrorCode errorCode)
+        public Task WriteRstStreamAsync(int streamId, Http2ErrorCode errorCode)
         {
-            await _outputSem.WaitAsync();
-
-            try
+            lock (_writeLock)
             {
                 _outgoingFrame.PrepareRstStream(streamId, errorCode);
-                await WriteAsync(_outgoingFrame.Raw);
-            }
-            finally
-            {
-                _outputSem.Release();
+                return WriteAsync(_outgoingFrame.Raw);
             }
         }
 
-        public async Task WriteSettingsAckAsync()
+        public Task WriteSettingsAckAsync()
         {
-            await _outputSem.WaitAsync();
-
-            try
+            lock (_writeLock)
             {
                 _outgoingFrame.PrepareSettings(Http2SettingsFrameFlags.ACK);
-                await WriteAsync(_outgoingFrame.Raw);
-            }
-            finally
-            {
-                _outputSem.Release();
+                return WriteAsync(_outgoingFrame.Raw);
             }
         }
 
-        public async Task WritePingAsync(Http2PingFrameFlags flags, Span<byte> payload)
+        public Task WritePingAsync(Http2PingFrameFlags flags, Span<byte> payload)
         {
-            await _outputSem.WaitAsync();
-
-            try
+            lock (_writeLock)
             {
                 _outgoingFrame.PreparePing(Http2PingFrameFlags.ACK);
                 payload.CopyTo(_outgoingFrame.Payload);
-                await WriteAsync(_outgoingFrame.Raw);
-            }
-            finally
-            {
-                _outputSem.Release();
+                return WriteAsync(_outgoingFrame.Raw);
             }
         }
 
-        public async Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode)
+        public Task WriteGoAwayAsync(int lastStreamId, Http2ErrorCode errorCode)
         {
-            await _outputSem.WaitAsync();
-
-            try
+            lock (_writeLock)
             {
                 _outgoingFrame.PrepareGoAway(lastStreamId, errorCode);
-                await WriteAsync(_outgoingFrame.Raw);
-            }
-            finally
-            {
-                _outputSem.Release();
+                return WriteAsync(_outgoingFrame.Raw);
             }
         }
 
-        private async Task WriteAsync(Span<byte> data, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (_completed)
             {

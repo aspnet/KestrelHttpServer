@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
@@ -19,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private readonly byte[] _data = new byte[DefaultFrameSize];
 
-        public Span<byte> Raw => new Span<byte>(_data, 0, HeaderLength + Length);
+        public ArraySegment<byte> Raw => new ArraySegment<byte>(_data, 0, HeaderLength + Length);
 
         public int Length
         {

@@ -3,7 +3,6 @@
 
 using System;
 using System.Linq;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {

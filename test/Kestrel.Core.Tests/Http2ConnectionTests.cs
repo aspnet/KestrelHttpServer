@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,8 +11,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System;
-using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
 
@@ -256,7 +255,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 0);
         }
 
-        private async Task SendAsync(Span<byte> span)
+        private async Task SendAsync(ArraySegment<byte> span)
         {
             var writableBuffer = _inputPipe.Writer.Alloc(1);
             writableBuffer.Write(span);
@@ -425,9 +424,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(expectedLastStreamId, goAwayFrame.GoAwayLastStreamId);
             Assert.Equal(expectedErrorCode, goAwayFrame.GoAwayErrorCode);
 
-            var exception = await Assert.ThrowsAsync<Http2ConnectionErrorException>(() => _connectionTask);
-            Assert.Equal(expectedErrorCode, exception.ErrorCode);
-
+            await _connectionTask;
             _inputPipe.Writer.Complete();
         }
 
