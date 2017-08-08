@@ -6,6 +6,6 @@ namespace Microsoft.AspNetCore.Protocols.Abstractions.Features
 {
     public interface IConnectionIdFeature
     {
-        string ConnectionId { get; set; }
+        string ConnectionId { get; }
     }
 }

@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Protocols.Abstractions.Features
 {
     public interface IConnectionTransportFeature
     {
-        PipeFactory PipeFactory { get; set; }
+        PipeFactory PipeFactory { get; }
 
         IPipe Transport { get; set; }
     }

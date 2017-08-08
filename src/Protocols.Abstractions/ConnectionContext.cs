@@ -6,7 +6,7 @@ namespace Microsoft.AspNetCore.Protocols.Abstractions
 {
     public abstract class ConnectionContext
     {
-        public abstract string ConnectionId { get; set; }
+        public abstract string ConnectionId { get; }
 
         public abstract IFeatureCollection Features { get; }
 
