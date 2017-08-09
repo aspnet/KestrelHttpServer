@@ -62,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                          {
                              // Manually configure options on the TestServiceContext.
                              // We're doing this so we can use the same instance that was passed in
-                             var configureOptions = sp.GetServices<IConfigureOptions<ServerOptions>>();
+                             var configureOptions = sp.GetServices<IConfigureOptions<ServerBuilder>>();
                              foreach (var c in configureOptions)
                              {
                                  c.Configure(context.ServerOptions);

@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public string ConnectionId { get; set; }
         public long FrameConnectionId { get; set; }
         public ServiceContext ServiceContext { get; set; }
-        public IConnectionInformation ConnectionInformation { get; set; }
+        public ConnectionInformation ConnectionInformation { get; set; }
 
         public IPipe Input { get; set; }
         public IPipe Output { get; set; }

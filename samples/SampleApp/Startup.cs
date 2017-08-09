@@ -55,25 +55,26 @@ namespace SampleApp
             }
 
 
-            var server = Server.Create(options =>
-            {
-                options.Listen("localhost", 8085)
-                       .UseConnectionLogging()
-                       .UseTls("foo.pfx")
-                       .UseHttpServer()
-                        .Run(async context =>
-                        {
-                            await context.Response.WriteAsync("Hello World");
-                        });
-
-                options.Listen(IPAddress.Any, 5001)
-                        .UseConnectionLogging()
-                        .UseHttpServer()
-                        .Run(async context =>
-                        {
-                            await context.Response.WriteAsync("Hello World");
-                        });
-            });
+            var server = new ServerBuilder()
+                             .Listen("localhost", 8085, builder =>
+                             {
+                                 builder.UseTls("foo.pfx")
+                                        .UseHttpServer()
+                                        .Run(async context =>
+                                        {
+                                            await context.Response.WriteAsync("Hello World");
+                                        });
+                             })
+                             .Listen(IPAddress.Any, 5001, builder =>
+                             {
+                                 builder.UseConnectionLogging()
+                                       .UseHttpServer()
+                                       .Run(async context =>
+                                       {
+                                           await context.Response.WriteAsync("Hello World");
+                                       });
+                             })
+                             .Build();
 
             await server.StartAsync();
 
@@ -89,7 +90,7 @@ namespace SampleApp
                 .UseKestrel(options =>
                 {
                     // Run callbacks on the transport thread
-                    options.ApplicationSchedulingMode = SchedulingMode.Inline;
+                    // options.ApplicationSchedulingMode = SchedulingMode.Inline;
 
                     options.Listen(IPAddress.Loopback, basePort, listenOptions =>
                     {
@@ -101,7 +102,7 @@ namespace SampleApp
 
                     options.Listen(IPAddress.Loopback, basePort + 1, listenOptions =>
                     {
-                        listenOptions.UseHttps("testCert.pfx", "testPassword");
+                        // listenOptions.UseHttps("testCert.pfx", "testPassword");
                         listenOptions.UseConnectionLogging();
                     });
 

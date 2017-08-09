@@ -80,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             var serviceContext = new ServiceContext
             {
                 HttpParserFactory = _ => NullParser<FrameAdapter>.Instance,
-                ServerOptions = new ServerOptions()
+                ServerOptions = new ServerBuilder()
             };
             var frameContext = new FrameContext
             {

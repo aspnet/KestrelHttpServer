@@ -122,7 +122,9 @@ namespace Microsoft.AspNetCore.Protocols.Tls
                 _logger?.LogInformation(1, ex, TlsStrings.AuthenticationFailed);
                 sslStream.Dispose();
 
-                // REVIEW: Do we need to call next here?
+                // Complete both sides of the pipe
+                context.Transport.Reader.Complete();
+                context.Transport.Writer.Complete();
                 return;
             }
 

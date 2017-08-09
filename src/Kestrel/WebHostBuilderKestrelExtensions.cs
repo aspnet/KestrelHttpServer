@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Hosting
 
             return hostBuilder.ConfigureServices(services =>
             {
-                services.AddTransient<IConfigureOptions<ServerOptions>, KestrelServerOptionsSetup>();
+                services.AddTransient<IConfigureOptions<ServerBuilder>, KestrelServerOptionsSetup>();
                 services.AddSingleton<IServer, KestrelServer>();
             });
         }
@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>
         /// The Microsoft.AspNetCore.Hosting.IWebHostBuilder.
         /// </returns>
-        public static IWebHostBuilder UseKestrel(this IWebHostBuilder hostBuilder, Action<ServerOptions> options)
+        public static IWebHostBuilder UseKestrel(this IWebHostBuilder hostBuilder, Action<ServerBuilder> options)
         {
             return hostBuilder.UseKestrel().ConfigureServices(services =>
             {

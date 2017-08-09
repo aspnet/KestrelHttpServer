@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tests
 
             hostBuilder.ConfigureServices(services =>
             {
-                services.Configure<ServerOptions>(options =>
+                services.Configure<ServerBuilder>(options =>
                 {
                     // Assert
                     Assert.NotNull(options.ApplicationServices);

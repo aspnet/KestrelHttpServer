@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace Microsoft.AspNetCore.Hosting
@@ -16,30 +17,19 @@ namespace Microsoft.AspNetCore.Hosting
 
         /// <summary>
         /// Open file descriptor (SD_LISTEN_FDS_START) initialized by systemd socket-based activation logic if available.
-        /// </summary>
-        /// <returns>
-        /// The <see cref="ServerOptions"/>.
-        /// </returns>
-        public static ServerOptions UseSystemd(this ServerOptions options)
-        {
-            return options.UseSystemd(_ => { });
-        }
-
-        /// <summary>
-        /// Open file descriptor (SD_LISTEN_FDS_START) initialized by systemd socket-based activation logic if available.
         /// Specify callback to configure endpoint-specific settings.
         /// </summary>
         /// <returns>
-        /// The <see cref="ServerOptions"/>.
+        /// The <see cref="ServerBuilder"/>.
         /// </returns>
-        public static ServerOptions UseSystemd(this ServerOptions options, Action<ListenOptions> configure)
+        public static ServerBuilder UseSystemd(this ServerBuilder builder, Action<IConnectionBuilder> configure)
         {
             if (string.Equals(Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture), Environment.GetEnvironmentVariable(ListenPidEnvVar), StringComparison.Ordinal))
             {
-                options.ListenHandle(SdListenFdsStart, configure);
+                return builder.ListenHandle(SdListenFdsStart, configure);
             }
 
-            return options;
+            return builder;
         }
     }
 }

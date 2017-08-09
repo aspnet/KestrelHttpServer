@@ -72,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext
             {
-                ServerOptions = new ServerOptions
+                ServerOptions = new ServerBuilder
                 {
                     AddServerHeader = false,
                     Limits =

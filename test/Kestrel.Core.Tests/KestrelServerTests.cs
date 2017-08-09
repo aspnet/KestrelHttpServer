@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
 
-            using (var server = CreateServer(new ServerOptions(), testLogger))
+            using (var server = CreateServer(new ServerBuilder(), testLogger))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("http:/asdf");
 
@@ -41,14 +41,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
 
-            using (var server = CreateServer(new ServerOptions(), testLogger))
+            using (var server = CreateServer(new ServerBuilder(), testLogger))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
 
                 var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
 
                 Assert.Equal(
-                    $"HTTPS endpoints can only be configured using {nameof(ServerOptions)}.{nameof(ServerOptions.Listen)}().",
+                    $"HTTPS endpoints can only be configured using {nameof(ServerBuilder)}.{nameof(ServerBuilder.Listen)}().",
                     exception.Message);
                 Assert.Equal(1, testLogger.CriticalErrorsLogged);
             }
@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
 
-            using (var server = CreateServer(new ServerOptions(), testLogger))
+            using (var server = CreateServer(new ServerBuilder(), testLogger))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("http://127.0.0.1:0/base");
 
@@ -79,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void StartWarnsWhenIgnoringIServerAddressesFeature(string ignoredAddress)
         {
             var testLogger = new TestApplicationErrorLogger();
-            var kestrelOptions = new ServerOptions();
+            var kestrelOptions = new ServerBuilder();
 
             // Directly configuring an endpoint using Listen causes the IServerAddressesFeature to be ignored.
             kestrelOptions.Listen(IPAddress.Loopback, 0);
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void StartWithMaxRequestBufferSizeLessThanMaxRequestLineSizeThrows(long maxRequestBufferSize, int maxRequestLineSize)
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
-            var options = new ServerOptions
+            var options = new ServerBuilder
             {
                 Limits =
                 {
@@ -126,7 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void StartWithMaxRequestBufferSizeLessThanMaxRequestHeadersTotalSizeThrows(long maxRequestBufferSize, int maxRequestHeadersTotalSize)
         {
             var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
-            var options = new ServerOptions
+            var options = new ServerBuilder
             {
                 Limits =
                 {
@@ -151,7 +151,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void LoggerCategoryNameIsKestrelServerNamespace()
         {
             var mockLoggerFactory = new Mock<ILoggerFactory>();
-            new KestrelServer(Options.Create<ServerOptions>(null), Mock.Of<ITransportFactory>(), mockLoggerFactory.Object);
+            new KestrelServer(Options.Create<ServerBuilder>(null), Mock.Of<ITransportFactory>(), mockLoggerFactory.Object);
             mockLoggerFactory.Verify(factory => factory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel"));
         }
 
@@ -159,7 +159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void StartWithNoTransportFactoryThrows()
         {
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new KestrelServer(Options.Create<ServerOptions>(null), null, Mock.Of<ILoggerFactory>()));
+                new KestrelServer(Options.Create<ServerBuilder>(null), null, Mock.Of<ILoggerFactory>()));
 
             Assert.Equal("transportFactory", exception.ParamName);
         }
@@ -167,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task StopAsyncCallsCompleteWhenFirstCallCompletes()
         {
-            var options = new ServerOptions
+            var options = new ServerBuilder
             {
                 ListenOptions =
                 {
@@ -217,7 +217,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task StopAsyncCallsCompleteWithThrownException()
         {
-            var options = new ServerOptions
+            var options = new ServerBuilder
             {
                 ListenOptions =
                 {
@@ -269,7 +269,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             mockTransport.Verify(transport => transport.UnbindAsync(), Times.Once);
         }
 
-        private static KestrelServer CreateServer(ServerOptions options, ILogger testLogger)
+        private static KestrelServer CreateServer(ServerBuilder options, ILogger testLogger)
         {
             return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new [] { new KestrelTestLoggerProvider(testLogger)} ));
         }

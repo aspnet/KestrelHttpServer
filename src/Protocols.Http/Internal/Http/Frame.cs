@@ -16,7 +16,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
@@ -103,7 +102,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public IPipe RequestBodyPipe { get; }
 
         public ServiceContext ServiceContext => _frameContext.ServiceContext;
-        public IConnectionInformation ConnectionInformation => _frameContext.ConnectionInformation;
+        public ConnectionInformation ConnectionInformation => _frameContext.ConnectionInformation;
 
         public IFeatureCollection ConnectionFeatures { get; set; }
         public IPipeReader Input => _frameContext.Input;
@@ -113,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected IKestrelTrace Log => ServiceContext.Log;
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
-        private KestrelServerOptions ServerOptions { get; }
+        private HttpServerOptions ServerOptions { get; }
         private IPEndPoint LocalEndPoint => ConnectionInformation.LocalEndPoint;
         private IPEndPoint RemoteEndPoint => ConnectionInformation.RemoteEndPoint;
         protected string ConnectionId => _frameContext.ConnectionId;

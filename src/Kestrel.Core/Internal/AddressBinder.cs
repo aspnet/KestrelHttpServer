@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
@@ -165,7 +166,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             if (parsedAddress.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(CoreStrings.FormatConfigureHttpsFromMethodCall($"{nameof(ServerOptions)}.{nameof(ServerOptions.Listen)}()"));
+                throw new InvalidOperationException(CoreStrings.FormatConfigureHttpsFromMethodCall($"{nameof(ServerBuilder)}.{nameof(ServerBuilder.Listen)}()"));
             }
             else if (!parsedAddress.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase))
             {

@@ -203,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             const string headerLine1 = "Header-1: value1\r\n";
             const string headerLine2 = "Header-2: value2\r\n";
 
-            var options = new ServerOptions();
+            var options = new ServerBuilder();
             options.Limits.MaxRequestHeadersTotalSize = headerLine1.Length;
             options.Limits.MaxRequestHeaderCount = 1;
             _serviceContext.ServerOptions = options;

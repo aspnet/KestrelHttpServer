@@ -9,7 +9,6 @@ using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -17,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class FrameConnection : ITimeoutControl, IPipe
+    public class FrameConnection : ITimeoutControl
     {
         private readonly FrameConnectionContext _context;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -92,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 try
                 {
                     Log.ConnectionStart(ConnectionId);
-                    KestrelEventSource.Log.ConnectionStart(this, _context.ConnectionInformation);
+                    KestrelEventSource.Log.ConnectionStart(this);
 
                     var input = _context.Input.Reader;
                     var output = _context.Output;
@@ -401,10 +400,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             return null;
-        }
-
-        public void Reset()
-        {
         }
     }
 }

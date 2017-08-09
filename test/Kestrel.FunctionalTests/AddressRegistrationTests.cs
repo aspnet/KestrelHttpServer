@@ -243,7 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 var testUrlWithPort = $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}";
 
-                var options = ((IOptions<ServerOptions>)host.Services.GetService(typeof(IOptions<ServerOptions>))).Value;
+                var options = ((IOptions<ServerBuilder>)host.Services.GetService(typeof(IOptions<ServerBuilder>))).Value;
                 Assert.Single(options.ListenOptions);
 
                 var response = await HttpClientSlim.GetStringAsync(testUrlWithPort, validateCertificate: false);

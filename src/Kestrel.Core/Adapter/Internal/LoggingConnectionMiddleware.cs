@@ -10,12 +10,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 {
-    public class LoggingConnectionAdapter
+    public class LoggingConnectionMiddleware
     {
         private readonly ConnectionDelegate _next;
         private readonly ILogger _logger;
 
-        public LoggingConnectionAdapter(ConnectionDelegate next, ILogger logger)
+        public LoggingConnectionMiddleware(ConnectionDelegate next, ILogger logger)
         {
             if (logger == null)
             {

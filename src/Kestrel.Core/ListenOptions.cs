@@ -7,7 +7,6 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols.Abstractions;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core
@@ -105,10 +104,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         public ulong FileHandle { get; }
 
         /// <summary>
-        /// Enables an <see cref="IConnectionAdapter"/> to resolve and use services registered by the application during startup.
         /// Only set if accessed from the callback of a <see cref="ServerOptions"/> Listen* method.
         /// </summary>
-        public ServerOptions ServerOptions { get; internal set; }
+        public ServerBuilder ServerOptions { get; internal set; }
 
         /// <summary>
         /// Set to false to enable Nagle's algorithm for all connections.
@@ -127,7 +125,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// Defaults to empty.
         /// </remarks>
         [Obsolete("")]
-        public List<IConnectionAdapter> ConnectionAdapters { get; } = new List<IConnectionAdapter>();
+        // public List<IConnectionAdapter> ConnectionAdapters { get; } = new List<IConnectionAdapter>();
 
         public IServiceProvider ApplicationServices => ServerOptions?.ApplicationServices;
 
@@ -136,23 +134,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         internal string GetDisplayName()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            var scheme = ConnectionAdapters.Any(f => f.IsHttps)
-#pragma warning restore CS0618 // Type or member is obsolete
-                ? "https"
-                : "http";
+            return null;
+//#pragma warning disable CS0618 // Type or member is obsolete
+//            // var scheme = ConnectionAdapters.Any(f => f.IsHttps)
+//#pragma warning restore CS0618 // Type or member is obsolete
+//                ? "https"
+//                : "http";
 
-            switch (Type)
-            {
-                case ListenType.IPEndPoint:
-                    return $"{scheme}://{IPEndPoint}";
-                case ListenType.SocketPath:
-                    return $"{scheme}://unix:{SocketPath}";
-                case ListenType.FileHandle:
-                    return $"{scheme}://<file handle>";
-                default:
-                    throw new InvalidOperationException();
-            }
+//            switch (Type)
+//            {
+//                case ListenType.IPEndPoint:
+//                    return $"{scheme}://{IPEndPoint}";
+//                case ListenType.SocketPath:
+//                    return $"{scheme}://unix:{SocketPath}";
+//                case ListenType.FileHandle:
+//                    return $"{scheme}://<file handle>";
+//                default:
+//                    throw new InvalidOperationException();
+//            }
         }
 
         public override string ToString() => GetDisplayName();
@@ -175,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 var component = _components[i];
                 app = component(app);
             }
-            
+
             return app;
         }
     }
