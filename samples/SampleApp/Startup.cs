@@ -56,25 +56,24 @@ namespace SampleApp
 
 
             var server = new ServerBuilder()
-                             .Listen("localhost", 8085, builder =>
-                             {
-                                 builder.UseTls("foo.pfx")
-                                        .UseHttpServer()
-                                        .Run(async context =>
-                                        {
-                                            await context.Response.WriteAsync("Hello World");
-                                        });
-                             })
-                             .Listen(IPAddress.Any, 5001, builder =>
-                             {
-                                 builder.UseConnectionLogging()
-                                       .UseHttpServer()
-                                       .Run(async context =>
-                                       {
-                                           await context.Response.WriteAsync("Hello World");
-                                       });
-                             })
-                             .Build();
+                    .Listen("localhost", 8085, builder =>
+                    {
+                        builder.UseTls("foo.pfx")
+                            .UseHttpServer(app =>
+                            {
+                                app.Run(async context =>
+                                 {
+                                     await context.Response.WriteAsync("Hello World");
+                                 });
+                            });
+                            
+                    })
+                    .Listen(IPAddress.Any, 5001, builder =>
+                    {
+                        builder.UseConnectionLogging()
+                            .UseHttpServer<Startup>();
+                    })
+                    .Build();
 
             await server.StartAsync();
 
@@ -106,7 +105,7 @@ namespace SampleApp
                         listenOptions.UseConnectionLogging();
                     });
 
-                    options.UseSystemd();
+                    // options.UseSystemd();
 
                     // The following section should be used to demo sockets
                     //options.ListenUnixSocket("/tmp/kestrel-test.sock");
