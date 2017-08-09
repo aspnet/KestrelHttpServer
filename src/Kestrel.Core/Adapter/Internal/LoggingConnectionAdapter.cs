@@ -4,45 +4,42 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Protocols.Abstractions;
+using Microsoft.AspNetCore.Protocols.Abstractions.Features;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 {
-    public class LoggingConnectionAdapter : IConnectionAdapter
+    public class LoggingConnectionAdapter
     {
+        private readonly ConnectionDelegate _next;
         private readonly ILogger _logger;
 
-        public LoggingConnectionAdapter(ILogger logger)
+        public LoggingConnectionAdapter(ConnectionDelegate next, ILogger logger)
         {
             if (logger == null)
             {
                 throw new ArgumentNullException(nameof(logger));
             }
 
+            _next = next;
             _logger = logger;
         }
 
-        public bool IsHttps => false;
-
-        public Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
+        public async Task OnConnectionAsync(ConnectionContext context)
         {
-            return Task.FromResult<IAdaptedConnection>(
-                new LoggingAdaptedConnection(context.ConnectionStream, _logger));
-        }
+            var transportFeature = context.Features.Get<IConnectionTransportFeature>();
 
-        private class LoggingAdaptedConnection : IAdaptedConnection
-        {
-            public LoggingAdaptedConnection(Stream rawStream, ILogger logger)
-            {
-                ConnectionStream = new LoggingStream(rawStream, logger);
-            }
+            var stream = new LoggingStream(new PipeStream(context.Transport.Reader, context.Transport.Writer), _logger);
+            var pipe = new StreamPipe(transportFeature.PipeFactory);
 
-            public Stream ConnectionStream { get; }
+            context.Transport = new StreamPipe(transportFeature.PipeFactory);
 
-            public void Dispose()
-            {
-            }
+            var task = pipe.CopyFromAsync(stream);
+
+            await _next(context);
+
+            await task;
         }
     }
 }

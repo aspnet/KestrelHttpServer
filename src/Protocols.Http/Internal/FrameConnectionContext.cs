@@ -3,8 +3,6 @@
 
 using System.Collections.Generic;
 using System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
@@ -13,7 +11,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public string ConnectionId { get; set; }
         public long FrameConnectionId { get; set; }
         public ServiceContext ServiceContext { get; set; }
-        public List<IConnectionAdapter> ConnectionAdapters { get; set; }
         public IConnectionInformation ConnectionInformation { get; set; }
 
         public IPipe Input { get; set; }

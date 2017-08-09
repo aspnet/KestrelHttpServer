@@ -11,18 +11,15 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Abstractions;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class FrameConnection : ConnectionContext, IConnectionContext, ITimeoutControl, IPipe
+    public class FrameConnection : ITimeoutControl, IPipe
     {
         private readonly FrameConnectionContext _context;
-        private List<IAdaptedConnection> _adaptedConnections;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         private Frame _frame;
 
@@ -53,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public bool TimedOut { get; private set; }
 
-        public override string ConnectionId => _context.ConnectionId;
+        public string ConnectionId => _context.ConnectionId;
         public IPipeWriter Input => _context.Input.Writer;
         public IPipeReader Output => _context.Output.Reader;
 
@@ -78,11 +75,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private IKestrelTrace Log => _context.ServiceContext.Log;
 
-        // TODO: We need to expose features
-        public override IFeatureCollection Features { get; } = new FeatureCollection();
-
-        public override IPipe Transport { get => this; set { } }
-
         public IPipeReader Reader => _context.Output.Reader;
 
         public IPipeWriter Writer => _context.Output.Writer;
@@ -102,22 +94,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     Log.ConnectionStart(ConnectionId);
                     KestrelEventSource.Log.ConnectionStart(this, _context.ConnectionInformation);
 
-                    AdaptedPipeline adaptedPipeline = null;
-                    var adaptedPipelineTask = Task.CompletedTask;
                     var input = _context.Input.Reader;
                     var output = _context.Output;
-
-                    if (_context.ConnectionAdapters.Count > 0)
-                    {
-                        adaptedPipeline = new AdaptedPipeline(input,
-                                                              output,
-                                                              PipeFactory.Create(AdaptedInputPipeOptions),
-                                                              PipeFactory.Create(AdaptedOutputPipeOptions),
-                                                              Log);
-
-                        input = adaptedPipeline.Input.Reader;
-                        output = adaptedPipeline.Output;
-                    }
 
                     // _frame must be initialized before adding the connection to the connection manager
                     CreateFrame(application, input, output);
@@ -127,15 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     _context.ServiceContext.ConnectionManager.AddConnection(_context.FrameConnectionId, this);
                     _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 
-                    if (adaptedPipeline != null)
-                    {
-                        // Stream can be null here and run async will close the connection in that case
-                        var stream = await ApplyConnectionAdaptersAsync();
-                        adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
-                    }
-
                     await _frame.ProcessRequestsAsync();
-                    await adaptedPipelineTask;
                     await _socketClosedTcs.Task;
                 }
                 catch (Exception ex)
@@ -145,7 +115,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 finally
                 {
                     _context.ServiceContext.ConnectionManager.RemoveConnection(_context.FrameConnectionId);
-                    DisposeAdaptedConnections();
 
                     if (_frame.WasUpgraded)
                     {
@@ -225,51 +194,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             TimedOut = true;
             _frame.Stop();
-        }
-
-        private async Task<Stream> ApplyConnectionAdaptersAsync()
-        {
-            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
-
-            var features = new FeatureCollection();
-            var connectionAdapters = _context.ConnectionAdapters;
-            var stream = new RawStream(_context.Input.Reader, _context.Output.Writer);
-            var adapterContext = new ConnectionAdapterContext(features, stream);
-            _adaptedConnections = new List<IAdaptedConnection>(connectionAdapters.Count);
-
-            try
-            {
-                for (var i = 0; i < connectionAdapters.Count; i++)
-                {
-                    var adaptedConnection = await connectionAdapters[i].OnConnectionAsync(adapterContext);
-                    _adaptedConnections.Add(adaptedConnection);
-                    adapterContext = new ConnectionAdapterContext(features, adaptedConnection.ConnectionStream);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.LogError(0, ex, $"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}.");
-
-                return null;
-            }
-            finally
-            {
-                _frame.ConnectionFeatures = features;
-            }
-
-            return adapterContext.ConnectionStream;
-        }
-
-        private void DisposeAdaptedConnections()
-        {
-            var adaptedConnections = _adaptedConnections;
-            if (adaptedConnections != null)
-            {
-                for (int i = adaptedConnections.Count - 1; i >= 0; i--)
-                {
-                    adaptedConnections[i].Dispose();
-                }
-            }
         }
 
         public void Tick(DateTimeOffset now)
@@ -481,7 +405,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Reset()
         {
-            throw new NotImplementedException();
         }
     }
 }

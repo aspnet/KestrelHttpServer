@@ -5,71 +5,29 @@ using System;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class ConnectionHandler<TContext> : IConnectionHandler
+    public class ConnectionHandler : IConnectionHandler
     {
-        private static long _lastFrameConnectionId = long.MinValue;
-
         private readonly ListenOptions _listenOptions;
-        private readonly ServiceContext _serviceContext;
-        private readonly IHttpApplication<TContext> _application;
         private readonly ConnectionDelegate _connectionDelegate;
 
-        public ConnectionHandler(ListenOptions listenOptions, ServiceContext serviceContext, IHttpApplication<TContext> application)
+        public ConnectionHandler(ListenOptions listenOptions)
         {
             _listenOptions = listenOptions;
-            _serviceContext = serviceContext;
-            _application = application;
-
-            // Add the terminal middleware to the pipeline that executes the application
-            listenOptions.Use(next =>
-            {
-                return ExecuteFrameConnectionAsync;
-            });
 
             // Build the pipeline
             _connectionDelegate = listenOptions.Build();
         }
 
-        private Task ExecuteFrameConnectionAsync(ConnectionContext connectionContext)
-        {
-            // This is a hack, we should be agnostic of the actual implementation here
-            var frameConnection = (FrameConnection)connectionContext;
-
-            return frameConnection.StartRequestProcessing(_application);
-        }
-
         public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
         {
-            var inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(connectionInfo.InputWriterScheduler));
-            var outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(connectionInfo.OutputReaderScheduler));
-
-            var connectionId = CorrelationIdGenerator.GetNextId();
-            var frameConnectionId = Interlocked.Increment(ref _lastFrameConnectionId);
-
-            if (!_serviceContext.ConnectionManager.NormalConnectionCount.TryLockOne())
-            {
-                var goAway = new RejectionConnection(inputPipe, outputPipe, connectionId, _serviceContext);
-                goAway.Reject();
-                return goAway;
-            }
-
-            var connection = new FrameConnection(new FrameConnectionContext
-            {
-                ConnectionId = connectionId,
-                FrameConnectionId = frameConnectionId,
-                ServiceContext = _serviceContext,
-                ConnectionInformation = connectionInfo,
-                ConnectionAdapters = _listenOptions.ConnectionAdapters,
-                Input = inputPipe,
-                Output = outputPipe,
-            });
+            var connection = new Connection(connectionInfo);
 
             // Since data cannot be added to the inputPipe by the transport until OnConnection returns,
             // Frame.ProcessRequestsAsync is guaranteed to unblock the transport thread before calling
@@ -79,34 +37,80 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             return connection;
         }
 
-        // Internal for testing
-        internal PipeOptions GetInputPipeOptions(IScheduler writerScheduler) => new PipeOptions
+        private class Connection : ConnectionContext, IConnectionContext, IPipe
         {
-            ReaderScheduler = _serviceContext.ThreadPool,
-            WriterScheduler = writerScheduler,
-            MaximumSizeHigh = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
-            MaximumSizeLow = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
-        };
+            private IConnectionInformation _connectionInfo;
+            private IPipe _inputPipe;
+            private IPipe _outputPipe;
 
-        internal PipeOptions GetOutputPipeOptions(IScheduler readerScheduler) => new PipeOptions
-        {
-            ReaderScheduler = readerScheduler,
-            WriterScheduler = _serviceContext.ThreadPool,
-            MaximumSizeHigh = GetOutputResponseBufferSize(),
-            MaximumSizeLow = GetOutputResponseBufferSize()
-        };
-
-        private long GetOutputResponseBufferSize()
-        {
-            var bufferSize = _serviceContext.ServerOptions.Limits.MaxResponseBufferSize;
-            if (bufferSize == 0)
+            public Connection(IConnectionInformation connectionInfo)
             {
-                // 0 = no buffering so we need to configure the pipe so the the writer waits on the reader directly
-                return 1;
+                _connectionInfo = connectionInfo;
+
+                _inputPipe = connectionInfo.PipeFactory.Create(GetInputPipeOptions(connectionInfo.InputWriterScheduler));
+                _outputPipe = connectionInfo.PipeFactory.Create(GetOutputPipeOptions(connectionInfo.OutputReaderScheduler));
+                ConnectionId = CorrelationIdGenerator.GetNextId();
+                Transport = this;
             }
 
-            // null means that we have no back pressure
-            return bufferSize ?? 0;
+            public override string ConnectionId { get; }
+
+            public override IFeatureCollection Features { get; } = new FeatureCollection();
+
+            public override IPipe Transport { get; set; }
+
+            IPipeReader IPipe.Reader => _inputPipe.Reader;
+
+            IPipeWriter IPipe.Writer => _outputPipe.Writer;
+
+            IPipeWriter IConnectionContext.Input => _inputPipe.Writer;
+
+            IPipeReader IConnectionContext.Output => _outputPipe.Reader;
+
+            public void Abort(Exception ex)
+            {
+
+            }
+
+            public void OnConnectionClosed(Exception ex)
+            {
+            }
+
+            public void Reset()
+            {
+            }
+
+
+            // Internal for testing
+            internal PipeOptions GetInputPipeOptions(IScheduler writerScheduler) => new PipeOptions
+            {
+                // ReaderScheduler = _serviceContext.ThreadPool,
+                WriterScheduler = writerScheduler,
+                // MaximumSizeHigh = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
+                // MaximumSizeLow = _serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            };
+
+            internal PipeOptions GetOutputPipeOptions(IScheduler readerScheduler) => new PipeOptions
+            {
+                ReaderScheduler = readerScheduler,
+                // WriterScheduler = _serviceContext.ThreadPool,
+                // MaximumSizeHigh = GetOutputResponseBufferSize(),
+                // MaximumSizeLow = GetOutputResponseBufferSize()
+            };
+
+            private long GetOutputResponseBufferSize()
+            {
+                int? bufferSize = 0; //_serviceContext.ServerOptions.Limits.MaxResponseBufferSize;
+                if (bufferSize == 0)
+                {
+                    // 0 = no buffering so we need to configure the pipe so the the writer waits on the reader directly
+                    return 1;
+                }
+
+                // null means that we have no back pressure
+                return bufferSize ?? 0;
+            }
+
         }
     }
 }

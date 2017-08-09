@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core
@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     /// <summary>
     /// Provides programmatic configuration of Kestrel-specific features.
     /// </summary>
-    public class KestrelServerOptions
+    public class ServerOptions
     {
         /// <summary>
         /// Configures the endpoints that Kestrel should listen to.
@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <remarks>
         /// Defaults to true.
         /// </remarks>
-        public bool AddServerHeader { get; set; } = true;
+        // public bool AddServerHeader { get; set; } = true;
 
         /// <summary>
         /// Gets or sets a value that determines how Kestrel should schedule user callbacks.
@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         public SchedulingMode ApplicationSchedulingMode { get; set; } = SchedulingMode.Default;
 
         /// <summary>
-        /// Gets or sets a value that controls whether synchronous IO is allowed for the <see cref="HttpContext.Request"/> and <see cref="HttpContext.Response"/> 
+        /// Gets or sets a value that controls whether synchronous IO is allowed 
         /// </summary>
         /// <remarks>
         /// Defaults to true.
@@ -50,74 +50,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         public IServiceProvider ApplicationServices { get; set; }
 
-        /// <summary>
-        /// Provides access to request limit options.
-        /// </summary>
-        public KestrelServerLimits Limits { get; } = new KestrelServerLimits();
-
-        /// <summary>
-        /// Bind to given IP address and port.
-        /// </summary>
-        public void Listen(IPAddress address, int port)
+        public IConnectionBuilder Listen(string hostname, int port)
         {
-            Listen(address, port, _ => { });
+            // TODO: Implement
+            return null;
         }
 
         /// <summary>
         /// Bind to given IP address and port.
         /// The callback configures endpoint-specific settings.
         /// </summary>
-        public void Listen(IPAddress address, int port, Action<ListenOptions> configure)
+        public IConnectionBuilder Listen(IPAddress address, int port)
         {
             if (address == null)
             {
                 throw new ArgumentNullException(nameof(address));
             }
 
-            Listen(new IPEndPoint(address, port), configure);
-        }
-
-        /// <summary>
-        /// Bind to given IP endpoint.
-        /// </summary>
-        public void Listen(IPEndPoint endPoint)
-        {
-            Listen(endPoint, _ => { });
+            return Listen(new IPEndPoint(address, port));
         }
 
         /// <summary>
         /// Bind to given IP address and port.
         /// The callback configures endpoint-specific settings.
         /// </summary>
-        public void Listen(IPEndPoint endPoint, Action<ListenOptions> configure)
+        public IConnectionBuilder Listen(IPEndPoint endPoint)
         {
             if (endPoint == null)
             {
                 throw new ArgumentNullException(nameof(endPoint));
             }
-            if (configure == null)
-            {
-                throw new ArgumentNullException(nameof(configure));
-            }
-
-            var listenOptions = new ListenOptions(endPoint) { KestrelServerOptions = this };
-            configure(listenOptions);
+            
+            var listenOptions = new ListenOptions(endPoint) { ServerOptions = this };
             ListenOptions.Add(listenOptions);
-        }
-
-        /// <summary>
-        /// Bind to given Unix domain socket path.
-        /// </summary>
-        public void ListenUnixSocket(string socketPath)
-        {
-            ListenUnixSocket(socketPath, _ => { });
+            return listenOptions;
         }
 
         /// <summary>
         /// Bind to given Unix domain socket path.
         /// Specify callback to configure endpoint-specific settings.
         /// </summary>
-        public void ListenUnixSocket(string socketPath, Action<ListenOptions> configure)
+        public IConnectionBuilder ListenUnixSocket(string socketPath)
         {
             if (socketPath == null)
             {
@@ -127,38 +100,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             {
                 throw new ArgumentException(CoreStrings.UnixSocketPathMustBeAbsolute, nameof(socketPath));
             }
-            if (configure == null)
-            {
-                throw new ArgumentNullException(nameof(configure));
-            }
-
-            var listenOptions = new ListenOptions(socketPath) { KestrelServerOptions = this };
-            configure(listenOptions);
+            
+            var listenOptions = new ListenOptions(socketPath) { ServerOptions = this };
             ListenOptions.Add(listenOptions);
+            return listenOptions;
         }
-
-        /// <summary>
-        /// Open a socket file descriptor.
-        /// </summary>
-        public void ListenHandle(ulong handle)
-        {
-            ListenHandle(handle, _ => { });
-        }
-
+        
         /// <summary>
         /// Open a socket file descriptor.
         /// The callback configures endpoint-specific settings.
         /// </summary>
-        public void ListenHandle(ulong handle, Action<ListenOptions> configure)
+        public IConnectionBuilder ListenHandle(ulong handle)
         {
-            if (configure == null)
-            {
-                throw new ArgumentNullException(nameof(configure));
-            }
-
-            var listenOptions = new ListenOptions(handle) { KestrelServerOptions = this };
-            configure(listenOptions);
+            var listenOptions = new ListenOptions(handle) { ServerOptions = this };
             ListenOptions.Add(listenOptions);
+            return listenOptions;
         }
     }
 }

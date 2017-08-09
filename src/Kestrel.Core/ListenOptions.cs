@@ -106,9 +106,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
         /// <summary>
         /// Enables an <see cref="IConnectionAdapter"/> to resolve and use services registered by the application during startup.
-        /// Only set if accessed from the callback of a <see cref="KestrelServerOptions"/> Listen* method.
+        /// Only set if accessed from the callback of a <see cref="ServerOptions"/> Listen* method.
         /// </summary>
-        public KestrelServerOptions KestrelServerOptions { get; internal set; }
+        public ServerOptions ServerOptions { get; internal set; }
 
         /// <summary>
         /// Set to false to enable Nagle's algorithm for all connections.
@@ -121,22 +121,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <summary>
         /// Gets the <see cref="List{IConnectionAdapter}"/> that allows each connection <see cref="System.IO.Stream"/>
         /// to be intercepted and transformed.
-        /// Configured by the <c>UseHttps()</c> and <see cref="Hosting.ListenOptionsConnectionLoggingExtensions.UseConnectionLogging(ListenOptions)"/>
         /// extension methods.
         /// </summary>
         /// <remarks>
         /// Defaults to empty.
         /// </remarks>
+        [Obsolete("")]
         public List<IConnectionAdapter> ConnectionAdapters { get; } = new List<IConnectionAdapter>();
 
-        public IServiceProvider ApplicationServices => KestrelServerOptions?.ApplicationServices;
+        public IServiceProvider ApplicationServices => ServerOptions?.ApplicationServices;
 
         /// <summary>
         /// Gets the name of this endpoint to display on command-line when the web server starts.
         /// </summary>
         internal string GetDisplayName()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             var scheme = ConnectionAdapters.Any(f => f.IsHttps)
+#pragma warning restore CS0618 // Type or member is obsolete
                 ? "https"
                 : "http";
 
@@ -168,11 +170,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 return Task.CompletedTask;
             };
 
-            foreach (var component in _components.Reverse())
+            for (int i = _components.Count - 1; i >= 0; i--)
             {
+                var component = _components[i];
                 app = component(app);
             }
-
+            
             return app;
         }
     }

@@ -107,7 +107,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             _connectionDisconnect(_logger, connectionId, null);
         }
-        
+
+        public virtual void ApplicationError(string connectionId, string traceIdentifier, Exception ex)
+        {
+            _applicationError(_logger, connectionId, traceIdentifier, ex);
+        }
+
         public virtual void ConnectionHeadResponseBodyWrite(string connectionId, long count)
         {
             _connectionHeadResponseBodyWrite(_logger, connectionId, count, null);
@@ -117,7 +122,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             _notAllConnectionsClosedGracefully(_logger, null);
         }
-        
+
+        public void ConnectionBadRequest(string connectionId, BadHttpRequestException ex)
+        {
+            _connectionBadRequest(_logger, connectionId, ex.Message, ex);
+        }
+
+        public virtual void RequestProcessingError(string connectionId, Exception ex)
+        {
+            _requestProcessingError(_logger, connectionId, ex);
+        }
+
         public void NotAllConnectionsAborted()
         {
             _notAllConnectionsAborted(_logger, null);
@@ -127,7 +142,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             _heartbeatSlow(_logger, interval, now, null);
         }
-        
+
+        public virtual void ApplicationNeverCompleted(string connectionId)
+        {
+            _applicationNeverCompleted(_logger, connectionId, null);
+        }
+
+        public virtual void RequestBodyStart(string connectionId, string traceIdentifier)
+        {
+            _requestBodyStart(_logger, connectionId, traceIdentifier, null);
+        }
+
+        public virtual void RequestBodyDone(string connectionId, string traceIdentifier)
+        {
+            _requestBodyDone(_logger, connectionId, traceIdentifier, null);
+        }
+
+        public void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate)
+        {
+            _requestBodyMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
+        }
+
+        public void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
+        {
+            _responseMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, null);
+        }
+
         public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             => _logger.Log(logLevel, eventId, state, exception, formatter);
 

@@ -4,38 +4,29 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using System.IO.Pipelines;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
+namespace Microsoft.AspNetCore.Protocols.Abstractions
 {
-    public class AdaptedPipeline
+    public class StreamPipe : IPipe
     {
         private const int MinAllocBufferSize = 2048;
 
-        private readonly IKestrelTrace _trace;
-        private readonly IPipe _transportOutputPipe;
-        private readonly IPipeReader _transportInputPipeReader;
-
-        public AdaptedPipeline(IPipeReader transportInputPipeReader,
-                               IPipe transportOutputPipe,
-                               IPipe inputPipe,
-                               IPipe outputPipe,
-                               IKestrelTrace trace)
+        public StreamPipe(PipeFactory pipeFactory)
         {
-            _transportInputPipeReader = transportInputPipeReader;
-            _transportOutputPipe = transportOutputPipe;
-            Input = inputPipe;
-            Output = outputPipe;
-            _trace = trace;
+            Input = pipeFactory.Create();
+            Output = pipeFactory.Create();
         }
 
         public IPipe Input { get; }
 
         public IPipe Output { get; }
 
-        public async Task RunAsync(Stream stream)
+        IPipeReader IPipe.Reader => Input.Reader;
+
+        IPipeWriter IPipe.Writer => Input.Writer;
+
+        public async Task CopyFromAsync(Stream stream)
         {
             var inputTask = ReadInputAsync(stream);
             var outputTask = WriteOutputAsync(stream);
@@ -64,8 +55,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                     {
                         if (result.IsCancelled)
                         {
-                            // Forward the cancellation to the transport pipe
-                            _transportOutputPipe.Reader.CancelPendingRead();
                             break;
                         }
 
@@ -79,14 +68,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                         }
                         else if (buffer.IsSingleSpan)
                         {
-                            var array = buffer.First.GetArray();
+                            var array = GetArray(buffer.First);
                             await stream.WriteAsync(array.Array, array.Offset, array.Count);
                         }
                         else
                         {
                             foreach (var memory in buffer)
                             {
-                                var array = memory.GetArray();
+                                var array = GetArray(memory);
                                 await stream.WriteAsync(array.Array, array.Offset, array.Count);
                             }
                         }
@@ -104,7 +93,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
             finally
             {
                 Output.Reader.Complete();
-                _transportOutputPipe.Writer.Complete(error);
             }
         }
 
@@ -125,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 
                     var outputBuffer = Input.Writer.Alloc(MinAllocBufferSize);
 
-                    var array = outputBuffer.Buffer.GetArray();
+                    var array = GetArray(outputBuffer.Buffer);
                     try
                     {
                         var bytesRead = await stream.ReadAsync(array.Array, array.Offset, array.Count);
@@ -161,8 +149,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                 Input.Writer.Complete(error);
                 // The application could have ended the input pipe so complete
                 // the transport pipe as well
-                _transportInputPipeReader.Complete();
             }
+        }
+
+        public void Reset()
+        {
+            throw new NotSupportedException();
+        }
+
+        public static ArraySegment<byte> GetArray(Buffer<byte> buffer)
+        {
+            ArraySegment<byte> result;
+            if (!buffer.TryGetArray(out result))
+            {
+                throw new InvalidOperationException("Buffer backed by array was expected");
+            }
+            return result;
         }
     }
 }

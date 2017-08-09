@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
-    public class KestrelServerLimits
+    public class HttpServerLimits
     {
         // Matches the non-configurable default response buffer size for Kestrel in 1.0.0
         private long? _maxResponseBufferSize = 64 * 1024;

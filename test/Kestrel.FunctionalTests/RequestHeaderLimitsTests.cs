@@ -136,7 +136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private TestServer CreateServer(int? maxRequestHeaderCount = null, int? maxRequestHeadersTotalSize = null)
         {
-            var options = new KestrelServerOptions { AddServerHeader = false };
+            var options = new ServerOptions { AddServerHeader = false };
 
             if (maxRequestHeaderCount.HasValue)
             {

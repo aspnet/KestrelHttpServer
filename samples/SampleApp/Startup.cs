@@ -9,7 +9,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Protocols.Abstractions;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +38,7 @@ namespace SampleApp
             });
         }
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
@@ -50,6 +53,33 @@ namespace SampleApp
             {
                 basePort = 5000;
             }
+
+
+            var server = Server.Create(options =>
+            {
+                options.Listen("localhost", 8085)
+                       .UseConnectionLogging()
+                       .UseTls("foo.pfx")
+                       .UseHttpServer()
+                        .Run(async context =>
+                        {
+                            await context.Response.WriteAsync("Hello World");
+                        });
+
+                options.Listen(IPAddress.Any, 5001)
+                        .UseConnectionLogging()
+                        .UseHttpServer()
+                        .Run(async context =>
+                        {
+                            await context.Response.WriteAsync("Hello World");
+                        });
+            });
+
+            await server.StartAsync();
+
+            Console.ReadLine();
+
+            await server.StopAsync();
 
             var host = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>

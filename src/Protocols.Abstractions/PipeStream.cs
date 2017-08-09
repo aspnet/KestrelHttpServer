@@ -7,14 +7,15 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
+// TODO: This would move into pipes directly
+namespace Microsoft.AspNetCore.Protocols.Abstractions
 {
-    public class RawStream : Stream
+    public class PipeStream : Stream
     {
         private readonly IPipeReader _input;
         private readonly IPipeWriter _output;
 
-        public RawStream(IPipeReader input, IPipeWriter output)
+        public PipeStream(IPipeReader input, IPipeWriter output)
         {
             _input = input;
             _output = output;

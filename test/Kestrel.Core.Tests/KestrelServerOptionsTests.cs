@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void NoDelayDefaultsToTrue()
         {
-            var o1 = new KestrelServerOptions();
+            var o1 = new ServerOptions();
             o1.Listen(IPAddress.Loopback, 0);
             o1.Listen(IPAddress.Loopback, 0, d =>
             {
@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void AllowSynchronousIODefaultsToTrue()
         {
-            var options = new KestrelServerOptions();
+            var options = new ServerOptions();
 
             Assert.True(options.AllowSynchronousIO);
         }

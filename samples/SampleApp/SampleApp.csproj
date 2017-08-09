@@ -12,8 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Kestrel.Transport.Sockets\Kestrel.Transport.Sockets.csproj" />
     <ProjectReference Include="..\..\src\Kestrel\Kestrel.csproj" />
     <ProjectReference Include="..\..\src\Kestrel.Https\Kestrel.Https.csproj" />
+    <ProjectReference Include="..\..\src\Protocols.Http\Protocols.Http.csproj" />
   </ItemGroup>
 
   <ItemGroup>

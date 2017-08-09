@@ -7,8 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
@@ -17,19 +15,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     internal class AddressBinder
     {
-        public static async Task BindAsync(IServerAddressesFeature addresses,
+        public static async Task BindAsync(
+            List<string> addresses,
+            bool preferHostingUrls,
             List<ListenOptions> listenOptions,
             ILogger logger,
             Func<ListenOptions, Task> createBinding)
         {
             var strategy = CreateStrategy(
                 listenOptions.ToArray(),
-                addresses.Addresses.ToArray(),
-                addresses.PreferHostingUrls);
+                addresses.ToArray(),
+                preferHostingUrls);
 
             var context = new AddressBindContext
             {
-                Addresses = addresses.Addresses,
+                Addresses = addresses,
                 ListenOptions = listenOptions,
                 Logger = logger,
                 CreateBinding = createBinding
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             // reset options. The actual used options and addresses will be populated
             // by the address binding feature
             listenOptions.Clear();
-            addresses.Addresses.Clear();
+            addresses.Clear();
 
             await strategy.BindAsync(context).ConfigureAwait(false);
         }
@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             if (parsedAddress.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(CoreStrings.FormatConfigureHttpsFromMethodCall($"{nameof(KestrelServerOptions)}.{nameof(KestrelServerOptions.Listen)}()"));
+                throw new InvalidOperationException(CoreStrings.FormatConfigureHttpsFromMethodCall($"{nameof(ServerOptions)}.{nameof(ServerOptions.Listen)}()"));
             }
             else if (!parsedAddress.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase))
             {
@@ -174,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             if (!string.IsNullOrEmpty(parsedAddress.PathBase))
             {
-                throw new InvalidOperationException(CoreStrings.FormatConfigurePathBaseFromMethodCall($"{nameof(IApplicationBuilder)}.UsePathBase()"));
+                throw new InvalidOperationException(CoreStrings.FormatConfigurePathBaseFromMethodCall("IApplicationBuilder.UsePathBase()"));
             }
 
             if (parsedAddress.IsUnixPipe)
@@ -243,7 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             public override Task BindAsync(AddressBindContext context)
             {
                 var joined = string.Join(", ", _addresses);
-                context.Logger.LogInformation(CoreStrings.OverridingWithPreferHostingUrls, nameof(IServerAddressesFeature.PreferHostingUrls), joined);
+                context.Logger.LogInformation(CoreStrings.OverridingWithPreferHostingUrls, "PreferHostingUrls", joined);
 
                 return base.BindAsync(context);
             }

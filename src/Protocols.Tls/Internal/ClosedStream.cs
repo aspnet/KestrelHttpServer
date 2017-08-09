@@ -6,7 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Protocols.Tls
+namespace Microsoft.AspNetCore.Protocols.Tls.Internal
 {
     internal class ClosedStream : Stream
     {

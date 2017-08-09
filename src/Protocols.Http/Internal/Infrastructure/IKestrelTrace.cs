@@ -22,10 +22,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         void ConnectionDisconnect(string connectionId);
 
+        void RequestProcessingError(string connectionId, Exception ex);
+
+        void ConnectionHeadResponseBodyWrite(string connectionId, long count);
+
         void NotAllConnectionsClosedGracefully();
+
+        void ConnectionBadRequest(string connectionId, BadHttpRequestException ex);
+
+        void ApplicationError(string connectionId, string traceIdentifier, Exception ex);
 
         void NotAllConnectionsAborted();
 
         void HeartbeatSlow(TimeSpan interval, DateTimeOffset now);
+
+        void ApplicationNeverCompleted(string connectionId);
+
+        void RequestBodyStart(string connectionId, string traceIdentifier);
+
+        void RequestBodyDone(string connectionId, string traceIdentifier);
+
+        void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate);
+
+        void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier);
     }
 }

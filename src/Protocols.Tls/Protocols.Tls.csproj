@@ -1,15 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <AssemblyName>Microsoft.AspNetCore.Server.Kestrel.Core</AssemblyName>
-    <RootNamespace>Microsoft.AspNetCore.Server.Kestrel.Core</RootNamespace>
-    <Description>Core components of ASP.NET Core Kestrel cross-platform web server.</Description>
+    <AssemblyName>Microsoft.AspNetCore.Protocols.Tls</AssemblyName>
+    <RootNamespace>Microsoft.AspNetCore.Protocols.Tls</RootNamespace>
+    <Description>TLS support for the ASP.NET Core Protocols stack.</Description>
     <TargetFramework>netstandard2.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageTags>aspnetcore;kestrel</PackageTags>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PackageTags>aspnetcore</PackageTags>
     <NoWarn>CS1591;$(NoWarn)</NoWarn>
     <EnableApiCheck>false</EnableApiCheck>
     <!-- TODO: remove when https://github.com/dotnet/sdk/pull/1270 is fixed -->
@@ -18,16 +17,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(AspNetCoreVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="$(AspNetCoreVersion)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Kestrel.Transport.Abstractions\Kestrel.Transport.Abstractions.csproj" />
     <ProjectReference Include="..\Protocols.Abstractions\Protocols.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Update="CoreStrings.resx">
+    <EmbeddedResource Update="TlsStrings.resx">
       <Generator></Generator>
     </EmbeddedResource>
   </ItemGroup>

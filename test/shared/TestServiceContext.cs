@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Testing
             DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
             ConnectionManager = new FrameConnectionManager(Log, ResourceCounter.Unlimited, ResourceCounter.Unlimited);
             HttpParserFactory = frameAdapter => new HttpParser<FrameAdapter>(frameAdapter.Frame.ServiceContext.Log.IsEnabled(LogLevel.Information));
-            ServerOptions = new KestrelServerOptions
+            ServerOptions = new ServerOptions
             {
                 AddServerHeader = false
             };

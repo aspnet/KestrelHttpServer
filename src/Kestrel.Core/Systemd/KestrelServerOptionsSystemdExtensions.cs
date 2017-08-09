@@ -18,9 +18,9 @@ namespace Microsoft.AspNetCore.Hosting
         /// Open file descriptor (SD_LISTEN_FDS_START) initialized by systemd socket-based activation logic if available.
         /// </summary>
         /// <returns>
-        /// The <see cref="KestrelServerOptions"/>.
+        /// The <see cref="ServerOptions"/>.
         /// </returns>
-        public static KestrelServerOptions UseSystemd(this KestrelServerOptions options)
+        public static ServerOptions UseSystemd(this ServerOptions options)
         {
             return options.UseSystemd(_ => { });
         }
@@ -30,9 +30,9 @@ namespace Microsoft.AspNetCore.Hosting
         /// Specify callback to configure endpoint-specific settings.
         /// </summary>
         /// <returns>
-        /// The <see cref="KestrelServerOptions"/>.
+        /// The <see cref="ServerOptions"/>.
         /// </returns>
-        public static KestrelServerOptions UseSystemd(this KestrelServerOptions options, Action<ListenOptions> configure)
+        public static ServerOptions UseSystemd(this ServerOptions options, Action<ListenOptions> configure)
         {
             if (string.Equals(Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture), Environment.GetEnvironmentVariable(ListenPidEnvVar), StringComparison.Ordinal))
             {
