@@ -44,6 +44,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             return NativeMethods.SSL_CTX_new(method);
         }
 
+        public static void SSL_CTX_free(IntPtr ctx)
+        {
+            NativeMethods.SSL_CTX_free(ctx);
+        }
+
         public static int SSL_CTX_set_ecdh_auto(IntPtr ctx, int onoff)
         {
             return (int)NativeMethods.SSL_CTX_ctrl(ctx, SSL_CTRL_SET_ECDH_AUTO, onoff, IntPtr.Zero);
@@ -92,6 +97,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
         public static IntPtr SSL_new(IntPtr ctx)
         {
             return NativeMethods.SSL_new(ctx);
+        }
+
+        public static void SSL_free(IntPtr ssl)
+        {
+            NativeMethods.SSL_free(ssl);
         }
 
         public static int SSL_get_error(IntPtr ssl, int ret)
@@ -189,6 +199,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             public static extern IntPtr SSL_CTX_new(IntPtr method);
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
+            public static extern IntPtr SSL_CTX_free(IntPtr ctx);
+
+            [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern long SSL_CTX_ctrl(IntPtr ctx, int cmd, long larg, IntPtr parg);
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
@@ -208,6 +221,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern IntPtr SSL_new(IntPtr ctx);
+
+            [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
+            public static extern IntPtr SSL_free(IntPtr ssl);
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern int SSL_get_error(IntPtr ssl, int ret);

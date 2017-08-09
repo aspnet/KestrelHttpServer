@@ -74,6 +74,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             OpenSsl.SSL_set_bio(_ssl, _inputBio, _outputBio);
         }
 
+        ~TlsStream()
+        {
+            if (_ssl != IntPtr.Zero)
+            {
+                OpenSsl.SSL_free(_ssl);
+            }
+
+            if (_ctx != IntPtr.Zero)
+            {
+                // This frees the BIOs.
+                OpenSsl.SSL_CTX_free(_ctx);
+            }
+
+            if (_protocolsHandle.IsAllocated)
+            {
+                _protocolsHandle.Free();
+            }
+        }
+
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
