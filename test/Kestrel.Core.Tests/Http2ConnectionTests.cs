@@ -78,6 +78,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly RequestDelegate _noopApplication;
         private readonly RequestDelegate _readHeadersApplication;
         private readonly RequestDelegate _largeHeadersApplication;
+        private readonly RequestDelegate _waitForAbortApplication;
+        private readonly RequestDelegate _waitForAbortFlushingApplication;
 
         private Task _connectionTask;
 
@@ -104,6 +106,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 context.Response.Headers["b"] = _largeHeaderB;
 
                 return Task.CompletedTask;
+            };
+
+            _waitForAbortApplication = async context =>
+            {
+                var sem = new SemaphoreSlim(0);
+
+                context.RequestAborted.Register(() =>
+                {
+                    sem.Release();
+                });
+
+                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+            };
+
+            _waitForAbortFlushingApplication = async context =>
+            {
+                var sem = new SemaphoreSlim(0);
+
+                context.RequestAborted.Register(() =>
+                {
+                    sem.Release();
+                });
+
+                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+
+                await context.Response.Body.FlushAsync();
             };
 
             _connectionContext = new Http2ConnectionContext
@@ -187,6 +215,97 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 1);
 
             VerifyDecodedRequestHeaders(_browserRequestHeaders);
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_StreamIdZero_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendRstStreamAsync(0);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_LengthLessThan4_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            // Initialize stream 1 so it's legal to send it RST_STREAM frames
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _browserRequestHeaders);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            var rstStreamFrame = new Http2Frame();
+            rstStreamFrame.PrepareRstStream(1, Http2ErrorCode.CANCEL);
+            rstStreamFrame.Length = 3;
+            await SendAsync(rstStreamFrame.Raw);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_LengthGreaterThan4_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            // Initialize stream 1 so it's legal to send it RST_STREAM frames
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _browserRequestHeaders);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            var rstStreamFrame = new Http2Frame();
+            rstStreamFrame.PrepareRstStream(1, Http2ErrorCode.CANCEL);
+            rstStreamFrame.Length = 5;
+            await SendAsync(rstStreamFrame.Raw);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_AbortsStream()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _browserRequestHeaders);
+            await SendRstStreamAsync(1);
+
+            // No data is received from the stream since it was aborted before writing anything
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_AbortsStream_FlushedDataIsSent()
+        {
+            await InitializeConnectionAsync(_waitForAbortFlushingApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _browserRequestHeaders);
+            await SendRstStreamAsync(1);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+
+            // No END_STREAM DATA frame is received since the stream was aborted
 
             await StopConnectionAsync(expectedLastStreamId: 1);
         }
@@ -315,7 +434,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             _connectionTask = _connection.ProcessAsync(new DummyApplication(application));
 
-            await SendPreambleAsync();
+            await SendPreambleAsync().ConfigureAwait(false);
             await SendClientSettingsAsync();
 
             await ExpectAsync(Http2FrameType.SETTINGS,
@@ -388,6 +507,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var pingFrame = new Http2Frame();
             pingFrame.PreparePing(Http2PingFrameFlags.NONE);
             return SendAsync(pingFrame.Raw);
+        }
+
+        private Task SendRstStreamAsync(int streamId)
+        {
+            var rstStreamFrame = new Http2Frame();
+            rstStreamFrame.PrepareRstStream(streamId, Http2ErrorCode.CANCEL);
+            return SendAsync(rstStreamFrame.Raw);
         }
 
         private Task SendGoAwayAsync()

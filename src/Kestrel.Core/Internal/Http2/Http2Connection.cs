@@ -195,6 +195,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return ProcessDataFrameAsync();
                 case Http2FrameType.HEADERS:
                     return ProcessHeadersFrameAsync<TContext>(application);
+                case Http2FrameType.RST_STREAM:
+                    return ProcessRstStreamFrameAsync();
                 case Http2FrameType.SETTINGS:
                     return ProcessSettingsFrameAsync();
                 case Http2FrameType.PING:
@@ -274,6 +276,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 streamInfo.State = Http2StreamState.HalfClosedRemote;
             }
+
+            return Task.CompletedTask;
+        }
+
+        private Task ProcessRstStreamFrameAsync()
+        {
+            if (_currentHeadersStream != null)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            if (_incomingFrame.Length != 4)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            Http2StreamInformation streamInfo = null;
+
+            if (!_streams.TryGetValue(_incomingFrame.StreamId, out streamInfo) || streamInfo.State == Http2StreamState.Idle)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            streamInfo.Stream?.Abort(error: null);
 
             return Task.CompletedTask;
         }
