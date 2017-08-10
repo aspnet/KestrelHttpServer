@@ -20,17 +20,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly object _writeLock = new object();
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly IPipe _output;
-        private readonly ILogger _logger;
 
         private bool _completed;
 
-        public Http2FrameWriter(IPipe output, ILogger logger)
+        public Http2FrameWriter(IPipe output)
         {
             _output = output;
-            _logger = logger;
         }
-
-        public ILogger Log => _logger;
 
         public void Abort(Exception ex)
         {
@@ -54,20 +50,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers)
         {
+            var tasks = new List<Task>();
+
             lock (_writeLock)
             {
-                _outgoingFrame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS, streamId);
+                _outgoingFrame.PrepareHeaders(Http2HeadersFrameFlags.NONE, streamId);
 
                 var done = _hpackEncoder.BeginEncode(statusCode, headers, _outgoingFrame.Payload, out var payloadLength);
                 _outgoingFrame.Length = payloadLength;
 
-                if (!done)
+                if (done)
                 {
-                    // TODO: send CONTINUATION frames
-                    throw new NotSupportedException();
+                    _outgoingFrame.HeadersFlags = Http2HeadersFrameFlags.END_HEADERS;
                 }
 
-                return WriteAsync(_outgoingFrame.Raw);
+                tasks.Add(WriteAsync(_outgoingFrame.Raw));
+
+                while (!done)
+                {
+                    _outgoingFrame.PrepareContinuation(Http2ContinuationFrameFlags.NONE, streamId);
+
+                    done = _hpackEncoder.Encode(_outgoingFrame.Payload, out var length);
+                    _outgoingFrame.Length = length;
+
+                    if (done)
+                    {
+                        _outgoingFrame.ContinuationFlags = Http2ContinuationFrameFlags.END_HEADERS;
+                    }
+
+                    tasks.Add(WriteAsync(_outgoingFrame.Raw));
+                }
+
+                return Task.WhenAll(tasks);
             }
         }
 

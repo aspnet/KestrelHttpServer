@@ -52,13 +52,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private bool _index;
         private bool _huffman;
 
-        private ILogger _logger;
-
-        public HPackDecoder(ILogger logger)
-        {
-            _logger = logger;
-        }
-
         public void Decode(Span<byte> data, IHeaderDictionary headers)
         {
             for (var i = 0; i < data.Length; i++)

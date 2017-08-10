@@ -41,8 +41,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2Connection(Http2ConnectionContext context)
         {
             _context = context;
-            _frameWriter = new Http2FrameWriter(context.Output, context.ServiceContext.Log);
-            _hpackDecoder = new HPackDecoder(context.ServiceContext.Log);
+            _frameWriter = new Http2FrameWriter(context.Output);
+            _hpackDecoder = new HPackDecoder();
         }
 
         public string ConnectionId => _context.ConnectionId;
