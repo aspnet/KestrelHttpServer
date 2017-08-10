@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kestrel.Transport.Abstractions\Kestrel.Transport.Abstractions.csproj" />
+    <ProjectReference Include="..\Protocols.Abstractions\Protocols.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

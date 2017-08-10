@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -18,7 +19,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class FrameConnection : IConnectionContext, ITimeoutControl
+    public class FrameConnection : ConnectionContext, IConnectionContext, ITimeoutControl, IPipe
     {
         private readonly FrameConnectionContext _context;
         private List<IAdaptedConnection> _adaptedConnections;
@@ -52,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public bool TimedOut { get; private set; }
 
-        public string ConnectionId => _context.ConnectionId;
+        public override string ConnectionId => _context.ConnectionId;
         public IPipeWriter Input => _context.Input.Writer;
         public IPipeReader Output => _context.Output.Reader;
 
@@ -77,9 +78,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private IKestrelTrace Log => _context.ServiceContext.Log;
 
-        public void StartRequestProcessing<TContext>(IHttpApplication<TContext> application)
+        // TODO: We need to expose features
+        public override IFeatureCollection Features { get; } = new FeatureCollection();
+
+        public override IPipe Transport { get => this; set { } }
+
+        public IPipeReader Reader => _context.Output.Reader;
+
+        public IPipeWriter Writer => _context.Output.Writer;
+
+        public Task StartRequestProcessing<TContext>(IHttpApplication<TContext> application)
         {
             _lifetimeTask = ProcessRequestsAsync(application);
+            return _lifetimeTask;
         }
 
         private async Task ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
@@ -466,6 +477,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             return null;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
         }
     }
 }

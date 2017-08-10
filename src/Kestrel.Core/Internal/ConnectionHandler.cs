@@ -1,9 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.IO.Pipelines;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Protocols.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
@@ -16,12 +19,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private readonly ListenOptions _listenOptions;
         private readonly ServiceContext _serviceContext;
         private readonly IHttpApplication<TContext> _application;
+        private readonly ConnectionDelegate _connectionDelegate;
 
         public ConnectionHandler(ListenOptions listenOptions, ServiceContext serviceContext, IHttpApplication<TContext> application)
         {
             _listenOptions = listenOptions;
             _serviceContext = serviceContext;
             _application = application;
+
+            // Add the terminal middleware to the pipeline that executes the application
+            listenOptions.Use(next =>
+            {
+                return ExecuteFrameConnectionAsync;
+            });
+
+            // Build the pipeline
+            _connectionDelegate = listenOptions.Build();
+        }
+
+        private Task ExecuteFrameConnectionAsync(ConnectionContext connectionContext)
+        {
+            // This is a hack, we should be agnostic of the actual implementation here
+            var frameConnection = (FrameConnection)connectionContext;
+
+            return frameConnection.StartRequestProcessing(_application);
         }
 
         public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
@@ -53,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             // Since data cannot be added to the inputPipe by the transport until OnConnection returns,
             // Frame.ProcessRequestsAsync is guaranteed to unblock the transport thread before calling
             // application code.
-            connection.StartRequestProcessing<TContext>(_application);
+            _ = _connectionDelegate(connection);
 
             return connection;
         }
