@@ -2,8 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,6 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly HPackDecoder _hpackDecoder = new HPackDecoder();
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
 
+        private readonly ConcurrentDictionary<int, TaskCompletionSource<object>> _runningStreams = new ConcurrentDictionary<int, TaskCompletionSource<object>>();
         private readonly Dictionary<string, string> _receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<int> _abortedStreamIds = new HashSet<int>();
         private readonly object _abortedStreamIdsLock = new object();
@@ -114,13 +117,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _waitForAbortApplication = async context =>
             {
+                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
                 var sem = new SemaphoreSlim(0);
 
                 context.RequestAborted.Register(() =>
                 {
                     lock (_abortedStreamIdsLock)
                     {
-                        var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
                         _abortedStreamIds.Add(streamIdFeature.StreamId);
                     }
 
@@ -128,17 +131,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 });
 
                 await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+
+                _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
             };
 
             _waitForAbortFlushingApplication = async context =>
             {
+                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
                 var sem = new SemaphoreSlim(0);
 
                 context.RequestAborted.Register(() =>
                 {
                     lock (_abortedStreamIdsLock)
                     {
-                        var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
                         _abortedStreamIds.Add(streamIdFeature.StreamId);
                     }
 
@@ -148,6 +153,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
 
                 await context.Response.Body.FlushAsync();
+
+                _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
             };
 
             _connectionContext = new Http2ConnectionContext
@@ -363,6 +370,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task GOAWAY_Received_AbortsAllStreams()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            // Start some streams
+            _runningStreams[1] = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _twoContinuationsRequestHeaders);
+            _runningStreams[3] = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SendHeadersAsync(3, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _twoContinuationsRequestHeaders);
+            _runningStreams[5] = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SendHeadersAsync(5, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _twoContinuationsRequestHeaders);
+
+            await SendGoAwayAsync();
+
+            await WaitForConnectionStopAsync(expectedLastStreamId: 5);
+
+            await Task.WhenAll(_runningStreams.Values.Select(tcs => tcs.Task));
+            Assert.Contains(1, _abortedStreamIds);
+            Assert.Contains(3, _abortedStreamIds);
+            Assert.Contains(5, _abortedStreamIds);
+        }
+
+        [Fact]
         public async Task CONTINUATION_Received_Decoded()
         {
             await InitializeConnectionAsync(_readHeadersApplication);
@@ -448,6 +478,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal("0", responseHeadersDictionary["content-length"]);
             Assert.Equal(_largeHeaderA, responseHeadersDictionary["a"]);
             Assert.Equal(_largeHeaderB, responseHeadersDictionary["b"]);
+        }
+
+        [Fact]
+        public async Task ConnectionError_AbortsAllStreams()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            // Start some streams
+            _runningStreams[1] = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _twoContinuationsRequestHeaders);
+            _runningStreams[3] = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SendHeadersAsync(3, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _twoContinuationsRequestHeaders);
+            _runningStreams[5] = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SendHeadersAsync(5, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _twoContinuationsRequestHeaders);
+
+            // Cause a connection error by sending an invalid frame
+            await SendDataAsync(7, new byte[0]);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 5, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+
+            await Task.WhenAll(_runningStreams.Values.Select(tcs => tcs.Task));
+            Assert.Contains(1, _abortedStreamIds);
+            Assert.Contains(3, _abortedStreamIds);
+            Assert.Contains(5, _abortedStreamIds);
         }
 
         private async Task InitializeConnectionAsync(RequestDelegate application)

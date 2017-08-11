@@ -69,6 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public async Task ProcessAsync<TContext>(IHttpApplication<TContext> application)
         {
+            Exception error = null;
             var errorCode = Http2ErrorCode.NO_ERROR;
 
             try
@@ -133,24 +134,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
             }
-            catch (ConnectionAbortedException)
+            catch (ConnectionAbortedException ex)
             {
                 // TODO: log
+                error = ex;
             }
             catch (Http2ConnectionErrorException ex)
             {
                 // TODO: log
+                error = ex;
                 errorCode = ex.ErrorCode;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // TODO: log
+                error = ex;
                 errorCode = Http2ErrorCode.INTERNAL_ERROR;
             }
             finally
             {
                 try
                 {
+                    foreach (var streamInfo in _streams.Values)
+                    {
+                        streamInfo.Stream?.Abort(error);
+                    }
+
                     await _frameWriter.WriteGoAwayAsync(_lastStreamId, errorCode);
                 }
                 finally
