@@ -240,6 +240,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 return _frameWriter.WriteRstStreamAsync(streamInfo.StreamId, Http2ErrorCode.STREAM_CLOSED);
             }
 
+            if (_incomingFrame.DataIsPadded && _incomingFrame.DataPadLength >= _incomingFrame.Length)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             var endStream = (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
 
             return streamInfo.Stream.MessageBody.OnDataAsync(_incomingFrame.DataPayload, endStream);

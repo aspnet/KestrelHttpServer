@@ -13,20 +13,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             set => Flags = (byte)value;
         }
 
-        public bool DataPadded => (DataFlags & Http2DataFrameFlags.PADDED) == Http2DataFrameFlags.PADDED;
+        public bool DataIsPadded => (DataFlags & Http2DataFrameFlags.PADDED) == Http2DataFrameFlags.PADDED;
 
-        public byte DataPadLength => DataPadded ? Payload[0] : (byte)0;
+        public byte DataPadLength
+        {
+            get => DataIsPadded ? _data[HeaderLength] : (byte)0;
+            set => _data[HeaderLength] = value;
+        }
 
-        public ArraySegment<byte> DataPayload => DataPadded
+        public ArraySegment<byte> DataPayload => DataIsPadded
             ? new ArraySegment<byte>(_data, HeaderLength + 1, Length - DataPadLength - 1)
             : new ArraySegment<byte>(_data, HeaderLength, Length);
 
-        public void PrepareData(int streamId)
+        public void PrepareData(int streamId, byte? padLength = null)
         {
+            var padded = padLength != null;
+
             Length = DefaultFrameSize - HeaderLength;
             Type = Http2FrameType.DATA;
-            Flags = 0;
+            DataFlags = padded ? Http2DataFrameFlags.PADDED : Http2DataFrameFlags.NONE;
             StreamId = streamId;
+
+            if (padded)
+            {
+                DataPadLength = padLength.Value;
+                Payload.Slice(Length - padLength.Value).Fill(0);
+            }
         }
     }
 }
