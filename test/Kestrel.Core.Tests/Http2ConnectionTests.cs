@@ -207,39 +207,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(dataFrame.DataPayload, _helloWorldBytes);
         }
 
-        [Fact]
-        public async Task DATA_Received_WithPadding_ReadByStream()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(255)]
+        public async Task DATA_Received_WithPadding_ReadByStream(byte padLength)
         {
             await InitializeConnectionAsync(_readDataApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
-            await SendPaddedDataAsync(1, _helloWorldBytes, padLength: 4, endStream: true);
-
-            await ExpectAsync(Http2FrameType.HEADERS,
-                withLength: 37,
-                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
-                withStreamId: 1);
-            var dataFrame = await ExpectAsync(Http2FrameType.DATA,
-                withLength: 12,
-                withFlags: (byte)Http2DataFrameFlags.NONE,
-                withStreamId: 1);
-            await ExpectAsync(Http2FrameType.DATA,
-                withLength: 0,
-                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
-                withStreamId: 1);
-
-            await StopConnectionAsync(expectedLastStreamId: 1);
-
-            Assert.Equal(dataFrame.DataPayload, _helloWorldBytes);
-        }
-
-        [Fact]
-        public async Task DATA_Received_ZeroPadding_ReadByStream()
-        {
-            await InitializeConnectionAsync(_readDataApplication);
-
-            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
-            await SendPaddedDataAsync(1, _helloWorldBytes, padLength: 0, endStream: true);
+            await SendDataWithPaddingAsync(1, _helloWorldBytes, padLength, endStream: true);
 
             await ExpectAsync(Http2FrameType.HEADERS,
                 withLength: 37,
@@ -357,6 +334,111 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             VerifyDecodedRequestHeaders(_browserRequestHeaders);
 
             await StopConnectionAsync(expectedLastStreamId: 1);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(255)]
+        public async Task HEADERS_Received_WithPadding_Decoded(byte padLength)
+        {
+            await InitializeConnectionAsync(_readHeadersApplication);
+
+            await SendHeadersWithPaddingAsync(1, _browserRequestHeaders, padLength, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            VerifyDecodedRequestHeaders(_browserRequestHeaders);
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+        }
+
+        [Fact]
+        public async Task HEADERS_Received_WithPriority_Decoded()
+        {
+            await InitializeConnectionAsync(_readHeadersApplication);
+
+            await SendHeadersWithPriorityAsync(1, _browserRequestHeaders, priority: 42, streamDependency: 0, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            VerifyDecodedRequestHeaders(_browserRequestHeaders);
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(255)]
+        public async Task HEADERS_Received_WithPriorityAndPadding_Decoded(byte padLength)
+        {
+            await InitializeConnectionAsync(_readHeadersApplication);
+
+            await SendHeadersWithPaddingAndPriorityAsync(1, _browserRequestHeaders, padLength, priority: 42, streamDependency: 0, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            VerifyDecodedRequestHeaders(_browserRequestHeaders);
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+        }
+
+        [Fact]
+        public async Task HEADERS_Received_StreamIdZero_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await StartStreamAsync(0, _browserRequestHeaders, endStream: true);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(255)]
+        public async Task HEADERS_Received_PaddingEqualToFramePayloadLength_ConnectionError(byte padLength)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendInvalidHeadersFrameAsync(1, frameLength: padLength, padLength: padLength);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Theory]
+        [InlineData(0, 1)]
+        [InlineData(1, 2)]
+        [InlineData(254, 255)]
+        public async Task HEADERS_Received_PaddingGreaterThanFramePayloadLength_ConnectionError(int frameLength, byte padLength)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendInvalidHeadersFrameAsync(1, frameLength, padLength);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
         }
 
         [Fact]
@@ -580,9 +662,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StopConnectionAsync(1);
 
             var responseHeaders = new FrameResponseHeaders();
-            _hpackDecoder.Decode(headersFrame.HeaderBlockFragment, responseHeaders);
-            _hpackDecoder.Decode(continuationFrame1.HeaderBlockFragment, responseHeaders);
-            _hpackDecoder.Decode(continuationFrame2.HeaderBlockFragment, responseHeaders);
+            _hpackDecoder.Decode(headersFrame.HeadersPayload, responseHeaders);
+            _hpackDecoder.Decode(continuationFrame1.HeadersPayload, responseHeaders);
+            _hpackDecoder.Decode(continuationFrame2.HeadersPayload, responseHeaders);
 
             var responseHeadersDictionary = (IDictionary<string, StringValues>)responseHeaders;
             Assert.Equal(5, responseHeadersDictionary.Count);
@@ -632,10 +714,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 0);
         }
 
-        private Task StartStreamAsync(int streamId, IEnumerable<(string, string)> headers, bool endStream)
+        private async Task StartStreamAsync(int streamId, IEnumerable<(string, string)> headers, bool endStream)
         {
-            var tasks = new List<Task>();
-
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _runningStreams[streamId] = tcs;
 
@@ -643,7 +723,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var frame = new Http2Frame();
 
             frame.PrepareHeaders(Http2HeadersFrameFlags.NONE, streamId);
-            var done = _hpackEncoder.BeginEncode(headerDictionary, frame.HeaderBlockFragment, out var length);
+            var done = _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
             frame.Length = length;
 
             if (done)
@@ -656,12 +736,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 frame.HeadersFlags |= Http2HeadersFrameFlags.END_STREAM;
             }
 
-            tasks.Add(SendAsync(frame.Raw));
+            await SendAsync(frame.Raw);
 
             while (!done)
             {
                 frame.PrepareContinuation(Http2ContinuationFrameFlags.NONE, streamId);
-                done = _hpackEncoder.Encode(frame.HeaderBlockFragment, out length);
+                done = _hpackEncoder.Encode(frame.HeadersPayload, out length);
                 frame.Length = length;
 
                 if (done)
@@ -669,10 +749,82 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     frame.ContinuationFlags = Http2ContinuationFrameFlags.END_HEADERS;
                 }
 
-                tasks.Add(SendAsync(frame.Raw));
+                await SendAsync(frame.Raw);
+            }
+        }
+
+        private async Task SendHeadersWithPaddingAsync(int streamId, IEnumerable<(string, string)> headers, byte padLength, bool endStream)
+        {
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _runningStreams[streamId] = tcs;
+
+            var headerDictionary = ToHeaderDictionary(headers);
+            var frame = new Http2Frame();
+
+            frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.PADDED, streamId);
+            frame.HeadersPadLength = padLength;
+
+            _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+
+            frame.Length = 1 + length + padLength;
+            frame.Payload.Slice(1 + length).Fill(0);
+
+            if (endStream)
+            {
+                frame.HeadersFlags |= Http2HeadersFrameFlags.END_STREAM;
             }
 
-            return Task.WhenAll(tasks);
+            await SendAsync(frame.Raw);
+        }
+
+        private async Task SendHeadersWithPriorityAsync(int streamId, IEnumerable<(string, string)> headers, byte priority, int streamDependency, bool endStream)
+        {
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _runningStreams[streamId] = tcs;
+
+            var headerDictionary = ToHeaderDictionary(headers);
+            var frame = new Http2Frame();
+
+            frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.PRIORITY, streamId);
+            frame.HeadersPriority = priority;
+            frame.HeadersStreamDependency = streamDependency;
+
+            _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+
+            frame.Length = 5 + length;
+
+            if (endStream)
+            {
+                frame.HeadersFlags |= Http2HeadersFrameFlags.END_STREAM;
+            }
+
+            await SendAsync(frame.Raw);
+        }
+
+        private async Task SendHeadersWithPaddingAndPriorityAsync(int streamId, IEnumerable<(string, string)> headers, byte padLength, byte priority, int streamDependency, bool endStream)
+        {
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _runningStreams[streamId] = tcs;
+
+            var headerDictionary = ToHeaderDictionary(headers);
+            var frame = new Http2Frame();
+
+            frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.PADDED | Http2HeadersFrameFlags.PRIORITY, streamId);
+            frame.HeadersPadLength = padLength;
+            frame.HeadersPriority = priority;
+            frame.HeadersStreamDependency = streamDependency;
+
+            _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+
+            frame.Length = 6 + length + padLength;
+            frame.Payload.Slice(6 + length).Fill(0);
+
+            if (endStream)
+            {
+                frame.HeadersFlags |= Http2HeadersFrameFlags.END_STREAM;
+            }
+
+            await SendAsync(frame.Raw);
         }
 
         private Task SendStreamDataAsync(int streamId, Span<byte> data)
@@ -732,6 +884,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return done;
         }
 
+        private Task SendInvalidHeadersFrameAsync(int streamId, int frameLength, byte padLength)
+        {
+            Assert.True(padLength >= frameLength, $"{nameof(padLength)} must be greater than or equal to {nameof(frameLength)} to create an invalid frame.");
+
+            var frame = new Http2Frame();
+
+            frame.PrepareHeaders(Http2HeadersFrameFlags.PADDED, streamId);
+            frame.Payload[0] = padLength;
+
+            // Set length last so .Payload can be written to
+            frame.Length = frameLength;
+
+            return SendAsync(frame.Raw);
+        }
+
         private async Task<bool> SendContinuationAsync(int streamId, Http2ContinuationFrameFlags flags)
         {
             var frame = new Http2Frame();
@@ -757,7 +924,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(frame.Raw);
         }
 
-        private Task SendPaddedDataAsync(int streamId, Span<byte> data, byte padLength, bool endStream)
+        private Task SendDataWithPaddingAsync(int streamId, Span<byte> data, byte padLength, bool endStream)
         {
             var frame = new Http2Frame();
 
@@ -775,6 +942,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private Task SendInvalidDataFrameAsync(int streamId, int frameLength, byte padLength)
         {
+            Assert.True(padLength >= frameLength, $"{nameof(padLength)} must be greater than or equal to {nameof(frameLength)} to create an invalid frame.");
+
             var frame = new Http2Frame();
 
             frame.PrepareData(streamId);
@@ -918,7 +1087,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             foreach (var header in expectedHeaders)
             {
-                Assert.True(_receivedHeaders.TryGetValue(header.name, out var value), header.value);
+                Assert.True(_receivedHeaders.TryGetValue(header.name, out var value), header.name);
                 Assert.Equal(header.value, value, ignoreCase: true);
             }
         }

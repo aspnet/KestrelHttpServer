@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             get => (int)((uint)((_data[StreamIdOffset] << 24)
                 | (_data[StreamIdOffset + 1] << 16)
                 | (_data[StreamIdOffset + 2] << 8)
-                | _data[StreamIdOffset + 3]) & 0x8fffffff);
+                | _data[StreamIdOffset + 3]) & 0x7fffffff);
             set
             {
                 _data[StreamIdOffset] = (byte)((value & 0xff000000) >> 24);
