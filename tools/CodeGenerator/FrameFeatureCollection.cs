@@ -55,6 +55,7 @@ namespace CodeGenerator
             var rareFeatures = new[]
             {
                 typeof(IHttpSendFileFeature),
+                typeof(IHttp2StreamIdFeature),
             };
 
             var allFeatures = alwaysFeatures.Concat(commonFeatures).Concat(sometimesFeatures).Concat(rareFeatures);
@@ -73,6 +74,7 @@ namespace CodeGenerator
                 typeof(IHttpMinRequestBodyDataRateFeature),
                 typeof(IHttpMinResponseDataRateFeature),
                 typeof(IHttpBodyControlFeature),
+                typeof(IHttp2StreamIdFeature),
             };
 
             return $@"// Copyright (c) .NET Foundation. All rights reserved.

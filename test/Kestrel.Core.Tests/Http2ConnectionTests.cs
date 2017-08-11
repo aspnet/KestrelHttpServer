@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
@@ -75,6 +76,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
 
         private readonly Dictionary<string, string> _receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<int> _abortedStreamIds = new HashSet<int>();
+        private readonly object _abortedStreamIdsLock = new object();
+
         private readonly RequestDelegate _noopApplication;
         private readonly RequestDelegate _readHeadersApplication;
         private readonly RequestDelegate _largeHeadersApplication;
@@ -114,6 +118,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 context.RequestAborted.Register(() =>
                 {
+                    lock (_abortedStreamIdsLock)
+                    {
+                        var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+                        _abortedStreamIds.Add(streamIdFeature.StreamId);
+                    }
+
                     sem.Release();
                 });
 
@@ -126,6 +136,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 context.RequestAborted.Register(() =>
                 {
+                    lock (_abortedStreamIdsLock)
+                    {
+                        var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+                        _abortedStreamIds.Add(streamIdFeature.StreamId);
+                    }
+
                     sem.Release();
                 });
 
@@ -290,6 +306,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // No data is received from the stream since it was aborted before writing anything
 
             await StopConnectionAsync(expectedLastStreamId: 1);
+
+            Assert.Contains(1, _abortedStreamIds);
         }
 
         [Fact]
@@ -308,6 +326,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // No END_STREAM DATA frame is received since the stream was aborted
 
             await StopConnectionAsync(expectedLastStreamId: 1);
+
+            Assert.Contains(1, _abortedStreamIds);
         }
 
         [Fact]
