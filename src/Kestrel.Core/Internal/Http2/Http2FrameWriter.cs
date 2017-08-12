@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 _outgoingFrame.PrepareHeaders(Http2HeadersFrameFlags.NONE, streamId);
 
-                var done = _hpackEncoder.BeginEncode(statusCode, headers, _outgoingFrame.Payload, out var payloadLength);
+                var done = _hpackEncoder.BeginEncode(statusCode, EnumerateHeaders(headers), _outgoingFrame.Payload, out var payloadLength);
                 _outgoingFrame.Length = payloadLength;
 
                 if (done)
@@ -176,6 +176,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             var writeableBuffer = _output.Writer.Alloc(1);
             writeableBuffer.Write(data);
             await writeableBuffer.FlushAsync(cancellationToken);
+        }
+
+        private static IEnumerable<KeyValuePair<string, string>> EnumerateHeaders(IHeaderDictionary headers)
+        {
+            foreach (var header in headers)
+            {
+                foreach (var value in header.Value)
+                {
+                    yield return new KeyValuePair<string, string>(header.Key, value);
+                }
+            }
         }
     }
 }

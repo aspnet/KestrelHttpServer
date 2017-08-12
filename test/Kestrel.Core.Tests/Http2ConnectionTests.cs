@@ -27,44 +27,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private static readonly string _largeHeaderB = new string('b', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8);
 
-        private static readonly IEnumerable<(string name, string value)> _postRequestHeaders = new (string, string)[]
+        private static readonly IEnumerable<KeyValuePair<string, string>> _postRequestHeaders = new []
         {
-            (":method", "POST"),
-            (":path", "/"),
-            (":authority", "127.0.0.1"),
-            (":scheme", "https"),
+            new KeyValuePair<string, string>(":method", "POST"),
+            new KeyValuePair<string, string>(":path", "/"),
+            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+            new KeyValuePair<string, string>(":scheme", "https"),
         };
 
-        private static readonly IEnumerable<(string name, string value)> _browserRequestHeaders = new (string, string)[]
+        private static readonly IEnumerable<KeyValuePair<string, string>> _browserRequestHeaders = new []
         {
-            (":method", "GET"),
-            (":path", "/"),
-            (":authority", "127.0.0.1"),
-            (":scheme", "https"),
-            ("user-agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/54.0"),
-            ("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
-            ("accept-language", "en-US,en;q=0.5"),
-            ("accept-encoding", "gzip, deflate, br"),
-            ("upgrade-insecure-requests", "1"),
+            new KeyValuePair<string, string>(":method", "GET"),
+            new KeyValuePair<string, string>(":path", "/"),
+            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>("user-agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/54.0"),
+            new KeyValuePair<string, string>("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+            new KeyValuePair<string, string>("accept-language", "en-US,en;q=0.5"),
+            new KeyValuePair<string, string>("accept-encoding", "gzip, deflate, br"),
+            new KeyValuePair<string, string>("upgrade-insecure-requests", "1"),
         };
 
-        private static readonly IEnumerable<(string name, string value)> _oneContinuationRequestHeaders = new (string, string)[]
+        private static readonly IEnumerable<KeyValuePair<string, string>> _oneContinuationRequestHeaders = new []
         {
-            (":method", "GET"),
-            (":path", "/"),
-            (":authority", "127.0.0.1"),
-            (":scheme", "https"),
-            ("a", _largeHeaderA)
+            new KeyValuePair<string, string>(":method", "GET"),
+            new KeyValuePair<string, string>(":path", "/"),
+            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>("a", _largeHeaderA)
         };
 
-        private static readonly IEnumerable<(string name, string value)> _twoContinuationsRequestHeaders = new (string, string)[]
+        private static readonly IEnumerable<KeyValuePair<string, string>> _twoContinuationsRequestHeaders = new []
         {
-            (":method", "GET"),
-            (":path", "/"),
-            (":authority", "127.0.0.1"),
-            (":scheme", "https"),
-            ("a", _largeHeaderA),
-            ("b", _largeHeaderB)
+            new KeyValuePair<string, string>(":method", "GET"),
+            new KeyValuePair<string, string>(":path", "/"),
+            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>("a", _largeHeaderA),
+            new KeyValuePair<string, string>("b", _largeHeaderB)
         };
 
         private static readonly byte[] _helloWorldBytes = Encoding.ASCII.GetBytes("hello, world");
@@ -670,7 +670,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await InitializeConnectionAsync(_readHeadersApplication);
 
             _hpackEncoder.BeginEncode(
-                ToHeaderDictionary(_oneContinuationRequestHeaders),
+                _oneContinuationRequestHeaders,
                 new byte[Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength],
                 out _);
             await SendContinuationAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
@@ -757,16 +757,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 0);
         }
 
-        private async Task StartStreamAsync(int streamId, IEnumerable<(string, string)> headers, bool endStream)
+        private async Task StartStreamAsync(int streamId, IEnumerable<KeyValuePair<string, string>> headers, bool endStream)
         {
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _runningStreams[streamId] = tcs;
 
-            var headerDictionary = ToHeaderDictionary(headers);
             var frame = new Http2Frame();
-
             frame.PrepareHeaders(Http2HeadersFrameFlags.NONE, streamId);
-            var done = _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+            var done = _hpackEncoder.BeginEncode(headers, frame.HeadersPayload, out var length);
             frame.Length = length;
 
             if (done)
@@ -796,18 +794,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
-        private async Task SendHeadersWithPaddingAsync(int streamId, IEnumerable<(string, string)> headers, byte padLength, bool endStream)
+        private async Task SendHeadersWithPaddingAsync(int streamId, IEnumerable<KeyValuePair<string, string>> headers, byte padLength, bool endStream)
         {
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _runningStreams[streamId] = tcs;
 
-            var headerDictionary = ToHeaderDictionary(headers);
             var frame = new Http2Frame();
 
             frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.PADDED, streamId);
             frame.HeadersPadLength = padLength;
 
-            _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+            _hpackEncoder.BeginEncode(headers, frame.HeadersPayload, out var length);
 
             frame.Length = 1 + length + padLength;
             frame.Payload.Slice(1 + length).Fill(0);
@@ -820,19 +817,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendAsync(frame.Raw);
         }
 
-        private async Task SendHeadersWithPriorityAsync(int streamId, IEnumerable<(string, string)> headers, byte priority, int streamDependency, bool endStream)
+        private async Task SendHeadersWithPriorityAsync(int streamId, IEnumerable<KeyValuePair<string, string>> headers, byte priority, int streamDependency, bool endStream)
         {
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _runningStreams[streamId] = tcs;
 
-            var headerDictionary = ToHeaderDictionary(headers);
             var frame = new Http2Frame();
-
             frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.PRIORITY, streamId);
             frame.HeadersPriority = priority;
             frame.HeadersStreamDependency = streamDependency;
 
-            _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+            _hpackEncoder.BeginEncode(headers, frame.HeadersPayload, out var length);
 
             frame.Length = 5 + length;
 
@@ -844,20 +839,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendAsync(frame.Raw);
         }
 
-        private async Task SendHeadersWithPaddingAndPriorityAsync(int streamId, IEnumerable<(string, string)> headers, byte padLength, byte priority, int streamDependency, bool endStream)
+        private async Task SendHeadersWithPaddingAndPriorityAsync(int streamId, IEnumerable<KeyValuePair<string, string>> headers, byte padLength, byte priority, int streamDependency, bool endStream)
         {
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _runningStreams[streamId] = tcs;
 
-            var headerDictionary = ToHeaderDictionary(headers);
             var frame = new Http2Frame();
-
             frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.PADDED | Http2HeadersFrameFlags.PRIORITY, streamId);
             frame.HeadersPadLength = padLength;
             frame.HeadersPriority = priority;
             frame.HeadersStreamDependency = streamDependency;
 
-            _hpackEncoder.BeginEncode(headerDictionary, frame.HeadersPayload, out var length);
+            _hpackEncoder.BeginEncode(headers, frame.HeadersPayload, out var length);
 
             frame.Length = 6 + length + padLength;
             frame.Payload.Slice(6 + length).Fill(0);
@@ -904,7 +897,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await writableBuffer.FlushAsync();
         }
 
-        private Task SendPreambleAsync() => SendAsync(Http2Connection.Preface);
+        private Task SendPreambleAsync() => SendAsync(new ArraySegment<byte>(Http2Connection.Preface));
 
         private Task SendClientSettingsAsync()
         {
@@ -913,13 +906,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(frame.Raw);
         }
 
-        private async Task<bool> SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, IEnumerable<(string, string)> headers)
+        private async Task<bool> SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, IEnumerable<KeyValuePair<string, string>> headers)
         {
-            var headerDictionary = ToHeaderDictionary(headers);
             var frame = new Http2Frame();
 
             frame.PrepareHeaders(flags, streamId);
-            var done = _hpackEncoder.BeginEncode(headerDictionary, frame.Payload, out var length);
+            var done = _hpackEncoder.BeginEncode(headers, frame.Payload, out var length);
             frame.Length = length;
 
             await SendAsync(frame.Raw);
@@ -1114,24 +1106,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(expectedErrorCode, rstStreamFrame.RstStreamErrorCode);
         }
 
-        private IHeaderDictionary ToHeaderDictionary(IEnumerable<(string name, string value)> headerData)
-        {
-            var headers = new FrameRequestHeaders();
-
-            foreach (var header in headerData)
-            {
-                headers.Append(header.name, header.value);
-            }
-
-            return headers;
-        }
-
-        private void VerifyDecodedRequestHeaders(IEnumerable<(string name, string value)> expectedHeaders)
+        private void VerifyDecodedRequestHeaders(IEnumerable<KeyValuePair<string, string>> expectedHeaders)
         {
             foreach (var header in expectedHeaders)
             {
-                Assert.True(_receivedHeaders.TryGetValue(header.name, out var value), header.name);
-                Assert.Equal(header.value, value, ignoreCase: true);
+                Assert.True(_receivedHeaders.TryGetValue(header.Key, out var value), header.Key);
+                Assert.Equal(header.Value, value, ignoreCase: true);
             }
         }
     }

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Xunit;
@@ -16,10 +17,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var encoder = new HPackEncoder();
 
             var statusCode = 200;
-            var headers = new FrameResponseHeaders();
-            headers.HeaderDate = "Mon, 24 Jul 2017 19:22:30 GMT";
-            headers.HeaderContentType = "text/html; charset=utf-8";
-            headers.HeaderServer = "Kestrel";
+            var headers = new []
+            {
+                new KeyValuePair<string, string>("date", "Mon, 24 Jul 2017 19:22:30 GMT"),
+                new KeyValuePair<string, string>("content-type", "text/html; charset=utf-8"),
+                new KeyValuePair<string, string>("server", "Kestrel")
+            };
 
             var expectedPayload = new byte[]
             {
@@ -57,10 +60,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var encoder = new HPackEncoder();
 
             var statusCode = 200;
-            var headers = new FrameResponseHeaders();
-            headers.HeaderDate = "Mon, 24 Jul 2017 19:22:30 GMT";
-            headers.HeaderContentType = "text/html; charset=utf-8";
-            headers.HeaderServer = "Kestrel";
+            var headers = new []
+            {
+                new KeyValuePair<string, string>("date", "Mon, 24 Jul 2017 19:22:30 GMT"),
+                new KeyValuePair<string, string>("content-type", "text/html; charset=utf-8"),
+                new KeyValuePair<string, string>("server", "Kestrel")
+            };
 
             var expectedStatusCodePayload = new byte[]
             {

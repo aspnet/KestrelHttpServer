@@ -13,17 +13,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
     {
         private IEnumerator<KeyValuePair<string, string>> _enumerator;
 
-        public bool BeginEncode(IHeaderDictionary headers, Span<byte> buffer, out int length)
+        public bool BeginEncode(IEnumerable<KeyValuePair<string, string>> headers, Span<byte> buffer, out int length)
         {
-            _enumerator = EnumerateHeaders(headers).GetEnumerator();
+            _enumerator = headers.GetEnumerator();
             _enumerator.MoveNext();
 
             return Encode(buffer, out length);
         }
 
-        public bool BeginEncode(int statusCode, IHeaderDictionary headers, Span<byte> buffer, out int length)
+        public bool BeginEncode(int statusCode, IEnumerable<KeyValuePair<string, string>> headers, Span<byte> buffer, out int length)
         {
-            _enumerator = EnumerateHeaders(headers).GetEnumerator();
+            _enumerator = headers.GetEnumerator();
             _enumerator.MoveNext();
 
             var statusCodeLength = EncodeStatusCode(statusCode, buffer);
@@ -149,17 +149,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
             length = i;
             return true;
-        }
-
-        private static IEnumerable<KeyValuePair<string, string>> EnumerateHeaders(IHeaderDictionary headers)
-        {
-            foreach (var header in headers)
-            {
-                foreach (var value in header.Value)
-                {
-                    yield return new KeyValuePair<string, string>(header.Key, value);
-                }
-            }
         }
     }
 }
