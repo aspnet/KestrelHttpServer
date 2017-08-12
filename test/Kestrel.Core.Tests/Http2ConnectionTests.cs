@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -67,6 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         };
 
         private static readonly byte[] _helloWorldBytes = Encoding.ASCII.GetBytes("hello, world");
+        private static readonly byte[] _noData = new byte[0];
 
         private readonly PipeFactory _pipeFactory = new PipeFactory();
         private readonly IPipe _inputPipe;
@@ -108,9 +110,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 return Task.CompletedTask;
             };
 
-            _readDataApplication = context =>
+            _readDataApplication = async context =>
             {
-                return context.Request.Body.CopyToAsync(context.Response.Body);
+                var data = new List<byte>();
+                var buffer = new byte[1024];
+                var received = 0;
+
+                while ((received = await context.Request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    data.AddRange(new ArraySegment<byte>(buffer, 0, received));
+                }
+
+                await context.Response.Body.WriteAsync(data.ToArray(), 0, data.Count);
             };
 
             _largeHeadersApplication = context =>
@@ -207,6 +218,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(dataFrame.DataPayload, _helloWorldBytes);
         }
 
+        [Fact]
+        public async Task DATA_Received_Multiple_ReadByStream()
+        {
+            await InitializeConnectionAsync(_readDataApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+
+            for (var i = 0; i < _helloWorldBytes.Length; i++)
+            {
+                await SendDataAsync(1, new ArraySegment<byte>(_helloWorldBytes, i, 1), endStream: false);
+            }
+
+            await SendDataAsync(1, _noData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            var dataFrame = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 12,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+
+            Assert.Equal(dataFrame.DataPayload, _helloWorldBytes);
+        }
+
         [Theory]
         [InlineData(0)]
         [InlineData(1)]
@@ -241,7 +284,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             await InitializeConnectionAsync(_noopApplication);
 
-            await SendDataAsync(0, new byte[0], endStream: false);
+            await SendDataAsync(0, _noData, endStream: false);
 
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
         }
@@ -686,7 +729,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StartStreamAsync(5, _browserRequestHeaders, endStream: true);
 
             // Cause a connection error by sending an invalid frame
-            await SendDataAsync(7, new byte[0], endStream: false);
+            await SendDataAsync(7, _noData, endStream: false);
 
             await WaitForConnectionErrorAsync(expectedLastStreamId: 5, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
 
