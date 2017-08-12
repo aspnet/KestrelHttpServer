@@ -9,7 +9,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Protocols.Abstractions;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +38,7 @@ namespace SampleApp
             });
         }
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
@@ -51,6 +54,33 @@ namespace SampleApp
                 basePort = 5000;
             }
 
+
+            var server = new ServerBuilder()
+                    .Listen("localhost", 8085, builder =>
+                    {
+                        builder.UseTls("foo.pfx")
+                            .UseHttpServer(app =>
+                            {
+                                app.Run(async context =>
+                                 {
+                                     await context.Response.WriteAsync("Hello World");
+                                 });
+                            });
+                            
+                    })
+                    .Listen(IPAddress.Any, 5001, builder =>
+                    {
+                        builder.UseConnectionLogging()
+                            .UseHttpServer<Startup>();
+                    })
+                    .Build();
+
+            await server.StartAsync();
+
+            Console.ReadLine();
+
+            await server.StopAsync();
+
             var host = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>
                 {
@@ -59,7 +89,7 @@ namespace SampleApp
                 .UseKestrel(options =>
                 {
                     // Run callbacks on the transport thread
-                    options.ApplicationSchedulingMode = SchedulingMode.Inline;
+                    // options.ApplicationSchedulingMode = SchedulingMode.Inline;
 
                     options.Listen(IPAddress.Loopback, basePort, listenOptions =>
                     {
@@ -71,11 +101,11 @@ namespace SampleApp
 
                     options.Listen(IPAddress.Loopback, basePort + 1, listenOptions =>
                     {
-                        listenOptions.UseHttps("testCert.pfx", "testPassword");
+                        // listenOptions.UseHttps("testCert.pfx", "testPassword");
                         listenOptions.UseConnectionLogging();
                     });
 
-                    options.UseSystemd();
+                    // options.UseSystemd();
 
                     // The following section should be used to demo sockets
                     //options.ListenUnixSocket("/tmp/kestrel-test.sock");

@@ -26,12 +26,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
         public static TheoryData<long?> MaxResponseBufferSizeData => new TheoryData<long?>
         {
-            new KestrelServerOptions().Limits.MaxResponseBufferSize, 0, 1024, 1024 * 1024, null
+            new ServerBuilder().Limits.MaxResponseBufferSize, 0, 1024, 1024 * 1024, null
         };
 
         public static TheoryData<int> PositiveMaxResponseBufferSizeData => new TheoryData<int>
         {
-            (int)new KestrelServerOptions().Limits.MaxResponseBufferSize, 1024, (1024 * 1024) + 1
+            (int)new ServerBuilder().Limits.MaxResponseBufferSize, 1024, (1024 * 1024) + 1
         };
 
         public LibuvOutputConsumerTests()

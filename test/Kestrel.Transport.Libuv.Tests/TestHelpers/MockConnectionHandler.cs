@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
         public PipeOptions InputOptions { get; set; } = new PipeOptions();
         public PipeOptions OutputOptions { get; set; } = new PipeOptions();
 
-        public IConnectionContext OnConnection(IConnectionInformation connectionInfo)
+        public IApplicationConnection OnConnection(IConnectionInformation connectionInfo)
         {
             Input = connectionInfo.PipeFactory.Create(InputOptions ?? new PipeOptions());
             Output = connectionInfo.PipeFactory.Create(OutputOptions ?? new PipeOptions());
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
         public IPipe Input { get; private set; }
         public IPipe Output { get; private set; }
         
-        private class TestConnectionContext : IConnectionContext
+        private class TestConnectionContext : IApplicationConnection
         {
             public string ConnectionId { get; }
             public IPipeWriter Input { get; set; }

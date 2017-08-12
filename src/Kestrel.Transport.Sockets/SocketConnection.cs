@@ -10,16 +10,20 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.AspNetCore.Protocols.Abstractions;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Protocols.Abstractions.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
-    internal sealed class SocketConnection : IConnectionInformation
+    internal sealed class SocketConnection : ConnectionContext
     {
         private readonly Socket _socket;
         private readonly SocketTransport _transport;
         private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _remoteEndPoint;
-        private IConnectionContext _connectionContext;
+
+
         private IPipeWriter _input;
         private IPipeReader _output;
         private IList<ArraySegment<byte>> _sendBufferList;
@@ -35,16 +39,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             _localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
             _remoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
+
+            Input = PipeFactory.Create();
+            Output = PipeFactory.Create();
         }
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
             try
             {
-                _connectionContext = connectionHandler.OnConnection(this);
+                connectionHandler.OnConnection(this);
 
-                _input = _connectionContext.Input;
-                _output = _connectionContext.Output;
+                _input = Input.Writer;
+                _output = Output.Reader;
 
                 // Spawn send and receive logic
                 Task receiveTask = DoReceive();
@@ -130,7 +137,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
-                _connectionContext.Abort(error);
                 _input.Complete(error);
             }
         }
@@ -224,7 +230,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
-                _connectionContext.OnConnectionClosed(error);
                 _output.Complete(error);
             }
         }
@@ -248,5 +253,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         public IScheduler InputWriterScheduler => InlineScheduler.Default;
 
         public IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
+
+        public override string ConnectionId => Features.Get<IConnectionIdFeature>()?.ConnectionId;
+
+        public override IFeatureCollection Features { get; } = new FeatureCollection();
+
+        public override IPipe Transport { get; set; }
+
+        public IPipe Output { get; }
+        public IPipe Input { get; }
     }
 }

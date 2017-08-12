@@ -24,7 +24,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             (handle, suggestedsize, state) => AllocCallback(handle, suggestedsize, state);
 
         private readonly UvStreamHandle _socket;
-        private IConnectionContext _connectionContext;
 
         private WritableBuffer? _currentWritableBuffer;
         private BufferHandle _bufferHandle;
@@ -40,9 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        public string ConnectionId { get; set; }
-        public IPipeWriter Input { get; set; }
-        public LibuvOutputConsumer Output { get; set; }
+        public LibuvOutputConsumer OutputConsumer { get; set; }
 
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
         private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
@@ -52,11 +49,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             try
             {
-                _connectionContext = ConnectionHandler.OnConnection(this);
-                ConnectionId = _connectionContext.ConnectionId;
+                ConnectionHandler.OnConnection(this);
 
-                Input = _connectionContext.Input;
-                Output = new LibuvOutputConsumer(_connectionContext.Output, Thread, _socket, ConnectionId, Log);
+                OutputConsumer = new LibuvOutputConsumer(Output.Reader, Thread, _socket, ConnectionId, Log);
 
                 StartReading();
 
@@ -67,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     // This *must* happen after socket.ReadStart
                     // The socket output consumer is the only thing that can close the connection. If the
                     // output pipe is already closed by the time we start then it's fine since, it'll close gracefully afterwards.
-                    await Output.WriteOutputAsync();
+                    await OutputConsumer.WriteOutputAsync();
                 }
                 catch (UvException ex)
                 {
@@ -76,13 +71,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 finally
                 {
                     // Now, complete the input so that no more reads can happen
-                    Input.Complete(error ?? new ConnectionAbortedException());
-                    _connectionContext.Output.Complete(error);
-                    _connectionContext.OnConnectionClosed(error);
+                    Input.Writer.Complete(error ?? new ConnectionAbortedException());
+                    Output.Reader.Complete(error);
 
                     // Make sure it isn't possible for a paused read to resume reading after calling uv_close
                     // on the stream handle
-                    Input.CancelPendingFlush();
+                    Input.Writer.CancelPendingFlush();
 
                     // Send a FIN
                     Log.ConnectionWriteFin(ConnectionId);
@@ -106,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private unsafe LibuvFunctions.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
             Debug.Assert(_currentWritableBuffer == null);
-            var currentWritableBuffer = Input.Alloc(MinAllocBufferSize);
+            var currentWritableBuffer = Input.Writer.Alloc(MinAllocBufferSize);
             _currentWritableBuffer = currentWritableBuffer;
 
             _bufferHandle = currentWritableBuffer.Buffer.Retain(true);
@@ -173,9 +167,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     }
                 }
 
-                _connectionContext.Abort(error);
                 // Complete after aborting the connection
-                Input.Complete(error);
+                Input.Writer.Complete(error);
             }
 
             // Cleanup state from last OnAlloc. This is safe even if OnAlloc wasn't called.
@@ -211,8 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 Log.ConnectionReadFin(ConnectionId);
                 var error = new IOException(ex.Message, ex);
 
-                _connectionContext.Abort(error);
-                Input.Complete(error);
+                Input.Writer.Complete(error);
             }
         }
     }

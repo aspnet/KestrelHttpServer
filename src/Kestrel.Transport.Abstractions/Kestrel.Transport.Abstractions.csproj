@@ -27,4 +27,8 @@
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="$(CoreFxVersion)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Protocols.Abstractions\Protocols.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -116,7 +116,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             var serviceContext = new ServiceContext
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
-                ServerOptions = new KestrelServerOptions(),
+                ServerOptions = new ServerBuilder(),
                 Log = new MockTrace(),
                 HttpParserFactory = f => new HttpParser<FrameAdapter>()
             };

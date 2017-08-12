@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             var serviceContext = new ServiceContext
             {
                 HttpParserFactory = _ => NullParser<FrameAdapter>.Instance,
-                ServerOptions = new KestrelServerOptions()
+                ServerOptions = new ServerBuilder()
             };
             var frameContext = new FrameContext
             {

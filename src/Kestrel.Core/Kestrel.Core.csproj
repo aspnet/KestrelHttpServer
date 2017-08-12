@@ -17,20 +17,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="$(AspNetCoreVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="$(AspNetCoreVersion)" />
-    <PackageReference Include="Microsoft.Net.Http.Headers" Version="$(AspNetCoreVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(AspNetCoreVersion)" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="$(AspNetCoreVersion)" />
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(CoreFxVersion)" />
-
-    <!-- Override System.Memory and System.Runtime.CompilerServices.Unsafe to the ones we have on feed -->
-    <PackageReference Include="System.Memory" Version="$(CoreFxVersion)" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="$(CoreFxVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Kestrel.Transport.Abstractions\Kestrel.Transport.Abstractions.csproj" />
+    <ProjectReference Include="..\Protocols.Abstractions\Protocols.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

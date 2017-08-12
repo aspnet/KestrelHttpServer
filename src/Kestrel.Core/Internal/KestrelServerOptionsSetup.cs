@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class KestrelServerOptionsSetup : IConfigureOptions<KestrelServerOptions>
+    public class KestrelServerOptionsSetup : IConfigureOptions<ServerBuilder>
     {
         private IServiceProvider _services;
 
@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _services = services;
         }
 
-        public void Configure(KestrelServerOptions options)
+        public void Configure(ServerBuilder options)
         {
             options.ApplicationServices = _services;
         }
