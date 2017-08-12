@@ -23,12 +23,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public class FrameConnection : IConnectionApplicationFeature, ITimeoutControl
     {
+        private const int Http2ConnectionNotStarted= 0;
+        private const int Http2ConnectionStarted = 1;
+        private const int Http2ConnectionClosed = 2;
+
         private readonly FrameConnectionContext _context;
         private List<IAdaptedConnection> _adaptedConnections;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         private Frame _frame;
         private Http2Connection _http2Connection;
-        private volatile int _http2ConnectionStartedOrAborted;
+        private volatile int _http2ConnectionState;
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
@@ -145,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     }
 
                     if (_frame.ConnectionFeatures?.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol == "h2" &&
-                        Interlocked.Exchange(ref _http2ConnectionStartedOrAborted, 1) == 0)
+                        Interlocked.CompareExchange(ref _http2ConnectionState, Http2ConnectionStarted, Http2ConnectionNotStarted) == Http2ConnectionNotStarted)
                     {
                         await _http2Connection.ProcessAsync(application);
                     }
@@ -205,7 +209,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public Task StopAsync()
         {
-            Abort(ex: null);
+            Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
+
+            if (Interlocked.Exchange(ref _http2ConnectionState, Http2ConnectionClosed) == Http2ConnectionStarted)
+            {
+                _http2Connection.Stop();
+            }
+            else
+            {
+                _frame.Stop();
+            }
 
             return _lifetimeTask;
         }
@@ -214,14 +227,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
-            if (Interlocked.Exchange(ref _http2ConnectionStartedOrAborted, 1) == 0)
+            // Abort the connection (if not already aborted)
+            if (Interlocked.Exchange(ref _http2ConnectionState, Http2ConnectionClosed) == Http2ConnectionStarted)
             {
-                // Abort the connection (if not already aborted)
-                _frame.Abort(ex);
+                _http2Connection.Abort(ex);
             }
             else
             {
-                _http2Connection.Abort(ex);
+                _frame.Abort(ex);
             }
         }
 
