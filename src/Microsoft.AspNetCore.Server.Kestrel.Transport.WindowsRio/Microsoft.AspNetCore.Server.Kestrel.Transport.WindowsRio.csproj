@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\build\common.props" />
+
+  <PropertyGroup>
+    <Description>Managed socket transport for the ASP.NET Core Kestrel cross-platform web server.</Description>
+    <TargetFrameworks>netstandard1.3</TargetFrameworks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageTags>aspnetcore;kestrel</PackageTags>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>CS1591;$(NoWarn)</NoWarn>
+    <EnableApiCheck>false</EnableApiCheck>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\..\Users\thund\.nuget\packages\microsoft.extensions.taskcache.sources\2.0.0-preview1-24443\contentFiles\cs\netstandard1.0\TaskCache.cs" Link="Internal\TaskCache.cs">
+      <Private>False</Private>
+      <NuGetPackageVersion>2.0.0-preview1-24443</NuGetPackageVersion>
+      <NuGetItemType>Compile</NuGetItemType>
+      <NuGetPackageId>Microsoft.Extensions.TaskCache.Sources</NuGetPackageId>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="$(AspNetCoreVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="$(AspNetCoreVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions\Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
