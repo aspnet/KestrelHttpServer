@@ -485,6 +485,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task PRIORITY_Received_StreamIdZero_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendPriorityAsync(0);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Theory]
+        [InlineData(4)]
+        [InlineData(6)]
+        public async Task PRIORITY_Received_LengthNotFive_ConnectionError(int length)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendInvalidPriorityFrameAsync(1, length);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
         public async Task RST_STREAM_Received_StreamIdZero_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
@@ -996,6 +1018,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var pingFrame = new Http2Frame();
             pingFrame.PreparePing(Http2PingFrameFlags.NONE);
             return SendAsync(pingFrame.Raw);
+        }
+
+        private Task SendPriorityAsync(int streamId)
+        {
+            var priorityFrame = new Http2Frame();
+            priorityFrame.PreparePriority(streamId, streamDependency: 0, exclusive: false, weight: 0);
+            return SendAsync(priorityFrame.Raw);
+        }
+
+        private Task SendInvalidPriorityFrameAsync(int streamId, int length)
+        {
+            var priorityFrame = new Http2Frame();
+            priorityFrame.PreparePriority(streamId, streamDependency: 0, exclusive: false, weight: 0);
+            priorityFrame.Length = length;
+            return SendAsync(priorityFrame.Raw);
         }
 
         private Task SendRstStreamAsync(int streamId)
