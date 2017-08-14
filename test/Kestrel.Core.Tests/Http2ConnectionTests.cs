@@ -403,6 +403,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task DATA_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendDataAsync(1, _helloWorldBytes, endStream: true);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
         public async Task DATA_Received_StreamIdle_StreamError()
         {
             await InitializeConnectionAsync(_noopApplication);
@@ -565,6 +576,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task HEADERS_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendHeadersAsync(3, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
         public async Task PRIORITY_Received_StreamIdZero_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
@@ -584,6 +606,53 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendInvalidPriorityFrameAsync(1, length);
 
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
+        public async Task PRIORITY_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendPriorityAsync(1);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_AbortsStream()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+            await SendRstStreamAsync(1);
+
+            // No data is received from the stream since it was aborted before writing anything
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+
+            await WaitForAllStreamsAsync();
+            Assert.Contains(1, _abortedStreamIds);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_AbortsStream_FlushedDataIsSent()
+        {
+            await InitializeConnectionAsync(_waitForAbortFlushingApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+            await SendRstStreamAsync(1);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+
+            // No END_STREAM DATA frame is received since the stream was aborted
+
+            await StopConnectionAsync(expectedLastStreamId: 1);
+
+            Assert.Contains(1, _abortedStreamIds);
         }
 
         [Fact]
@@ -647,39 +716,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task RST_STREAM_Received_AbortsStream()
+        public async Task RST_STREAM_Received_InterleavedWithHeaders_ConnectionError()
         {
-            await InitializeConnectionAsync(_waitForAbortApplication);
+            await InitializeConnectionAsync(_noopApplication);
 
-            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
             await SendRstStreamAsync(1);
 
-            // No data is received from the stream since it was aborted before writing anything
-
-            await StopConnectionAsync(expectedLastStreamId: 1);
-
-            await WaitForAllStreamsAsync();
-            Assert.Contains(1, _abortedStreamIds);
-        }
-
-        [Fact]
-        public async Task RST_STREAM_Received_AbortsStream_FlushedDataIsSent()
-        {
-            await InitializeConnectionAsync(_waitForAbortFlushingApplication);
-
-            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
-            await SendRstStreamAsync(1);
-
-            await ExpectAsync(Http2FrameType.HEADERS,
-                withLength: 37,
-                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
-                withStreamId: 1);
-
-            // No END_STREAM DATA frame is received since the stream was aborted
-
-            await StopConnectionAsync(expectedLastStreamId: 1);
-
-            Assert.Contains(1, _abortedStreamIds);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
         }
 
         [Fact]
@@ -688,6 +732,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await InitializeConnectionAsync(_noopApplication);
 
             await StopConnectionAsync(expectedLastStreamId: 0);
+        }
+
+        [Fact]
+        public async Task SETTINGS_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendClientSettingsAsync();
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
         }
 
         [Fact]
@@ -702,6 +757,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 0);
 
             await StopConnectionAsync(expectedLastStreamId: 0);
+        }
+
+        [Fact]
+        public async Task PING_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendPingAsync();
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
         }
 
         [Fact]
@@ -732,6 +798,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Contains(1, _abortedStreamIds);
             Assert.Contains(3, _abortedStreamIds);
             Assert.Contains(5, _abortedStreamIds);
+        }
+
+        [Fact]
+        public async Task GOAWAY_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendGoAwayAsync();
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR);
         }
 
         [Fact]

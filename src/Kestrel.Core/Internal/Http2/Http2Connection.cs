@@ -223,6 +223,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task ProcessDataFrameAsync()
         {
+            if (_currentHeadersStream != null)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             Http2StreamInformation streamInfo = null;
 
             if (!_streams.TryGetValue(_incomingFrame.StreamId, out streamInfo))
@@ -421,6 +426,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task ProcessGoAwayFrameAsync()
         {
+            if (_currentHeadersStream != null)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             Stop();
             return Task.CompletedTask;
         }
