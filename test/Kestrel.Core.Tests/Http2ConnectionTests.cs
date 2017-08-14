@@ -67,6 +67,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             new KeyValuePair<string, string>("b", _largeHeaderB)
         };
 
+        private static readonly byte[] _helloBytes = Encoding.ASCII.GetBytes("hello");
+        private static readonly byte[] _worldBytes = Encoding.ASCII.GetBytes("world");
         private static readonly byte[] _helloWorldBytes = Encoding.ASCII.GetBytes("hello, world");
         private static readonly byte[] _noData = new byte[0];
 
@@ -86,7 +88,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private readonly RequestDelegate _noopApplication;
         private readonly RequestDelegate _readHeadersApplication;
-        private readonly RequestDelegate _readDataApplication;
+        private readonly RequestDelegate _bufferingApplication;
+        private readonly RequestDelegate _echoApplication;
         private readonly RequestDelegate _largeHeadersApplication;
         private readonly RequestDelegate _waitForAbortApplication;
         private readonly RequestDelegate _waitForAbortFlushingApplication;
@@ -110,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 return Task.CompletedTask;
             };
 
-            _readDataApplication = async context =>
+            _bufferingApplication = async context =>
             {
                 var data = new List<byte>();
                 var buffer = new byte[1024];
@@ -122,6 +125,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 }
 
                 await context.Response.Body.WriteAsync(data.ToArray(), 0, data.Count);
+            };
+
+            _echoApplication = async context =>
+            {
+                var buffer = new byte[Http2Frame.DefaultFrameSize];
+                var received = 0;
+
+                while ((received = await context.Request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await context.Response.Body.WriteAsync(buffer, 0, received);
+                }
             };
 
             _largeHeadersApplication = context =>
@@ -195,7 +209,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task DATA_Received_ReadByStream()
         {
-            await InitializeConnectionAsync(_readDataApplication);
+            await InitializeConnectionAsync(_echoApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
             await SendDataAsync(1, _helloWorldBytes, endStream: true);
@@ -221,7 +235,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task DATA_Received_Multiple_ReadByStream()
         {
-            await InitializeConnectionAsync(_readDataApplication);
+            await InitializeConnectionAsync(_bufferingApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
 
@@ -250,13 +264,79 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(dataFrame.DataPayload, _helloWorldBytes);
         }
 
+        [Fact]
+        public async Task DATA_Received_Multiplexed_ReadByStreams()
+        {
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await StartStreamAsync(3, _browserRequestHeaders, endStream: false);
+
+            await SendDataAsync(1, _helloBytes, endStream: false);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            var stream1DataFrame1 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 5,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await SendDataAsync(3, _helloBytes, endStream: false);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 3);
+            var stream3DataFrame1 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 5,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 3);
+
+            await SendDataAsync(3, _worldBytes, endStream: false);
+
+            var stream3DataFrame2 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 5,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 3);
+
+            await SendDataAsync(1, _worldBytes, endStream: false);
+
+            var stream1DataFrame2 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 5,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await SendDataAsync(1, _noData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await SendDataAsync(3, _noData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 3);
+
+            await StopConnectionAsync(expectedLastStreamId: 3);
+
+            Assert.Equal(stream1DataFrame1.DataPayload, _helloBytes);
+            Assert.Equal(stream1DataFrame2.DataPayload, _worldBytes);
+            Assert.Equal(stream3DataFrame1.DataPayload, _helloBytes);
+            Assert.Equal(stream3DataFrame2.DataPayload, _worldBytes);
+        }
+
         [Theory]
         [InlineData(0)]
         [InlineData(1)]
         [InlineData(255)]
         public async Task DATA_Received_WithPadding_ReadByStream(byte padLength)
         {
-            await InitializeConnectionAsync(_readDataApplication);
+            await InitializeConnectionAsync(_echoApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
             await SendDataWithPaddingAsync(1, _helloWorldBytes, padLength, endStream: true);
@@ -292,7 +372,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task DATA_Received_PaddingEqualToFramePayloadLength_ConnectionError()
         {
-            await InitializeConnectionAsync(_readDataApplication);
+            await InitializeConnectionAsync(_echoApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
             await SendInvalidDataFrameAsync(1, frameLength: 5, padLength: 5);
@@ -303,7 +383,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task DATA_Received_PaddingGreaterThanFramePayloadLength_ConnectionError()
         {
-            await InitializeConnectionAsync(_readDataApplication);
+            await InitializeConnectionAsync(_echoApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
             await SendInvalidDataFrameAsync(1, frameLength: 5, padLength: 6);
@@ -314,7 +394,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task DATA_Received_FrameLengthZeroPaddingZero_ConnectionError()
         {
-            await InitializeConnectionAsync(_readDataApplication);
+            await InitializeConnectionAsync(_echoApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
             await SendInvalidDataFrameAsync(1, frameLength: 0, padLength: 0);
