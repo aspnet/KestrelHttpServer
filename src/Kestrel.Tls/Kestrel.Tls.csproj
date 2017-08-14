@@ -6,6 +6,7 @@
     <AssemblyName>Microsoft.AspNetCore.Server.Kestrel.Tls</AssemblyName>
     <RootNamespace>Microsoft.AspNetCore.Server.Kestrel.Tls</RootNamespace>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>aspnetcore;kestrel</PackageTags>
     <NoWarn>CS1591;$(NoWarn)</NoWarn>
     <EnableApiCheck>false</EnableApiCheck>
