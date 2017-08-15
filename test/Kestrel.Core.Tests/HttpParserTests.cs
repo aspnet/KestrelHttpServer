@@ -26,8 +26,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             string expectedMethod,
             string expectedRawTarget,
             string expectedRawPath,
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
             string expectedDecodedPath,
             string expectedQueryString,
+#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
             string expectedVersion)
         {
             var parser = CreateParser(Mock.Of<IKestrelTrace>());
@@ -391,7 +393,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             parser.ParseHeaders(requestHandler, buffer, out var consumed, out var examined, out var consumedBytes);
 
             var pairs = requestHandler.Headers.ToArray();
-            Assert.Equal(1, pairs.Length);
+            Assert.Single(pairs);
             Assert.Equal(headerName, pairs[0].Key);
             Assert.Equal(expectedHeaderValue, pairs[0].Value);
             Assert.Equal(buffer.End, consumed);

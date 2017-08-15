@@ -335,7 +335,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             string requestLine,
             string expectedMethod,
             string expectedRawTarget,
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
             string expectedRawPath,
+#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
             string expectedDecodedPath,
             string expectedQueryString,
             string expectedHttpVersion)
