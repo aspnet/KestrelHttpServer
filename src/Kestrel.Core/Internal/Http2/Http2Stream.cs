@@ -112,6 +112,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public long? MaxRequestBodySize { get; set; }
         public bool AllowSynchronousIO { get; set; }
 
+        public bool ExpectBody { get; set; }
+
         /// <summary>
         /// The request id. <seealso cref="HttpContext.TraceIdentifier"/>
         /// </summary>

@@ -12,6 +12,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public abstract class Http2MessageBody : IMessageBody
     {
+        private static readonly Http2MessageBody _emptyMessageBody = new ForEmpty();
+
         private readonly Http2Stream _context;
 
         private bool _send100Continue = true;
@@ -21,7 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
         }
 
-        public async Task OnDataAsync(ArraySegment<byte> data, bool endStream)
+        public bool IsCompleted { get; protected set; }
+
+        public virtual async Task OnDataAsync(ArraySegment<byte> data, bool endStream)
         {
             try
             {
@@ -39,25 +43,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         writableBuffer.Commit();
                     }
 
-                    var writeAwaitable = writableBuffer.FlushAsync();
-                    var backpressure = false;
-
-                    if (!writeAwaitable.IsCompleted)
-                    {
-                        // Backpressure, stop controlling incoming data rate until data is read.
-                        backpressure = true;
-                    }
-
-                    await writeAwaitable;
-
-                    if (backpressure)
-                    {
-                        // TODO: backpressure means the client sent over the flow-control window
-                    }
+                    await writableBuffer.FlushAsync();
                 }
 
                 if (endStream)
                 {
+                    IsCompleted = true;
                     _context.RequestBodyPipe.Writer.Complete();
                 }
             }
@@ -177,6 +168,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             FrameRequestHeaders headers,
             Http2Stream context)
         {
+            if (!context.ExpectBody)
+            {
+                return _emptyMessageBody;
+            }
+
             if (headers.ContentLength.HasValue)
             {
                 var contentLength = headers.ContentLength.Value;
@@ -185,6 +181,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             return new ForRemainingData(context);
+        }
+
+        private class ForEmpty : Http2MessageBody
+        {
+            public ForEmpty()
+                : base(context: null)
+            {
+                IsCompleted = true;
+            }
+
+            public override Task OnDataAsync(ArraySegment<byte> data, bool endStream)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(0);
+            }
+
+            public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
         }
 
         private class ForRemainingData : Http2MessageBody

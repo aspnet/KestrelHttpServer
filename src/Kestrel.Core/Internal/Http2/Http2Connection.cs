@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public class Http2Connection : ITimeoutControl, IHttp2StreamLifetimeHandler
     {
+        private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[] { });
+
         public static byte[] Preface { get; } = new byte[]
         {
             0x50, 0x52, 0x49, 0x20, 0x2a, 0x20, 0x48, 0x54, 0x54, 0x50, 0x2f, 0x32, 0x2e, 0x30, 0x0d, 0x0a, 0x0d, 0x0a, 0x53, 0x4d, 0x0d, 0x0a, 0x0d, 0x0a
@@ -29,14 +32,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
 
         private readonly Http2Frame _incomingFrame = new Http2Frame();
-        private readonly Http2Frame _outgoingFrame = new Http2Frame();
 
         private Http2Stream _currentHeadersStream;
         private int _lastStreamId;
 
         private bool _stopping;
 
-        private readonly Dictionary<int, Http2StreamInformation> _streams = new Dictionary<int, Http2StreamInformation>();
+        private readonly ConcurrentDictionary<int, Http2Stream> _streams = new ConcurrentDictionary<int, Http2Stream>();
 
         public Http2Connection(Http2ConnectionContext context)
         {
@@ -155,9 +157,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 try
                 {
-                    foreach (var streamInfo in _streams.Values)
+                    foreach (var stream in _streams.Values)
                     {
-                        streamInfo.Stream?.Abort(error);
+                        stream.Abort(error);
                     }
 
                     await _frameWriter.WriteGoAwayAsync(_lastStreamId, errorCode);
@@ -228,9 +230,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            Http2StreamInformation streamInfo = null;
-
-            if (!_streams.TryGetValue(_incomingFrame.StreamId, out streamInfo))
+            if (_incomingFrame.StreamId == 0)
             {
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
@@ -240,21 +240,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            if (streamInfo.State != Http2StreamState.Open && streamInfo.State != Http2StreamState.HalfClosedLocal)
+            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream) && !stream.MessageBody.IsCompleted)
             {
-                if (streamInfo.State != Http2StreamState.Closed)
-                {
-                    // The stream may have already finished processing the request
-                    streamInfo.Stream?.Abort(error: null);
-                    streamInfo.State = Http2StreamState.Closed;
-                }
-
-                return _frameWriter.WriteRstStreamAsync(streamInfo.StreamId, Http2ErrorCode.STREAM_CLOSED);
+                return stream.MessageBody.OnDataAsync(_incomingFrame.DataPayload,
+                    endStream: (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM);
             }
 
-            var endStream = (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
-
-            return streamInfo.Stream.MessageBody.OnDataAsync(_incomingFrame.DataPayload, endStream);
+            return _frameWriter.WriteRstStreamAsync(_incomingFrame.StreamId, Http2ErrorCode.STREAM_CLOSED);
         }
 
         private Task ProcessHeadersFrameAsync<TContext>(IHttpApplication<TContext> application)
@@ -274,14 +266,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            var streamInfo = new Http2StreamInformation
-            {
-                StreamId = _incomingFrame.StreamId,
-                State = Http2StreamState.Idle
-            };
-            _streams[_incomingFrame.StreamId] = streamInfo;
-            _lastStreamId = _incomingFrame.StreamId;
-
             _currentHeadersStream = new Http2Stream<TContext>(
                 application,
                 ConnectionId,
@@ -291,21 +275,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 timeoutControl: this,
                 streamLifetimeHandler: this,
                 frameWriter: _frameWriter);
+            _currentHeadersStream.ExpectBody = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == 0;
             _currentHeadersStream.Reset();
+
+            _streams[_incomingFrame.StreamId] = _currentHeadersStream;
 
             _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders);
 
             if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS)
             {
-                streamInfo.State = Http2StreamState.Open;
-                streamInfo.Stream = _currentHeadersStream;
+                _lastStreamId = _incomingFrame.StreamId;
                 _ = _currentHeadersStream.ProcessRequestAsync();
                 _currentHeadersStream = null;
-            }
-
-            if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == Http2HeadersFrameFlags.END_STREAM)
-            {
-                streamInfo.State = Http2StreamState.HalfClosedRemote;
             }
 
             return Task.CompletedTask;
@@ -338,19 +319,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
+            if (_incomingFrame.StreamId == 0)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             if (_incomingFrame.Length != 4)
             {
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            Http2StreamInformation streamInfo = null;
-
-            if (!_streams.TryGetValue(_incomingFrame.StreamId, out streamInfo) || streamInfo.State == Http2StreamState.Idle)
+            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
+            {
+                stream.Abort(error: null);
+            }
+            else if (_incomingFrame.StreamId > _lastStreamId)
             {
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
-
-            streamInfo.Stream?.Abort(error: null);
 
             return Task.CompletedTask;
         }
@@ -446,14 +432,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if ((_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS)
             {
-                var streamInfo = _streams[_currentHeadersStream.StreamId];
-
-                if (streamInfo.State == Http2StreamState.Idle)
-                {
-                    streamInfo.State = Http2StreamState.Open;
-                }
-
-                streamInfo.Stream = _currentHeadersStream;
+                _lastStreamId = _currentHeadersStream.StreamId;
                 _ = _currentHeadersStream.ProcessRequestAsync();
                 _currentHeadersStream = null;
             }
@@ -463,11 +442,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         void IHttp2StreamLifetimeHandler.OnStreamCompleted(int streamId)
         {
-            if (_streams.TryGetValue(streamId, out var streamInfo))
-            {
-                streamInfo.State = Http2StreamState.Closed;
-                streamInfo.Stream = null;
-            }
+            _streams.TryRemove(streamId, out _);
         }
 
         void ITimeoutControl.SetTimeout(long ticks, TimeoutAction timeoutAction)
