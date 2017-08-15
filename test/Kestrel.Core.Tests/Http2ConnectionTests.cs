@@ -858,6 +858,54 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task WINDOW_UPDATE_Received_InterleavedWithHeaders_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
+            await SendWindowUpdateAsync(1, sizeIncrement: 42);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Theory]
+        [InlineData(0, 3)]
+        [InlineData(0, 5)]
+        [InlineData(1, 3)]
+        [InlineData(1, 5)]
+        public async Task WINDOW_UPDATE_Received_LengthNotFour_ConnectionError(int streamId, int length)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendInvalidWindowUpdateAsync(streamId, sizeIncrement: 42, length: length);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.FRAME_SIZE_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
+        public async Task WINDOW_UPDATE_Received_OnConnection_SizeIncrementZero_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendWindowUpdateAsync(0, sizeIncrement: 0);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
+        public async Task WINDOW_UPDATE_Received_OnStream_SizeIncrementZero_StreamError()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+            await SendWindowUpdateAsync(1, sizeIncrement: 0);
+
+            await WaitForStreamErrorAsync(expectedStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: true);
+
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: true);
+        }
+
+        [Fact]
         public async Task CONTINUATION_Received_Decoded()
         {
             await InitializeConnectionAsync(_readHeadersApplication);
@@ -1235,6 +1283,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var frame = new Http2Frame();
             frame.PrepareGoAway(0, Http2ErrorCode.NO_ERROR);
+            return SendAsync(frame.Raw);
+        }
+
+        private Task SendWindowUpdateAsync(int streamId, int sizeIncrement)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareWindowUpdate(streamId, sizeIncrement);
+            return SendAsync(frame.Raw);
+        }
+
+        private Task SendInvalidWindowUpdateAsync(int streamId, int sizeIncrement, int length)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareWindowUpdate(streamId, sizeIncrement);
+            frame.Length = length;
             return SendAsync(frame.Raw);
         }
 

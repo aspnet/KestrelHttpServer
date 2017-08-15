@@ -18,8 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public class Http2Connection : ITimeoutControl, IHttp2StreamLifetimeHandler
     {
-        private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[] { });
-
         public static byte[] ClientPreface { get; } = Encoding.ASCII.GetBytes("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
 
         private readonly Http2ConnectionContext _context;
@@ -48,8 +46,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public string ConnectionId => _context.ConnectionId;
 
         public IPipeReader Input => _context.Input;
-
-        public IPipeWriter Output => _context.Output.Writer;
 
         public IKestrelTrace Log => _context.ServiceContext.Log;
 
@@ -214,6 +210,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return ProcessPingFrameAsync();
                 case Http2FrameType.GOAWAY:
                     return ProcessGoAwayFrameAsync();
+                case Http2FrameType.WINDOW_UPDATE:
+                    return ProcessWindowUpdateFrameAsync();
                 case Http2FrameType.CONTINUATION:
                     return ProcessContinuationFrameAsync<TContext>(application);
             }
@@ -416,6 +414,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             Stop();
+            return Task.CompletedTask;
+        }
+
+        private Task ProcessWindowUpdateFrameAsync()
+        {
+            if (_currentHeadersStream != null)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            if (_incomingFrame.Length != 4)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
+            }
+
+            if (_incomingFrame.StreamId == 0)
+            {
+                if (_incomingFrame.WindowUpdateSizeIncrement == 0)
+                {
+                    throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+                }
+            }
+            else
+            {
+                if (_incomingFrame.WindowUpdateSizeIncrement == 0)
+                {
+                    return _frameWriter.WriteRstStreamAsync(_incomingFrame.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
+                }
+            }
+
             return Task.CompletedTask;
         }
 
