@@ -201,7 +201,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 case Http2FrameType.HEADERS:
                     return ProcessHeadersFrameAsync<TContext>(application);
                 case Http2FrameType.PRIORITY:
-                    return ProcessPriorityFrameAsync<TContext>();
+                    return ProcessPriorityFrameAsync();
                 case Http2FrameType.RST_STREAM:
                     return ProcessRstStreamFrameAsync();
                 case Http2FrameType.SETTINGS:
@@ -288,7 +288,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
-        private Task ProcessPriorityFrameAsync<TContext>()
+        private Task ProcessPriorityFrameAsync()
         {
             if (_currentHeadersStream != null)
             {
@@ -302,7 +302,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_incomingFrame.Length != 5)
             {
-                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
             return Task.CompletedTask;
@@ -322,7 +322,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_incomingFrame.Length != 4)
             {
-                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+                throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
@@ -346,8 +346,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if ((_incomingFrame.SettingsFlags & Http2SettingsFrameFlags.ACK) == Http2SettingsFrameFlags.ACK)
             {
+                if (_incomingFrame.Length != 0)
+                {
+                    throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
+                }
+
                 // TODO: keep track of this
                 return Task.CompletedTask;
+            }
+
+            if (_incomingFrame.Length % 6 != 0)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
             ReadSettings();
@@ -401,6 +411,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             if (_currentHeadersStream != null)
             {
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            if (_incomingFrame.Length != 8)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
             return _frameWriter.WritePingAsync(Http2PingFrameFlags.ACK, _incomingFrame.Payload);

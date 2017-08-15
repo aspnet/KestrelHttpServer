@@ -669,7 +669,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await SendInvalidPriorityFrameAsync(1, length);
 
-            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.FRAME_SIZE_ERROR, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
@@ -729,36 +729,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
         }
 
-        [Fact]
-        public async Task RST_STREAM_Received_LengthLessThan4_ConnectionError()
+        [Theory]
+        [InlineData(3)]
+        [InlineData(5)]
+        public async Task RST_STREAM_Received_LengthNotFour_ConnectionError(int length)
         {
             await InitializeConnectionAsync(_noopApplication);
 
             // Start stream 1 so it's legal to send it RST_STREAM frames
             await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
 
-            var rstStreamFrame = new Http2Frame();
-            rstStreamFrame.PrepareRstStream(1, Http2ErrorCode.CANCEL);
-            rstStreamFrame.Length = 3;
-            await SendAsync(rstStreamFrame.Raw);
+            await SendInvalidRstStreamFrameAsync(1, length);
 
-            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: true);
-        }
-
-        [Fact]
-        public async Task RST_STREAM_Received_LengthGreaterThan4_ConnectionError()
-        {
-            await InitializeConnectionAsync(_noopApplication);
-
-            // Initialize stream 1 so it's legal to send it RST_STREAM frames
-            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
-
-            var rstStreamFrame = new Http2Frame();
-            rstStreamFrame.PrepareRstStream(1, Http2ErrorCode.CANCEL);
-            rstStreamFrame.Length = 5;
-            await SendAsync(rstStreamFrame.Raw);
-
-            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: true);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.FRAME_SIZE_ERROR, ignoreNonGoAwayFrames: true);
         }
 
         [Fact]
@@ -791,6 +774,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
         }
 
+        [Theory]
+        [InlineData(1)]
+        [InlineData(16 * 1024 - 9)] // Min. max. frame size minus header length
+        public async Task SETTINGS_Received_WithACK_LengthNotZero_ConnectionError(int length)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendSettingsAckWithInvalidLengthAsync(length);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.FRAME_SIZE_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(5)]
+        [InlineData(7)]
+        [InlineData(34)]
+        [InlineData(37)]
+        public async Task SETTINGS_Received_LengthNotMultipleOfSix_ConnectionError(int length)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendSettingsWithInvalidLengthAsync(length);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.FRAME_SIZE_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
         [Fact]
         public async Task PING_Received_Sends_ACK()
         {
@@ -814,6 +824,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendPingAsync();
 
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(7)]
+        [InlineData(9)]
+        public async Task PING_Received_LengthNotEight_ConnectionError(int length)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendPingWithInvalidLengthAsync(length);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.FRAME_SIZE_ERROR, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
@@ -1165,6 +1189,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(frame.Raw);
         }
 
+        private Task SendSettingsAckWithInvalidLengthAsync(int length)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareSettings(Http2SettingsFrameFlags.ACK);
+            frame.Length = length;
+            return SendAsync(frame.Raw);
+        }
+
+        private Task SendSettingsWithInvalidLengthAsync(int length)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareSettings(Http2SettingsFrameFlags.NONE, _clientSettings);
+            frame.Length = length;
+            return SendAsync(frame.Raw);
+        }
+
         private async Task<bool> SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, IEnumerable<KeyValuePair<string, string>> headers)
         {
             var frame = new Http2Frame();
@@ -1257,6 +1297,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(pingFrame.Raw);
         }
 
+        private Task SendPingWithInvalidLengthAsync(int length)
+        {
+            var pingFrame = new Http2Frame();
+            pingFrame.PreparePing(Http2PingFrameFlags.NONE);
+            pingFrame.Length = length;
+            return SendAsync(pingFrame.Raw);
+        }
+
         private Task SendPriorityAsync(int streamId)
         {
             var priorityFrame = new Http2Frame();
@@ -1277,6 +1325,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var rstStreamFrame = new Http2Frame();
             rstStreamFrame.PrepareRstStream(streamId, Http2ErrorCode.CANCEL);
             return SendAsync(rstStreamFrame.Raw);
+        }
+
+        private Task SendInvalidRstStreamFrameAsync(int streamId, int length)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareRstStream(streamId, Http2ErrorCode.CANCEL);
+            frame.Length = length;
+            return SendAsync(frame.Raw);
         }
 
         private Task SendGoAwayAsync()
