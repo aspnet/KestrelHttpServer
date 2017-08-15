@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -19,10 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[] { });
 
-        public static byte[] Preface { get; } = new byte[]
-        {
-            0x50, 0x52, 0x49, 0x20, 0x2a, 0x20, 0x48, 0x54, 0x54, 0x50, 0x2f, 0x32, 0x2e, 0x30, 0x0d, 0x0a, 0x0d, 0x0a, 0x53, 0x4d, 0x0d, 0x0a, 0x0d, 0x0a
-        };
+        public static byte[] ClientPreface { get; } = Encoding.ASCII.GetBytes("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
 
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
@@ -177,7 +175,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             consumed = readableBuffer.Start;
             examined = readableBuffer.End;
 
-            if (readableBuffer.Length < Preface.Length)
+            if (readableBuffer.Length < ClientPreface.Length)
             {
                 return false;
             }
@@ -186,15 +184,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 ? readableBuffer.First.Span
                 : readableBuffer.ToSpan();
 
-            for (var i = 0; i < Preface.Length; i++)
+            for (var i = 0; i < ClientPreface.Length; i++)
             {
-                if (Preface[i] != span[i])
+                if (ClientPreface[i] != span[i])
                 {
                     throw new Exception("Invalid HTTP/2 connection preface.");
                 }
             }
 
-            consumed = examined = readableBuffer.Move(readableBuffer.Start, Preface.Length);
+            consumed = examined = readableBuffer.Move(readableBuffer.Start, ClientPreface.Length);
             return true;
         }
 
