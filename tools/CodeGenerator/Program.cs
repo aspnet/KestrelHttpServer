@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 
@@ -37,7 +38,7 @@ namespace CodeGenerator
         {
             var knownHeadersContent = KnownHeaders.GeneratedFile();
             var frameFeatureCollectionContent = FrameFeatureCollection.GeneratedFile(nameof(Frame), "Http");
-            var http2StreamFeatureCollectionContent = FrameFeatureCollection.GeneratedFile(nameof(Http2Stream), "Http2");
+            var http2StreamFeatureCollectionContent = FrameFeatureCollection.GeneratedFile(nameof(Http2Stream), "Http2", new[] { typeof(IHttp2StreamIdFeature) });
             var httpUtilitiesContent = HttpUtilities.HttpUtilities.GeneratedFile();
 
             var existingKnownHeaders = File.Exists(knownHeadersPath) ? File.ReadAllText(knownHeadersPath) : "";
