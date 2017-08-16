@@ -23,9 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class Http2ConnectionTests : IDisposable
     {
-        private static readonly string _largeHeaderA = new string('a', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8);
+        private static readonly string _largeHeaderA = new string('a', Http2Frame.MinAllowedMaxFrameSize - Http2Frame.HeaderLength - 8);
 
-        private static readonly string _largeHeaderB = new string('b', Http2Frame.DefaultFrameSize - Http2Frame.HeaderLength - 8);
+        private static readonly string _largeHeaderB = new string('b', Http2Frame.MinAllowedMaxFrameSize - Http2Frame.HeaderLength - 8);
 
         private static readonly IEnumerable<KeyValuePair<string, string>> _postRequestHeaders = new []
         {
@@ -130,7 +130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _echoApplication = async context =>
             {
-                var buffer = new byte[Http2Frame.DefaultFrameSize];
+                var buffer = new byte[Http2Frame.MinAllowedMaxFrameSize];
                 var received = 0;
 
                 while ((received = await context.Request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
@@ -141,7 +141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _echoWaitForAbortApplication = async context =>
             {
-                var buffer = new byte[Http2Frame.DefaultFrameSize];
+                var buffer = new byte[Http2Frame.MinAllowedMaxFrameSize];
                 var received = 0;
 
                 while ((received = await context.Request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
@@ -764,12 +764,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task SETTINGS_Received_StreamIdZero_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendSettingsWithInvalidStreamIdAsync(1);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Theory]
+        [InlineData(Http2SettingsParameter.SETTINGS_ENABLE_PUSH, 2, Http2ErrorCode.PROTOCOL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_ENABLE_PUSH, uint.MaxValue, Http2ErrorCode.PROTOCOL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_INITIAL_WINDOW_SIZE, (uint)int.MaxValue + 1, Http2ErrorCode.FLOW_CONTROL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_INITIAL_WINDOW_SIZE, uint.MaxValue, Http2ErrorCode.FLOW_CONTROL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_MAX_FRAME_SIZE, 0, Http2ErrorCode.PROTOCOL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_MAX_FRAME_SIZE, 1, Http2ErrorCode.PROTOCOL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_MAX_FRAME_SIZE, 16 * 1024 - 1, Http2ErrorCode.PROTOCOL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_MAX_FRAME_SIZE, 16 * 1024 * 1024, Http2ErrorCode.PROTOCOL_ERROR)]
+        [InlineData(Http2SettingsParameter.SETTINGS_MAX_FRAME_SIZE, uint.MaxValue, Http2ErrorCode.PROTOCOL_ERROR)]
+        public async Task SETTINGS_Received_InvalidParameterValue_ConnectionError(Http2SettingsParameter parameter, uint value, Http2ErrorCode expectedErrorCode)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendSettingsWithInvalidParameterValueAsync(parameter, value);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: expectedErrorCode, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
         public async Task SETTINGS_Received_InterleavedWithHeaders_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _browserRequestHeaders);
-            await SendClientSettingsAsync();
+            await SendSettingsAsync();
 
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
         }
@@ -1027,7 +1056,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _connectionTask = _connection.ProcessAsync(new DummyApplication(application));
 
             await SendPreambleAsync().ConfigureAwait(false);
-            await SendClientSettingsAsync();
+            await SendSettingsAsync();
 
             await ExpectAsync(Http2FrameType.SETTINGS,
                 withLength: 0,
@@ -1182,7 +1211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private Task SendPreambleAsync() => SendAsync(new ArraySegment<byte>(Http2Connection.ClientPreface));
 
-        private Task SendClientSettingsAsync()
+        private Task SendSettingsAsync()
         {
             var frame = new Http2Frame();
             frame.PrepareSettings(Http2SettingsFrameFlags.NONE, _clientSettings);
@@ -1197,11 +1226,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(frame.Raw);
         }
 
+        private Task SendSettingsWithInvalidStreamIdAsync(int streamId)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareSettings(Http2SettingsFrameFlags.NONE, _clientSettings);
+            frame.StreamId = streamId;
+            return SendAsync(frame.Raw);
+        }
+
         private Task SendSettingsWithInvalidLengthAsync(int length)
         {
             var frame = new Http2Frame();
             frame.PrepareSettings(Http2SettingsFrameFlags.NONE, _clientSettings);
             frame.Length = length;
+            return SendAsync(frame.Raw);
+        }
+
+        private Task SendSettingsWithInvalidParameterValueAsync(Http2SettingsParameter parameter, uint value)
+        {
+            var frame = new Http2Frame();
+            frame.PrepareSettings(Http2SettingsFrameFlags.NONE);
+            frame.Length = 6;
+
+            frame.Payload[0] = (byte)((ushort)parameter >> 8);
+            frame.Payload[1] = (byte)(ushort)parameter;
+            frame.Payload[2] = (byte)(value >> 24);
+            frame.Payload[3] = (byte)(value >> 16);
+            frame.Payload[4] = (byte)(value >> 8);
+            frame.Payload[5] = (byte)value;
+
             return SendAsync(frame.Raw);
         }
 

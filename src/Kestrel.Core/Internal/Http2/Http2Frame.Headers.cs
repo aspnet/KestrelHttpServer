@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void PrepareHeaders(Http2HeadersFrameFlags flags, int streamId)
         {
-            Length = DefaultFrameSize - HeaderLength;
+            Length = MinAllowedMaxFrameSize - HeaderLength;
             Type = Http2FrameType.HEADERS;
             HeadersFlags = flags;
             StreamId = streamId;

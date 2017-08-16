@@ -344,15 +344,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            if ((_incomingFrame.SettingsFlags & Http2SettingsFrameFlags.ACK) == Http2SettingsFrameFlags.ACK)
+            if (_incomingFrame.StreamId != 0)
             {
-                if (_incomingFrame.Length != 0)
-                {
-                    throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
-                }
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
 
-                // TODO: keep track of this
-                return Task.CompletedTask;
+            if ((_incomingFrame.SettingsFlags & Http2SettingsFrameFlags.ACK) == Http2SettingsFrameFlags.ACK && _incomingFrame.Length != 0)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
             if (_incomingFrame.Length % 6 != 0)
@@ -360,49 +359,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
-            ReadSettings();
-
-            return _frameWriter.WriteSettingsAckAsync();
-        }
-
-        private void ReadSettings()
-        {
-            // TODO: error handling
-
-            var settingsCount = _incomingFrame.Length / 6;
-
-            for (var i = 0; i < settingsCount; i++)
+            try
             {
-                var j = i * 6;
-                var id = (Http2SettingsFrameParameter)((_incomingFrame.Payload[0] << 8) | _incomingFrame.Payload[1]);
-                var value = (uint)((_incomingFrame.Payload[2] << 24)
-                    | (_incomingFrame.Payload[3] << 16)
-                    | (_incomingFrame.Payload[4] << 8)
-                    | _incomingFrame.Payload[5]);
-
-                switch (id)
-                {
-                    case Http2SettingsFrameParameter.SETTINGS_HEADER_TABLE_SIZE:
-                        _clientSettings.HeaderTableSize = value;
-                        break;
-                    case Http2SettingsFrameParameter.SETTINGS_ENABLE_PUSH:
-                        _clientSettings.EnablePush = value == 1;
-                        break;
-                    case Http2SettingsFrameParameter.SETTINGS_MAX_CONCURRENT_STREAMS:
-                        _clientSettings.MaxConcurrentStreams = value;
-                        break;
-                    case Http2SettingsFrameParameter.SETTINGS_INITIAL_WINDOW_SIZE:
-                        _clientSettings.InitialWindowSize = value;
-                        break;
-                    case Http2SettingsFrameParameter.SETTINGS_MAX_FRAME_SIZE:
-                        _clientSettings.MaxFrameSize = value;
-                        break;
-                    case Http2SettingsFrameParameter.SETTINGS_MAX_HEADER_LIST_SIZE:
-                        _clientSettings.MaxHeaderListSize = value;
-                        break;
-                    default:
-                        break;
-                }
+                _clientSettings.ParseFrame(_incomingFrame);
+                return _frameWriter.WriteSettingsAckAsync();
+            }
+            catch (Http2SettingsParameterOutOfRangeException ex)
+            {
+                throw new Http2ConnectionErrorException(ex.Parameter == Http2SettingsParameter.SETTINGS_INITIAL_WINDOW_SIZE
+                    ? Http2ErrorCode.FLOW_CONTROL_ERROR
+                    : Http2ErrorCode.PROTOCOL_ERROR);
             }
         }
 
