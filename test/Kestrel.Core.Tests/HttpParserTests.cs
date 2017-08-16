@@ -26,10 +26,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             string expectedMethod,
             string expectedRawTarget,
             string expectedRawPath,
-#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
+// This warns that theory methods should use all of their parameters,
+// but this method is using a shared data collection with FrameTests.TakeStartLineSetsFrameProperties and others.
+#pragma warning disable xUnit1026
             string expectedDecodedPath,
             string expectedQueryString,
-#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
+#pragma warning restore xUnit1026
             string expectedVersion)
         {
             var parser = CreateParser(Mock.Of<IKestrelTrace>());
