@@ -4,12 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web.Utf8;
 using System.Threading;
@@ -18,7 +16,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
@@ -40,6 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
 
+        private Http2StreamContext _context;
         private Http2Streams _streams;
 
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
@@ -61,25 +59,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
         private Uri _absoluteRequestTarget;
 
-        public Http2Stream(
-            string connectionId,
-            int streamId,
-            ServiceContext serviceContext,
-            IConnectionInformation connectionInformation,
-            ITimeoutControl timeoutControl,
-            IHttp2StreamLifetimeHandler streamLifetimeHandler,
-            IHttp2FrameWriter frameWriter)
+        public Http2Stream(Http2StreamContext context)
         {
-            ConnectionId = connectionId;
-            StreamId = streamId;
-            ServiceContext = serviceContext;
-            ConnectionInformation = connectionInformation;
-            TimeoutControl = timeoutControl;
-
-            ServerOptions = ServiceContext.ServerOptions;
+            _context = context;
             HttpStreamControl = this;
-            StreamLifetimeHandler = streamLifetimeHandler;
-            Output = frameWriter;
+            ServerOptions = context.ServiceContext.ServerOptions;
             RequestBodyPipe = CreateRequestBodyPipe();
         }
 
@@ -88,24 +72,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2MessageBody MessageBody { get; protected set; }
         public IPipe RequestBodyPipe { get; }
 
-        protected string ConnectionId { get; }
-        public int StreamId { get; }
-        public ServiceContext ServiceContext { get; }
-        public IConnectionInformation ConnectionInformation { get; }
-        public ITimeoutControl TimeoutControl { get; }
+        protected string ConnectionId => _context.ConnectionId;
+        public int StreamId => _context.StreamId;
+        public ServiceContext ServiceContext => _context.ServiceContext;
 
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
         private KestrelServerOptions ServerOptions { get; }
 
         public IFeatureCollection ConnectionFeatures { get; set; }
-        protected IHttp2StreamLifetimeHandler StreamLifetimeHandler { get; set; }
-        public IHttp2FrameWriter Output { get; }
+        protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
+        public IHttp2FrameWriter Output => _context.FrameWriter;
 
         protected IKestrelTrace Log => ServiceContext.Log;
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
 
-        private IPEndPoint LocalEndPoint => ConnectionInformation.LocalEndPoint;
-        private IPEndPoint RemoteEndPoint => ConnectionInformation.RemoteEndPoint;
+        private IPEndPoint LocalEndPoint => _context.LocalEndPoint;
+        private IPEndPoint RemoteEndPoint => _context.RemoteEndPoint;
 
         public string ConnectionIdFeature { get; set; }
         public bool HasStartedConsumingRequestBody { get; set; }
@@ -1028,7 +1010,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         }
 
         private IPipe CreateRequestBodyPipe()
-            => ConnectionInformation.PipeFactory.Create(new PipeOptions
+            => _context.PipeFactory.Create(new PipeOptions
             {
                 ReaderScheduler = ServiceContext.ThreadPool,
                 WriterScheduler = InlineScheduler.Default,

@@ -8,6 +8,7 @@ using System.IO.Pipelines;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -262,15 +263,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            _currentHeadersStream = new Http2Stream<TContext>(
-                application,
-                ConnectionId,
-                _incomingFrame.StreamId,
-                _context.ServiceContext,
-                _context.ConnectionInformation,
-                timeoutControl: this,
-                streamLifetimeHandler: this,
-                frameWriter: _frameWriter);
+            _currentHeadersStream = new Http2Stream<TContext>(application, new Http2StreamContext
+            {
+                ConnectionId = ConnectionId,
+                StreamId =  _incomingFrame.StreamId,
+                ServiceContext = _context.ServiceContext,
+                PipeFactory = _context.PipeFactory,
+                LocalEndPoint = _context.LocalEndPoint,
+                RemoteEndPoint = _context.RemoteEndPoint,
+                StreamLifetimeHandler = this,
+                FrameWriter = _frameWriter
+            });
             _currentHeadersStream.ExpectBody = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == 0;
             _currentHeadersStream.Reset();
 

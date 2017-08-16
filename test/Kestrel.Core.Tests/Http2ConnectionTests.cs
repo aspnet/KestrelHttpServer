@@ -212,10 +212,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _connectionContext = new Http2ConnectionContext
             {
                 ServiceContext = new TestServiceContext(),
-                ConnectionInformation = new MockConnectionInformation
-                {
-                    PipeFactory = _pipeFactory
-                },
+                PipeFactory = _pipeFactory,
                 Input = _inputPipe.Reader,
                 Output = _outputPipe
             };

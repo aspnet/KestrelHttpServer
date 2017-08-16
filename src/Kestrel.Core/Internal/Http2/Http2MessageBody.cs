@@ -132,8 +132,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected void Copy(Span<byte> data, WritableBuffer writableBuffer)
         {
-            _context.TimeoutControl.BytesRead(data.Length);
-
             writableBuffer.Write(data);
         }
 

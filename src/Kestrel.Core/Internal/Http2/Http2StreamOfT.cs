@@ -6,10 +6,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
@@ -18,15 +16,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly IHttpApplication<TContext> _application;
 
-        public Http2Stream(IHttpApplication<TContext> application,
-            string connectionId,
-            int streamId,
-            ServiceContext serviceContext,
-            IConnectionInformation connectionInformation,
-            ITimeoutControl timeoutControl,
-            IHttp2StreamLifetimeHandler streamLifetimeHandler,
-            IHttp2FrameWriter frameWriter)
-            : base(connectionId, streamId, serviceContext, connectionInformation, timeoutControl, streamLifetimeHandler, frameWriter)
+        public Http2Stream(IHttpApplication<TContext> application, Http2StreamContext context)
+            : base(context)
         {
             _application = application;
         }

@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public class FrameConnection : IConnectionApplicationFeature, ITimeoutControl
     {
-        private const int Http2ConnectionNotStarted= 0;
+        private const int Http2ConnectionNotStarted = 0;
         private const int Http2ConnectionStarted = 1;
         private const int Http2ConnectionClosed = 2;
 
@@ -131,7 +131,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     {
                         ConnectionId = _context.ConnectionId,
                         ServiceContext  = _context.ServiceContext,
-                        ConnectionInformation = _context.ConnectionInformation,
+                        PipeFactory = PipeFactory,
+                        LocalEndPoint = LocalEndPoint,
+                        RemoteEndPoint = RemoteEndPoint,
                         Input = input,
                         Output = output
                     });

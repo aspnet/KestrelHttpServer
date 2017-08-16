@@ -6,15 +6,15 @@ using System.Net;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2ConnectionContext
+    public class Http2StreamContext
     {
         public string ConnectionId { get; set; }
+        public int StreamId { get; set; }
         public ServiceContext ServiceContext { get; set; }
         public PipeFactory PipeFactory { get; set; }
-        public IPEndPoint LocalEndPoint { get; set; }
         public IPEndPoint RemoteEndPoint { get; set; }
-
-        public IPipeReader Input { get; set; }
-        public IPipe Output { get; set; }
+        public IPEndPoint LocalEndPoint { get; set; }
+        public IHttp2StreamLifetimeHandler StreamLifetimeHandler { get; set; }
+        public IHttp2FrameWriter FrameWriter { get; set; }
     }
 }
