@@ -173,26 +173,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task OverlongHeaderIsRejected()
-        {
-            using (var server = CreateServer())
-            {
-                using (var client = server.CreateConnection())
-                {
-                    await client.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "Connection: close");
-
-                    var payload = new string('x', 102400);
-                    client.Socket.Send(Encoding.ASCII.GetBytes(String.Format("Range: {0}\r\n\r\n", payload)));
-
-                    await client.ReceiveStartsWith("HTTP/1.1 431");
-                }
-            }
-        }
-
-        [Fact]
         public async Task HostHeaderAcceptedWithPeriod()
         {
             using (var server = CreateServer())
