@@ -190,7 +190,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task UnprintableCharactersAreFiltered()
+        public async Task HttpRequestSplittingFails()
         {
             using (var server = CreateServer())
             {
