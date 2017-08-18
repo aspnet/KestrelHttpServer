@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         [Params(Startup.None, Startup.Sync, Startup.Async)]
         public Startup OnStarting { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void Setup()
         {
             _frame.Reset();
@@ -119,7 +119,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             return frame;
         }
 
-        [Cleanup]
+        [GlobalCleanup]
         public void Cleanup()
         {
             var reader = _outputPipe.Reader;

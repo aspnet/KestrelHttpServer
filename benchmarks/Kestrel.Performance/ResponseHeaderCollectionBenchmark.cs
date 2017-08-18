@@ -166,7 +166,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             }
         }
 
-        [Setup]
+        [GlobalSetup]
         public void Setup()
         {
             var serviceContext = new ServiceContext

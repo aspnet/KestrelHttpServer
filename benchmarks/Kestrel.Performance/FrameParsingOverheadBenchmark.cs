@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public ReadableBuffer _buffer;
         public Frame<object> _frame;
 
-        [Setup]
+        [GlobalSetup]
         public void Setup()
         {
             var serviceContext = new ServiceContext
