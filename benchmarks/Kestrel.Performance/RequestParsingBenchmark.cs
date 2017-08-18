@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         public PipeFactory PipeFactory { get; set; }
 
-        [GlobalSetup]
+        [IterationSetup]
         public void Setup()
         {
             PipeFactory = new PipeFactory();
