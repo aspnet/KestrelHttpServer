@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private TestFrame<object> MakeFrame(PipeFactory pipeFactory)
         {
-            var input = pipeFactory.Create();
+            var pair = pipeFactory.CreateConnectionPair();
 
             var serviceContext = new ServiceContext
             {
@@ -109,8 +109,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 ServiceContext = serviceContext,
                 PipeFactory = pipeFactory,
-                Input = input.Reader,
-                Output = _outputPipe 
+                Application = pair.Application,
+                Transport = pair.Transport
             });
 
             frame.Reset();
