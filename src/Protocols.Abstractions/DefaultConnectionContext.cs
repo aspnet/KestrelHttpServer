@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Features;
 
@@ -37,6 +38,10 @@ namespace Microsoft.AspNetCore.Protocols
             get => ConnectionTransportFeature.Connection;
             set => ConnectionTransportFeature.Connection = value;
         }
+
+        public override Task ConnectionAborted => ConnectionTransportFeature.ConnectionAborted;
+
+        public override Task ConnectionClosed => ConnectionTransportFeature.ConnectionClosed;
 
         struct FeatureInterfaces
         {

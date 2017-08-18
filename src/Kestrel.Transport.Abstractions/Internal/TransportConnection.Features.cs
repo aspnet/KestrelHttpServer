@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Features;
 
@@ -103,6 +104,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         {
             get => Transport;
             set => Transport = value;
+        }
+
+        Task IConnectionTransportFeature.ConnectionAborted
+        {
+            get => _abortTcs.Task;
+        }
+
+        Task IConnectionTransportFeature.ConnectionClosed
+        {
+            get => _closedTcs.Task;
         }
 
         object IFeatureCollection.this[Type key]
