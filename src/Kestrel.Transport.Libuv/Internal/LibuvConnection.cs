@@ -46,8 +46,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        public IPipeWriter Input => Application.Connection.Output;
-        public IPipeReader Output => Application.Connection.Input;
+        public IPipeWriter Input => Application.Output;
+        public IPipeReader Output => Application.Input;
 
         public LibuvOutputConsumer OutputConsumer { get; set; }
 

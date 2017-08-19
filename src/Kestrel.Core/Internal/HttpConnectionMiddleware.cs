@@ -32,9 +32,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public Task OnConnectionAsync(ConnectionContext connectionContext)
         {
-            // We need the application feature so that we can cancel the output reader that the transport is using
+            // We need the transport feature so that we can cancel the output reader that the transport is using
             // This is a bit of a hack but it preserves the existing semantics
-            var applicationFeature = connectionContext.Features.Get<IConnectionApplicationFeature>();
+            var transportFeature = connectionContext.Features.Get<IConnectionTransportFeature>();
 
             var frameConnectionId = Interlocked.Increment(ref _lastFrameConnectionId);
 
@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 PipeFactory = connectionContext.PipeFactory,
                 ConnectionAdapters = _connectionAdapters,
                 Transport = connectionContext.Transport,
-                Application = applicationFeature.Connection
+                Application = transportFeature.Connection
             };
 
             var connectionFeature = connectionContext.Features.Get<IHttpConnectionFeature>();

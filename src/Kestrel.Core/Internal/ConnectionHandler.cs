@@ -3,7 +3,6 @@
 
 using System;
 using System.IO.Pipelines;
-using System.Threading;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Protocols.Features;
@@ -41,9 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             connectionContext.Transport = pair.Transport;
 
             // This *must* be set before returning from OnConnection
-            var applicationFeature = new ServerConnection(pair.Application);
-
-            connectionContext.Features.Set<IConnectionApplicationFeature>(applicationFeature);
+            transportFeature.Application = pair.Application;
 
             // REVIEW: This task should be tracked by the server for graceful shutdown
             // Today it's handled specifically for http but not for aribitrary middleware
@@ -78,16 +75,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             // null means that we have no back pressure
             return bufferSize ?? 0;
-        }
-
-        private class ServerConnection : IConnectionApplicationFeature
-        {
-            public ServerConnection(IPipeConnection connection)
-            {
-                Connection = connection;
-            }
-
-            public IPipeConnection Connection { get; set; }
         }
     }
 }

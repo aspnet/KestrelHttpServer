@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Features;
@@ -18,12 +17,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         private static readonly Type IHttpConnectionFeatureType = typeof(IHttpConnectionFeature);
         private static readonly Type IConnectionIdFeatureType = typeof(IConnectionIdFeature);
         private static readonly Type IConnectionTransportFeatureType = typeof(IConnectionTransportFeature);
-        private static readonly Type IConnectionApplicationFeatureType = typeof(IConnectionApplicationFeature);
 
         private object _currentIHttpConnectionFeature;
         private object _currentIConnectionIdFeature;
         private object _currentIConnectionTransportFeature;
-        private object _currentIConnectionApplicationFeature;
 
         private int _featureRevision;
 
@@ -106,6 +103,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             set => Transport = value;
         }
 
+        IPipeConnection IConnectionTransportFeature.Application
+        {
+            get => Application;
+            set => Application = value;
+        }
+
         Task IConnectionTransportFeature.ConnectionAborted
         {
             get => _abortTcs.Task;
@@ -153,11 +156,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
                 return _currentIConnectionTransportFeature;
             }
 
-            if (key == IConnectionApplicationFeatureType)
-            {
-                return _currentIConnectionApplicationFeature;
-            }
-
             return ExtraFeatureGet(key);
         }
 
@@ -183,12 +181,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
                 return;
             }
 
-            if (key == IConnectionApplicationFeatureType)
-            {
-                _currentIConnectionApplicationFeature = feature;
-                return;
-            }
-
             ExtraFeatureSet(key, feature);
         }
 
@@ -207,11 +199,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             if (_currentIConnectionTransportFeature != null)
             {
                 yield return new KeyValuePair<Type, object>(IConnectionTransportFeatureType, _currentIConnectionTransportFeature);
-            }
-
-            if (_currentIConnectionApplicationFeature != null)
-            {
-                yield return new KeyValuePair<Type, object>(IConnectionApplicationFeatureType, _currentIConnectionApplicationFeature);
             }
 
             if (MaybeExtra != null)

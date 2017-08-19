@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Protocols.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
@@ -32,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         public virtual IScheduler OutputReaderScheduler { get; }
 
         public IPipeConnection Transport { get; set; }
-        public IConnectionApplicationFeature Application => (IConnectionApplicationFeature)_currentIConnectionApplicationFeature;
+        public IPipeConnection Application { get; set; }
 
         protected void Abort(Exception exception)
         {
