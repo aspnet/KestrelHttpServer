@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Protocols.Features
     {
         PipeFactory PipeFactory { get; }
 
-        IPipeConnection Connection { get; set; }
+        IPipeConnection Transport { get; set; }
 
         IPipeConnection Application { get; set; }
 

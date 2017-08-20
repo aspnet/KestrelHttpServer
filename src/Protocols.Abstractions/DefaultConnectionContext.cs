@@ -35,8 +35,8 @@ namespace Microsoft.AspNetCore.Protocols
 
         public override IPipeConnection Transport
         {
-            get => ConnectionTransportFeature.Connection;
-            set => ConnectionTransportFeature.Connection = value;
+            get => ConnectionTransportFeature.Transport;
+            set => ConnectionTransportFeature.Transport = value;
         }
 
         public override Task ConnectionAborted => ConnectionTransportFeature.ConnectionAborted;

@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         PipeFactory IConnectionTransportFeature.PipeFactory => PipeFactory;
 
-        IPipeConnection IConnectionTransportFeature.Connection
+        IPipeConnection IConnectionTransportFeature.Transport
         {
             get => Transport;
             set => Transport = value;

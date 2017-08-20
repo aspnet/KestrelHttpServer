@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 PipeFactory = connectionContext.PipeFactory,
                 ConnectionAdapters = _connectionAdapters,
                 Transport = connectionContext.Transport,
-                Application = transportFeature.Connection
+                Application = transportFeature.Application
             };
 
             var connectionFeature = connectionContext.Features.Get<IHttpConnectionFeature>();
