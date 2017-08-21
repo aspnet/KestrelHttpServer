@@ -276,6 +276,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 var tlsFeature = ConnectionFeatures?[typeof(ITlsConnectionFeature)];
                 _scheme = tlsFeature != null ? "https" : "http";
             }
+
             Scheme = _scheme;
 
             _manuallySetRequestAbortToken = null;
