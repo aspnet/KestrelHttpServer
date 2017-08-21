@@ -139,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     endpoint.UseConnectionLimit(ServiceContext);
 
                     // Configure the user delegate
-                    endpoint?.Configure(endpoint);
+                    endpoint.Configure(endpoint);
 
                     // Add the HTTP middleware as the terminal connection middleware
                     endpoint.UseHttpServer(endpoint.ConnectionAdapters, ServiceContext, application);

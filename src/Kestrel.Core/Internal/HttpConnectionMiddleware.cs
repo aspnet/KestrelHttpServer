@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Pipelines;
+﻿using System.Collections.Generic;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -89,23 +86,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             connection, TaskContinuationOptions.ExecuteSynchronously);
 
             return processingTask;
-        }
-    }
-
-    public static class HttpConnectionBuilderExtensions
-    {
-        public static IConnectionBuilder UseHttpServer<TContext>(this IConnectionBuilder builder, ServiceContext serviceContext, IHttpApplication<TContext> application)
-        {
-            return builder.UseHttpServer(Array.Empty<IConnectionAdapter>(), serviceContext, application);
-        }
-
-        public static IConnectionBuilder UseHttpServer<TContext>(this IConnectionBuilder builder, IList<IConnectionAdapter> adapters, ServiceContext serviceContext, IHttpApplication<TContext> application)
-        {
-            var middleware = new HttpConnectionMiddleware<TContext>(adapters, serviceContext, application);
-            return builder.Use(next =>
-            {
-                return middleware.OnConnectionAsync;
-            });
         }
     }
 }

@@ -3,11 +3,13 @@
 
 using System;
 using System.IO.Pipelines;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Protocols.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
@@ -44,7 +46,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             // REVIEW: This task should be tracked by the server for graceful shutdown
             // Today it's handled specifically for http but not for aribitrary middleware
-            _ = _connectionDelegate(connectionContext);
+            _ = Execute(connectionContext);
+        }
+
+        private async Task Execute(ConnectionContext connectionContext)
+        {
+            try
+            {
+                await _connectionDelegate(connectionContext);
+            }
+            catch (Exception ex)
+            {
+                _serviceContext.Log.LogCritical(0, ex, $"{nameof(ConnectionHandler)}.{nameof(Execute)}() {connectionContext.ConnectionId}");
+            }
         }
 
         // Internal for testing

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
@@ -30,18 +27,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             return _next(connection);
-        }
-    }
-
-    public static class ConnectionLimitBuilderExtensions
-    {
-        public static IConnectionBuilder UseConnectionLimit(this IConnectionBuilder builder, ServiceContext serviceContext)
-        {
-            return builder.Use(next =>
-            {
-                var middleware = new ConnectionLimitMiddleware(next, serviceContext);
-                return middleware.OnConnectionAsync;
-            });
         }
     }
 }
