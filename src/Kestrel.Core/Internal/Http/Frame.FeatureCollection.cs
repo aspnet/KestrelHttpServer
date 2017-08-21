@@ -294,8 +294,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _wasUpgraded = true;
 
-            ServiceContext.ConnectionManager.NormalConnectionCount.ReleaseOne();
-
             StatusCode = StatusCodes.Status101SwitchingProtocols;
             ReasonPhrase = "Switching Protocols";
             ResponseHeaders["Connection"] = "Upgrade";

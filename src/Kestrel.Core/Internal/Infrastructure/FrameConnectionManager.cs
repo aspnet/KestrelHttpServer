@@ -12,13 +12,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         private readonly IKestrelTrace _trace;
 
         public FrameConnectionManager(IKestrelTrace trace, long? normalConnectionLimit, long? upgradedConnectionLimit)
-            : this(trace, GetCounter(normalConnectionLimit), GetCounter(upgradedConnectionLimit))
+            : this(trace, GetCounter(upgradedConnectionLimit))
         {
         }
 
-        public FrameConnectionManager(IKestrelTrace trace, ResourceCounter normalConnections, ResourceCounter upgradedConnections)
+        public FrameConnectionManager(IKestrelTrace trace, ResourceCounter upgradedConnections)
         {
-            NormalConnectionCount = normalConnections;
             UpgradedConnectionCount = upgradedConnections;
             _trace = trace;
         }

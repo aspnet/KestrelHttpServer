@@ -6,27 +6,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public class ConnectionLimitMiddleware
     {
-        private readonly ServiceContext _serviceContext;
         private readonly ConnectionDelegate _next;
+        private readonly IKestrelTrace _trace;
+        private readonly ResourceCounter _normalConnectionCount;
 
-        public ConnectionLimitMiddleware(ConnectionDelegate next, ServiceContext serviceContext)
+        public ConnectionLimitMiddleware(ConnectionDelegate next, IKestrelTrace trace, long connectionLimit)
         {
             _next = next;
-            _serviceContext = serviceContext;
+            _trace = trace;
+            _normalConnectionCount = ResourceCounter.Quota(connectionLimit);
         }
 
-        public Task OnConnectionAsync(ConnectionContext connection)
+        public async Task OnConnectionAsync(ConnectionContext connection)
         {
-            if (!_serviceContext.ConnectionManager.NormalConnectionCount.TryLockOne())
+            if (!_normalConnectionCount.TryLockOne())
             {
                 KestrelEventSource.Log.ConnectionRejected(connection.ConnectionId);
-                _serviceContext.Log.ConnectionRejected(connection.ConnectionId);
+                _trace?.ConnectionRejected(connection.ConnectionId);
                 connection.Transport.Input.Complete();
                 connection.Transport.Output.Complete();
-                return Task.CompletedTask;
+                return;
             }
 
-            return _next(connection);
+            try
+            {
+                await _next(connection);
+            }
+            finally
+            {
+                _normalConnectionCount.ReleaseOne();
+            }
         }
     }
 }
