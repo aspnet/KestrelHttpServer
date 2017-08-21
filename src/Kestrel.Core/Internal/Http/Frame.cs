@@ -362,18 +362,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             RequestHeaders = FrameRequestHeaders;
             ResponseHeaders = FrameResponseHeaders;
 
-            if (ConnectionFeatures != null)
+            var tlsFeature = ConnectionFeatures?[typeof(ITlsConnectionFeature)];
+            if (tlsFeature != null)
             {
-                foreach (var feature in ConnectionFeatures)
-                {
-                    // Set the scheme to https if there's an ITlsConnectionFeature
-                    if (feature.Key == typeof(ITlsConnectionFeature))
-                    {
-                        Scheme = "https";
-                    }
-
-                    FastFeatureSet(feature.Key, feature.Value);
-                }
+                // Set the scheme to https if there's an ITlsConnectionFeature
+                Scheme = "https";
+                FastFeatureSet(typeof(ITlsConnectionFeature), tlsFeature);
             }
 
             _manuallySetRequestAbortToken = null;
