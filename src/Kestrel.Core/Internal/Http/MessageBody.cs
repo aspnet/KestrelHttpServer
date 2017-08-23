@@ -311,18 +311,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
             var keepAlive = httpVersion != HttpVersion.Http10;
 
-            var connection = headers.HeaderConnection;
             var upgrade = false;
-            if (connection.Count > 0)
+            if (headers.HasConnection)
             {
-                var connectionOptions = FrameHeaders.ParseConnection(connection);
+                var connectionOptions = FrameHeaders.ParseConnection(headers.HeaderConnection);
 
                 upgrade = (connectionOptions & ConnectionOptions.Upgrade) == ConnectionOptions.Upgrade;
                 keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
             }
 
-            var transferEncoding = headers.HeaderTransferEncoding;
-            if (transferEncoding.Count > 0)
+            if (headers.HasTransferEncoding)
             {
                 var transferCoding = FrameHeaders.GetFinalTransferCoding(headers.HeaderTransferEncoding);
 
@@ -334,7 +332,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // status code and then close the connection.
                 if (transferCoding != TransferCoding.Chunked)
                 {
-                    context.ThrowRequestRejected(RequestRejectionReason.FinalTransferCodingNotChunked, transferEncoding.ToString());
+                    ThrowFinalTransferCodingNotChunked(headers, context);
                 }
 
                 if (upgrade)
@@ -379,6 +377,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             return keepAlive ? _zeroContentLengthKeepAlive : _zeroContentLengthClose;
+        }
+
+        private static void ThrowFinalTransferCodingNotChunked(FrameRequestHeaders headers, Frame context)
+        {
+            context.ThrowRequestRejected(RequestRejectionReason.FinalTransferCodingNotChunked, headers.HeaderTransferEncoding.ToString());
         }
 
         private class ForUpgrade : MessageBody
