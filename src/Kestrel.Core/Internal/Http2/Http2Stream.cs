@@ -623,14 +623,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             var hasConnection = responseHeaders.HasConnection;
             var connectionOptions = FrameHeaders.ParseConnection(responseHeaders.HeaderConnection);
             var hasTransferEncoding = responseHeaders.HasTransferEncoding;
-            var transferCoding = FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding);
 
             // https://tools.ietf.org/html/rfc7230#section-3.3.1
             // If any transfer coding other than
             // chunked is applied to a response payload body, the sender MUST either
             // apply chunked as the final transfer coding or terminate the message
             // by closing the connection.
-            if (hasTransferEncoding && transferCoding == TransferCoding.Chunked)
+            if (hasTransferEncoding && FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding) == TransferCoding.Chunked)
             {
                 // TODO: this is an error in HTTP/2
             }
