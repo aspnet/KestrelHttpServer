@@ -10,6 +10,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public interface IMessageBody
     {
+        bool RequestUpgrade { get; }
+
         Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken));
 
         Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken));

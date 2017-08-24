@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly object _onCompletedSync = new Object();
 
         private Http2StreamContext _context;
-        private Http2Streams _streams;
+        private Streams _streams;
 
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
@@ -225,7 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_streams == null)
             {
-                _streams = new Http2Streams(bodyControl: this, httpStreamControl: this);
+                _streams = new Streams(bodyControl: this, frameControl: this);
             }
 
             (RequestBody, ResponseBody) = _streams.Start(messageBody);

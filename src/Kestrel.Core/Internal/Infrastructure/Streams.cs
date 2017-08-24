@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             return _upgradeStream;
         }
 
-        public (Stream request, Stream response) Start(MessageBody body)
+        public (Stream request, Stream response) Start(IMessageBody body)
         {
             _request.StartAcceptingReads(body);
             _emptyRequest.StartAcceptingReads(MessageBody.ZeroContentLengthClose);

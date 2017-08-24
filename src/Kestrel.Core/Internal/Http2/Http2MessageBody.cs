@@ -23,6 +23,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
         }
 
+        public bool RequestUpgrade => false;
+
         public bool IsCompleted { get; protected set; }
 
         public virtual async Task OnDataAsync(ArraySegment<byte> data, bool endStream)
