@@ -2444,15 +2444,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [ConditionalFact]
-        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "Flaky test (https://github.com/aspnet/KestrelHttpServer/issues/1955)")]
-        public async Task ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
+        [Fact]
+        public void ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
             var chunkSize = 64 * 1024;
             var chunks = 128;
+            var responseSize = chunks * chunkSize;
 
+            var requestAborted = new ManualResetEventSlim();
             var messageLogged = new ManualResetEventSlim();
-
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
                 .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
@@ -2471,16 +2471,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            var aborted = new ManualResetEventSlim();
-
             using (var server = new TestServer(async context =>
             {
-                context.RequestAborted.Register(() =>
-                {
-                    aborted.Set();
-                });
+                context.RequestAborted.Register(() => requestAborted.Set());
 
-                context.Response.ContentLength = chunks * chunkSize;
+                context.Response.ContentLength = responseSize;
 
                 for (var i = 0; i < chunks; i++)
                 {
@@ -2488,29 +2483,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }, testContext))
             {
-                using (var connection = server.CreateConnection())
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
+                    socket.ReceiveBufferSize = 1;
 
-                    Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
+                    socket.Connect(new IPEndPoint(IPAddress.Loopback, server.Port));
+                    socket.Send(Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost: \r\n\r\n"));
 
-                    await connection.Receive(
-                        "HTTP/1.1 200 OK",
-                        "");
-                    await connection.ReceiveStartsWith("Date: ");
-                    await connection.Receive(
-                        $"Content-Length: {chunks * chunkSize}",
-                        "",
-                        "");
+                    Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(60)));
+                    Assert.True(requestAborted.Wait(TimeSpan.FromSeconds(60)));
 
-                    await Assert.ThrowsAsync<EqualException>(async () => await connection.ReceiveForcedEnd(
-                        new string('a', chunks * chunkSize)));
+                    var buffer = new byte[chunkSize];
+                    var totalReceived = 0;
+                    var received = socket.Receive(buffer);
 
-                    Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
+                    while (received > 0)
+                    {
+                        totalReceived += received;
+                        received = socket.Receive(buffer);
+                    }
+
+                    // Since we expect writes to be cut off by the rate control, we should never see the entire response
+                    Assert.NotEqual(responseSize, totalReceived);
                 }
             }
         }
