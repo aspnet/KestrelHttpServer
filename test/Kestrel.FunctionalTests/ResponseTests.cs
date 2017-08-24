@@ -2490,8 +2490,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     socket.Connect(new IPEndPoint(IPAddress.Loopback, server.Port));
                     socket.Send(Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost: \r\n\r\n"));
 
-                    Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(60)));
-                    Assert.True(requestAborted.Wait(TimeSpan.FromSeconds(60)));
+                    Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(60)), "The expected message was not logged within the timeout period.");
+                    Assert.True(requestAborted.Wait(TimeSpan.FromSeconds(60)), "The request was not aborted within the timeout period.");
 
                     var totalReceived = 0;
                     var received = 0;
