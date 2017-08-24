@@ -2493,14 +2493,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(60)));
                     Assert.True(requestAborted.Wait(TimeSpan.FromSeconds(60)));
 
-                    var buffer = new byte[chunkSize];
                     var totalReceived = 0;
-                    var received = socket.Receive(buffer);
+                    var received = 0;
 
-                    while (received > 0)
+                    try
                     {
-                        totalReceived += received;
-                        received = socket.Receive(buffer);
+                        var buffer = new byte[chunkSize];
+
+                        do
+                        {
+                            received = socket.Receive(buffer);
+                            totalReceived += received;
+                        } while (received > 0 && totalReceived < responseSize);
+                    }
+                    catch (IOException)
+                    {
+                        // Socket.Receive could throw, and that is fine
                     }
 
                     // Since we expect writes to be cut off by the rate control, we should never see the entire response
