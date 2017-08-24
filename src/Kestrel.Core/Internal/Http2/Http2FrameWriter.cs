@@ -50,6 +50,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
+        public void WriteHeaders(int streamId, int statusCode, IHeaderDictionary headers)
+        {
+            lock (_writeLock)
+            {
+                _outgoingFrame.PrepareHeaders(Http2HeadersFrameFlags.NONE, streamId);
+
+                var done = _hpackEncoder.BeginEncode(statusCode, EnumerateHeaders(headers), _outgoingFrame.Payload, out var payloadLength);
+                _outgoingFrame.Length = payloadLength;
+
+                if (done)
+                {
+                    _outgoingFrame.HeadersFlags = Http2HeadersFrameFlags.END_HEADERS;
+                }
+
+                Write(_outgoingFrame.Raw);
+
+                while (!done)
+                {
+                    _outgoingFrame.PrepareContinuation(Http2ContinuationFrameFlags.NONE, streamId);
+
+                    done = _hpackEncoder.Encode(_outgoingFrame.Payload, out var length);
+                    _outgoingFrame.Length = length;
+
+                    if (done)
+                    {
+                        _outgoingFrame.ContinuationFlags = Http2ContinuationFrameFlags.END_HEADERS;
+                    }
+
+                    Write(_outgoingFrame.Raw);
+                }
+            }
+        }
+
         public Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers)
         {
             var tasks = new List<Task>();
@@ -166,6 +199,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _outgoingFrame.PrepareGoAway(lastStreamId, errorCode);
                 return WriteAsync(_outgoingFrame.Raw);
             }
+        }
+
+        private void Write(ArraySegment<byte> data)
+        {
+            if (_completed)
+            {
+                return;
+            }
+
+            var writeableBuffer = _outputWriter.Alloc(1);
+            writeableBuffer.Write(data);
+            writeableBuffer.Commit();
         }
 
         private async Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default(CancellationToken))

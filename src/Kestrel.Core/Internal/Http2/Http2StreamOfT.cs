@@ -22,18 +22,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _application = application;
         }
 
-        public override async Task ProcessRequestAsync()
+        public override async Task ProcessRequestsAsync()
         {
             try
             {
                 Method = RequestHeaders[":method"];
                 Scheme = RequestHeaders[":scheme"];
+                _httpVersion = Http.HttpVersion.Http2;
 
                 var path = RequestHeaders[":path"].ToString();
                 var queryIndex = path.IndexOf('?');
 
                 Path = queryIndex == -1 ? path : path.Substring(0, queryIndex);
                 QueryString = queryIndex == -1 ? string.Empty : path.Substring(queryIndex);
+                RawTarget = path;
 
                 RequestHeaders["Host"] = RequestHeaders[":authority"];
 

@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         string IHttpRequestFeature.Protocol
         {
             get => HttpVersion;
-            set => throw new InvalidOperationException();
+            set => HttpVersion = value;
         }
 
         string IHttpRequestFeature.Scheme
@@ -234,14 +234,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         MinDataRate IHttpMinRequestBodyDataRateFeature.MinDataRate
         {
-            get => throw new NotImplementedException();
-            set => throw new NotImplementedException();
+            get => MinRequestBodyDataRate;
+            set => MinRequestBodyDataRate = value;
         }
 
         MinDataRate IHttpMinResponseDataRateFeature.MinDataRate
         {
-            get => throw new NotImplementedException();
-            set => throw new NotImplementedException();
+            get => MinResponseDataRate;
+            set => MinResponseDataRate = value;
         }
 
         object IFeatureCollection.this[Type key]

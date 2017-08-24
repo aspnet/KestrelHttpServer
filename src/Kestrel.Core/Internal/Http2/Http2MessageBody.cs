@@ -141,7 +141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (_send100Continue)
             {
-                _context.HttpStreamControl.ProduceContinue();
+                _context.FrameControl.ProduceContinue();
                 _send100Continue = false;
             }
         }

@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
 
-        private Streams _frameStreams;
+        private Streams _streams;
 
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
@@ -77,16 +77,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected long _responseBytesWritten;
 
-        private readonly FrameContext _frameContext;
+        private readonly FrameContext _context;
         private readonly IHttpParser<FrameAdapter> _parser;
 
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
         private Uri _absoluteRequestTarget;
         private string _scheme = null;
 
-        public Frame(FrameContext frameContext)
+        public Frame(FrameContext context)
         {
-            _frameContext = frameContext;
+            _context = context;
 
             ServerOptions = ServiceContext.ServerOptions;
 
@@ -96,27 +96,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
-            Output = new OutputProducer(frameContext.Application.Input, frameContext.Transport.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log, TimeoutControl);
+            Output = new OutputProducer(context.Application.Input, context.Transport.Output, context.ConnectionId, context.ServiceContext.Log, TimeoutControl);
             RequestBodyPipe = CreateRequestBodyPipe();
         }
 
+        public IFrameControl FrameControl { get; set; }
+
         public IPipe RequestBodyPipe { get; }
 
-        public ServiceContext ServiceContext => _frameContext.ServiceContext;
-        private IPEndPoint LocalEndPoint => _frameContext.LocalEndPoint;
-        private IPEndPoint RemoteEndPoint => _frameContext.RemoteEndPoint;
+        public ServiceContext ServiceContext => _context.ServiceContext;
+        private IPEndPoint LocalEndPoint => _context.LocalEndPoint;
+        private IPEndPoint RemoteEndPoint => _context.RemoteEndPoint;
 
-        public IFeatureCollection ConnectionFeatures => _frameContext.ConnectionFeatures;
-        public IPipeReader Input => _frameContext.Transport.Input;
+        public IFeatureCollection ConnectionFeatures => _context.ConnectionFeatures;
+        public IPipeReader Input => _context.Transport.Input;
         public OutputProducer Output { get; }
-        public ITimeoutControl TimeoutControl => _frameContext.TimeoutControl;
+        public ITimeoutControl TimeoutControl => _context.TimeoutControl;
         public bool RequestTimedOut => _requestTimedOut;
 
         protected IKestrelTrace Log => ServiceContext.Log;
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
         private KestrelServerOptions ServerOptions { get; }
-        protected string ConnectionId => _frameContext.ConnectionId;
+        protected string ConnectionId => _context.ConnectionId;
 
         public string ConnectionIdFeature { get; set; }
         public bool HasStartedConsumingRequestBody { get; set; }
@@ -164,6 +166,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     return HttpUtilities.Http10Version;
                 }
+                if (_httpVersion == Http.HttpVersion.Http2)
+                {
+                    return HttpUtilities.Http2Version;
+                }
 
                 return string.Empty;
             }
@@ -180,6 +186,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 else if (ReferenceEquals(value, HttpUtilities.Http10Version))
                 {
                     _httpVersion = Http.HttpVersion.Http10;
+                }
+                else if (ReferenceEquals(value, HttpUtilities.Http2Version))
+                {
+                    _httpVersion = Http.HttpVersion.Http2;
                 }
                 else
                 {
@@ -198,6 +208,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             else if (value == HttpUtilities.Http10Version)
             {
                 _httpVersion = Http.HttpVersion.Http10;
+            }
+            else if (value == HttpUtilities.Http2Version)
+            {
+                _httpVersion = Http.HttpVersion.Http2;
             }
             else
             {
@@ -303,19 +317,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public MinDataRate MinResponseDataRate { get; set; }
 
-        public void InitializeStreams(MessageBody messageBody)
+        public void InitializeStreams(IMessageBody messageBody)
         {
-            if (_frameStreams == null)
+            if (_streams == null)
             {
-                _frameStreams = new Streams(bodyControl: this, frameControl: this);
+                _streams = new Streams(bodyControl: this, frameControl: this);
             }
 
-            (RequestBody, ResponseBody) = _frameStreams.Start(messageBody);
+            (RequestBody, ResponseBody) = _streams.Start(messageBody);
         }
 
-        public void PauseStreams() => _frameStreams.Pause();
+        public void PauseStreams() => _streams.Pause();
 
-        public void StopStreams() => _frameStreams.Stop();
+        public void StopStreams() => _streams.Stop();
 
         // For testing
         internal void ResetState()
@@ -424,7 +438,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _keepAlive = false;
 
-                _frameStreams?.Abort(error);
+                _streams?.Abort(error);
 
                 Output.Abort(error);
 
@@ -433,12 +447,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        /// <summary>
-        /// Primary loop which consumes socket input, parses it for protocol framing, and invokes the
-        /// application delegate for as long as the socket is intended to remain open.
-        /// The resulting Task from this loop is preserved in a field which is used when the server needs
-        /// to drain and close all currently active connections.
-        /// </summary>
         public abstract Task ProcessRequestsAsync();
 
         public void OnStarting(Func<object, Task> callback, object state)
@@ -590,7 +598,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // For the first write, ensure headers are flushed if Write(Chunked)Async isn't called.
+            // For the first write, ensure headers are flushed if WriteDataAsync isn't called.
             var firstWrite = !HasResponseStarted;
 
             if (firstWrite)
@@ -609,19 +617,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             if (_canHaveBody)
             {
-                if (_autoChunk)
-                {
-                    if (data.Count == 0)
-                    {
-                        return !firstWrite ? Task.CompletedTask : FlushAsync(cancellationToken);
-                    }
-                    return WriteChunkedAsync(data, cancellationToken);
-                }
-                else
-                {
-                    CheckLastWrite();
-                    return Output.WriteAsync(data, cancellationToken: cancellationToken);
-                }
+                return WriteDataAsync(data, firstWrite, cancellationToken);
             }
             else
             {
@@ -638,26 +634,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // Ensure headers are flushed if Write(Chunked)Async isn't called.
             if (_canHaveBody)
             {
-                if (_autoChunk)
-                {
-                    if (data.Count == 0)
-                    {
-                        await FlushAsync(cancellationToken);
-                        return;
-                    }
-
-                    await WriteChunkedAsync(data, cancellationToken);
-                }
-                else
-                {
-                    CheckLastWrite();
-                    await Output.WriteAsync(data, cancellationToken: cancellationToken);
-                }
+                await WriteDataAsync(data, firstWrite: true, cancellationToken: cancellationToken);
             }
             else
             {
                 HandleNonBodyResponseWrite();
                 await FlushAsync(cancellationToken);
+            }
+        }
+
+        private Task WriteDataAsync(ArraySegment<byte> data, bool firstWrite, CancellationToken cancellationToken)
+        {
+            if (_autoChunk)
+            {
+                if (data.Count == 0)
+                {
+                    return !firstWrite ? Task.CompletedTask : FlushAsync(cancellationToken);
+                }
+                return WriteChunkedAsync(data, cancellationToken);
+            }
+            else
+            {
+                CheckLastWrite();
+                return Output.WriteAsync(data, cancellationToken: cancellationToken);
             }
         }
 
@@ -1455,7 +1454,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         private IPipe CreateRequestBodyPipe()
-            => _frameContext.PipeFactory.Create(new PipeOptions
+            => _context.PipeFactory.Create(new PipeOptions
             {
                 ReaderScheduler = ServiceContext.ThreadPool,
                 WriterScheduler = InlineScheduler.Default,

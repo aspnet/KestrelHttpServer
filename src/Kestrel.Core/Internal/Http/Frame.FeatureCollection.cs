@@ -77,8 +77,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             MaybeExtra.Add(new KeyValuePair<Type, object>(key, value));
         }
 
-        public IFrameControl FrameControl { get; set; }
-
         string IHttpRequestFeature.Protocol
         {
             get => HttpVersion;
@@ -310,7 +308,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             await FlushAsync(default(CancellationToken));
 
-            return _frameStreams.Upgrade();
+            return _streams.Upgrade();
         }
 
         IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();

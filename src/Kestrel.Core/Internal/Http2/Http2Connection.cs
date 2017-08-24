@@ -282,7 +282,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS)
             {
                 _lastStreamId = _incomingFrame.StreamId;
-                _ = _currentHeadersStream.ProcessRequestAsync();
+                _ = _currentHeadersStream.ProcessRequestsAsync();
                 _currentHeadersStream = null;
             }
 
@@ -441,7 +441,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             if ((_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS)
             {
                 _lastStreamId = _currentHeadersStream.StreamId;
-                _ = _currentHeadersStream.ProcessRequestAsync();
+                _ = _currentHeadersStream.ProcessRequestsAsync();
                 _currentHeadersStream = null;
             }
 

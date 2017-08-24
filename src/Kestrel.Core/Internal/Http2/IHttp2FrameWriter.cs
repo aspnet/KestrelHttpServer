@@ -11,8 +11,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public interface IHttp2FrameWriter
     {
         void Abort(Exception error);
-        Task FlushAsync(CancellationToken cancellationToken);
+        Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken));
         Task Write100ContinueAsync(int streamId);
+        void WriteHeaders(int streamId, int statusCode, IHeaderDictionary headers);
         Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers);
         Task WriteDataAsync(int streamId, Span<byte> data, CancellationToken cancellationToken);
         Task WriteDataAsync(int streamId, Span<byte> data, bool endStream, CancellationToken cancellationToken);
