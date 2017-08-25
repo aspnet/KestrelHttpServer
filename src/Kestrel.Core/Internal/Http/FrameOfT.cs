@@ -40,7 +40,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     while (!_requestProcessingStopping)
                     {
-                        var result = await Input.ReadAsync();
+                        if (!Input.TryRead(out var result))
+                        {
+                            result = await Input.ReadAsync();
+                        }
                         var examined = result.Buffer.End;
                         var consumed = result.Buffer.End;
 
@@ -100,7 +103,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             {
                                 KestrelEventSource.Log.RequestStart(this);
 
-                                await _application.ProcessRequestAsync(context);
+                                var t = _application.ProcessRequestAsync(context);
+                                if (t.IsCompleted)
+                                {
+                                    t.GetAwaiter().GetResult();
+                                }
+                                else
+                                {
+                                    await t;
+                                }
 
                                 if (Volatile.Read(ref _requestAborted) == 0)
                                 {
@@ -126,14 +137,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 // https://github.com/aspnet/KestrelHttpServer/issues/43
                                 if (!HasResponseStarted && _applicationException == null && _onStarting != null)
                                 {
-                                    await FireOnStarting();
+                                    var t = FireOnStarting();
+                                    if (t.IsCompleted)
+                                    {
+                                        t.GetAwaiter().GetResult();
+                                    }
+                                    else
+                                    {
+                                        await t;
+                                    }
                                 }
 
                                 PauseStreams();
 
                                 if (_onCompleted != null)
                                 {
-                                    await FireOnCompleted();
+                                    var t = FireOnCompleted();
+                                    if (t.IsCompleted)
+                                    {
+                                        t.GetAwaiter().GetResult();
+                                    }
+                                    else
+                                    {
+                                        await t;
+                                    }
                                 }
                             }
 
@@ -151,7 +178,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                     // ProduceEnd() must be called before _application.DisposeContext(), to ensure
                                     // HttpContext.Response.StatusCode is correctly set when
                                     // IHttpContextFactory.Dispose(HttpContext) is called.
-                                    await ProduceEnd();
+                                    var t = ProduceEnd();
+                                    if (t.IsCompleted)
+                                    {
+                                        t.GetAwaiter().GetResult();
+                                    }
+                                    else
+                                    {
+                                        await t;
+                                    }
                                 }
 
                                 // ForZeroContentLength does not complete the reader nor the writer
@@ -159,13 +194,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 {
                                     // Finish reading the request body in case the app did not.
                                     TimeoutControl.SetTimeout(Constants.RequestBodyDrainTimeout.Ticks, TimeoutAction.SendTimeoutResponse);
-                                    await messageBody.ConsumeAsync();
+                                    var t = messageBody.ConsumeAsync();
+                                    if (t.IsCompleted)
+                                    {
+                                        t.GetAwaiter().GetResult();
+                                    }
+                                    else
+                                    {
+                                        await t;
+                                    }
+
                                     TimeoutControl.CancelTimeout();
                                 }
 
                                 if (!HasResponseStarted)
                                 {
-                                    await ProduceEnd();
+                                    var t = ProduceEnd();
+                                    if (t.IsCompleted)
+                                    {
+                                        t.GetAwaiter().GetResult();
+                                    }
+                                    else
+                                    {
+                                        await t;
+                                    }
                                 }
                             }
                             else if (!HasResponseStarted)
@@ -195,7 +247,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 RequestBodyPipe.Reader.Complete();
 
                                 // Wait for MessageBody.PumpAsync() to call RequestBodyPipe.Writer.Complete().
-                                await messageBody.StopAsync();
+                                var t = messageBody.StopAsync();
+                                if (t.IsCompleted)
+                                {
+                                    t.GetAwaiter().GetResult();
+                                }
+                                else
+                                {
+                                    await t;
+                                }
 
                                 // At this point both the request body pipe reader and writer should be completed.
                                 RequestBodyPipe.Reset();
