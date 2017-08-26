@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private IKestrelTrace Log => _serviceContext.Log;
 
-        public void OnConnection(IFeatureCollection features)
+        public Task OnConnectionAsync(IFeatureCollection features)
         {
             var connectionContext = new DefaultConnectionContext(features);
 
@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             // REVIEW: This task should be tracked by the server for graceful shutdown
             // Today it's handled specifically for http but not for aribitrary middleware
-            _ = Execute(connectionContext);
+            return Execute(connectionContext);
         }
 
         private async Task Execute(ConnectionContext connectionContext)
@@ -65,9 +65,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     Log.LogCritical(0, ex, $"{nameof(ConnectionHandler)}.{nameof(Execute)}() {connectionContext.ConnectionId}");
                 }
-
-                // Wait for the transport to close the connection
-                await connectionContext.OutputClosed;
 
                 Log.ConnectionStop(connectionContext.ConnectionId);
             }

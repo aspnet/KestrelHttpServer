@@ -63,20 +63,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var connection = new FrameConnection(frameConnectionContext);
 
-            // The order here is important, start request processing so that
-            // the frame is created before this yields. Events need to be wired up
-            // afterwards
             var processingTask = connection.StartRequestProcessing(_application);
 
-            // Wire up the events an forward calls to the frame connection
-            // It's important that these execute synchronously because graceful
-            // connection close is order sensitive (for now)
-            connectionContext.InputClosed.ContinueWith((task, state) =>
+            // Abort the frame when the transport writer completes
+            connectionContext.Transport.Input.OnWriterCompleted((error, state) =>
             {
-                // Unwrap the aggregate exception
-                ((FrameConnection)state).Abort(task.Exception?.InnerException);
+                ((FrameConnection)state).Abort(error);
             },
-            connection, TaskContinuationOptions.ExecuteSynchronously);
+            connection);
 
             return processingTask;
         }

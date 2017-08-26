@@ -3,6 +3,7 @@
 
 using System;
 using System.IO.Pipelines;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Protocols.Features;
@@ -15,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
         public PipeOptions InputOptions { get; set; } = new PipeOptions();
         public PipeOptions OutputOptions { get; set; } = new PipeOptions();
 
-        public void OnConnection(IFeatureCollection features)
+        public Task OnConnectionAsync(IFeatureCollection features)
         {
             var connectionContext = new DefaultConnectionContext(features);
 
@@ -26,6 +27,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
 
             connectionContext.Transport = new PipeConnection(Input.Reader, Output.Writer);
             feature.Application = new PipeConnection(Output.Reader, Input.Writer);
+
+            return Task.CompletedTask;
         }
 
         public IPipe Input { get; private set; }

@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             try
             {
-                ConnectionHandler.OnConnection(this);
+                _ = ConnectionHandler.OnConnectionAsync(this);
 
                 OutputConsumer = new LibuvOutputConsumer(Output, Thread, _socket, ConnectionId, Log);
 
@@ -78,8 +78,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 finally
                 {
                     // Now, complete the input so that no more reads can happen
-                    CloseInput(error ?? new ConnectionAbortedException());
-                    CloseOutput(error);
+                    Input.Complete(error ?? new ConnectionAbortedException());
+                    Output.Complete(error);
 
                     // Make sure it isn't possible for a paused read to resume reading after calling uv_close
                     // on the stream handle
@@ -175,7 +175,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 }
 
                 // Complete after aborting the connection
-                CloseInput(error);
+                Input.Complete(error);
             }
 
             // Cleanup state from last OnAlloc. This is safe even if OnAlloc wasn't called.
@@ -211,7 +211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 Log.ConnectionReadFin(ConnectionId);
                 var error = new IOException(ex.Message, ex);
 
-                CloseInput(error);
+                Input.Complete(error);
             }
         }
     }

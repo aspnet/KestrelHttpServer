@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Pipelines;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Protocols.Features;
 
@@ -39,20 +35,11 @@ namespace Microsoft.AspNetCore.Protocols
             set => ConnectionTransportFeature.Transport = value;
         }
 
-        public override Task InputClosed => ConnectionTransportFeature.InputClosed;
-
-        public override Task OutputClosed => ConnectionTransportFeature.OutputClosed;
-
         struct FeatureInterfaces
         {
             public IConnectionIdFeature ConnectionId;
 
             public IConnectionTransportFeature ConnectionTransport;
-        }
-
-        public override void Abort(Exception exception = null)
-        {
-            ConnectionTransportFeature.Abort(exception);
         }
     }
 }

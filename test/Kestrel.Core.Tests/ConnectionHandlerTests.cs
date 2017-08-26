@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     public class ConnectionHandlerTests
     {
         [Fact]
-        public void OnConnectionCreatesLogScopeWithConnectionId()
+        public async Task OnConnectionCreatesLogScopeWithConnectionId()
         {
             var serviceContext = new TestServiceContext();
             var tcs = new TaskCompletionSource<object>();
@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var connection = new TestConnection();
 
-            handler.OnConnection(connection);
+            var task = handler.OnConnectionAsync(connection);
 
             // The scope should be created
             var scopeObjects = ((TestKestrelTrace)serviceContext.Log)
@@ -38,6 +38,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(connection.ConnectionId, pairs["ConnectionId"]);
 
             tcs.TrySetResult(null);
+
+            connection.Application.Input.Complete();
+
+            await task;
 
             // Verify the scope was disposed after request processing completed
             Assert.True(((TestKestrelTrace)serviceContext.Log).Logger.Scopes.IsEmpty);
@@ -61,14 +65,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
 
             public string ConnectionId { get; set; }
-
-            public Task InputClosed => Task.CompletedTask;
-
-            public Task OutputClosed => Task.CompletedTask;
-
-            public void Abort(Exception exception)
-            {
-            }
         }
     }
 }
