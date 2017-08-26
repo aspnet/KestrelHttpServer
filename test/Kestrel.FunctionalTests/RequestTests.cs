@@ -987,33 +987,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         // REVIEW: This test is racy now that we're scheduling callbacks for FIN.
         // We need to figure out how to make it more reliable
-        //[Theory]
-        //[MemberData(nameof(ConnectionAdapterData))]
-        //public async Task ConnectionClosesWhenFinReceivedBeforeRequestCompletes(ListenOptions listenOptions)
-        //{
-        //    var testContext = new TestServiceContext();
+        [Theory(Skip = "This test is racy now that we're scheduling callbacks for FIN.")]
+        [MemberData(nameof(ConnectionAdapterData))]
+        public async Task ConnectionClosesWhenFinReceivedBeforeRequestCompletes(ListenOptions listenOptions)
+        {
+            var testContext = new TestServiceContext();
 
-        //    using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
-        //    {
-        //        using (var connection = server.CreateConnection())
-        //        {
-        //            await connection.Send(
-        //                "POST / HTTP/1.1");
-        //            connection.Shutdown(SocketShutdown.Send);
-        //            await connection.ReceiveForcedEnd();
-        //        }
+            using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1");
+                    connection.Shutdown(SocketShutdown.Send);
+                    await connection.ReceiveForcedEnd();
+                }
 
-        //        using (var connection = server.CreateConnection())
-        //        {
-        //            await connection.Send(
-        //                "POST / HTTP/1.1",
-        //                "Host:",
-        //                "Content-Length: 7");
-        //            connection.Shutdown(SocketShutdown.Send);
-        //            await connection.ReceiveForcedEnd();
-        //        }
-        //    }
-        //}
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Host:",
+                        "Content-Length: 7");
+                    connection.Shutdown(SocketShutdown.Send);
+                    await connection.ReceiveForcedEnd();
+                }
+            }
+        }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
