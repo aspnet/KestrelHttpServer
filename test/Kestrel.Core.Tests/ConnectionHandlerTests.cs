@@ -39,8 +39,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             tcs.TrySetResult(null);
 
-            connection.Application.Input.Complete();
-
             await task;
 
             // Verify the scope was disposed after request processing completed
