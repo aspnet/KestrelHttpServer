@@ -985,13 +985,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        // REVIEW: This test is racy now that we're scheduling callbacks for FIN.
-        // We need to figure out how to make it more reliable
-        [Theory(Skip = "This test is racy now that we're scheduling callbacks for FIN.")]
+        [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionClosesWhenFinReceivedBeforeRequestCompletes(ListenOptions listenOptions)
         {
             var testContext = new TestServiceContext();
+            // FIN callbacks are scheduled so run inline to make this test more reliable
+            testContext.ThreadPool = new InlineLoggingThreadPool(testContext.Log);
 
             using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
             {
