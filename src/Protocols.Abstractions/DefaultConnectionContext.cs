@@ -39,15 +39,20 @@ namespace Microsoft.AspNetCore.Protocols
             set => ConnectionTransportFeature.Transport = value;
         }
 
-        public override Task ConnectionAborted => ConnectionTransportFeature.ConnectionAborted;
+        public override Task InputClosed => ConnectionTransportFeature.InputClosed;
 
-        public override Task ConnectionClosed => ConnectionTransportFeature.ConnectionClosed;
+        public override Task OutputClosed => ConnectionTransportFeature.OutputClosed;
 
         struct FeatureInterfaces
         {
             public IConnectionIdFeature ConnectionId;
 
             public IConnectionTransportFeature ConnectionTransport;
+        }
+
+        public override void Abort(Exception exception = null)
+        {
+            ConnectionTransportFeature.Abort(exception);
         }
     }
 }

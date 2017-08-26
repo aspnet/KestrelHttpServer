@@ -60,11 +60,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             public IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
 
-            public Task ConnectionAborted => Task.CompletedTask;
-
-            public Task ConnectionClosed => Task.CompletedTask;
-
             public string ConnectionId { get; set; }
+
+            public Task InputClosed => Task.CompletedTask;
+
+            public Task OutputClosed => Task.CompletedTask;
+
+            public void Abort(Exception exception)
+            {
+            }
         }
     }
 }

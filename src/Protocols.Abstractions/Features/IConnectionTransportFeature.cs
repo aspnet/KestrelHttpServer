@@ -18,8 +18,10 @@ namespace Microsoft.AspNetCore.Protocols.Features
 
         IScheduler OutputReaderScheduler { get; }
 
-        Task ConnectionAborted { get; }
+        Task InputClosed { get; }
 
-        Task ConnectionClosed { get; }
+        Task OutputClosed { get; }
+
+        void Abort(Exception exception);
     }
 }

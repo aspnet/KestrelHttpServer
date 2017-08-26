@@ -70,18 +70,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             // Wire up the events an forward calls to the frame connection
             // It's important that these execute synchronously because graceful
-            // connection close is order sensative (for now)
-            connectionContext.ConnectionAborted.ContinueWith((task, state) =>
+            // connection close is order sensitive (for now)
+            connectionContext.InputClosed.ContinueWith((task, state) =>
             {
                 // Unwrap the aggregate exception
                 ((FrameConnection)state).Abort(task.Exception?.InnerException);
-            },
-            connection, TaskContinuationOptions.ExecuteSynchronously);
-
-            connectionContext.ConnectionClosed.ContinueWith((task, state) =>
-            {
-                // Unwrap the aggregate exception
-                ((FrameConnection)state).OnConnectionClosed(task.Exception?.InnerException);
             },
             connection, TaskContinuationOptions.ExecuteSynchronously);
 

@@ -66,6 +66,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     Log.LogCritical(0, ex, $"{nameof(ConnectionHandler)}.{nameof(Execute)}() {connectionContext.ConnectionId}");
                 }
 
+                // Wait for the transport to close the connection
+                await connectionContext.OutputClosed;
+
                 Log.ConnectionStop(connectionContext.ConnectionId);
             }
         }

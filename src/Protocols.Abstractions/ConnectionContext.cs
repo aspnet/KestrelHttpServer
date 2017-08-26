@@ -16,8 +16,10 @@ namespace Microsoft.AspNetCore.Protocols
 
         public abstract PipeFactory PipeFactory { get; }
 
-        public abstract Task ConnectionAborted { get; }
+        public abstract Task InputClosed { get; }
 
-        public abstract Task ConnectionClosed { get; }
+        public abstract Task OutputClosed { get; }
+
+        public abstract void Abort(Exception exception = null);
     }
 }

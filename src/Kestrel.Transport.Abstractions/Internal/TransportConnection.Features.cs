@@ -109,14 +109,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             set => Application = value;
         }
 
-        Task IConnectionTransportFeature.ConnectionAborted
+        Task IConnectionTransportFeature.InputClosed
         {
-            get => _abortTcs.Task;
+            get => _inputTcs.Task;
         }
 
-        Task IConnectionTransportFeature.ConnectionClosed
+        Task IConnectionTransportFeature.OutputClosed
         {
-            get => _closedTcs.Task;
+            get => _outputTcs.Task;
+        }
+
+        void IConnectionTransportFeature.Abort(Exception exception)
+        {
+            CloseInput(exception);
         }
 
         object IFeatureCollection.this[Type key]

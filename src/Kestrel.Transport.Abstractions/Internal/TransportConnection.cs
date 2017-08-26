@@ -7,8 +7,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
     public abstract partial class TransportConnection
     {
-        private readonly TaskCompletionSource<object> _abortTcs = new TaskCompletionSource<object>();
-        private readonly TaskCompletionSource<object> _closedTcs = new TaskCompletionSource<object>();
+        private readonly TaskCompletionSource<object> _inputTcs = new TaskCompletionSource<object>();
+        private readonly TaskCompletionSource<object> _outputTcs = new TaskCompletionSource<object>();
 
         public TransportConnection()
         {
@@ -31,28 +31,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         public IPipeConnection Transport { get; set; }
         public IPipeConnection Application { get; set; }
 
-        protected void Abort(Exception exception)
+        public IPipeWriter Input => Application.Output;
+        public IPipeReader Output => Application.Input;
+
+        protected void CloseInput(Exception exception)
         {
             if (exception == null)
             {
-                _abortTcs.TrySetResult(null);
+                _inputTcs.TrySetResult(null);
             }
             else
             {
-                _abortTcs.TrySetException(exception);
+                _inputTcs.TrySetException(exception);
             }
+
+            Input.Complete(exception);
         }
 
-        protected void Close(Exception exception)
+        protected void CloseOutput(Exception exception)
         {
             if (exception == null)
             {
-                _closedTcs.TrySetResult(null);
+                _outputTcs.TrySetResult(null);
             }
             else
             {
-                _closedTcs.TrySetException(exception);
+                _outputTcs.TrySetException(exception);
             }
+
+            Output.Complete(exception);
         }
     }
 }
