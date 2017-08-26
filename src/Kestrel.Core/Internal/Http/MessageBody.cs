@@ -7,6 +7,7 @@ using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -362,14 +363,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             // Avoid slowing down most common case
-            if (!object.ReferenceEquals(context.Method, HttpMethods.Get))
+            if (context.Method != HttpMethod.Get)
             {
                 // If we got here, request contains no Content-Length or Transfer-Encoding header.
                 // Reject with 411 Length Required.
-                if (HttpMethods.IsPost(context.Method) || HttpMethods.IsPut(context.Method))
+                if (context.Method == HttpMethod.Post || context.Method == HttpMethod.Put)
                 {
                     var requestRejectionReason = httpVersion == HttpVersion.Http11 ? RequestRejectionReason.LengthRequired : RequestRejectionReason.LengthRequiredHttp10;
-                    context.ThrowRequestRejected(requestRejectionReason, context.Method);
+                    context.ThrowRequestRejected(requestRejectionReason, ((IHttpRequestFeature)context).Method);
                 }
             }
 

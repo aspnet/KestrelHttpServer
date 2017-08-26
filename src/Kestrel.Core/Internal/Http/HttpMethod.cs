@@ -16,5 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         Options,
 
         Custom,
+
+        Unknown = byte.MaxValue
     }
 }
