@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,17 +66,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var processingTask = connection.StartRequestProcessing(_application);
 
+            var inputTcs = new TaskCompletionSource<object>(TaskContinuationOptions.RunContinuationsAsynchronously);
+
             // Abort the frame when the transport writer completes
             connectionContext.Transport.Input.OnWriterCompleted((error, state) =>
             {
-                ((FrameConnection)state).Abort(error);
-            },
-            connection);
+                var tcs = (TaskCompletionSource<object>)state;
 
-            connectionContext.Transport.Output.OnReaderCompleted((error, state) =>
+                if (error != null)
+                {
+                    tcs.TrySetException(error);
+                }
+                else
+                {
+                    tcs.TrySetResult(null);
+                }
+            },
+            inputTcs);
+
+            inputTcs.Task.ContinueWith((task, state) =>
             {
-                ((FrameConnection)state).OnConnectionClosed(error);
-            }, 
+                ((FrameConnection)state).Abort(task.Exception?.InnerException);
+            },
             connection);
 
             return processingTask;
