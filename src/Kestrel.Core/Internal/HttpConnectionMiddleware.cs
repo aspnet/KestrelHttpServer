@@ -72,6 +72,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             },
             connection);
 
+            connectionContext.Transport.Output.OnReaderCompleted((error, state) =>
+            {
+                ((FrameConnection)state).OnConnectionClosed(error);
+            }, 
+            connection);
+
             return processingTask;
         }
     }
