@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var processingTask = connection.StartRequestProcessing(_application);
 
-            var inputTcs = new TaskCompletionSource<object>(TaskContinuationOptions.RunContinuationsAsynchronously);
+            var inputTcs = new TaskCompletionSource<object>();
 
             // Abort the frame when the transport writer completes
             connectionContext.Transport.Input.OnWriterCompleted((error, state) =>
@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 ((FrameConnection)state).Abort(task.Exception?.InnerException);
             },
-            connection);
+            connection, TaskContinuationOptions.ExecuteSynchronously);
 
             return processingTask;
         }
