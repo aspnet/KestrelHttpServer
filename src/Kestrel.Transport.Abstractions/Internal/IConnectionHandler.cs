@@ -8,6 +8,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
     public interface IConnectionHandler
     {
-        Task OnConnectionAsync(IFeatureCollection features);
+        void OnConnection(IFeatureCollection features);
     }
 }

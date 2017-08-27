@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private IKestrelTrace Log => _serviceContext.Log;
 
-        public Task OnConnectionAsync(IFeatureCollection features)
+        public void OnConnection(IFeatureCollection features)
         {
             var connectionContext = new DefaultConnectionContext(features);
 
@@ -48,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             // REVIEW: This task should be tracked by the server for graceful shutdown
             // Today it's handled specifically for http but not for aribitrary middleware
-            return Execute(connectionContext);
+            _ = Execute(connectionContext);
         }
 
         private async Task Execute(ConnectionContext connectionContext)

@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             try
             {
-                _ = ConnectionHandler.OnConnectionAsync(this);
+                ConnectionHandler.OnConnection(this);
 
                 OutputConsumer = new LibuvOutputConsumer(Output, Thread, _socket, ConnectionId, Log);
 

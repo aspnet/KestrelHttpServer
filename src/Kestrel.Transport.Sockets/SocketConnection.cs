@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
-                _ = connectionHandler.OnConnectionAsync(this);
+                connectionHandler.OnConnection(this);
 
                 // Spawn send and receive logic
                 Task receiveTask = DoReceive();
