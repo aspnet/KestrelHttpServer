@@ -166,29 +166,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private async Task DisposeConnectionsAsync()
         {
-            try
+            // Close and wait for all connections
+            if (!await ConnectionManager.WalkConnectionsAndCloseAsync(_shutdownTimeout).ConfigureAwait(false))
             {
-                // Close and wait for all connections
-                if (!await ConnectionManager.WalkConnectionsAndCloseAsync(_shutdownTimeout).ConfigureAwait(false))
-                {
-                    _log.NotAllConnectionsClosedGracefully();
-                }
-
-                var result = await WaitAsync(PostAsync(state =>
-                {
-                    var listener = (KestrelThread)state;
-                    listener.WriteReqPool.Dispose();
-                },
-                this), _shutdownTimeout).ConfigureAwait(false);
-
-                if (!result)
-                {
-                    _log.LogError(0, null, "Disposing write requests failed");
-                }
-            }
-            finally
-            {
-                Memory.Dispose();
+                _log.NotAllConnectionsClosedGracefully();
             }
         }
 
@@ -324,6 +305,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 _post.Dispose();
                 _heartbeatTimer.Dispose();
 
+                // We need this walk because we call ReadStop on accepted connections when there's back pressure
+                // Calling ReadStop marks the handle as inactive which means the loop can
+                // end while there are still valid handles around. This makes loop.Dispose throw
+                // with an EBUSY. To avoid that, we walk all of the handles and dispose them.
+                Walk(ptr =>
+                {
+                    var handle = UvMemory.FromIntPtr<UvHandle>(ptr);
+                    // handle can be null because UvMemory.FromIntPtr looks up a weak reference
+                    handle?.Dispose();
+                });
+
                 // Ensure the Dispose operations complete in the event loop.
                 _loop.Run();
 
@@ -338,6 +330,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             }
             finally
             {
+                Memory.Dispose();
+                WriteReqPool.Dispose();
                 thisHandle.Free();
                 _threadTcs.SetResult(null);
             }
