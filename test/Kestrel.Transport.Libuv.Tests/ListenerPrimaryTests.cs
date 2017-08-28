@@ -129,11 +129,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             await listenerPrimary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadPrimary);
             var address = GetUri(listenOptions);
 
+            var listenerCount = listenerPrimary.UvPipeCount;
             // Add secondary listener
             var libuvThreadSecondary = new LibuvThread(libuvTransport);
             await libuvThreadSecondary.StartAsync();
             var listenerSecondary = new ListenerSecondary(transportContextSecondary);
             await listenerSecondary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadSecondary);
+
+            var maxWait = Task.Delay(TimeSpan.FromSeconds(30));
+            // wait for ListenerPrimary.ReadCallback to add the secondary pipe
+            while (listenerPrimary.UvPipeCount == listenerCount)
+            {
+                var completed = await Task.WhenAny(maxWait, Task.Delay(100));
+                if (ReferenceEquals(completed, maxWait))
+                {
+                    throw new TimeoutException("Timed out waiting for secondary listener to become available");
+                }
+            }
 
             // TCP Connections get round-robined
             await AssertResponseEventually(address, "Secondary", allowed: new[] { "Primary" });
