@@ -28,8 +28,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private const byte ByteAsterisk = (byte)'*';
         private const byte ByteForwardSlash = (byte)'/';
-        private const byte BytePercentage = (byte)'%';
 
+        private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("\r\nConnection: close");
+        private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
+        private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
         private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("\r\nServer: " + Constants.ServerName);
 
         private const string EmptyPath = "/";
@@ -50,6 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected RequestProcessingStatus _requestProcessingStatus;
         protected bool _keepAlive;
+        private bool _autoChunk;
         private bool _canHaveBody;
         protected Exception _applicationException;
         private BadHttpRequestException _requestRejectedException;
@@ -72,10 +75,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
 
             ServerOptions = ServiceContext.ServerOptions;
-
             FrameControl = this;
-
-            Output = new Http2OutputProducer(context.StreamId, context.FrameWriter);
+            Output = CreateOutputProducer();
             RequestBodyPipe = CreateRequestBodyPipe();
         }
 
@@ -88,6 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private IPEndPoint RemoteEndPoint => _context.RemoteEndPoint;
 
         public IFeatureCollection ConnectionFeatures { get; set; }
+        public IHttpOutputProducer Output { get; }
 
         protected IKestrelTrace Log => ServiceContext.Log;
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
@@ -103,7 +105,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public Http2MessageBody MessageBody { get; protected set; }
         protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
-        public IHttpOutputProducer Output { get; }
         public bool ExpectBody { get; set; }
 
         /// <summary>
@@ -315,6 +316,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public Task<Stream> UpgradeAsync() => throw new NotImplementedException();
 
+        public IHttpOutputProducer CreateOutputProducer()
+            => new Http2OutputProducer(_context.StreamId, _context.FrameWriter);
+
         public void Reset()
         {
             _onStarting = null;
@@ -391,7 +395,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             if (Interlocked.Exchange(ref _requestAborted, 1) == 0)
             {
+                _requestProcessingStopping = true;
+
                 _streams?.Abort(error);
+
+                Output.Abort(error);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
                 ServiceContext.ThreadPool.UnsafeRun(state => ((Http2Stream)state).CancelRequestAbortedToken(), this);
@@ -568,7 +576,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_canHaveBody)
             {
-                return WriteDataAsync(data, firstWrite, cancellationToken);
+                if (_autoChunk)
+                {
+                    if (data.Count == 0)
+                    {
+                        return !firstWrite ? Task.CompletedTask : FlushAsync(cancellationToken);
+                    }
+                    return WriteChunkedAsync(data, cancellationToken);
+                }
+                else
+                {
+                    CheckLastWrite();
+                    return Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
+                }
             }
             else
             {
@@ -585,7 +605,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // Ensure headers are flushed if Write(Chunked)Async isn't called.
             if (_canHaveBody)
             {
-                await WriteDataAsync(data, firstWrite: true, cancellationToken: cancellationToken);
+                if (_autoChunk)
+                {
+                    if (data.Count == 0)
+                    {
+                        await FlushAsync(cancellationToken);
+                        return;
+                    }
+
+                    await WriteChunkedAsync(data, cancellationToken);
+                }
+                else
+                {
+                    CheckLastWrite();
+                    await Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
+                }
             }
             else
             {
@@ -594,19 +628,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private Task WriteDataAsync(ArraySegment<byte> data, bool firstWrite, CancellationToken cancellationToken)
-        {
-            return Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
-        }
-
         private void VerifyAndUpdateWrite(int count)
         {
             var responseHeaders = FrameResponseHeaders;
 
             if (responseHeaders != null &&
+                !responseHeaders.HasTransferEncoding &&
                 responseHeaders.ContentLength.HasValue &&
                 _responseBytesWritten + count > responseHeaders.ContentLength.Value)
             {
+                _keepAlive = false;
                 throw new InvalidOperationException(
                     CoreStrings.FormatTooManyBytesWritten(_responseBytesWritten + count, responseHeaders.ContentLength.Value));
             }
@@ -624,6 +655,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             //
             // Called after VerifyAndUpdateWrite(), so _responseBytesWritten has already been updated.
             if (responseHeaders != null &&
+                !responseHeaders.HasTransferEncoding &&
                 responseHeaders.ContentLength.HasValue &&
                 _responseBytesWritten == responseHeaders.ContentLength.Value)
             {
@@ -636,6 +668,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             var responseHeaders = FrameResponseHeaders;
 
             if (!HttpMethods.IsHead(Method) &&
+                !responseHeaders.HasTransferEncoding &&
                 responseHeaders.ContentLength.HasValue &&
                 _responseBytesWritten < responseHeaders.ContentLength.Value)
             {
@@ -643,12 +676,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 // cannot be certain of how many bytes it will receive.
                 if (_responseBytesWritten > 0)
                 {
-                    // TODO: HTTP/2
+                    _keepAlive = false;
                 }
 
                 ReportApplicationError(new InvalidOperationException(
                     CoreStrings.FormatTooFewBytesWritten(_responseBytesWritten, responseHeaders.ContentLength.Value)));
             }
+        }
+
+        private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
+        {
+            return Output.WriteDataAsync(data, chunk: true, cancellationToken: cancellationToken);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -664,7 +702,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 return;
             }
 
-            if (RequestHeaders.TryGetValue("Expect", out var expect) &&
+            if (_httpVersion != Http.HttpVersion.Http10 &&
+                RequestHeaders.TryGetValue("Expect", out var expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
                 Output.Write100ContinueAsync(default(CancellationToken)).GetAwaiter().GetResult();
@@ -788,6 +827,103 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             var hasTransferEncoding = responseHeaders.HasTransferEncoding;
             var transferCoding = FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding);
 
+            if (_keepAlive && hasConnection)
+            {
+                _keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
+            }
+
+            // https://tools.ietf.org/html/rfc7230#section-3.3.1
+            // If any transfer coding other than
+            // chunked is applied to a response payload body, the sender MUST either
+            // apply chunked as the final transfer coding or terminate the message
+            // by closing the connection.
+            if (hasTransferEncoding && transferCoding != TransferCoding.Chunked)
+            {
+                _keepAlive = false;
+            }
+
+            // Set whether response can have body
+            _canHaveBody = StatusCanHaveBody(StatusCode) && Method != "HEAD";
+
+            // Don't set the Content-Length or Transfer-Encoding headers
+            // automatically for HEAD requests or 204, 205, 304 responses.
+            if (_canHaveBody)
+            {
+                if (!hasTransferEncoding && !responseHeaders.ContentLength.HasValue)
+                {
+                    if (appCompleted && StatusCode != StatusCodes.Status101SwitchingProtocols)
+                    {
+                        // Since the app has completed and we are only now generating
+                        // the headers we can safely set the Content-Length to 0.
+                        responseHeaders.ContentLength = 0;
+                    }
+                    else
+                    {
+                        // Note for future reference: never change this to set _autoChunk to true on HTTP/1.0
+                        // connections, even if we were to infer the client supports it because an HTTP/1.0 request
+                        // was received that used chunked encoding. Sending a chunked response to an HTTP/1.0
+                        // client would break compliance with RFC 7230 (section 3.3.1):
+                        //
+                        // A server MUST NOT send a response containing Transfer-Encoding unless the corresponding
+                        // request indicates HTTP/1.1 (or later).
+                        //
+                        // This also covers HTTP/2, which forbids chunked encoding in RFC 7540 (section 8.1:
+                        //
+                        // The chunked transfer encoding defined in Section 4.1 of [RFC7230] MUST NOT be used in HTTP/2.
+                        if (_httpVersion == Http.HttpVersion.Http11 && StatusCode != StatusCodes.Status101SwitchingProtocols)
+                        {
+                            _autoChunk = true;
+                            responseHeaders.SetRawTransferEncoding("chunked", _bytesTransferEncodingChunked);
+                        }
+                        else
+                        {
+                            _keepAlive = false;
+                        }
+                    }
+                }
+            }
+            else if (hasTransferEncoding)
+            {
+                RejectNonBodyTransferEncodingResponse(appCompleted);
+            }
+
+            responseHeaders.SetReadOnly();
+
+            if (!hasConnection && _httpVersion != Http.HttpVersion.Http2)
+            {
+                if (!_keepAlive)
+                {
+                    responseHeaders.SetRawConnection("close", _bytesConnectionClose);
+                }
+                else if (_httpVersion == Http.HttpVersion.Http10)
+                {
+                    responseHeaders.SetRawConnection("keep-alive", _bytesConnectionKeepAlive);
+                }
+            }
+
+            if (ServerOptions.AddServerHeader && !responseHeaders.HasServer)
+            {
+                responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
+            }
+
+            if (!responseHeaders.HasDate)
+            {
+                var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
+                responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
+            }
+
+            Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
+        }
+
+        /*
+        private void CreateResponseHeader(bool appCompleted)
+        {
+            var responseHeaders = FrameResponseHeaders;
+            var hasConnection = responseHeaders.HasConnection;
+            var connectionOptions = FrameHeaders.ParseConnection(responseHeaders.HeaderConnection);
+            var hasTransferEncoding = responseHeaders.HasTransferEncoding;
+            var transferCoding = FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding);
+
             // https://tools.ietf.org/html/rfc7230#section-3.3.1
             // If any transfer coding other than
             // chunked is applied to a response payload body, the sender MUST either
@@ -832,6 +968,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
         }
+        */
 
         public bool StatusCanHaveBody(int statusCode)
         {

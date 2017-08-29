@@ -27,13 +27,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         private const byte ByteAsterisk = (byte)'*';
         private const byte ByteForwardSlash = (byte)'/';
-        private const byte BytePercentage = (byte)'%';
 
         private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("\r\nConnection: close");
         private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
         private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
-        private static readonly byte[] _bytesHttpVersion11 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
-        private static readonly byte[] _bytesEndHeaders = Encoding.ASCII.GetBytes("\r\n\r\n");
         private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("\r\nServer: " + Constants.ServerName);
 
         private const string EmptyPath = "/";
@@ -85,15 +82,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _context = context;
 
             ServerOptions = ServiceContext.ServerOptions;
+            FrameControl = this;
+            Output = CreateOutputProducer();
+            RequestBodyPipe = CreateRequestBodyPipe();
 
             _parser = ServiceContext.HttpParserFactory(new FrameAdapter(this));
-
-            FrameControl = this;
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
-
-            Output = new OutputProducer(context.Application.Input, context.Transport.Output, context.ConnectionId, context.ServiceContext.Log, TimeoutControl);
-            RequestBodyPipe = CreateRequestBodyPipe();
         }
 
         public IFrameControl FrameControl { get; set; }
@@ -372,6 +367,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             _requestProcessingStatus = RequestProcessingStatus.RequestPending;
         }
+
+        public IHttpOutputProducer CreateOutputProducer()
+            => new OutputProducer(_context.Application.Input, _context.Transport.Output, _context.ConnectionId, _context.ServiceContext.Log, _context.TimeoutControl);
 
         public void Reset()
         {
@@ -969,6 +967,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         //
                         // A server MUST NOT send a response containing Transfer-Encoding unless the corresponding
                         // request indicates HTTP/1.1 (or later).
+                        //
+                        // This also covers HTTP/2, which forbids chunked encoding in RFC 7540 (section 8.1:
+                        //
+                        // The chunked transfer encoding defined in Section 4.1 of [RFC7230] MUST NOT be used in HTTP/2.
                         if (_httpVersion == Http.HttpVersion.Http11 && StatusCode != StatusCodes.Status101SwitchingProtocols)
                         {
                             _autoChunk = true;
@@ -988,7 +990,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             responseHeaders.SetReadOnly();
 
-            if (!hasConnection)
+            if (!hasConnection && _httpVersion != Http.HttpVersion.Http2)
             {
                 if (!_keepAlive)
                 {
