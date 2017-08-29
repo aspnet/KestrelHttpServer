@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private static readonly Type IHttpMinRequestBodyDataRateFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttpMinRequestBodyDataRateFeature);
         private static readonly Type IHttpMinResponseDataRateFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttpMinResponseDataRateFeature);
         private static readonly Type IHttpBodyControlFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpBodyControlFeature);
-        private static readonly Type IHttpStreamIdFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttpStreamIdFeature);
+        private static readonly Type IHttp2StreamIdFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttp2StreamIdFeature);
         private static readonly Type IHttpSendFileFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpSendFileFeature);
 
         private object _currentIHttpRequestFeature;
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private object _currentIHttpMinRequestBodyDataRateFeature;
         private object _currentIHttpMinResponseDataRateFeature;
         private object _currentIHttpBodyControlFeature;
-        private object _currentIHttpStreamIdFeature;
+        private object _currentIHttp2StreamIdFeature;
         private object _currentIHttpSendFileFeature;
 
         private void FastReset()
@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _currentIHttpMinRequestBodyDataRateFeature = this;
             _currentIHttpMinResponseDataRateFeature = this;
             _currentIHttpBodyControlFeature = this;
-            _currentIHttpStreamIdFeature = this;
+            _currentIHttp2StreamIdFeature = this;
             
             _currentIServiceProvidersFeature = null;
             _currentIHttpAuthenticationFeature = null;
@@ -156,9 +156,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 return _currentIHttpBodyControlFeature;
             }
-            if (key == IHttpStreamIdFeatureType)
+            if (key == IHttp2StreamIdFeatureType)
             {
-                return _currentIHttpStreamIdFeature;
+                return _currentIHttp2StreamIdFeature;
             }
             if (key == IHttpSendFileFeatureType)
             {
@@ -266,9 +266,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _currentIHttpBodyControlFeature = feature;
                 return;
             }
-            if (key == IHttpStreamIdFeatureType)
+            if (key == IHttp2StreamIdFeatureType)
             {
-                _currentIHttpStreamIdFeature = feature;
+                _currentIHttp2StreamIdFeature = feature;
                 return;
             }
             if (key == IHttpSendFileFeatureType)
@@ -357,9 +357,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 yield return new KeyValuePair<Type, object>(IHttpBodyControlFeatureType, _currentIHttpBodyControlFeature as global::Microsoft.AspNetCore.Http.Features.IHttpBodyControlFeature);
             }
-            if (_currentIHttpStreamIdFeature != null)
+            if (_currentIHttp2StreamIdFeature != null)
             {
-                yield return new KeyValuePair<Type, object>(IHttpStreamIdFeatureType, _currentIHttpStreamIdFeature as global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttpStreamIdFeature);
+                yield return new KeyValuePair<Type, object>(IHttp2StreamIdFeatureType, _currentIHttp2StreamIdFeature as global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttp2StreamIdFeature);
             }
             if (_currentIHttpSendFileFeature != null)
             {

@@ -50,7 +50,7 @@ namespace CodeGenerator
                 typeof(IHttpMinRequestBodyDataRateFeature),
                 typeof(IHttpMinResponseDataRateFeature),
                 typeof(IHttpBodyControlFeature),
-                typeof(IHttpStreamIdFeature),
+                typeof(IHttp2StreamIdFeature),
             };
 
             var rareFeatures = new[]
@@ -74,7 +74,7 @@ namespace CodeGenerator
                 typeof(IHttpMinRequestBodyDataRateFeature),
                 typeof(IHttpMinResponseDataRateFeature),
                 typeof(IHttpBodyControlFeature),
-                typeof(IHttpStreamIdFeature),
+                typeof(IHttp2StreamIdFeature),
             };
 
             return $@"// Copyright (c) .NET Foundation. All rights reserved.

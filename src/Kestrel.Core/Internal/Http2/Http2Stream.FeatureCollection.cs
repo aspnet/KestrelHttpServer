@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                                        IHttpMaxRequestBodySizeFeature,
                                        IHttpMinRequestBodyDataRateFeature,
                                        IHttpMinResponseDataRateFeature,
-                                       IHttpStreamIdFeature
+                                       IHttp2StreamIdFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -285,6 +285,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Abort(error: null);
         }
 
-        int IHttpStreamIdFeature.StreamId => StreamId;
+        int IHttp2StreamIdFeature.StreamId => StreamId;
     }
 }
