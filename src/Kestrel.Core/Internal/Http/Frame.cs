@@ -110,7 +110,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
         private KestrelServerOptions ServerOptions { get; }
         protected string ConnectionId => _context.ConnectionId;
-        public int StreamId => throw new NotImplementedException();
 
         public string ConnectionIdFeature { get; set; }
         public bool HasStartedConsumingRequestBody { get; set; }
@@ -324,44 +323,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void StopStreams() => _streams.Stop();
 
-        public async Task<Stream> UpgradeAsync()
-        {
-            if (!((IHttpUpgradeFeature)this).IsUpgradableRequest)
-            {
-                throw new InvalidOperationException(CoreStrings.CannotUpgradeNonUpgradableRequest);
-            }
-
-            if (_wasUpgraded)
-            {
-                throw new InvalidOperationException(CoreStrings.UpgradeCannotBeCalledMultipleTimes);
-            }
-
-            if (!ServiceContext.ConnectionManager.UpgradedConnectionCount.TryLockOne())
-            {
-                throw new InvalidOperationException(CoreStrings.UpgradedConnectionLimitReached);
-            }
-
-            _wasUpgraded = true;
-
-            ConnectionFeatures.Get<IDecrementConcurrentConnectionCountFeature>()?.ReleaseConnection();
-
-            StatusCode = StatusCodes.Status101SwitchingProtocols;
-            ReasonPhrase = "Switching Protocols";
-            ResponseHeaders["Connection"] = "Upgrade";
-            if (!ResponseHeaders.ContainsKey("Upgrade"))
-            {
-                StringValues values;
-                if (RequestHeaders.TryGetValue("Upgrade", out values))
-                {
-                    ResponseHeaders["Upgrade"] = values;
-                }
-            }
-
-            await FlushAsync(default(CancellationToken));
-
-            return _streams.Upgrade();
-        }
-
         // For testing
         internal void ResetState()
         {
@@ -431,6 +392,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
             MinResponseDataRate = ServerOptions.Limits.MinResponseDataRate;
+
+            ExtraFeatureSet(typeof(IHttpUpgradeFeature), this);
+
+            _autoChunk = false;
+            _requestCount++;
         }
 
         /// <summary>

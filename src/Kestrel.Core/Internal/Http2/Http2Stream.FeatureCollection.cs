@@ -18,7 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public partial class Http2Stream : IFeatureCollection,
                                        IHttpRequestFeature,
                                        IHttpResponseFeature,
-                                       IHttpUpgradeFeature,
                                        IHttpConnectionFeature,
                                        IHttpRequestLifetimeFeature,
                                        IHttpRequestIdentifierFeature,
@@ -164,8 +163,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         bool IHttpResponseFeature.HasStarted => HasResponseStarted;
 
-        bool IHttpUpgradeFeature.IsUpgradableRequest => IsUpgradableRequest;
-
         bool IFeatureCollection.IsReadOnly => false;
 
         int IFeatureCollection.Revision => _featureRevision;
@@ -274,8 +271,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             OnCompleted(callback, state);
         }
 
-        Task<Stream> IHttpUpgradeFeature.UpgradeAsync() => UpgradeAsync();
-
         IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => FastEnumerable().GetEnumerator();
@@ -285,6 +280,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Abort(error: null);
         }
 
-        int IHttp2StreamIdFeature.StreamId => StreamId;
+        int IHttp2StreamIdFeature.StreamId => _context.StreamId;
     }
 }

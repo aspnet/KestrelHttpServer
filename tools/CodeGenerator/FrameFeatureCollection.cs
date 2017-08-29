@@ -40,7 +40,6 @@ namespace CodeGenerator
 
             var sometimesFeatures = new[]
             {
-                typeof(IHttpUpgradeFeature),
                 typeof(IResponseCookiesFeature),
                 typeof(IItemsFeature),
                 typeof(ITlsConnectionFeature),
@@ -50,7 +49,6 @@ namespace CodeGenerator
                 typeof(IHttpMinRequestBodyDataRateFeature),
                 typeof(IHttpMinResponseDataRateFeature),
                 typeof(IHttpBodyControlFeature),
-                typeof(IHttp2StreamIdFeature),
             };
 
             var rareFeatures = new[]
@@ -66,7 +64,6 @@ namespace CodeGenerator
             {
                 typeof(IHttpRequestFeature),
                 typeof(IHttpResponseFeature),
-                typeof(IHttpUpgradeFeature),
                 typeof(IHttpRequestIdentifierFeature),
                 typeof(IHttpRequestLifetimeFeature),
                 typeof(IHttpConnectionFeature),
@@ -74,7 +71,6 @@ namespace CodeGenerator
                 typeof(IHttpMinRequestBodyDataRateFeature),
                 typeof(IHttpMinResponseDataRateFeature),
                 typeof(IHttpBodyControlFeature),
-                typeof(IHttp2StreamIdFeature),
             };
 
             return $@"// Copyright (c) .NET Foundation. All rights reserved.

@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -124,7 +125,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public bool IsUpgradableRequest => false;
         public bool IsUpgraded => false;
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
@@ -317,7 +317,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Task<Stream> UpgradeAsync() => throw new NotImplementedException();
 
         public IHttpOutputProducer CreateOutputProducer()
-            => new Http2OutputProducer(_context.StreamId, _context.FrameWriter);
+            => new Http2OutputProducer(StreamId, _context.FrameWriter);
 
         public void Reset()
         {
@@ -376,6 +376,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
             MinResponseDataRate = ServerOptions.Limits.MinResponseDataRate;
+
+            ExtraFeatureSet(typeof(IHttp2StreamIdFeature), this);
+            ExtraFeatureSet(typeof(IHttpUpgradeFeature), null);
         }
 
         private void CancelRequestAbortedToken()

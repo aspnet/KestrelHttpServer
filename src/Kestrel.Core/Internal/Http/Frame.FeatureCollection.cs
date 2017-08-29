@@ -25,8 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                  IHttpBodyControlFeature,
                                  IHttpMaxRequestBodySizeFeature,
                                  IHttpMinRequestBodyDataRateFeature,
-                                 IHttpMinResponseDataRateFeature,
-                                 IHttp2StreamIdFeature
+                                 IHttpMinResponseDataRateFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -281,7 +280,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 throw new InvalidOperationException(CoreStrings.CannotUpgradeNonUpgradableRequest);
             }
 
-            if (_wasUpgraded)
+            if (_isUpgraded)
             {
                 throw new InvalidOperationException(CoreStrings.UpgradeCannotBeCalledMultipleTimes);
             }
@@ -291,7 +290,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 throw new InvalidOperationException(CoreStrings.UpgradedConnectionLimitReached);
             }
 
-            _wasUpgraded = true;
+            _isUpgraded = true;
 
             ConnectionFeatures.Get<IDecrementConcurrentConnectionCountFeature>()?.ReleaseConnection();
 
@@ -320,7 +319,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             Abort(error: null);
         }
-
-        int IHttp2StreamIdFeature.StreamId => StreamId;
     }
 }
