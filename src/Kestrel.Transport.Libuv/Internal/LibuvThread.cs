@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
         private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>(256);
         private readonly object _workSync = new object();
-        private readonly object _handleSync = new object();
+        private readonly object _closeHandleSync = new object();
         private readonly object _startSync = new object();
         private bool _stopImmediate = false;
         private bool _initCompleted = false;
@@ -232,7 +232,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private void EnqueueCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
             var closeHandle = new CloseHandle { Callback = callback, Handle = handle };
-            lock (_handleSync)
+            lock (_closeHandleSync)
             {
                 _closeHandleAdding.Enqueue(closeHandle);
             }
@@ -358,7 +358,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private bool DoPostCloseHandle()
         {
             Queue<CloseHandle> queue;
-            lock (_handleSync)
+            lock (_closeHandleSync)
             {
                 queue = _closeHandleAdding;
                 _closeHandleAdding = _closeHandleRunning;
