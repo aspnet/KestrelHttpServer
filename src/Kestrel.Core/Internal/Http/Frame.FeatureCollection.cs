@@ -18,7 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     public partial class Frame : IFeatureCollection,
                                  IHttpRequestFeature,
                                  IHttpResponseFeature,
-                                 IHttpUpgradeFeature,
                                  IHttpConnectionFeature,
                                  IHttpRequestLifetimeFeature,
                                  IHttpRequestIdentifierFeature,
@@ -163,8 +162,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         bool IHttpResponseFeature.HasStarted => HasResponseStarted;
 
-        bool IHttpUpgradeFeature.IsUpgradableRequest => IsUpgradableRequest;
-
         bool IFeatureCollection.IsReadOnly => false;
 
         int IFeatureCollection.Revision => _featureRevision;
@@ -271,44 +268,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         void IHttpResponseFeature.OnCompleted(Func<object, Task> callback, object state)
         {
             OnCompleted(callback, state);
-        }
-
-        async Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
-        {
-            if (!((IHttpUpgradeFeature)this).IsUpgradableRequest)
-            {
-                throw new InvalidOperationException(CoreStrings.CannotUpgradeNonUpgradableRequest);
-            }
-
-            if (IsUpgraded)
-            {
-                throw new InvalidOperationException(CoreStrings.UpgradeCannotBeCalledMultipleTimes);
-            }
-
-            if (!ServiceContext.ConnectionManager.UpgradedConnectionCount.TryLockOne())
-            {
-                throw new InvalidOperationException(CoreStrings.UpgradedConnectionLimitReached);
-            }
-
-            IsUpgraded = true;
-
-            ConnectionFeatures.Get<IDecrementConcurrentConnectionCountFeature>()?.ReleaseConnection();
-
-            StatusCode = StatusCodes.Status101SwitchingProtocols;
-            ReasonPhrase = "Switching Protocols";
-            ResponseHeaders["Connection"] = "Upgrade";
-            if (!ResponseHeaders.ContainsKey("Upgrade"))
-            {
-                StringValues values;
-                if (RequestHeaders.TryGetValue("Upgrade", out values))
-                {
-                    ResponseHeaders["Upgrade"] = values;
-                }
-            }
-
-            await FlushAsync(default(CancellationToken));
-
-            return _streams.Upgrade();
         }
 
         IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();

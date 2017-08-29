@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
 
-        private Streams _streams;
+        protected Streams _streams;
 
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onStarting;
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
@@ -361,8 +361,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
             MinResponseDataRate = ServerOptions.Limits.MinResponseDataRate;
-
-            _autoChunk = false;
 
             OnReset();
         }

@@ -19,7 +19,7 @@ namespace CodeGenerator
             return values.Select(formatter).Aggregate((a, b) => a + b);
         }
 
-        public static string GeneratedFile(string className, string namespaceSuffix)
+        public static string GeneratedFile(string className)
         {
             var alwaysFeatures = new[]
             {
@@ -79,7 +79,7 @@ namespace CodeGenerator
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.{namespaceSuffix}
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {{
     public partial class {className}
     {{{Each(allFeatures, feature => $@"

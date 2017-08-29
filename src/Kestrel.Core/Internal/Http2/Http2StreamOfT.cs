@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                         await _application.ProcessRequestAsync(context);
 
-                        if (Volatile.Read(ref _requestAborted) == 0)
+                        if (_requestAborted == 0)
                         {
                             VerifyResponseContentLength();
                         }
@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
 
                     // If _requestAbort is set, the connection has already been closed.
-                    if (Volatile.Read(ref _requestAborted) == 0)
+                    if (_requestAborted == 0)
                     {
                         await ProduceEnd();
                     }
@@ -155,7 +155,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 try
                 {
-                    if (Volatile.Read(ref _requestAborted) == 0)
+                    if (_requestAborted == 0)
                     {
                         await TryProduceInvalidRequestResponse();
                         Output.Dispose();

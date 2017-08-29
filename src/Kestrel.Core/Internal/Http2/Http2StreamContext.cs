@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2StreamContext
+    public class Http2StreamContext : IHttpProtocolContext
     {
         public string ConnectionId { get; set; }
         public int StreamId { get; set; }

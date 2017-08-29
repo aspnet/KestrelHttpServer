@@ -2,13 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Net;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web.Utf8;
 using System.Threading;
@@ -16,10 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
-
-// ReSharper disable AccessToModifiedClosure
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
