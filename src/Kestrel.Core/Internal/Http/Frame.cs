@@ -25,16 +25,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public abstract partial class Frame : IFrameControl
     {
-        private const byte ByteAsterisk = (byte)'*';
-        private const byte ByteForwardSlash = (byte)'/';
-
         private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("\r\nConnection: close");
         private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
         private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
         private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("\r\nServer: " + Constants.ServerName);
-
-        private const string EmptyPath = "/";
-        private const string Asterisk = "*";
 
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
@@ -45,49 +39,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected Stack<KeyValuePair<Func<object, Task>, object>> _onCompleted;
 
         protected volatile int _requestAborted;
-        private volatile bool _requestTimedOut;
-        private CancellationTokenSource _abortedCts;
+        protected CancellationTokenSource _abortedCts;
         private CancellationToken? _manuallySetRequestAbortToken;
 
         protected RequestProcessingStatus _requestProcessingStatus;
         protected volatile bool _keepAlive = true; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
-        protected bool _upgradeAvailable;
         private bool _canHaveBody;
-        private bool _autoChunk;
+        protected bool _autoChunk;
         protected Exception _applicationException;
         private BadHttpRequestException _requestRejectedException;
 
         protected HttpVersion _httpVersion;
 
         private string _requestId;
-        private int _remainingRequestHeadersBytesAllowed;
-        private int _requestHeadersParsed;
-        private uint _requestCount;
-
-        protected readonly long _keepAliveTicks;
-        private readonly long _requestHeadersTimeoutTicks;
+        protected int _requestHeadersParsed;
 
         protected long _responseBytesWritten;
 
-        private readonly FrameContext _context;
-        private readonly IHttpParser<FrameAdapter> _parser;
+        private readonly IHttpProtocolContext _context;
 
-        private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
-        private Uri _absoluteRequestTarget;
         private string _scheme = null;
 
-        public Frame(FrameContext context)
+        public Frame(IHttpProtocolContext context)
         {
             _context = context;
 
             ServerOptions = ServiceContext.ServerOptions;
             FrameControl = this;
-            Output = CreateOutputProducer();
             RequestBodyPipe = CreateRequestBodyPipe();
-
-            _parser = ServiceContext.HttpParserFactory(new FrameAdapter(this));
-            _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
-            _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
         }
 
         public IFrameControl FrameControl { get; set; }
@@ -99,15 +78,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private IPEndPoint RemoteEndPoint => _context.RemoteEndPoint;
 
         public IFeatureCollection ConnectionFeatures => _context.ConnectionFeatures;
-        public IPipeReader Input => _context.Transport.Input;
-        public IHttpOutputProducer Output { get; }
-        public ITimeoutControl TimeoutControl => _context.TimeoutControl;
-        public bool RequestTimedOut => _requestTimedOut;
+        public IHttpOutputProducer Output { get; protected set; }
 
         protected IKestrelTrace Log => ServiceContext.Log;
         private DateHeaderValueManager DateHeaderValueManager => ServiceContext.DateHeaderValueManager;
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
-        private KestrelServerOptions ServerOptions { get; }
+        protected KestrelServerOptions ServerOptions { get; }
         protected string ConnectionId => _context.ConnectionId;
 
         public string ConnectionIdFeature { get; set; }
@@ -126,13 +102,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // don't generate an ID until it is requested
                 if (_requestId == null)
                 {
-                    _requestId = StringUtilities.ConcatAsHexSuffix(ConnectionId, ':', _requestCount);
+                    _requestId = CreateRequestId();
                 }
                 return _requestId;
             }
         }
 
-        public bool IsUpgradableRequest => _upgradeAvailable;
+        public abstract bool IsUpgradableRequest { get; }
         public bool IsUpgraded { get; set; }
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
@@ -328,8 +304,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestProcessingStatus = RequestProcessingStatus.RequestPending;
         }
 
-        public IHttpOutputProducer CreateOutputProducer()
-            => new OutputProducer(_context.Application.Input, _context.Transport.Output, _context.ConnectionId, _context.ServiceContext.Log, _context.TimeoutControl);
+        protected abstract string CreateRequestId();
 
         public void Reset()
         {
@@ -339,7 +314,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestProcessingStatus = RequestProcessingStatus.RequestPending;
             _autoChunk = false;
             _applicationException = null;
-            _requestTimedOut = false;
             _requestRejectedException = null;
 
             ResetFeatureCollection();
@@ -352,8 +326,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             PathBase = null;
             Path = null;
             RawTarget = null;
-            _requestTargetForm = HttpRequestTarget.Unknown;
-            _absoluteRequestTarget = null;
             QueryString = null;
             _httpVersion = Http.HttpVersion.Unknown;
             _statusCode = StatusCodes.Status200OK;
@@ -383,37 +355,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _abortedCts = null;
 
             // Allow two bytes for \r\n after headers
-            _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestHeadersParsed = 0;
 
             _responseBytesWritten = 0;
-            _requestCount++;
 
             MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
             MinResponseDataRate = ServerOptions.Limits.MinResponseDataRate;
 
-            ExtraFeatureSet(typeof(IHttpUpgradeFeature), this);
-
             _autoChunk = false;
-            _requestCount++;
+
+            OnReset();
         }
 
-        /// <summary>
-        /// Stops the request processing loop between requests.
-        /// Called on all active connections when the server wants to initiate a shutdown
-        /// and after a keep-alive timeout.
-        /// </summary>
-        public void StopProcessingNextRequest()
-        {
-            _keepAlive = false;
-            Input.CancelPendingRead();
-        }
-
-        public void SendTimeoutResponse()
-        {
-            _requestTimedOut = true;
-            Input.CancelPendingRead();
-        }
+        protected abstract void OnReset();
 
         private void CancelRequestAbortedToken()
         {
@@ -850,40 +804,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             await WriteSuffix();
         }
 
-        private Task WriteSuffix()
-        {
-            // _autoChunk should be checked after we are sure ProduceStart() has been called
-            // since ProduceStart() may set _autoChunk to true.
-            if (_autoChunk)
-            {
-                return WriteAutoChunkSuffixAwaited();
-            }
-
-            if (_keepAlive)
-            {
-                Log.ConnectionKeepAlive(ConnectionId);
-            }
-
-            if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
-            {
-                Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private async Task WriteAutoChunkSuffixAwaited()
-        {
-            // For the same reason we call CheckLastWrite() in Content-Length responses.
-            _abortedCts = null;
-
-            await Output.WriteStreamSuffixAsync(default(CancellationToken));
-
-            if (_keepAlive)
-            {
-                Log.ConnectionKeepAlive(ConnectionId);
-            }
-        }
+        protected abstract Task WriteSuffix();
 
         private void CreateResponseHeader(bool appCompleted)
         {
@@ -981,89 +902,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
         }
 
-        public void ParseRequest(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
-        {
-            consumed = buffer.Start;
-            examined = buffer.End;
-
-            switch (_requestProcessingStatus)
-            {
-                case RequestProcessingStatus.RequestPending:
-                    if (buffer.IsEmpty)
-                    {
-                        break;
-                    }
-
-                    TimeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutAction.SendTimeoutResponse);
-
-                    _requestProcessingStatus = RequestProcessingStatus.ParsingRequestLine;
-                    goto case RequestProcessingStatus.ParsingRequestLine;
-                case RequestProcessingStatus.ParsingRequestLine:
-                    if (TakeStartLine(buffer, out consumed, out examined))
-                    {
-                        buffer = buffer.Slice(consumed, buffer.End);
-
-                        _requestProcessingStatus = RequestProcessingStatus.ParsingHeaders;
-                        goto case RequestProcessingStatus.ParsingHeaders;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                case RequestProcessingStatus.ParsingHeaders:
-                    if (TakeMessageHeaders(buffer, out consumed, out examined))
-                    {
-                        _requestProcessingStatus = RequestProcessingStatus.AppStarted;
-                    }
-                    break;
-            }
-        }
-
-        public bool TakeStartLine(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
-        {
-            var overLength = false;
-            if (buffer.Length >= ServerOptions.Limits.MaxRequestLineSize)
-            {
-                buffer = buffer.Slice(buffer.Start, ServerOptions.Limits.MaxRequestLineSize);
-                overLength = true;
-            }
-
-            var result = _parser.ParseRequestLine(new FrameAdapter(this), buffer, out consumed, out examined);
-            if (!result && overLength)
-            {
-                ThrowRequestRejected(RequestRejectionReason.RequestLineTooLong);
-            }
-
-            return result;
-        }
-
-        public bool TakeMessageHeaders(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)
-        {
-            // Make sure the buffer is limited
-            bool overLength = false;
-            if (buffer.Length >= _remainingRequestHeadersBytesAllowed)
-            {
-                buffer = buffer.Slice(buffer.Start, _remainingRequestHeadersBytesAllowed);
-
-                // If we sliced it means the current buffer bigger than what we're
-                // allowed to look at
-                overLength = true;
-            }
-
-            var result = _parser.ParseHeaders(new FrameAdapter(this), buffer, out consumed, out examined, out var consumedBytes);
-            _remainingRequestHeadersBytesAllowed -= consumedBytes;
-
-            if (!result && overLength)
-            {
-                ThrowRequestRejected(RequestRejectionReason.HeadersExceedMaxTotalSize);
-            }
-            if (result)
-            {
-                TimeoutControl.CancelTimeout();
-            }
-            return result;
-        }
-
         public bool StatusCanHaveBody(int statusCode)
         {
             // List of status codes taken from Microsoft.Net.Http.Server.Response
@@ -1147,7 +985,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public void ThrowRequestRejected(RequestRejectionReason reason, string detail)
             => throw BadHttpRequestException.GetException(reason, detail);
 
-        private void ThrowRequestTargetRejected(Span<byte> target)
+        public void ThrowRequestTargetRejected(Span<byte> target)
             => throw GetInvalidRequestTargetException(target);
 
         private BadHttpRequestException GetInvalidRequestTargetException(Span<byte> target)
@@ -1193,260 +1031,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
         }
 
-        public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
-        {
-            Debug.Assert(target.Length != 0, "Request target must be non-zero length");
-
-            var ch = target[0];
-            if (ch == ByteForwardSlash)
-            {
-                // origin-form.
-                // The most common form of request-target.
-                // https://tools.ietf.org/html/rfc7230#section-5.3.1
-                OnOriginFormTarget(method, version, target, path, query, customMethod, pathEncoded);
-            }
-            else if (ch == ByteAsterisk && target.Length == 1)
-            {
-                OnAsteriskFormTarget(method);
-            }
-            else if (target.GetKnownHttpScheme(out var scheme))
-            {
-                OnAbsoluteFormTarget(target, query);
-            }
-            else
-            {
-                // Assume anything else is considered authority form.
-                // FYI: this should be an edge case. This should only happen when
-                // a client mistakenly thinks this server is a proxy server.
-                OnAuthorityFormTarget(method, target);
-            }
-
-            Method = method != HttpMethod.Custom
-                ? HttpUtilities.MethodToString(method) ?? string.Empty
-                : customMethod.GetAsciiStringNonNullCharacters();
-            _httpVersion = version;
-
-            Debug.Assert(RawTarget != null, "RawTarget was not set");
-            Debug.Assert(Method != null, "Method was not set");
-            Debug.Assert(Path != null, "Path was not set");
-            Debug.Assert(QueryString != null, "QueryString was not set");
-            Debug.Assert(HttpVersion != null, "HttpVersion was not set");
-        }
-
-        private void OnOriginFormTarget(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
-        {
-            Debug.Assert(target[0] == ByteForwardSlash, "Should only be called when path starts with /");
-
-            _requestTargetForm = HttpRequestTarget.OriginForm;
-
-            // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
-            // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
-            // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
-            string requestUrlPath = null;
-            string rawTarget = null;
-
-            try
-            {
-                // Read raw target before mutating memory.
-                rawTarget = target.GetAsciiStringNonNullCharacters();
-
-                if (pathEncoded)
-                {
-                    // URI was encoded, unescape and then parse as UTF-8
-                    var pathLength = UrlEncoder.Decode(path, path);
-
-                    // Removing dot segments must be done after unescaping. From RFC 3986:
-                    //
-                    // URI producing applications should percent-encode data octets that
-                    // correspond to characters in the reserved set unless these characters
-                    // are specifically allowed by the URI scheme to represent data in that
-                    // component.  If a reserved character is found in a URI component and
-                    // no delimiting role is known for that character, then it must be
-                    // interpreted as representing the data octet corresponding to that
-                    // character's encoding in US-ASCII.
-                    //
-                    // https://tools.ietf.org/html/rfc3986#section-2.2
-                    pathLength = PathNormalizer.RemoveDotSegments(path.Slice(0, pathLength));
-
-                    requestUrlPath = GetUtf8String(path.Slice(0, pathLength));
-                }
-                else
-                {
-                    var pathLength = PathNormalizer.RemoveDotSegments(path);
-
-                    if (path.Length == pathLength && query.Length == 0)
-                    {
-                        // If no decoding was required, no dot segments were removed and
-                        // there is no query, the request path is the same as the raw target
-                        requestUrlPath = rawTarget;
-                    }
-                    else
-                    {
-                        requestUrlPath = path.Slice(0, pathLength).GetAsciiStringNonNullCharacters();
-                    }
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                ThrowRequestTargetRejected(target);
-            }
-
-            QueryString = query.GetAsciiStringNonNullCharacters();
-            RawTarget = rawTarget;
-            Path = requestUrlPath;
-        }
-
-        private void OnAuthorityFormTarget(HttpMethod method, Span<byte> target)
-        {
-            _requestTargetForm = HttpRequestTarget.AuthorityForm;
-
-            // This is not complete validation. It is just a quick scan for invalid characters
-            // but doesn't check that the target fully matches the URI spec.
-            for (var i = 0; i < target.Length; i++)
-            {
-                var ch = target[i];
-                if (!UriUtilities.IsValidAuthorityCharacter(ch))
-                {
-                    ThrowRequestTargetRejected(target);
-                }
-            }
-
-            // The authority-form of request-target is only used for CONNECT
-            // requests (https://tools.ietf.org/html/rfc7231#section-4.3.6).
-            if (method != HttpMethod.Connect)
-            {
-                ThrowRequestRejected(RequestRejectionReason.ConnectMethodRequired);
-            }
-
-            // When making a CONNECT request to establish a tunnel through one or
-            // more proxies, a client MUST send only the target URI's authority
-            // component (excluding any userinfo and its "@" delimiter) as the
-            // request-target.For example,
-            //
-            //  CONNECT www.example.com:80 HTTP/1.1
-            //
-            // Allowed characters in the 'host + port' section of authority.
-            // See https://tools.ietf.org/html/rfc3986#section-3.2
-            RawTarget = target.GetAsciiStringNonNullCharacters();
-            Path = string.Empty;
-            QueryString = string.Empty;
-        }
-
-        private void OnAsteriskFormTarget(HttpMethod method)
-        {
-            _requestTargetForm = HttpRequestTarget.AsteriskForm;
-
-            // The asterisk-form of request-target is only used for a server-wide
-            // OPTIONS request (https://tools.ietf.org/html/rfc7231#section-4.3.7).
-            if (method != HttpMethod.Options)
-            {
-                ThrowRequestRejected(RequestRejectionReason.OptionsMethodRequired);
-            }
-
-            RawTarget = Asterisk;
-            Path = string.Empty;
-            QueryString = string.Empty;
-        }
-
-        private void OnAbsoluteFormTarget(Span<byte> target, Span<byte> query)
-        {
-            _requestTargetForm = HttpRequestTarget.AbsoluteForm;
-
-            // absolute-form
-            // https://tools.ietf.org/html/rfc7230#section-5.3.2
-
-            // This code should be the edge-case.
-
-            // From the spec:
-            //    a server MUST accept the absolute-form in requests, even though
-            //    HTTP/1.1 clients will only send them in requests to proxies.
-
-            RawTarget = target.GetAsciiStringNonNullCharacters();
-
-            // Validation of absolute URIs is slow, but clients
-            // should not be sending this form anyways, so perf optimization
-            // not high priority
-
-            if (!Uri.TryCreate(RawTarget, UriKind.Absolute, out var uri))
-            {
-                ThrowRequestTargetRejected(target);
-            }
-
-            _absoluteRequestTarget = uri;
-            Path = uri.LocalPath;
-            // don't use uri.Query because we need the unescaped version
-            QueryString = query.GetAsciiStringNonNullCharacters();
-        }
-
-        private unsafe static string GetUtf8String(Span<byte> path)
-        {
-            // .NET 451 doesn't have pointer overloads for Encoding.GetString so we
-            // copy to an array
-            fixed (byte* pointer = &path.DangerousGetPinnableReference())
-            {
-                return Encoding.UTF8.GetString(pointer, path.Length);
-            }
-        }
-
-        public void OnHeader(Span<byte> name, Span<byte> value)
-        {
-            _requestHeadersParsed++;
-            if (_requestHeadersParsed > ServerOptions.Limits.MaxRequestHeaderCount)
-            {
-                ThrowRequestRejected(RequestRejectionReason.TooManyHeaders);
-            }
-            var valueString = value.GetAsciiStringNonNullCharacters();
-
-            FrameRequestHeaders.Append(name, valueString);
-        }
-
-        protected void EnsureHostHeaderExists()
-        {
-            if (_httpVersion == Http.HttpVersion.Http10)
-            {
-                return;
-            }
-
-            // https://tools.ietf.org/html/rfc7230#section-5.4
-            // A server MUST respond with a 400 (Bad Request) status code to any
-            // HTTP/1.1 request message that lacks a Host header field and to any
-            // request message that contains more than one Host header field or a
-            // Host header field with an invalid field-value.
-
-            var host = FrameRequestHeaders.HeaderHost;
-            if (host.Count <= 0)
-            {
-                ThrowRequestRejected(RequestRejectionReason.MissingHostHeader);
-            }
-            else if (host.Count > 1)
-            {
-                ThrowRequestRejected(RequestRejectionReason.MultipleHostHeaders);
-            }
-            else if (_requestTargetForm == HttpRequestTarget.AuthorityForm)
-            {
-                if (!host.Equals(RawTarget))
-                {
-                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, host.ToString());
-                }
-            }
-            else if (_requestTargetForm == HttpRequestTarget.AbsoluteForm)
-            {
-                // If the target URI includes an authority component, then a
-                // client MUST send a field - value for Host that is identical to that
-                // authority component, excluding any userinfo subcomponent and its "@"
-                // delimiter.
-
-                // System.Uri doesn't not tell us if the port was in the original string or not.
-                // When IsDefaultPort = true, we will allow Host: with or without the default port
-                var authorityAndPort = _absoluteRequestTarget.Authority + ":" + _absoluteRequestTarget.Port;
-                if ((host != _absoluteRequestTarget.Authority || !_absoluteRequestTarget.IsDefaultPort)
-                    && host != authorityAndPort)
-                {
-                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, host.ToString());
-                }
-            }
-        }
-
         private IPipe CreateRequestBodyPipe()
             => _context.PipeFactory.Create(new PipeOptions
             {
@@ -1455,15 +1039,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 MaximumSizeHigh = 1,
                 MaximumSizeLow = 1
             });
-
-        private enum HttpRequestTarget
-        {
-            Unknown = -1,
-            // origin-form is the most common
-            OriginForm,
-            AbsoluteForm,
-            AuthorityForm,
-            AsteriskForm
-        }
     }
 }

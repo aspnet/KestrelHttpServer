@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _featureRevision++;
         }
 
-        private object ExtraFeatureGet(Type key)
+        protected object ExtraFeatureGet(Type key)
         {
             if (MaybeExtra == null)
             {
@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return null;
         }
 
-        private void ExtraFeatureSet(Type key, object value)
+        protected void ExtraFeatureSet(Type key, object value)
         {
             if (MaybeExtra == null)
             {

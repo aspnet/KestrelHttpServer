@@ -19,13 +19,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         // For testing
         internal static MessageBody ZeroContentLengthKeepAlive => _zeroContentLengthKeepAlive;
 
-        private readonly Frame _context;
+        private readonly Http1Frame _context;
 
         private bool _send100Continue = true;
         private volatile bool _canceled;
         private Task _pumpTask;
 
-        protected MessageBody(Frame context)
+        protected MessageBody(Http1Frame context)
         {
             _context = context;
         }
@@ -306,7 +306,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public static MessageBody For(
             HttpVersion httpVersion,
             FrameRequestHeaders headers,
-            Frame context)
+            Http1Frame context)
         {
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
             var keepAlive = httpVersion != HttpVersion.Http10;
@@ -383,7 +383,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private class ForUpgrade : MessageBody
         {
-            public ForUpgrade(Frame context)
+            public ForUpgrade(Http1Frame context)
                 : base(context)
             {
                 RequestUpgrade = true;
@@ -434,7 +434,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             private readonly long _contentLength;
             private long _inputLength;
 
-            public ForContentLength(bool keepAlive, long contentLength, Frame context)
+            public ForContentLength(bool keepAlive, long contentLength, Http1Frame context)
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
@@ -484,7 +484,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             private Mode _mode = Mode.Prefix;
 
-            public ForChunkedEncoding(bool keepAlive, Frame context)
+            public ForChunkedEncoding(bool keepAlive, Http1Frame context)
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;

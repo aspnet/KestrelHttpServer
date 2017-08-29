@@ -7,9 +7,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public struct FrameAdapter : IHttpRequestLineHandler, IHttpHeadersHandler
     {
-        public Frame Frame;
+        public Http1Frame Frame;
 
-        public FrameAdapter(Frame frame)
+        public FrameAdapter(Http1Frame frame)
         {
             Frame = frame;
         }

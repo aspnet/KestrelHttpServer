@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public FrameContext FrameContext { get; }
 
-        public Frame Frame { get; set; }
+        public Http1Frame Frame { get; set; }
 
         public void Add(string text)
         {

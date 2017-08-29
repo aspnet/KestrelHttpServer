@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private readonly FrameConnectionContext _context;
         private IList<IAdaptedConnection> _adaptedConnections;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private Frame _frame;
+        private Http1Frame _frame;
         private Http2Connection _http2Connection;
         private volatile int _http2ConnectionState;
 

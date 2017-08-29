@@ -53,8 +53,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected RequestProcessingStatus _requestProcessingStatus;
         protected bool _keepAlive;
-        private bool _autoChunk;
         private bool _canHaveBody;
+        private bool _autoChunk;
         protected Exception _applicationException;
         private BadHttpRequestException _requestRejectedException;
 
@@ -917,61 +917,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
         }
-
-        /*
-        private void CreateResponseHeader(bool appCompleted)
-        {
-            var responseHeaders = FrameResponseHeaders;
-            var hasConnection = responseHeaders.HasConnection;
-            var connectionOptions = FrameHeaders.ParseConnection(responseHeaders.HeaderConnection);
-            var hasTransferEncoding = responseHeaders.HasTransferEncoding;
-            var transferCoding = FrameHeaders.GetFinalTransferCoding(responseHeaders.HeaderTransferEncoding);
-
-            // https://tools.ietf.org/html/rfc7230#section-3.3.1
-            // If any transfer coding other than
-            // chunked is applied to a response payload body, the sender MUST either
-            // apply chunked as the final transfer coding or terminate the message
-            // by closing the connection.
-            if (hasTransferEncoding && transferCoding == TransferCoding.Chunked)
-            {
-                // TODO: this is an error in HTTP/2
-            }
-
-            // Set whether response can have body
-            _canHaveBody = StatusCanHaveBody(StatusCode) && Method != "HEAD";
-
-            // Don't set the Content-Length or Transfer-Encoding headers
-            // automatically for HEAD requests or 204, 205, 304 responses.
-            if (_canHaveBody)
-            {
-                if (appCompleted)
-                {
-                    // Since the app has completed and we are only now generating
-                    // the headers we can safely set the Content-Length to 0.
-                    responseHeaders.ContentLength = 0;
-                }
-            }
-            else if (hasTransferEncoding)
-            {
-                RejectNonBodyTransferEncodingResponse(appCompleted);
-            }
-
-            responseHeaders.SetReadOnly();
-
-            if (ServerOptions.AddServerHeader && !responseHeaders.HasServer)
-            {
-                responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
-            }
-
-            if (!responseHeaders.HasDate)
-            {
-                var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
-                responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
-            }
-
-            Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
-        }
-        */
 
         public bool StatusCanHaveBody(int statusCode)
         {
