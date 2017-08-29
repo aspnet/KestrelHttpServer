@@ -158,6 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
                         await TryProduceInvalidRequestResponse();
+                        Output.Dispose();
                     }
                 }
                 catch (Exception ex)

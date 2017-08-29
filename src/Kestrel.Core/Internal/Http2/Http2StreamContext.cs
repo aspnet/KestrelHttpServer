@@ -3,6 +3,7 @@
 
 using System.IO.Pipelines;
 using System.Net;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {

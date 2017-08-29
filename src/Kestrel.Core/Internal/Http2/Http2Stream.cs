@@ -75,6 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             FrameControl = this;
 
+            Output = new Http2OutputProducer(context.StreamId, context.FrameWriter);
             RequestBodyPipe = CreateRequestBodyPipe();
         }
 
@@ -102,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public Http2MessageBody MessageBody { get; protected set; }
         protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
-        public IHttp2FrameWriter Output => _context.FrameWriter;
+        public IHttpOutputProducer Output { get; }
         public bool ExpectBody { get; set; }
 
         /// <summary>
@@ -595,7 +596,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task WriteDataAsync(ArraySegment<byte> data, bool firstWrite, CancellationToken cancellationToken)
         {
-            return Output.WriteDataAsync(StreamId, data, cancellationToken: cancellationToken);
+            return Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
         }
 
         private void VerifyAndUpdateWrite(int count)
@@ -666,7 +667,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             if (RequestHeaders.TryGetValue("Expect", out var expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
-                Output.Write100ContinueAsync(StreamId).GetAwaiter().GetResult();
+                Output.Write100ContinueAsync(default(CancellationToken)).GetAwaiter().GetResult();
             }
         }
 
@@ -764,7 +765,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await Output.FlushAsync();
+            await Output.FlushAsync(default(CancellationToken));
 
             await WriteSuffix();
         }
@@ -776,7 +777,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
             }
 
-            return Output.WriteDataAsync(StreamId, Span<byte>.Empty, endStream: true, cancellationToken: default(CancellationToken));
+            return Output.WriteStreamSuffixAsync(default(CancellationToken));
         }
 
         private void CreateResponseHeader(bool appCompleted)
@@ -829,7 +830,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
-            Output.WriteHeaders(StreamId, StatusCode, responseHeaders);
+            Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
         }
 
         public bool StatusCanHaveBody(int statusCode)

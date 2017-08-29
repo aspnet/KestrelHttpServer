@@ -29,10 +29,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private const byte ByteForwardSlash = (byte)'/';
         private const byte BytePercentage = (byte)'%';
 
-        private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
-        private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
-        private static readonly Action<WritableBuffer, FrameAdapter> _writeHeaders = WriteResponseHeaders;
-
         private static readonly byte[] _bytesConnectionClose = Encoding.ASCII.GetBytes("\r\nConnection: close");
         private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
         private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
@@ -110,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public IFeatureCollection ConnectionFeatures => _context.ConnectionFeatures;
         public IPipeReader Input => _context.Transport.Input;
-        public OutputProducer Output { get; }
+        public IHttpOutputProducer Output { get; }
         public ITimeoutControl TimeoutControl => _context.TimeoutControl;
         public bool RequestTimedOut => _requestTimedOut;
 
@@ -657,7 +653,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             if (_canHaveBody)
             {
-                return WriteDataAsync(data, firstWrite, cancellationToken);
+                if (_autoChunk)
+                {
+                    if (data.Count == 0)
+                    {
+                        return !firstWrite ? Task.CompletedTask : FlushAsync(cancellationToken);
+                    }
+                    return WriteChunkedAsync(data, cancellationToken);
+                }
+                else
+                {
+                    CheckLastWrite();
+                    return Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
+                }
             }
             else
             {
@@ -674,29 +682,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // Ensure headers are flushed if Write(Chunked)Async isn't called.
             if (_canHaveBody)
             {
-                await WriteDataAsync(data, firstWrite: true, cancellationToken: cancellationToken);
+                if (_autoChunk)
+                {
+                    if (data.Count == 0)
+                    {
+                        await FlushAsync(cancellationToken);
+                        return;
+                    }
+
+                    await WriteChunkedAsync(data, cancellationToken);
+                }
+                else
+                {
+                    CheckLastWrite();
+                    await Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
+                }
             }
             else
             {
                 HandleNonBodyResponseWrite();
                 await FlushAsync(cancellationToken);
-            }
-        }
-
-        private Task WriteDataAsync(ArraySegment<byte> data, bool firstWrite, CancellationToken cancellationToken)
-        {
-            if (_autoChunk)
-            {
-                if (data.Count == 0)
-                {
-                    return !firstWrite ? Task.CompletedTask : FlushAsync(cancellationToken);
-                }
-                return WriteChunkedAsync(data, cancellationToken);
-            }
-            else
-            {
-                CheckLastWrite();
-                return Output.WriteAsync(data, cancellationToken: cancellationToken);
             }
         }
 
@@ -758,12 +763,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            return Output.WriteAsync(data, chunk: true, cancellationToken: cancellationToken);
-        }
-
-        private Task WriteChunkedResponseSuffix()
-        {
-            return Output.WriteAsync(_endChunkedResponseBytes);
+            return Output.WriteDataAsync(data, chunk: true, cancellationToken: cancellationToken);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -779,11 +779,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 return;
             }
 
-            if (_httpVersion == Http.HttpVersion.Http11 &&
+            if (_httpVersion != Http.HttpVersion.Http10 &&
                 RequestHeaders.TryGetValue("Expect", out var expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
-                Output.WriteAsync(_continueBytes).GetAwaiter().GetResult();
+                Output.Write100ContinueAsync(default(CancellationToken)).GetAwaiter().GetResult();
             }
         }
 
@@ -882,7 +882,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await Output.FlushAsync();
+            await Output.FlushAsync(default(CancellationToken));
 
             await WriteSuffix();
         }
@@ -914,7 +914,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // For the same reason we call CheckLastWrite() in Content-Length responses.
             _abortedCts = null;
 
-            await WriteChunkedResponseSuffix();
+            await Output.WriteStreamSuffixAsync(default(CancellationToken));
 
             if (_keepAlive)
             {
@@ -1011,20 +1011,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
-            Output.Write(_writeHeaders, new FrameAdapter(this));
-        }
-
-        private static void WriteResponseHeaders(WritableBuffer writableBuffer, FrameAdapter frameAdapter)
-        {
-            var frame = frameAdapter.Frame;
-            var writer = new WritableBufferWriter(writableBuffer);
-
-            var responseHeaders = frame.FrameResponseHeaders;
-            writer.Write(_bytesHttpVersion11);
-            var statusBytes = ReasonPhrases.ToStatusBytes(frame.StatusCode, frame.ReasonPhrase);
-            writer.Write(statusBytes);
-            responseHeaders.CopyTo(ref writer);
-            writer.Write(_bytesEndHeaders);
+            Output.WriteResponseHeaders(StatusCode, ReasonPhrase, responseHeaders);
         }
 
         public void ParseRequest(ReadableBuffer buffer, out ReadCursor consumed, out ReadCursor examined)

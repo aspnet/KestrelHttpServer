@@ -5,15 +5,20 @@ using System;
 using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public class OutputProducer : IDisposable
+    public class OutputProducer : IHttpOutputProducer
     {
         private static readonly ArraySegment<byte> _emptyData = new ArraySegment<byte>(new byte[0]);
+        private static readonly ArraySegment<byte> _continueBytes = new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n"));
+        private static readonly byte[] _bytesHttpVersion11 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
+        private static readonly byte[] _bytesEndHeaders = Encoding.ASCII.GetBytes("\r\n\r\n");
+        private static readonly ArraySegment<byte> _endChunkedResponseBytes = new ArraySegment<byte>(Encoding.ASCII.GetBytes("0\r\n\r\n"));
 
         private readonly string _connectionId;
         private readonly ITimeoutControl _timeoutControl;
@@ -49,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _flushCompleted = OnFlushCompleted;
         }
 
-        public Task WriteAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken))
+        public Task WriteDataAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -57,6 +62,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             return WriteAsync(buffer, cancellationToken, chunk);
+        }
+
+        public Task WriteStreamSuffixAsync(CancellationToken cancellationToken)
+        {
+            return WriteAsync(_endChunkedResponseBytes, cancellationToken);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
@@ -75,6 +85,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 var buffer = _pipeWriter.Alloc(1);
                 callback(buffer, state);
+                buffer.Commit();
+            }
+        }
+
+        public void WriteResponseHeaders(int statusCode, string reasonPhrase, FrameResponseHeaders responseHeaders)
+        {
+            lock (_contextLock)
+            {
+                if (_completed)
+                {
+                    return;
+                }
+
+                var buffer = _pipeWriter.Alloc(1);
+                var writer = new WritableBufferWriter(buffer);
+
+                writer.Write(_bytesHttpVersion11);
+                var statusBytes = ReasonPhrases.ToStatusBytes(statusCode, reasonPhrase);
+                writer.Write(statusBytes);
+                responseHeaders.CopyTo(ref writer);
+                writer.Write(_bytesEndHeaders);
                 buffer.Commit();
             }
         }
@@ -109,6 +140,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _outputPipeReader.CancelPendingRead();
                 _pipeWriter.Complete(error);
             }
+        }
+
+        public Task Write100ContinueAsync(CancellationToken cancellationToken)
+        {
+            return WriteAsync(_continueBytes, default(CancellationToken));
         }
 
         private Task WriteAsync(
