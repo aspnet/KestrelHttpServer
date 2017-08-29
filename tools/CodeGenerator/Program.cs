@@ -38,7 +38,7 @@ namespace CodeGenerator
         {
             var knownHeadersContent = KnownHeaders.GeneratedFile();
             var frameFeatureCollectionContent = FrameFeatureCollection.GeneratedFile(nameof(Frame), "Http");
-            var http2StreamFeatureCollectionContent = FrameFeatureCollection.GeneratedFile(nameof(Http2Stream), "Http2", new[] { typeof(IHttp2StreamIdFeature) });
+            var http2StreamFeatureCollectionContent = FrameFeatureCollection.GeneratedFile(nameof(Http2Stream), "Http2");
             var httpUtilitiesContent = HttpUtilities.HttpUtilities.GeneratedFile();
 
             var existingKnownHeaders = File.Exists(knownHeadersPath) ? File.ReadAllText(knownHeadersPath) : "";

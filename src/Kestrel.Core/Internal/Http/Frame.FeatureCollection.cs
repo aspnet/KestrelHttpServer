@@ -25,7 +25,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                  IHttpBodyControlFeature,
                                  IHttpMaxRequestBodySizeFeature,
                                  IHttpMinRequestBodyDataRateFeature,
-                                 IHttpMinResponseDataRateFeature
+                                 IHttpMinResponseDataRateFeature,
+                                 IHttpStreamIdFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -163,7 +164,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         bool IHttpResponseFeature.HasStarted => HasResponseStarted;
 
-        bool IHttpUpgradeFeature.IsUpgradableRequest => _upgradeAvailable;
+        bool IHttpUpgradeFeature.IsUpgradableRequest => IsUpgradableRequest;
 
         bool IFeatureCollection.IsReadOnly => false;
 
@@ -211,7 +212,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             set => AllowSynchronousIO = value;
         }
 
-        bool IHttpMaxRequestBodySizeFeature.IsReadOnly => HasStartedConsumingRequestBody || _wasUpgraded;
+        bool IHttpMaxRequestBodySizeFeature.IsReadOnly => HasStartedConsumingRequestBody || IsUpgraded;
 
         long? IHttpMaxRequestBodySizeFeature.MaxRequestBodySize
         {
@@ -222,7 +223,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     throw new InvalidOperationException(CoreStrings.MaxRequestBodySizeCannotBeModifiedAfterRead);
                 }
-                if (_wasUpgraded)
+                if (IsUpgraded)
                 {
                     throw new InvalidOperationException(CoreStrings.MaxRequestBodySizeCannotBeModifiedForUpgradedRequests);
                 }
@@ -319,5 +320,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             Abort(error: null);
         }
+
+        int IHttpStreamIdFeature.StreamId => StreamId;
     }
 }

@@ -3,7 +3,7 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
 {
-    public interface IHttp2StreamIdFeature
+    public interface IHttpStreamIdFeature
     {
         int StreamId { get; }
     }

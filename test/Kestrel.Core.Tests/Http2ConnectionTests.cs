@@ -167,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _waitForAbortApplication = async context =>
             {
-                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+                var streamIdFeature = context.Features.Get<IHttpStreamIdFeature>();
                 var sem = new SemaphoreSlim(0);
 
                 context.RequestAborted.Register(() =>
@@ -187,7 +187,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _waitForAbortFlushingApplication = async context =>
             {
-                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+                var streamIdFeature = context.Features.Get<IHttpStreamIdFeature>();
                 var sem = new SemaphoreSlim(0);
 
                 context.RequestAborted.Register(() =>

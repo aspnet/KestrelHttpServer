@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 _context.ServiceContext.ConnectionManager.RemoveConnection(_context.FrameConnectionId);
                 DisposeAdaptedConnections();
 
-                if (_frame.WasUpgraded)
+                if (_frame.IsUpgraded)
                 {
                     _context.ServiceContext.ConnectionManager.UpgradedConnectionCount.ReleaseOne();
                 }

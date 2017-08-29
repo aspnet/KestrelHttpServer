@@ -93,15 +93,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
         private KestrelServerOptions ServerOptions { get; }
         protected string ConnectionId => _context.ConnectionId;
+        public int StreamId => _context.StreamId;
 
         public string ConnectionIdFeature { get; set; }
         public bool HasStartedConsumingRequestBody { get; set; }
         public long? MaxRequestBodySize { get; set; }
         public bool AllowSynchronousIO { get; set; }
 
-        public int StreamId => _context.StreamId;
         public Http2MessageBody MessageBody { get; protected set; }
-
         protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
         public IHttp2FrameWriter Output => _context.FrameWriter;
         public bool ExpectBody { get; set; }
@@ -123,6 +122,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
+        public bool IsUpgradableRequest => false;
+        public bool IsUpgraded => false;
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
         public IPAddress LocalIpAddress { get; set; }
@@ -310,6 +311,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public void PauseStreams() => _streams.Pause();
 
         public void StopStreams() => _streams.Stop();
+
+        public Task<Stream> UpgradeAsync() => throw new NotImplementedException();
 
         public void Reset()
         {

@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                                        IHttpMaxRequestBodySizeFeature,
                                        IHttpMinRequestBodyDataRateFeature,
                                        IHttpMinResponseDataRateFeature,
-                                       IHttp2StreamIdFeature
+                                       IHttpStreamIdFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -164,7 +164,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         bool IHttpResponseFeature.HasStarted => HasResponseStarted;
 
-        bool IHttpUpgradeFeature.IsUpgradableRequest => false;
+        bool IHttpUpgradeFeature.IsUpgradableRequest => IsUpgradableRequest;
 
         bool IFeatureCollection.IsReadOnly => false;
 
@@ -212,7 +212,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             set => AllowSynchronousIO = value;
         }
 
-        bool IHttpMaxRequestBodySizeFeature.IsReadOnly => HasStartedConsumingRequestBody;
+        bool IHttpMaxRequestBodySizeFeature.IsReadOnly => HasStartedConsumingRequestBody || IsUpgraded;
 
         long? IHttpMaxRequestBodySizeFeature.MaxRequestBodySize
         {
@@ -222,6 +222,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 if (HasStartedConsumingRequestBody)
                 {
                     throw new InvalidOperationException(CoreStrings.MaxRequestBodySizeCannotBeModifiedAfterRead);
+                }
+                if (IsUpgraded)
+                {
+                    throw new InvalidOperationException(CoreStrings.MaxRequestBodySizeCannotBeModifiedForUpgradedRequests);
                 }
                 if (value < 0)
                 {
@@ -270,10 +274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             OnCompleted(callback, state);
         }
 
-        Task<Stream> IHttpUpgradeFeature.UpgradeAsync()
-        {
-            throw new NotImplementedException();
-        }
+        Task<Stream> IHttpUpgradeFeature.UpgradeAsync() => UpgradeAsync();
 
         IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
 
@@ -284,6 +285,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Abort(error: null);
         }
 
-        int IHttp2StreamIdFeature.StreamId => StreamId;
+        int IHttpStreamIdFeature.StreamId => StreamId;
     }
 }

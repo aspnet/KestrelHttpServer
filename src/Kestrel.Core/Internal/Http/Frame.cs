@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected RequestProcessingStatus _requestProcessingStatus;
         protected volatile bool _keepAlive = true; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
         protected bool _upgradeAvailable;
-        private volatile bool _wasUpgraded;
+        private volatile bool _isUpgraded;
         private bool _canHaveBody;
         private bool _autoChunk;
         protected Exception _applicationException;
@@ -119,6 +119,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         // Hold direct reference to ServerOptions since this is used very often in the request processing path
         private KestrelServerOptions ServerOptions { get; }
         protected string ConnectionId => _context.ConnectionId;
+        public int StreamId => throw new NotImplementedException();
 
         public string ConnectionIdFeature { get; set; }
         public bool HasStartedConsumingRequestBody { get; set; }
@@ -142,7 +143,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public bool WasUpgraded => _wasUpgraded;
+        public bool IsUpgradableRequest => _upgradeAvailable;
+        public bool IsUpgraded => _isUpgraded;
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
         public IPAddress LocalIpAddress { get; set; }
@@ -330,6 +332,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public void PauseStreams() => _streams.Pause();
 
         public void StopStreams() => _streams.Stop();
+
+        public async Task<Stream> UpgradeAsync()
+        {
+            if (!((IHttpUpgradeFeature)this).IsUpgradableRequest)
+            {
+                throw new InvalidOperationException(CoreStrings.CannotUpgradeNonUpgradableRequest);
+            }
+
+            if (_wasUpgraded)
+            {
+                throw new InvalidOperationException(CoreStrings.UpgradeCannotBeCalledMultipleTimes);
+            }
+
+            if (!ServiceContext.ConnectionManager.UpgradedConnectionCount.TryLockOne())
+            {
+                throw new InvalidOperationException(CoreStrings.UpgradedConnectionLimitReached);
+            }
+
+            _wasUpgraded = true;
+
+            ConnectionFeatures.Get<IDecrementConcurrentConnectionCountFeature>()?.ReleaseConnection();
+
+            StatusCode = StatusCodes.Status101SwitchingProtocols;
+            ReasonPhrase = "Switching Protocols";
+            ResponseHeaders["Connection"] = "Upgrade";
+            if (!ResponseHeaders.ContainsKey("Upgrade"))
+            {
+                StringValues values;
+                if (RequestHeaders.TryGetValue("Upgrade", out values))
+                {
+                    ResponseHeaders["Upgrade"] = values;
+                }
+            }
+
+            await FlushAsync(default(CancellationToken));
+
+            return _streams.Upgrade();
+        }
 
         // For testing
         internal void ResetState()
