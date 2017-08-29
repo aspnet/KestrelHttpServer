@@ -52,7 +52,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected RequestProcessingStatus _requestProcessingStatus;
         protected volatile bool _keepAlive = true; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
         protected bool _upgradeAvailable;
-        private volatile bool _isUpgraded;
         private bool _canHaveBody;
         private bool _autoChunk;
         protected Exception _applicationException;
@@ -134,7 +133,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         public bool IsUpgradableRequest => _upgradeAvailable;
-        public bool IsUpgraded => _isUpgraded;
+        public bool IsUpgraded { get; set; }
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
         public IPAddress LocalIpAddress { get; set; }

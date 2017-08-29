@@ -280,7 +280,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 throw new InvalidOperationException(CoreStrings.CannotUpgradeNonUpgradableRequest);
             }
 
-            if (_isUpgraded)
+            if (IsUpgraded)
             {
                 throw new InvalidOperationException(CoreStrings.UpgradeCannotBeCalledMultipleTimes);
             }
@@ -290,7 +290,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 throw new InvalidOperationException(CoreStrings.UpgradedConnectionLimitReached);
             }
 
-            _isUpgraded = true;
+            IsUpgraded = true;
 
             ConnectionFeatures.Get<IDecrementConcurrentConnectionCountFeature>()?.ReleaseConnection();
 
