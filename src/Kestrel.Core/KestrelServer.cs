@@ -70,7 +70,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             var trace = new KestrelTrace(logger);
             var connectionManager = new FrameConnectionManager(
                 trace,
-                serverOptions.Limits.MaxConcurrentConnections,
                 serverOptions.Limits.MaxConcurrentUpgradedConnections);
 
             var systemClock = new SystemClock();
@@ -143,10 +142,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     // Add the connection limit middleware
                     if (Options.Limits.MaxConcurrentConnections.HasValue)
                     {
-                        connectionDelegate = new ConnectionLimitMiddleware(connectionDelegate, Trace, Options.Limits.MaxConcurrentConnections.Value).OnConnectionAsync;
+                        connectionDelegate = new ConnectionLimitMiddleware(connectionDelegate, Options.Limits.MaxConcurrentConnections.Value, Trace).OnConnectionAsync;
                     }
 
-                    var connectionHandler = new ConnectionHandler(ServiceContext, endpoint.Build()); 
+                    var connectionHandler = new ConnectionHandler(ServiceContext, connectionDelegate);
                     var transport = _transportFactory.Create(endpoint, connectionHandler);
                     _transports.Add(transport);
 

@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         private readonly ConcurrentDictionary<long, FrameConnectionReference> _connectionReferences = new ConcurrentDictionary<long, FrameConnectionReference>();
         private readonly IKestrelTrace _trace;
 
-        public FrameConnectionManager(IKestrelTrace trace, long? normalConnectionLimit, long? upgradedConnectionLimit)
+        public FrameConnectionManager(IKestrelTrace trace, long? upgradedConnectionLimit)
             : this(trace, GetCounter(upgradedConnectionLimit))
         {
         }
@@ -21,11 +21,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             UpgradedConnectionCount = upgradedConnections;
             _trace = trace;
         }
-
-        /// <summary>
-        /// TCP connections processed by Kestrel.
-        /// </summary>
-        public ResourceCounter NormalConnectionCount { get; }
 
         /// <summary>
         /// Connections that have been switched to a different protocol.

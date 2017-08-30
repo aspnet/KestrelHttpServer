@@ -251,13 +251,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         object IFeatureCollection.this[Type key]
         {
-            get => FastFeatureGet(key) ?? ConnectionFeatures?[key];
+            get => FastFeatureGet(key) ?? ConnectionFeatures[key];
             set => FastFeatureSet(key, value);
         }
 
         TFeature IFeatureCollection.Get<TFeature>()
         {
-            return (TFeature)(FastFeatureGet(typeof(TFeature)) ?? ConnectionFeatures?[typeof(TFeature)]);
+            return (TFeature)(FastFeatureGet(typeof(TFeature)) ?? ConnectionFeatures[typeof(TFeature)]);
         }
 
         void IFeatureCollection.Set<TFeature>(TFeature instance)
@@ -293,6 +293,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             _wasUpgraded = true;
+
+            var connectionCountFeature = ConnectionFeatures[typeof(IDecrementConcurrentConnectionCountFeature)] as IDecrementConcurrentConnectionCountFeature;
+            connectionCountFeature?.ReleaseConnection();
 
             StatusCode = StatusCodes.Status101SwitchingProtocols;
             ReasonPhrase = "Switching Protocols";

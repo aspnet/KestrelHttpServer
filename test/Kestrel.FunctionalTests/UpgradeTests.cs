@@ -254,55 +254,55 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             Assert.Equal(CoreStrings.CannotUpgradeNonUpgradableRequest, ex.Message);
         }
 
-        //[Fact]
-        //public async Task RejectsUpgradeWhenLimitReached()
-        //{
-        //    const int limit = 10;
-        //    var upgradeTcs = new TaskCompletionSource<object>();
-        //    var serviceContext = new TestServiceContext();
-        //    serviceContext.ConnectionManager = new FrameConnectionManager(serviceContext.Log, ResourceCounter.Unlimited, ResourceCounter.Quota(limit));
+        [Fact]
+        public async Task RejectsUpgradeWhenLimitReached()
+        {
+            const int limit = 10;
+            var upgradeTcs = new TaskCompletionSource<object>();
+            var serviceContext = new TestServiceContext();
+            serviceContext.ConnectionManager = new FrameConnectionManager(serviceContext.Log, ResourceCounter.Quota(limit));
 
-        //    using (var server = new TestServer(async context =>
-        //    {
-        //        var feature = context.Features.Get<IHttpUpgradeFeature>();
-        //        if (feature.IsUpgradableRequest)
-        //        {
-        //            try
-        //            {
-        //                var stream = await feature.UpgradeAsync();
-        //                while (!context.RequestAborted.IsCancellationRequested)
-        //                {
-        //                    await Task.Delay(100);
-        //                }
-        //            }
-        //            catch (InvalidOperationException ex)
-        //            {
-        //                upgradeTcs.TrySetException(ex);
-        //            }
-        //        }
-        //    }, serviceContext))
-        //    {
-        //        using (var disposables = new DisposableStack<TestConnection>())
-        //        {
-        //            for (var i = 0; i < limit; i++)
-        //            {
-        //                var connection = server.CreateConnection();
-        //                disposables.Push(connection);
+            using (var server = new TestServer(async context =>
+            {
+                var feature = context.Features.Get<IHttpUpgradeFeature>();
+                if (feature.IsUpgradableRequest)
+                {
+                    try
+                    {
+                        var stream = await feature.UpgradeAsync();
+                        while (!context.RequestAborted.IsCancellationRequested)
+                        {
+                            await Task.Delay(100);
+                        }
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        upgradeTcs.TrySetException(ex);
+                    }
+                }
+            }, serviceContext))
+            {
+                using (var disposables = new DisposableStack<TestConnection>())
+                {
+                    for (var i = 0; i < limit; i++)
+                    {
+                        var connection = server.CreateConnection();
+                        disposables.Push(connection);
 
-        //                await connection.SendEmptyGetWithUpgradeAndKeepAlive();
-        //                await connection.Receive("HTTP/1.1 101");
-        //            }
+                        await connection.SendEmptyGetWithUpgradeAndKeepAlive();
+                        await connection.Receive("HTTP/1.1 101");
+                    }
 
-        //            using (var connection = server.CreateConnection())
-        //            {
-        //                await connection.SendEmptyGetWithUpgradeAndKeepAlive();
-        //                await connection.Receive("HTTP/1.1 200");
-        //            }
-        //        }
-        //    }
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.SendEmptyGetWithUpgradeAndKeepAlive();
+                        await connection.Receive("HTTP/1.1 200");
+                    }
+                }
+            }
 
-        //    var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await upgradeTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(60)));
-        //    Assert.Equal(CoreStrings.UpgradedConnectionLimitReached, exception.Message);
-        //}
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await upgradeTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(60)));
+            Assert.Equal(CoreStrings.UpgradedConnectionLimitReached, exception.Message);
+        }
     }
 }
