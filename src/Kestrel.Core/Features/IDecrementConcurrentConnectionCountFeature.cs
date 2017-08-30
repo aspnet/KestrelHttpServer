@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
     /// A connection feature allowing middleware to stop counting connections towards <see cref="KestrelServerLimits.MaxConcurrentConnections"/>.
     /// This is used by Kestrel internally to stop counting upgraded connections towards this limit.
     /// </summary>
-    interface IDecrementConcurrentConnectionCountFeature
+    public interface IDecrementConcurrentConnectionCountFeature
     {
         /// <summary>
         /// Idempotent method to stop counting a connection towards <see cref="KestrelServerLimits.MaxConcurrentConnections"/>.
