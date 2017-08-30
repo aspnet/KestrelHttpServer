@@ -189,8 +189,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 await kestrelThreadPrimary.PostAsync(_ => pipe.Dispose(), null);
 
-                // Wait up to 10 seconds for error to be logged
-                for (var i = 0; i < 10 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
+                // Wait up to 30 seconds for error to be logged
+                for (var i = 0; i < 300 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
                 {
                     await Task.Delay(100);
                 }
@@ -266,8 +266,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var listenerSecondary = new TcpListenerSecondary(serviceContextSecondary);
                 await listenerSecondary.StartAsync(pipeName, Guid.NewGuid().ToByteArray(), address, kestrelThreadSecondary);
 
-                // Wait up to 10 seconds for error to be logged
-                for (var i = 0; i < 10 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
+                // Wait up to 30 seconds for error to be logged
+                for (var i = 0; i < 300 && primaryTrace.Logger.TotalErrorsLogged == 0; i++)
                 {
                     await Task.Delay(100);
                 }
@@ -352,7 +352,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             string address,
             string expected,
             string[] allowed = null,
-            int maxRetries = 100,
+            int maxRetries = 300,
             int retryDelay = 100)
         {
             for (var i = 0; i < maxRetries; i++)
