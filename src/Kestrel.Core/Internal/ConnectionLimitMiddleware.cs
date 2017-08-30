@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             try
             {
-                connection.Features[typeof(IDecrementConcurrentConnectionCountFeature)] = releasor;
+                connection.Features.Set<IDecrementConcurrentConnectionCountFeature>(releasor);
                 await _next(connection);
             }
             finally

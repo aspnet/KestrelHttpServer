@@ -294,8 +294,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _wasUpgraded = true;
 
-            var connectionCountFeature = ConnectionFeatures[typeof(IDecrementConcurrentConnectionCountFeature)] as IDecrementConcurrentConnectionCountFeature;
-            connectionCountFeature?.ReleaseConnection();
+            ConnectionFeatures.Get<IDecrementConcurrentConnectionCountFeature>()?.ReleaseConnection();
 
             StatusCode = StatusCodes.Status101SwitchingProtocols;
             ReasonPhrase = "Switching Protocols";
