@@ -2,6 +2,7 @@
   <PropertyGroup>
     <AspNetCoreVersion>2.0.0</AspNetCoreVersion>
     <CoreFxVersion>4.4.0</CoreFxVersion>
+    <CoreFxLabSourcesVersion>2.0.0-rtm-21470</CoreFxLabSourcesVersion>
     <InternalAspNetCoreSdkVersion>2.0.1-rtm-15400</InternalAspNetCoreSdkVersion>
     <LibUvVersion>1.10.0</LibUvVersion>
     <JsonNetVersion>10.0.1</JsonNetVersion>
