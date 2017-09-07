@@ -84,43 +84,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public Task WriteHeadersAsync(int streamId, int statusCode, IHeaderDictionary headers)
-        {
-            var tasks = new List<Task>();
-
-            lock (_writeLock)
-            {
-                _outgoingFrame.PrepareHeaders(Http2HeadersFrameFlags.NONE, streamId);
-
-                var done = _hpackEncoder.BeginEncode(statusCode, EnumerateHeaders(headers), _outgoingFrame.Payload, out var payloadLength);
-                _outgoingFrame.Length = payloadLength;
-
-                if (done)
-                {
-                    _outgoingFrame.HeadersFlags = Http2HeadersFrameFlags.END_HEADERS;
-                }
-
-                tasks.Add(WriteAsync(_outgoingFrame.Raw));
-
-                while (!done)
-                {
-                    _outgoingFrame.PrepareContinuation(Http2ContinuationFrameFlags.NONE, streamId);
-
-                    done = _hpackEncoder.Encode(_outgoingFrame.Payload, out var length);
-                    _outgoingFrame.Length = length;
-
-                    if (done)
-                    {
-                        _outgoingFrame.ContinuationFlags = Http2ContinuationFrameFlags.END_HEADERS;
-                    }
-
-                    tasks.Add(WriteAsync(_outgoingFrame.Raw));
-                }
-
-                return Task.WhenAll(tasks);
-            }
-        }
-
         public Task WriteDataAsync(int streamId, Span<byte> data, CancellationToken cancellationToken)
             => WriteDataAsync(streamId, data, endStream: false, cancellationToken: cancellationToken);
 
