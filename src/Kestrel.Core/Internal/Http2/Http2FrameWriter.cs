@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     _outgoingFrame.HeadersFlags = Http2HeadersFrameFlags.END_HEADERS;
                 }
 
-                Write(_outgoingFrame.Raw);
+                Append(_outgoingFrame.Raw);
 
                 while (!done)
                 {
@@ -79,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         _outgoingFrame.ContinuationFlags = Http2ContinuationFrameFlags.END_HEADERS;
                     }
 
-                    Write(_outgoingFrame.Raw);
+                    Append(_outgoingFrame.Raw);
                 }
             }
         }
@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private void Write(ArraySegment<byte> data)
+        private void Append(ArraySegment<byte> data)
         {
             if (_completed)
             {
