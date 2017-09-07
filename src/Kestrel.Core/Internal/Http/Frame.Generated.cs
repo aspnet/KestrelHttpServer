@@ -17,6 +17,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly Type IHttpAuthenticationFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.Authentication.IHttpAuthenticationFeature);
         private static readonly Type IQueryFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IQueryFeature);
         private static readonly Type IFormFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IFormFeature);
+        private static readonly Type IHttpUpgradeFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IHttpUpgradeFeature);
+        private static readonly Type IHttp2StreamIdFeatureType = typeof(global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttp2StreamIdFeature);
         private static readonly Type IResponseCookiesFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IResponseCookiesFeature);
         private static readonly Type IItemsFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.IItemsFeature);
         private static readonly Type ITlsConnectionFeatureType = typeof(global::Microsoft.AspNetCore.Http.Features.ITlsConnectionFeature);
@@ -37,6 +39,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private object _currentIHttpAuthenticationFeature;
         private object _currentIQueryFeature;
         private object _currentIFormFeature;
+        private object _currentIHttpUpgradeFeature;
+        private object _currentIHttp2StreamIdFeature;
         private object _currentIResponseCookiesFeature;
         private object _currentIItemsFeature;
         private object _currentITlsConnectionFeature;
@@ -64,6 +68,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _currentIHttpAuthenticationFeature = null;
             _currentIQueryFeature = null;
             _currentIFormFeature = null;
+            _currentIHttpUpgradeFeature = null;
+            _currentIHttp2StreamIdFeature = null;
             _currentIResponseCookiesFeature = null;
             _currentIItemsFeature = null;
             _currentITlsConnectionFeature = null;
@@ -110,6 +116,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 return _currentIFormFeature;
             }
+            if (key == IHttpUpgradeFeatureType)
+            {
+                return _currentIHttpUpgradeFeature;
+            }
+            if (key == IHttp2StreamIdFeatureType)
+            {
+                return _currentIHttp2StreamIdFeature;
+            }
             if (key == IResponseCookiesFeatureType)
             {
                 return _currentIResponseCookiesFeature;
@@ -153,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return ExtraFeatureGet(key);
         }
 
-        internal void FastFeatureSet(Type key, object feature)
+        protected void FastFeatureSet(Type key, object feature)
         {
             _featureRevision++;
             
@@ -200,6 +214,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (key == IFormFeatureType)
             {
                 _currentIFormFeature = feature;
+                return;
+            }
+            if (key == IHttpUpgradeFeatureType)
+            {
+                _currentIHttpUpgradeFeature = feature;
+                return;
+            }
+            if (key == IHttp2StreamIdFeatureType)
+            {
+                _currentIHttp2StreamIdFeature = feature;
                 return;
             }
             if (key == IResponseCookiesFeatureType)
@@ -292,6 +316,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (_currentIFormFeature != null)
             {
                 yield return new KeyValuePair<Type, object>(IFormFeatureType, _currentIFormFeature as global::Microsoft.AspNetCore.Http.Features.IFormFeature);
+            }
+            if (_currentIHttpUpgradeFeature != null)
+            {
+                yield return new KeyValuePair<Type, object>(IHttpUpgradeFeatureType, _currentIHttpUpgradeFeature as global::Microsoft.AspNetCore.Http.Features.IHttpUpgradeFeature);
+            }
+            if (_currentIHttp2StreamIdFeature != null)
+            {
+                yield return new KeyValuePair<Type, object>(IHttp2StreamIdFeatureType, _currentIHttp2StreamIdFeature as global::Microsoft.AspNetCore.Server.Kestrel.Core.Features.IHttp2StreamIdFeature);
             }
             if (_currentIResponseCookiesFeature != null)
             {

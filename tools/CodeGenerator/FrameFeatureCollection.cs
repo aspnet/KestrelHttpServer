@@ -40,6 +40,8 @@ namespace CodeGenerator
 
             var sometimesFeatures = new[]
             {
+                typeof(IHttpUpgradeFeature),
+                typeof(IHttp2StreamIdFeature),
                 typeof(IResponseCookiesFeature),
                 typeof(IItemsFeature),
                 typeof(ITlsConnectionFeature),
@@ -103,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return ExtraFeatureGet(key);
         }}
 
-        internal void FastFeatureSet(Type key, object feature)
+        protected void FastFeatureSet(Type key, object feature)
         {{
             _featureRevision++;
             {Each(allFeatures, feature => $@"

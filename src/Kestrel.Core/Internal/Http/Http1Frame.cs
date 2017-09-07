@@ -411,7 +411,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override void OnReset()
         {
-            ExtraFeatureSet(typeof(IHttpUpgradeFeature), this);
+            FastFeatureSet(typeof(IHttpUpgradeFeature), this);
 
             _requestTimedOut = false;
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
