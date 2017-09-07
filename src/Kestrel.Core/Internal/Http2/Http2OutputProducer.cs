@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void WriteResponseHeaders(int statusCode, string ReasonPhrase, FrameResponseHeaders responseHeaders)
         {
-            _frameWriter.WriteHeaders(_streamId, statusCode, responseHeaders);
+            _frameWriter.WriteResponseHeaders(_streamId, statusCode, responseHeaders);
         }
     }
 }

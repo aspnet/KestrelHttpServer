@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
-        public void WriteHeaders(int streamId, int statusCode, IHeaderDictionary headers)
+        public void WriteResponseHeaders(int streamId, int statusCode, IHeaderDictionary headers)
         {
             lock (_writeLock)
             {
