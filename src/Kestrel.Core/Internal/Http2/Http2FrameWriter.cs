@@ -165,6 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
+        // Must be called with _writeLock
         private void Append(ArraySegment<byte> data)
         {
             if (_completed)
@@ -177,6 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             writeableBuffer.Commit();
         }
 
+        // Must be called with _writeLock
         private async Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (_completed)
