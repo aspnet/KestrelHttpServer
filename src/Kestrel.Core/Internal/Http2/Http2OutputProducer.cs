@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -30,17 +31,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // TODO: RST_STREAM?
         }
 
+        public Task WriteAsync<T>(Action<WritableBuffer, T> callback, T state)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task FlushAsync(CancellationToken cancellationToken) => _frameWriter.FlushAsync(cancellationToken);
 
         public Task Write100ContinueAsync(CancellationToken cancellationToken) => _frameWriter.Write100ContinueAsync(_streamId);
 
-        public Task WriteDataAsync(ArraySegment<byte> data, bool chunk, CancellationToken cancellationToken)
+        public Task WriteDataAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            if (chunk)
-            {
-                throw new ArgumentException("Chunked transfer coding is not supported in HTTP/2", nameof(chunk));
-            }
-
             return _frameWriter.WriteDataAsync(_streamId, data, cancellationToken);
         }
 

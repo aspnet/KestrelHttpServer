@@ -54,14 +54,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _flushCompleted = OnFlushCompleted;
         }
 
-        public Task WriteDataAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken))
+        public Task WriteDataAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 return Task.FromCanceled(cancellationToken);
             }
 
-            return WriteAsync(buffer, cancellationToken, chunk);
+            return WriteAsync(buffer, cancellationToken);
         }
 
         public Task WriteStreamSuffixAsync(CancellationToken cancellationToken)
@@ -87,6 +87,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 callback(buffer, state);
                 buffer.Commit();
             }
+        }
+
+        public Task WriteAsync<T>(Action<WritableBuffer, T> callback, T state)
+        {
+            lock (_contextLock)
+            {
+                if (_completed)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var buffer = _pipeWriter.Alloc(1);
+                callback(buffer, state);
+                buffer.Commit();
+            }
+
+            return FlushAsync();
         }
 
         public void WriteResponseHeaders(int statusCode, string reasonPhrase, FrameResponseHeaders responseHeaders)
@@ -149,8 +166,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private Task WriteAsync(
             ArraySegment<byte> buffer,
-            CancellationToken cancellationToken,
-            bool chunk = false)
+            CancellationToken cancellationToken)
         {
             var writableBuffer = default(WritableBuffer);
 
@@ -165,17 +181,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var writer = new WritableBufferWriter(writableBuffer);
                 if (buffer.Count > 0)
                 {
-                    if (chunk)
-                    {
-                        ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
-                    }
-
                     writer.Write(buffer.Array, buffer.Offset, buffer.Count);
-
-                    if (chunk)
-                    {
-                        ChunkWriter.WriteEndChunkBytes(ref writer);
-                    }
                 }
 
                 writableBuffer.Commit();

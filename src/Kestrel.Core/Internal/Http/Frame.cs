@@ -28,6 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly byte[] _bytesConnectionKeepAlive = Encoding.ASCII.GetBytes("\r\nConnection: keep-alive");
         private static readonly byte[] _bytesTransferEncodingChunked = Encoding.ASCII.GetBytes("\r\nTransfer-Encoding: chunked");
         private static readonly byte[] _bytesServer = Encoding.ASCII.GetBytes("\r\nServer: " + Constants.ServerName);
+        private static readonly Action<WritableBuffer, ArraySegment<byte>> _writeChunk = WriteChunk;
 
         private readonly object _onStartingSync = new Object();
         private readonly object _onCompletedSync = new Object();
@@ -578,7 +579,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 else
                 {
                     CheckLastWrite();
-                    return Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
+                    return Output.WriteDataAsync(data, cancellationToken: cancellationToken);
                 }
             }
             else
@@ -609,7 +610,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 else
                 {
                     CheckLastWrite();
-                    await Output.WriteDataAsync(data, chunk: false, cancellationToken: cancellationToken);
+                    await Output.WriteDataAsync(data, cancellationToken: cancellationToken);
                 }
             }
             else
@@ -677,7 +678,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            return Output.WriteDataAsync(data, chunk: true, cancellationToken: cancellationToken);
+            return Output.WriteAsync(_writeChunk, data);
+        }
+
+        private static void WriteChunk(WritableBuffer writableBuffer, ArraySegment<byte> buffer)
+        {
+            var writer = new WritableBufferWriter(writableBuffer);
+            if (buffer.Count > 0)
+            {
+                ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
+                writer.Write(buffer.Array, buffer.Offset, buffer.Count);
+                ChunkWriter.WriteEndChunkBytes(ref writer);
+            }
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)

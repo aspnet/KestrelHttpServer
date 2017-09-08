@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,10 +11,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     public interface IHttpOutputProducer : IDisposable
     {
         void Abort(Exception error);
-        void WriteResponseHeaders(int statusCode, string ReasonPhrase, FrameResponseHeaders responseHeaders);
+        Task WriteAsync<T>(Action<WritableBuffer, T> callback, T state);
         Task FlushAsync(CancellationToken cancellationToken);
         Task Write100ContinueAsync(CancellationToken cancellationToken);
-        Task WriteDataAsync(ArraySegment<byte> data, bool chunk, CancellationToken cancellationToken);
+        void WriteResponseHeaders(int statusCode, string ReasonPhrase, FrameResponseHeaders responseHeaders);
+        Task WriteDataAsync(ArraySegment<byte> data, CancellationToken cancellationToken);
         Task WriteStreamSuffixAsync(CancellationToken cancellationToken);
     }
 }
