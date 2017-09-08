@@ -304,8 +304,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestProcessingStatus = RequestProcessingStatus.RequestPending;
         }
 
-        protected abstract string CreateRequestId();
-
         public void Reset()
         {
             _onStarting = null;
@@ -366,6 +364,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         protected abstract void OnReset();
+
+        protected abstract string CreateRequestId();
 
         private void CancelRequestAbortedToken()
         {

@@ -411,6 +411,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             FastFeatureSet(typeof(IHttpUpgradeFeature), this);
 
             _requestTimedOut = false;
+            _requestTargetForm = HttpRequestTarget.Unknown;
+            _absoluteRequestTarget = null;
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestCount++;
         }
