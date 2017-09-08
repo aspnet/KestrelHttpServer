@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.Extensions.Logging;
@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Testing
         // Application errors are logged using 13 as the eventId.
         private const int ApplicationErrorEventId = 13;
 
-        public List<LogMessage> Messages { get; } = new List<LogMessage>();
+        public ConcurrentQueue<LogMessage> Messages { get; } = new ConcurrentQueue<LogMessage>();
 
         public int TotalErrorsLogged => Messages.Count(message => message.LogLevel == LogLevel.Error);
 
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Testing
             Console.WriteLine($"Log {logLevel}[{eventId}]: {formatter(state, exception)} {exception?.Message}");
 #endif
 
-            Messages.Add(new LogMessage { LogLevel = logLevel, EventId = eventId, Exception = exception });
+            Messages.Enqueue(new LogMessage { LogLevel = logLevel, EventId = eventId, Exception = exception });
         }
 
         public class LogMessage
