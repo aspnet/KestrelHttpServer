@@ -155,11 +155,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 try
                 {
-                    if (_requestAborted == 0)
-                    {
-                        await TryProduceInvalidRequestResponse();
-                        Output.Dispose();
-                    }
+                    await TryProduceInvalidRequestResponse();
+                    Output.Dispose();
                 }
                 catch (Exception ex)
                 {
