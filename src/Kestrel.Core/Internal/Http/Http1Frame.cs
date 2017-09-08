@@ -6,9 +6,6 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Text;
 using System.Text.Encodings.Web.Utf8;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
@@ -416,41 +413,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestTimedOut = false;
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestCount++;
-        }
-
-        protected override Task WriteSuffix()
-        {
-            // _autoChunk should be checked after we are sure ProduceStart() has been called
-            // since ProduceStart() may set _autoChunk to true.
-            if (_autoChunk)
-            {
-                return WriteAutoChunkSuffixAwaited();
-            }
-
-            if (_keepAlive)
-            {
-                Log.ConnectionKeepAlive(ConnectionId);
-            }
-
-            if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
-            {
-                Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private async Task WriteAutoChunkSuffixAwaited()
-        {
-            // For the same reason we call CheckLastWrite() in Content-Length responses.
-            _abortedCts = null;
-
-            await Output.WriteStreamSuffixAsync(default(CancellationToken));
-
-            if (_keepAlive)
-            {
-                Log.ConnectionKeepAlive(ConnectionId);
-            }
         }
     }
 }

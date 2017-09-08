@@ -10,7 +10,6 @@ using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Encodings.Web.Utf8;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -45,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected RequestProcessingStatus _requestProcessingStatus;
         protected volatile bool _keepAlive = true; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
         private bool _canHaveBody;
-        protected bool _autoChunk;
+        private bool _autoChunk;
         protected Exception _applicationException;
         private BadHttpRequestException _requestRejectedException;
 
@@ -802,7 +801,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             await WriteSuffix();
         }
 
-        protected abstract Task WriteSuffix();
+        private Task WriteSuffix()
+        {
+            // _autoChunk should be checked after we are sure ProduceStart() has been called
+            // since ProduceStart() may set _autoChunk to true.
+            if (_autoChunk || _httpVersion == Http.HttpVersion.Http2)
+            {
+                return WriteSuffixAwaited();
+            }
+
+            if (_keepAlive)
+            {
+                Log.ConnectionKeepAlive(ConnectionId);
+            }
+
+            if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
+            {
+                Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private async Task WriteSuffixAwaited()
+        {
+            // For the same reason we call CheckLastWrite() in Content-Length responses.
+            _abortedCts = null;
+
+            await Output.WriteStreamSuffixAsync(default(CancellationToken));
+
+            if (_keepAlive)
+            {
+                Log.ConnectionKeepAlive(ConnectionId);
+            }
+
+            if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
+            {
+                Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
+            }
+        }
 
         private void CreateResponseHeader(bool appCompleted)
         {
