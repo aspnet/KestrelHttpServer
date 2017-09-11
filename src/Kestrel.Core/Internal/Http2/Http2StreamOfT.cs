@@ -3,11 +3,11 @@
 
 using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 {
                     try
                     {
-                        //KestrelEventSource.Log.RequestStart(this);
+                        KestrelEventSource.Log.RequestStart(this);
 
                         await _application.ProcessRequestAsync(context);
 
@@ -71,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                     finally
                     {
-                        //KestrelEventSource.Log.RequestStop(this);
+                        KestrelEventSource.Log.RequestStop(this);
 
                         // Trigger OnStarting if it hasn't been called yet and the app hasn't
                         // already failed. If an OnStarting callback throws we can go through
