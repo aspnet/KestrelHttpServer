@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 TimeoutControl = null
             };
 
-            var frame = new Frame<object>(application: null, frameContext: frameContext);
+            var frame = new Frame<object>(application: null, context: frameContext);
 
             frame.Reset();
 

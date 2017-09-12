@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 PipeFactory = new PipeFactory()
             };
 
-            _frame = new Frame<object>(application: null, frameContext: frameContext);
+            _frame = new Frame<object>(application: null, context: frameContext);
         }
 
         [IterationSetup]

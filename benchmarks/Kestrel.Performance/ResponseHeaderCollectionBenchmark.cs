@@ -182,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 PipeFactory = new PipeFactory()
             };
 
-            var frame = new Frame<object>(application: null, frameContext: frameContext);
+            var frame = new Frame<object>(application: null, context: frameContext);
 
             frame.Reset();
             _responseHeadersDirect = (FrameResponseHeaders)frame.ResponseHeaders;

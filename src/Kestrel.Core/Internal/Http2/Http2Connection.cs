@@ -235,9 +235,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream) && !stream.MessageBody.IsCompleted)
+            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream) && !stream.HasReceivedEndStream)
             {
-                return stream.MessageBody.OnDataAsync(_incomingFrame.DataPayload,
+                return stream.OnDataAsync(_incomingFrame.DataPayload,
                     endStream: (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM);
             }
 
@@ -272,7 +272,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 StreamLifetimeHandler = this,
                 FrameWriter = _frameWriter
             });
-            _currentHeadersStream.ExpectBody = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == 0;
+            _currentHeadersStream.ExpectData = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == 0;
             _currentHeadersStream.Reset();
 
             _streams[_incomingFrame.StreamId] = _currentHeadersStream;

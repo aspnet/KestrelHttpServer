@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Text;
 using System.Text.Encodings.Web.Utf8;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
@@ -24,7 +25,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private volatile bool _requestTimedOut;
         private uint _requestCount;
-        protected bool _upgradeAvailable;
 
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
         private Uri _absoluteRequestTarget;
@@ -403,9 +403,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        protected override string CreateRequestId()
-            => StringUtilities.ConcatAsHexSuffix(ConnectionId, ':', _requestCount);
-
         protected override void OnReset()
         {
             FastFeatureSet(typeof(IHttpUpgradeFeature), this);
@@ -415,6 +412,80 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _absoluteRequestTarget = null;
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestCount++;
+        }
+
+        protected override void OnRequestProcessingEnding()
+        {
+            Input.Complete();
+        }
+
+        protected override string CreateRequestId()
+            => StringUtilities.ConcatAsHexSuffix(ConnectionId, ':', _requestCount);
+
+        protected override MessageBody CreateMessageBody()
+            => Http1MessageBody.For(_httpVersion, FrameRequestHeaders, this);
+
+        protected override async Task<bool> ParseRequestAsync()
+        {
+            Reset();
+            TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.StopProcessingNextRequest);
+
+            while (_requestProcessingStatus != RequestProcessingStatus.AppStarted)
+            {
+                var result = await Input.ReadAsync();
+
+                var examined = result.Buffer.End;
+                var consumed = result.Buffer.End;
+
+                try
+                {
+                    ParseRequest(result.Buffer, out consumed, out examined);
+                }
+                catch (InvalidOperationException)
+                {
+                    if (_requestProcessingStatus == RequestProcessingStatus.ParsingHeaders)
+                    {
+                        throw BadHttpRequestException.GetException(RequestRejectionReason
+                            .MalformedRequestInvalidHeaders);
+                    }
+                    throw;
+                }
+                finally
+                {
+                    Input.Advance(consumed, examined);
+                }
+
+                if (result.IsCompleted)
+                {
+                    switch (_requestProcessingStatus)
+                    {
+                        case RequestProcessingStatus.RequestPending:
+                            return false;
+                        case RequestProcessingStatus.ParsingRequestLine:
+                            throw BadHttpRequestException.GetException(
+                                RequestRejectionReason.InvalidRequestLine);
+                        case RequestProcessingStatus.ParsingHeaders:
+                            throw BadHttpRequestException.GetException(
+                                RequestRejectionReason.MalformedRequestInvalidHeaders);
+                    }
+                }
+                else if (!_keepAlive && _requestProcessingStatus == RequestProcessingStatus.RequestPending)
+                {
+                    // Stop the request processing loop if the server is shutting down or there was a keep-alive timeout
+                    // and there is no ongoing request.
+                    return false;
+                }
+                else if (RequestTimedOut)
+                {
+                    // In this case, there is an ongoing request but the start line/header parsing has timed out, so send
+                    // a 408 response.
+                    throw BadHttpRequestException.GetException(RequestRejectionReason.RequestTimeout);
+                }
+            }
+
+            EnsureHostHeaderExists();
+
+            return true;
         }
     }
 }

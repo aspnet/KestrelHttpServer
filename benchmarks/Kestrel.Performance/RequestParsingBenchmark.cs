@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 TimeoutControl = new MockTimeoutControl()
             };
 
-            Frame = new Frame<object>(application: null, frameContext: frameContext);
+            Frame = new Frame<object>(application: null, context: frameContext);
         }
 
         [Benchmark(Baseline = true, OperationsPerInvoke = RequestParsingData.InnerLoopCount)]

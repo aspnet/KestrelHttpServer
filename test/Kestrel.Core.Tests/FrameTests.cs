@@ -318,7 +318,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void InitializeStreamsResetsStreams()
         {
             // Arrange
-            var messageBody = MessageBody.For(Kestrel.Core.Internal.Http.HttpVersion.Http11, (FrameRequestHeaders)_frame.RequestHeaders, _frame);
+            var messageBody = Http1MessageBody.For(Kestrel.Core.Internal.Http.HttpVersion.Http11, (FrameRequestHeaders)_frame.RequestHeaders, _frame);
             _frame.InitializeStreams(messageBody);
 
             var originalRequestBody = _frame.RequestBody;

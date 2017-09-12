@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -44,6 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected RequestProcessingStatus _requestProcessingStatus;
         protected volatile bool _keepAlive = true; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
+        protected bool _upgradeAvailable;
         private bool _canHaveBody;
         private bool _autoChunk;
         protected Exception _applicationException;
@@ -284,7 +286,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public MinDataRate MinResponseDataRate { get; set; }
 
-        public void InitializeStreams(IMessageBody messageBody)
+        public void InitializeStreams(MessageBody messageBody)
         {
             if (_streams == null)
             {
@@ -365,7 +367,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected abstract void OnReset();
 
+        protected virtual void OnRequestProcessingEnding()
+        {
+        }
+
+        protected virtual void OnRequestProcessingEnded()
+        {
+        }
+
         protected abstract string CreateRequestId();
+
+        protected abstract MessageBody CreateMessageBody();
+
+        protected abstract Task<bool> ParseRequestAsync();
+
+        protected abstract void CreateHttpContext();
+
+        protected abstract void DisposeHttpContext();
+
+        protected abstract Task InvokeApplicationAsync();
 
         private void CancelRequestAbortedToken()
         {
@@ -398,7 +418,176 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public abstract Task ProcessRequestsAsync();
+        public async Task ProcessRequestsAsync()
+        {
+            try
+            {
+                while (_keepAlive)
+                {
+                    if (!await ParseRequestAsync())
+                    {
+                        return;
+                    }
+
+                    var messageBody = CreateMessageBody();
+
+                    if (!messageBody.RequestKeepAlive)
+                    {
+                        _keepAlive = false;
+                    }
+
+                    _upgradeAvailable = messageBody.RequestUpgrade;
+
+                    InitializeStreams(messageBody);
+
+                    CreateHttpContext();
+                    try
+                    {
+                        try
+                        {
+                            KestrelEventSource.Log.RequestStart(this);
+
+                            await InvokeApplicationAsync();
+
+                            if (_requestAborted == 0)
+                            {
+                                VerifyResponseContentLength();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ReportApplicationError(ex);
+
+                            if (ex is BadHttpRequestException)
+                            {
+                                throw;
+                            }
+                        }
+                        finally
+                        {
+                            KestrelEventSource.Log.RequestStop(this);
+
+                            // Trigger OnStarting if it hasn't been called yet and the app hasn't
+                            // already failed. If an OnStarting callback throws we can go through
+                            // our normal error handling in ProduceEnd.
+                            // https://github.com/aspnet/KestrelHttpServer/issues/43
+                            if (!HasResponseStarted && _applicationException == null && _onStarting != null)
+                            {
+                                await FireOnStarting();
+                            }
+
+                            PauseStreams();
+
+                            if (_onCompleted != null)
+                            {
+                                await FireOnCompleted();
+                            }
+                        }
+
+                        // If _requestAbort is set, the connection has already been closed.
+                        if (_requestAborted == 0)
+                        {
+                            if (HasResponseStarted)
+                            {
+                                // If the response has already started, call ProduceEnd() before
+                                // consuming the rest of the request body to prevent
+                                // delaying clients waiting for the chunk terminator:
+                                //
+                                // https://github.com/dotnet/corefx/issues/17330#issuecomment-288248663
+                                //
+                                // ProduceEnd() must be called before _application.DisposeContext(), to ensure
+                                // HttpContext.Response.StatusCode is correctly set when
+                                // IHttpContextFactory.Dispose(HttpContext) is called.
+                                await ProduceEnd();
+                            }
+
+                            // ForZeroContentLength does not complete the reader nor the writer
+                            if (!messageBody.IsEmpty && _keepAlive)
+                            {
+                                // Finish reading the request body in case the app did not.
+                                await messageBody.ConsumeAsync();
+                            }
+
+                            if (!HasResponseStarted)
+                            {
+                                await ProduceEnd();
+                            }
+                        }
+                        else if (!HasResponseStarted)
+                        {
+                            // If the request was aborted and no response was sent, there's no
+                            // meaningful status code to log.
+                            StatusCode = 0;
+                        }
+                    }
+                    catch (BadHttpRequestException ex)
+                    {
+                        // Handle BadHttpRequestException thrown during app execution or remaining message body consumption.
+                        // This has to be caught here so StatusCode is set properly before disposing the HttpContext
+                        // (DisposeContext logs StatusCode).
+                        SetBadRequestState(ex);
+                    }
+                    finally
+                    {
+                        DisposeHttpContext();
+
+                        // StopStreams should be called before the end of the "if (!_requestProcessingStopping)" block
+                        // to ensure InitializeStreams has been called.
+                        StopStreams();
+
+                        if (HasStartedConsumingRequestBody)
+                        {
+                            RequestBodyPipe.Reader.Complete();
+
+                            // Wait for MessageBody.PumpAsync() to call RequestBodyPipe.Writer.Complete().
+                            await messageBody.StopAsync();
+
+                            // At this point both the request body pipe reader and writer should be completed.
+                            RequestBodyPipe.Reset();
+                        }
+                    }
+                }
+            }
+            catch (BadHttpRequestException ex)
+            {
+                // Handle BadHttpRequestException thrown during request line or header parsing.
+                // SetBadRequestState logs the error.
+                SetBadRequestState(ex);
+            }
+            catch (ConnectionResetException ex)
+            {
+                // Don't log ECONNRESET errors made between requests. Browsers like IE will reset connections regularly.
+                if (_requestProcessingStatus != RequestProcessingStatus.RequestPending)
+                {
+                    Log.RequestProcessingError(ConnectionId, ex);
+                }
+            }
+            catch (IOException ex)
+            {
+                Log.RequestProcessingError(ConnectionId, ex);
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning(0, ex, CoreStrings.RequestProcessingEndError);
+            }
+            finally
+            {
+                try
+                {
+                    OnRequestProcessingEnding();
+                    await TryProduceInvalidRequestResponse();
+                    Output.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Log.LogWarning(0, ex, CoreStrings.ConnectionShutdownError);
+                }
+                finally
+                {
+                    OnRequestProcessingEnded();
+                }
+            }
+        }
 
         public void OnStarting(Func<object, Task> callback, object state)
         {
