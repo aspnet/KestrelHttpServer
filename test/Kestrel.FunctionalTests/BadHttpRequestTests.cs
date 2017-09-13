@@ -176,7 +176,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var client = server.CreateConnection())
                 {
-                    await client.Send(
+                    await client.SendAll(
                         "GET /\x0D\0x0ALocation:http://www.contoso.com/ HTTP/1.1",
                         "Host:\r\n\r\n");
 
