@@ -4,12 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
@@ -173,26 +170,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task HostHeaderAcceptedWithPeriod()
+        public async Task TestRequestSplitting()
         {
-            using (var server = CreateServer())
-            {
-                using (var client = server.CreateConnection())
-                {
-                    await client.Send(
-                        "GET / HTTP/1.1",
-                        "Host: .",
-                        "Connection: close\r\n\r\n");
-
-                    await client.ReceiveStartsWith("HTTP/1.1 200");
-                }
-            }
-        }
-
-        [Fact]
-        public async Task HttpRequestSplittingFails()
-        {
-            using (var server = CreateServer())
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = Mock.Of<IKestrelTrace>() }))
             {
                 using (var client = server.CreateConnection())
                 {
@@ -203,33 +183,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await client.ReceiveStartsWith("HTTP/1.1 400");
                 }
             }
-        }
-
-        [Theory]
-        [InlineData("[0x00]", 400)]
-        public async Task ArbitraryHttpMethodsAreRejected(string method, int statusCode)
-        {
-            using (var server = CreateServer())
-            {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.Send(
-                      $"{method} / HTTP/1.1",
-                      "Host:\r\n\r\n");
-
-                    await connection.ReceiveStartsWith($"HTTP/1.1 {statusCode}");
-                }
-            };
-        }
-
-        private TestServer CreateServer()
-        {
-            return new TestServer(async httpContext => {
-                var readBuffer = new byte[128];
-                var readBytes = await httpContext.Request.Body.ReadAsync(readBuffer, 0, readBuffer.Length);
-
-                await httpContext.Response.WriteAsync("");
-            });
         }
 
         private async Task TestBadRequest(string request, string expectedResponseStatusCode, string expectedExceptionMessage, string expectedAllowHeader = null)
