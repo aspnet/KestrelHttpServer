@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         }
 
         public static MessageBody For(
-            FrameRequestHeaders headers,
+            HttpRequestHeaders headers,
             Http2Stream context)
         {
             if (!context.ExpectData)

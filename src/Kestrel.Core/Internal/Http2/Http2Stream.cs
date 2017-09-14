@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public abstract partial class Http2Stream : Frame
+    public abstract partial class Http2Stream : HttpProtocol
     {
         private readonly Http2StreamContext _context;
 
@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             => StringUtilities.ConcatAsHexSuffix(ConnectionId, ':', (uint)StreamId);
 
         protected override MessageBody CreateMessageBody()
-            => Http2MessageBody.For(FrameRequestHeaders, this);
+            => Http2MessageBody.For(HttpRequestHeaders, this);
 
         protected override Task<bool> ParseRequestAsync()
         {

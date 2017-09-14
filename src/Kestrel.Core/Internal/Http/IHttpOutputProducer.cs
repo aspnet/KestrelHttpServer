@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         Task WriteAsync<T>(Action<WritableBuffer, T> callback, T state);
         Task FlushAsync(CancellationToken cancellationToken);
         Task Write100ContinueAsync(CancellationToken cancellationToken);
-        void WriteResponseHeaders(int statusCode, string ReasonPhrase, FrameResponseHeaders responseHeaders);
+        void WriteResponseHeaders(int statusCode, string ReasonPhrase, HttpResponseHeaders responseHeaders);
         Task WriteDataAsync(ArraySegment<byte> data, CancellationToken cancellationToken);
         Task WriteStreamSuffixAsync(CancellationToken cancellationToken);
     }

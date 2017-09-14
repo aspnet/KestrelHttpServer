@@ -682,7 +682,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             }
         }
 
-        private OutputProducer CreateOutputProducer(PipeOptions pipeOptions, CancellationTokenSource cts = null)
+        private Http1OutputProducer CreateOutputProducer(PipeOptions pipeOptions, CancellationTokenSource cts = null)
         {
             var pair = _pipeFactory.CreateConnectionPair(pipeOptions, pipeOptions);
 
@@ -697,7 +697,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var socket = new MockSocket(_mockLibuv, _libuvThread.Loop.ThreadId, transportContext.Log);
             var consumer = new LibuvOutputConsumer(pair.Application.Input, _libuvThread, socket, "0", transportContext.Log);
 
-            var frame = new Frame<object>(null, new FrameContext
+            var http1Connection = new Http1Connection<object>(null, new Http1ConnectionContext
             {
                 ServiceContext = serviceContext,
                 ConnectionFeatures = new FeatureCollection(),
@@ -709,15 +709,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
             if (cts != null)
             {
-                frame.RequestAborted.Register(cts.Cancel);
+                http1Connection.RequestAborted.Register(cts.Cancel);
             }
 
-            var ignore = WriteOutputAsync(consumer, pair.Application.Input, frame);
+            var ignore = WriteOutputAsync(consumer, pair.Application.Input, http1Connection);
 
-            return (OutputProducer)frame.Output;
+            return (Http1OutputProducer)http1Connection.Output;
         }
 
-        private async Task WriteOutputAsync(LibuvOutputConsumer consumer, IPipeReader outputReader, Frame frame)
+        private async Task WriteOutputAsync(LibuvOutputConsumer consumer, IPipeReader outputReader, Http1Connection http1Connection)
         {
             // This WriteOutputAsync() calling code is equivalent to that in LibuvConnection.
             try
@@ -726,12 +726,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 // Without ConfigureAwait(false), xunit will dispatch.
                 await consumer.WriteOutputAsync().ConfigureAwait(false);
 
-                frame.Abort(error: null);
+                http1Connection.Abort(error: null);
                 outputReader.Complete();
             }
             catch (UvException ex)
             {
-                frame.Abort(ex);
+                http1Connection.Abort(ex);
                 outputReader.Complete(ex);
             }
         }

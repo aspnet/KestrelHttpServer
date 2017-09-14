@@ -12,13 +12,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public abstract class Http1MessageBody : MessageBody
     {
-        private readonly Http1Frame _context;
+        private readonly Http1Connection _context;
 
         private bool _send100Continue = true;
         private volatile bool _canceled;
         private Task _pumpTask;
 
-        protected Http1MessageBody(Http1Frame context)
+        protected Http1MessageBody(Http1Connection context)
             : base(context)
         {
             _context = context;
@@ -154,7 +154,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             if (_send100Continue)
             {
-                _context.FrameControl.ProduceContinue();
+                _context.HttpResponseControl.ProduceContinue();
                 _send100Continue = false;
             }
         }
@@ -222,8 +222,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public static MessageBody For(
             HttpVersion httpVersion,
-            FrameRequestHeaders headers,
-            Http1Frame context)
+            HttpRequestHeaders headers,
+            Http1Connection context)
         {
             // see also http://tools.ietf.org/html/rfc2616#section-4.4
             var keepAlive = httpVersion != HttpVersion.Http10;
@@ -232,7 +232,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var upgrade = false;
             if (connection.Count > 0)
             {
-                var connectionOptions = FrameHeaders.ParseConnection(connection);
+                var connectionOptions = HttpHeaders.ParseConnection(connection);
 
                 upgrade = (connectionOptions & ConnectionOptions.Upgrade) == ConnectionOptions.Upgrade;
                 keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
@@ -241,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var transferEncoding = headers.HeaderTransferEncoding;
             if (transferEncoding.Count > 0)
             {
-                var transferCoding = FrameHeaders.GetFinalTransferCoding(headers.HeaderTransferEncoding);
+                var transferCoding = HttpHeaders.GetFinalTransferCoding(headers.HeaderTransferEncoding);
 
                 // https://tools.ietf.org/html/rfc7230#section-3.3.3
                 // If a Transfer-Encoding header field
@@ -300,7 +300,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private class ForUpgrade : Http1MessageBody
         {
-            public ForUpgrade(Http1Frame context)
+            public ForUpgrade(Http1Connection context)
                 : base(context)
             {
                 RequestUpgrade = true;
@@ -320,7 +320,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             private readonly long _contentLength;
             private long _inputLength;
 
-            public ForContentLength(bool keepAlive, long contentLength, Http1Frame context)
+            public ForContentLength(bool keepAlive, long contentLength, Http1Connection context)
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
@@ -370,7 +370,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             private Mode _mode = Mode.Prefix;
 
-            public ForChunkedEncoding(bool keepAlive, Http1Frame context)
+            public ForChunkedEncoding(bool keepAlive, Http1Connection context)
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;

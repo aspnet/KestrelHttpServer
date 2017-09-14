@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return _frameWriter.WriteDataAsync(_streamId, _emptyData, endStream: true, cancellationToken: cancellationToken);
         }
 
-        public void WriteResponseHeaders(int statusCode, string ReasonPhrase, FrameResponseHeaders responseHeaders)
+        public void WriteResponseHeaders(int statusCode, string ReasonPhrase, HttpResponseHeaders responseHeaders)
         {
             _frameWriter.WriteResponseHeaders(_streamId, statusCode, responseHeaders);
         }
