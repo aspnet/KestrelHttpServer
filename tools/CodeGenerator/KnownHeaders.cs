@@ -68,6 +68,7 @@ namespace CodeGenerator
             public byte[] Bytes => Encoding.ASCII.GetBytes($"\r\n{Name}: ");
             public int BytesOffset { get; set; }
             public int BytesCount { get; set; }
+            public bool ExistenceCheck { get; set; }
             public bool EnhancedSetter { get; set; }
             public bool PrimaryHeader { get; set; }
             public string TestBit() => $"(_bits & {1L << Index}L) != 0";
@@ -168,6 +169,11 @@ namespace CodeGenerator
                 "Access-Control-Request-Method",
                 "Access-Control-Request-Headers",
             };
+            var requestHeadersExistence = new[]
+            {
+                "Connection",
+                "Transfer-Encoding"
+            };
             var requestHeaders = commonHeaders.Concat(new[]
             {
                 "Accept",
@@ -197,7 +203,8 @@ namespace CodeGenerator
             {
                 Name = header,
                 Index = index,
-                PrimaryHeader = requestPrimaryHeaders.Contains(header)
+                PrimaryHeader = requestPrimaryHeaders.Contains(header),
+                ExistenceCheck = requestHeadersExistence.Contains(header)
             })
             .Concat(new[] { new KnownHeader
             {
@@ -209,6 +216,13 @@ namespace CodeGenerator
             Debug.Assert(requestHeaders.Length <= 64);
             Debug.Assert(requestHeaders.Max(x => x.Index) <= 62);
 
+            var responseHeadersExistence = new[]
+            {
+                "Connection",
+                "Server",
+                "Date",
+                "Transfer-Encoding"
+            };
             var enhancedHeaders = new[]
             {
                 "Connection",
@@ -245,6 +259,7 @@ namespace CodeGenerator
                 Name = header,
                 Index = index,
                 EnhancedSetter = enhancedHeaders.Contains(header),
+                ExistenceCheck = responseHeadersExistence.Contains(header),
                 PrimaryHeader = responsePrimaryHeaders.Contains(header)
             })
             .Concat(new[] { new KnownHeader
@@ -310,6 +325,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private long _bits = 0;
         private HeaderReferences _headers;
+{Each(loop.Headers.Where(header => header.ExistenceCheck), header => $@"
+        public bool Has{header.Identifier} => ({header.TestBit()} && _headers._{header.Identifier}.Count != 0) ? true : false;")}
         {Each(loop.Headers, header => $@"
         public StringValues Header{header.Identifier}
         {{{(header.Identifier == "ContentLength" ? $@"
