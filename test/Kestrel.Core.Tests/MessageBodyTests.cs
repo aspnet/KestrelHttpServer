@@ -338,7 +338,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             using (var input = new TestInput())
             {
-                input.Frame.Method = method;
+                ((IHttpRequestFeature)input.Frame).Method = method;
                 var ex = Assert.Throws<BadHttpRequestException>(() =>
                     MessageBody.For(HttpVersion.Http11, new FrameRequestHeaders(), input.Frame));
 
@@ -354,7 +354,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             using (var input = new TestInput())
             {
-                input.Frame.Method = method;
+                ((IHttpRequestFeature)input.Frame).Method = method;
                 var ex = Assert.Throws<BadHttpRequestException>(() =>
                     MessageBody.For(HttpVersion.Http10, new FrameRequestHeaders(), input.Frame));
 

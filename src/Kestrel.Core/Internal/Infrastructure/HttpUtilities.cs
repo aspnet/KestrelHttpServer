@@ -142,6 +142,112 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
+        /// <summary>
+        /// Parses string <paramref name="value"/> for a known HTTP method.
+        /// </summary>
+        /// <remarks>
+        /// A "known HTTP method" can be an HTTP method name defined in the HTTP/1.1 RFC.
+        /// The Known Methods (CONNECT, DELETE, GET, HEAD, PATCH, POST, PUT, OPTIONS, TRACE)
+        /// </remarks>
+        /// <returns><c>true</c> if the input matches a known string, <c>false</c> otherwise.</returns>
+        public static bool GetKnownMethod(string value, out HttpMethod method)
+        {
+            // Only called if user code overrides and sets the Method on IHttpRequestFeature
+            // This should be a rare occurance so not performance sensitive also needs to validate inputs
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            var length = value.Length;
+            if (length == 0)
+            {
+                throw new ArgumentException(nameof(value));
+            }
+
+            // Clear the 6th bit to get Upper case char. We are testing direct equality 
+            // so doesn't matter that it would garble chars outside [A-Za-z] range
+            var firstUppercaseChar = (char)(value[0] & ~0x20);
+            if (length == 3)
+            {
+                if (firstUppercaseChar == 'G' && string.Equals(value, "GET", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Get;
+                    return true;
+                }
+                if (firstUppercaseChar == 'P' && string.Equals(value, "PUT", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Put;
+                    return true;
+                }
+
+                method = HttpMethod.Custom;
+                return false;
+            }
+            if (length == 4)
+            {
+                if (firstUppercaseChar == 'H' && string.Equals(value, "HEAD", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Head;
+                    return true;
+                }
+                if (firstUppercaseChar == 'P' && string.Equals(value, "POST", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Post;
+                    return true;
+                }
+
+                method = HttpMethod.Custom;
+                return false;
+            }
+            if (length == 5)
+            {
+                if (firstUppercaseChar == 'T' && string.Equals(value, "TRACE", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Trace;
+                    return true;
+                }
+                if (firstUppercaseChar == 'P' && string.Equals(value, "PATCH", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Patch;
+                    return true;
+                }
+
+                method = HttpMethod.Custom;
+                return false;
+            }
+            if (length == 6)
+            {
+                if (firstUppercaseChar == 'D' && string.Equals(value, "DELETE", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Delete;
+                    return true;
+                }
+
+                method = HttpMethod.Custom;
+                return false;
+            }
+            if (length == 7)
+            {
+                if (firstUppercaseChar == 'C' && string.Equals(value, "CONNECT", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Connect;
+                    return true;
+                }
+                if (firstUppercaseChar == 'O' && string.Equals(value, "OPTIONS", StringComparison.OrdinalIgnoreCase))
+                {
+                    method = HttpMethod.Options;
+                    return true;
+                }
+
+                method = HttpMethod.Custom;
+                return false;
+            }
+
+            method = HttpMethod.Custom;
+            return false;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe HttpMethod GetKnownMethod(byte* data, int length, out int methodLength)
         {

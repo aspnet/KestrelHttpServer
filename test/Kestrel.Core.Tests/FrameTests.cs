@@ -357,7 +357,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _transport.Input.Advance(_consumed, _examined);
 
             Assert.True(returnValue);
-            Assert.Equal(expectedMethod, _frame.Method);
+            Assert.Equal(expectedMethod, ((IHttpRequestFeature)_frame).Method);
             Assert.Equal(expectedRawTarget, _frame.RawTarget);
             Assert.Equal(expectedDecodedPath, _frame.Path);
             Assert.Equal(expectedQueryString, _frame.QueryString);
@@ -802,6 +802,51 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Assert
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() => ((IHttpMaxRequestBodySizeFeature)_frame).MaxRequestBodySize = -1);
             Assert.StartsWith(CoreStrings.NonNegativeNumberOrNullRequired, ex.Message);
+        }
+
+        [Theory]
+        [InlineData("g", HttpMethod.Custom, "G")]
+        [InlineData("G", HttpMethod.Custom, "G")]
+        [InlineData("get", HttpMethod.Get, "GET")]
+        [InlineData("GET", HttpMethod.Get, "GET")]
+        [InlineData("put", HttpMethod.Put, "PUT")]
+        [InlineData("PUT", HttpMethod.Put, "PUT")]
+        [InlineData("post", HttpMethod.Post, "POST")]
+        [InlineData("POST", HttpMethod.Post, "POST")]
+        [InlineData("head", HttpMethod.Head, "HEAD")]
+        [InlineData("HEAD", HttpMethod.Head, "HEAD")]
+        [InlineData("patch", HttpMethod.Patch, "PATCH")]
+        [InlineData("PATCH", HttpMethod.Patch, "PATCH")]
+        [InlineData("trace", HttpMethod.Trace, "TRACE")]
+        [InlineData("TRACE", HttpMethod.Trace, "TRACE")]
+        [InlineData("delete", HttpMethod.Delete, "DELETE")]
+        [InlineData("DELETE", HttpMethod.Delete, "DELETE")]
+        [InlineData("options", HttpMethod.Options, "OPTIONS")]
+        [InlineData("OPTIONS", HttpMethod.Options, "OPTIONS")]
+        [InlineData("connect", HttpMethod.Connect, "CONNECT")]
+        [InlineData("CONNECT", HttpMethod.Connect, "CONNECT")]
+        [InlineData("unknown", HttpMethod.Custom, "UNKNOWN")]
+        [InlineData("UNKNOWN", HttpMethod.Custom, "UNKNOWN")]
+        public void RequestFeatureMethodSetsFrameEnum(string method, HttpMethod expectedEnum, string expectedString)
+        {
+            using (var input = new TestInput())
+            {
+                ((IHttpRequestFeature)input.Frame).Method = method;
+
+                Assert.Equal(expectedEnum, input.Frame.Method);
+                Assert.Equal(expectedString, ((IHttpRequestFeature)input.Frame).Method);
+            }
+        }
+
+        [Theory]
+        [InlineData(null, typeof(ArgumentNullException))]
+        [InlineData("", typeof(ArgumentException))]
+        public void BlankMethodThrows(string method, Type exceptionType)
+        {
+            using (var input = new TestInput())
+            {
+                Assert.Throws(exceptionType, () => ((IHttpRequestFeature) input.Frame).Method = method);
+            }
         }
 
         private static async Task WaitForCondition(TimeSpan timeout, Func<bool> condition)
