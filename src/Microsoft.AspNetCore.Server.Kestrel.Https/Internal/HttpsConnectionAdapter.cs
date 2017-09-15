@@ -110,8 +110,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
             try
             {
-                await sslStream.AuthenticateAsServerAsync(_serverCertificate, certificateRequired,
-                        _options.SslProtocols, _options.CheckCertificateRevocation);
+                var handshakeTask = sslStream.AuthenticateAsServerAsync(
+                    _serverCertificate, certificateRequired, _options.SslProtocols, _options.CheckCertificateRevocation);
+                var handshakeTimeoutTask = Task.Delay(_options.HandshakeTimeout);
+
+                var firstTask = await Task.WhenAny(handshakeTask, handshakeTimeoutTask);
+
+                if (firstTask == handshakeTimeoutTask)
+                {
+                    _logger.LogInformation(2, HttpsStrings.AuthenticationTimedOut);
+
+                    // Observe any exception that might be raised from AuthenticateAsServerAsync after the timeout.
+                    ObserveTaskException(handshakeTask);
+
+                    // This will cause the request processing loop to exit immediately and close the underlying connection.
+                    sslStream.Dispose();
+                    return _closedAdaptedConnection;
+                }
+
+                // Observe potential handshake failures.
+                await handshakeTask;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation(2, HttpsStrings.AuthenticationTimedOut);
+                sslStream.Dispose();
+                return _closedAdaptedConnection;
             }
             catch (IOException ex)
             {
@@ -179,6 +203,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
             }
 
             return new X509Certificate2(certificate);
+        }
+
+        private static void ObserveTaskException(Task task)
+        {
+            _ = task.ContinueWith(t =>
+            {
+                _ = t.Exception;
+            });
         }
 
         private class HttpsAdaptedConnection : IAdaptedConnection
