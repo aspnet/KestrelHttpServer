@@ -82,23 +82,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var connection = server.CreateConnection())
             {
-                for (var i = 0; i < 10; i++)
+                // Send requests for 3x the duration of the keep-alive timeout. The connection should stay alive.
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                while (stopwatch.ElapsedMilliseconds < _keepAliveTimeout.TotalMilliseconds * 3)
                 {
                     await connection.Send(
                         "GET / HTTP/1.1",
                         "Host:",
                         "",
                         "");
-
-                    var stopWatch = new Stopwatch();
-                    stopWatch.Start();
-                    await Task.Delay(_shortDelay);
-                    stopWatch.Stop();
-                    _logger.LogDebug($"Short delay lasted {TimeSpan.FromMilliseconds(stopWatch.ElapsedMilliseconds).TotalSeconds} seconds instead of {_shortDelay.TotalSeconds} seconds.");
-                }
-
-                for (var i = 0; i < 10; i++)
-                {
                     await ReceiveResponse(connection);
                 }
             }
