@@ -77,6 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
 
+                    // Don't change this to Task.Delay. See https://github.com/aspnet/KestrelHttpServer/issues/1684#issuecomment-330285740.
                     Thread.Sleep(_shortDelay);
                 }
 
