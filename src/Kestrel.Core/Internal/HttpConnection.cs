@@ -10,6 +10,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -135,14 +136,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
                 }
 
-                if (_http1Connection.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol == "h2" &&
-                    Interlocked.CompareExchange(ref _http2ConnectionState, Http2ConnectionStarted, Http2ConnectionNotStarted) == Http2ConnectionNotStarted)
+                var hasTls = _context.ConnectionFeatures.Get<ITlsConnectionFeature>() != null;
+                var applicationProtocol = _context.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol;
+                var http1Enabled = (_context.Protocols & EndPointProtocols.Http1) == EndPointProtocols.Http1;
+                var http2Enabled = (_context.Protocols & EndPointProtocols.Http2) == EndPointProtocols.Http2;
+
+                if (!hasTls && http1Enabled && http2Enabled)
+                {
+                    throw new InvalidOperationException("HTTP/1.x and HTTP/2 cannot both be served on the same cleartext endpoint.");
+                }
+
+                var useHttp2 = http2Enabled && (!hasTls || applicationProtocol == "h2");
+
+                if (useHttp2 && Interlocked.CompareExchange(ref _http2ConnectionState, Http2ConnectionStarted, Http2ConnectionNotStarted) == Http2ConnectionNotStarted)
                 {
                     await _http2Connection.ProcessAsync(httpApplication);
                 }
-                else
+                else if (http1Enabled && (applicationProtocol == null || applicationProtocol == "http/1.1"))
                 {
                     await _http1Connection.ProcessRequestsAsync();
+                }
+                else
+                {
+                    throw new InvalidOperationException("Unable to select a protocol for the endpoint.");
                 }
 
                 await adaptedPipelineTask;
@@ -161,6 +177,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     _context.ServiceContext.ConnectionManager.UpgradedConnectionCount.ReleaseOne();
                 }
+
+                _context.Transport.Output.Complete();
 
                 KestrelEventSource.Log.ConnectionStop(this);
             }

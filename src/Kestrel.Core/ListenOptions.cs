@@ -119,6 +119,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         public bool NoDelay { get; set; } = true;
 
         /// <summary>
+        /// The protocols enabled on this endpoint.
+        /// </summary>
+        /// <remarks>Defaults to HTTP/1.x only.</remarks>
+        public EndPointProtocols Protocols { get; set; } = EndPointProtocols.Http1;
+
+        /// <summary>
         /// Gets the <see cref="List{IConnectionAdapter}"/> that allows each connection <see cref="System.IO.Stream"/>
         /// to be intercepted and transformed.
         /// Configured by the <c>UseHttps()</c> and <see cref="Hosting.ListenOptionsConnectionLoggingExtensions.UseConnectionLogging(ListenOptions)"/>
