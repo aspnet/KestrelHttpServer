@@ -141,9 +141,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 var http1Enabled = (_context.Protocols & EndPointProtocols.Http1) == EndPointProtocols.Http1;
                 var http2Enabled = (_context.Protocols & EndPointProtocols.Http2) == EndPointProtocols.Http2;
 
+                if (_context.Protocols == EndPointProtocols.None)
+                {
+                    throw new InvalidOperationException("An endpoint must be configured to serve at least one protocol.");
+                }
+
                 if (!hasTls && http1Enabled && http2Enabled)
                 {
-                    throw new InvalidOperationException("HTTP/1.x and HTTP/2 cannot both be served on the same cleartext endpoint.");
+                    throw new InvalidOperationException("Using both HTTP/1.x and HTTP/2 on the same endpoint requires the use of TLS.");
+                }
+
+                if (!http1Enabled && http2Enabled && hasTls && applicationProtocol != "h2")
+                {
+                    throw new InvalidOperationException("HTTP/2 over TLS was not negotiated on an HTTP/2-only endpoint.");
                 }
 
                 var useHttp2 = http2Enabled && (!hasTls || applicationProtocol == "h2");
@@ -152,17 +162,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     await _http2Connection.ProcessAsync(httpApplication);
                 }
-                else if (http1Enabled && (applicationProtocol == null || applicationProtocol == "http/1.1"))
-                {
-                    await _http1Connection.ProcessRequestsAsync();
-                }
                 else
                 {
-                    throw new InvalidOperationException("Unable to select a protocol for the endpoint.");
+                    await _http1Connection.ProcessRequestsAsync();
                 }
 
                 await adaptedPipelineTask;
                 await _socketClosedTcs.Task;
+            }
+            catch (InvalidOperationException)
+            {
+                _context.Transport.Output.Complete();
+                throw;
             }
             catch (Exception ex)
             {
@@ -177,8 +188,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     _context.ServiceContext.ConnectionManager.UpgradedConnectionCount.ReleaseOne();
                 }
-
-                _context.Transport.Output.Complete();
 
                 KestrelEventSource.Log.ConnectionStop(this);
             }
