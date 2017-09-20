@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var builder = new WebHostBuilder()
                 .UseKestrel(options =>
                 {
-                    options.Listen(IPAddress.Loopback, 0, listenOptions => listenOptions.Protocols = EndPointProtocols.Http2);
+                    options.Listen(IPAddress.Loopback, 0, listenOptions => listenOptions.Protocols = HttpProtocols.Http2);
                 })
                 .Configure(app => app.Run(context => Task.CompletedTask));
 

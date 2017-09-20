@@ -122,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// The protocols enabled on this endpoint.
         /// </summary>
         /// <remarks>Defaults to HTTP/1.x only.</remarks>
-        public EndPointProtocols Protocols { get; set; } = EndPointProtocols.Http1;
+        public HttpProtocols Protocols { get; set; } = HttpProtocols.Http1;
 
         /// <summary>
         /// Gets the <see cref="List{IConnectionAdapter}"/> that allows each connection <see cref="System.IO.Stream"/>

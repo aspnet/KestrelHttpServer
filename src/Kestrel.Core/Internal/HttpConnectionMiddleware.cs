@@ -23,9 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private readonly IList<IConnectionAdapter> _connectionAdapters;
         private readonly ServiceContext _serviceContext;
         private readonly IHttpApplication<TContext> _application;
-        private readonly EndPointProtocols _protocols;
+        private readonly HttpProtocols _protocols;
 
-        public HttpConnectionMiddleware(IList<IConnectionAdapter> adapters, ServiceContext serviceContext, IHttpApplication<TContext> application, EndPointProtocols protocols)
+        public HttpConnectionMiddleware(IList<IConnectionAdapter> adapters, ServiceContext serviceContext, IHttpApplication<TContext> application, HttpProtocols protocols)
         {
             _serviceContext = serviceContext;
             _application = application;

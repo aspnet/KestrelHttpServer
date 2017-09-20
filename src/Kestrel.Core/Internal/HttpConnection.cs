@@ -138,10 +138,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 var hasTls = _context.ConnectionFeatures.Get<ITlsConnectionFeature>() != null;
                 var applicationProtocol = _context.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol;
-                var http1Enabled = (_context.Protocols & EndPointProtocols.Http1) == EndPointProtocols.Http1;
-                var http2Enabled = (_context.Protocols & EndPointProtocols.Http2) == EndPointProtocols.Http2;
+                var http1Enabled = (_context.Protocols & HttpProtocols.Http1) == HttpProtocols.Http1;
+                var http2Enabled = (_context.Protocols & HttpProtocols.Http2) == HttpProtocols.Http2;
 
-                if (_context.Protocols == EndPointProtocols.None)
+                if (_context.Protocols == HttpProtocols.None)
                 {
                     throw new InvalidOperationException("An endpoint must be configured to serve at least one protocol.");
                 }
