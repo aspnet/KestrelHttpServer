@@ -703,6 +703,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task HEADERS_Received_IncompleteHeaderBlockFragment_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendIncompleteHeadersFrameAsync(streamId: 1);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
         public async Task PRIORITY_Received_StreamIdZero_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
@@ -1113,6 +1123,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task CONTINUATION_Received_IncompleteHeaderBlockFragment_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _postRequestHeaders);
+            await SendIncompleteContinuationFrameAsync(streamId: 1);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
         public async Task CONTINUATION_Sent_WhenHeadersLargerThanFrameLength()
         {
             await InitializeConnectionAsync(_largeHeadersApplication);
@@ -1139,9 +1160,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
 
             var responseHeaders = new HttpResponseHeaders();
-            _hpackDecoder.Decode(headersFrame.HeadersPayload, responseHeaders);
-            _hpackDecoder.Decode(continuationFrame1.HeadersPayload, responseHeaders);
-            _hpackDecoder.Decode(continuationFrame2.HeadersPayload, responseHeaders);
+            _hpackDecoder.Decode(headersFrame.HeadersPayload, false, responseHeaders);
+            _hpackDecoder.Decode(continuationFrame1.HeadersPayload, false, responseHeaders);
+            _hpackDecoder.Decode(continuationFrame2.HeadersPayload, true, responseHeaders);
 
             var responseHeadersDictionary = (IDictionary<string, StringValues>)responseHeaders;
             Assert.Equal(5, responseHeadersDictionary.Count);
@@ -1445,6 +1466,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return SendAsync(frame.Raw);
         }
 
+        private Task SendIncompleteHeadersFrameAsync(int streamId)
+        {
+            var frame = new Http2Frame();
+
+            frame.PrepareHeaders(Http2HeadersFrameFlags.END_HEADERS, streamId);
+            frame.Length = 3;
+
+            // Set up an incomplete Literal Header Field w/ Incremental Indexing frame,
+            // with an incomplete new name
+            frame.Payload[0] = 0;
+            frame.Payload[1] = 2;
+            frame.Payload[2] = (byte)'a';
+
+            return SendAsync(frame.Raw);
+        }
+
         private async Task<bool> SendContinuationAsync(int streamId, Http2ContinuationFrameFlags flags)
         {
             var frame = new Http2Frame();
@@ -1456,6 +1493,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendAsync(frame.Raw);
 
             return done;
+        }
+
+        private Task SendIncompleteContinuationFrameAsync(int streamId)
+        {
+            var frame = new Http2Frame();
+
+            frame.PrepareContinuation(Http2ContinuationFrameFlags.END_HEADERS, streamId);
+            frame.Length = 3;
+
+            // Set up an incomplete Literal Header Field w/ Incremental Indexing frame,
+            // with an incomplete new name
+            frame.Payload[0] = 0;
+            frame.Payload[1] = 2;
+            frame.Payload[2] = (byte)'a';
+
+            return SendAsync(frame.Raw);
         }
 
         private Task SendDataAsync(int streamId, Span<byte> data, bool endStream)
