@@ -809,6 +809,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
         }
 
+        [Fact]
+        public async Task RST_STREAM_Received_StreamIdle_ConnectionError()
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendRstStreamAsync(1);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
         [Theory]
         [InlineData(3)]
         [InlineData(5)]

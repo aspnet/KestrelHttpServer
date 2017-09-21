@@ -247,10 +247,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            if (_incomingFrame.StreamId > _highestOpenedStreamId)
-            {
-                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
-            }
+            ThrowIfIncomingFrameSentToIdleStream();
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream) && !stream.HasReceivedEndStream)
             {
@@ -354,13 +351,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
+            ThrowIfIncomingFrameSentToIdleStream();
+
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
                 stream.Abort(error: null);
-            }
-            else if (_incomingFrame.StreamId > _highestOpenedStreamId)
-            {
-                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             return Task.CompletedTask;
@@ -454,10 +449,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
-            if (_incomingFrame.StreamId > _highestOpenedStreamId)
-            {
-                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
-            }
+            ThrowIfIncomingFrameSentToIdleStream();
 
             if (_incomingFrame.WindowUpdateSizeIncrement == 0)
             {
@@ -501,6 +493,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             return Task.CompletedTask;
+        }
+
+        private void ThrowIfIncomingFrameSentToIdleStream()
+        {
+            // http://httpwg.org/specs/rfc7540.html#rfc.section.5.1
+            // 5.1. Stream states
+            // ...
+            // idle:
+            // ...
+            // Receiving any frame other than HEADERS or PRIORITY on a stream in this state MUST be
+            // treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+            //
+            // If the stream ID in the incoming frame is higher than the highest opened stream ID so
+            // far, then the incoming frame's target stream is in the idle state, which is the implicit
+            // initial state for all streams.
+            if (_incomingFrame.StreamId > _highestOpenedStreamId)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
         }
 
         void IHttp2StreamLifetimeHandler.OnStreamCompleted(int streamId)
