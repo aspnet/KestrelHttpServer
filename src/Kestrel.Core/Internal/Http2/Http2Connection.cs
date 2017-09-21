@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2Frame _incomingFrame = new Http2Frame();
 
         private Http2Stream _currentHeadersStream;
-        private int _lastStreamId;
+        private int _highestOpenedStreamId;
 
         private bool _stopping;
 
@@ -156,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         stream.Abort(error);
                     }
 
-                    await _frameWriter.WriteGoAwayAsync(_lastStreamId, errorCode);
+                    await _frameWriter.WriteGoAwayAsync(_highestOpenedStreamId, errorCode);
                 }
                 finally
                 {
@@ -247,6 +247,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
+            if (_incomingFrame.StreamId > _highestOpenedStreamId)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream) && !stream.HasReceivedEndStream)
             {
                 return stream.OnDataAsync(_incomingFrame.DataPayload,
@@ -299,7 +304,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS)
             {
-                _lastStreamId = _incomingFrame.StreamId;
+                _highestOpenedStreamId = _incomingFrame.StreamId;
                 _ = _currentHeadersStream.ProcessRequestsAsync();
                 _currentHeadersStream = null;
             }
@@ -353,7 +358,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 stream.Abort(error: null);
             }
-            else if (_incomingFrame.StreamId > _lastStreamId)
+            else if (_incomingFrame.StreamId > _highestOpenedStreamId)
             {
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
@@ -478,7 +483,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if ((_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS)
             {
-                _lastStreamId = _currentHeadersStream.StreamId;
+                _highestOpenedStreamId = _currentHeadersStream.StreamId;
                 _ = _currentHeadersStream.ProcessRequestsAsync();
                 _currentHeadersStream = null;
             }

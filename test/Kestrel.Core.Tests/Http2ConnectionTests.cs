@@ -467,15 +467,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task DATA_Received_StreamIdle_StreamError()
+        public async Task DATA_Received_StreamIdle_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
 
             await SendDataAsync(1, _helloWorldBytes, endStream: false);
 
-            await WaitForStreamErrorAsync(expectedStreamId: 1, expectedErrorCode: Http2ErrorCode.STREAM_CLOSED, ignoreNonRstStreamFrames: false);
-
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
