@@ -93,7 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesIndexedHeaderField_StaticTable()
         {
             var headers = new HttpRequestHeaders();
-            _decoder.Decode(_indexedHeaderStatic, headers);
+            _decoder.Decode(_indexedHeaderStatic, headers, endHeaders: true);
             Assert.Equal("GET", ((IHeaderDictionary)headers)[":method"]);
         }
 
@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _dynamicTable.Insert(_headerNameString, _headerValueString);
 
             // Index it
-            _decoder.Decode(_indexedHeaderDynamic, headers);
+            _decoder.Decode(_indexedHeaderDynamic, headers, endHeaders: true);
             Assert.Equal(_headerValueString, ((IHeaderDictionary)headers)[_headerNameString]);
         }
 
@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesIndexedHeaderField_OutOfRange_Error()
         {
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_indexedHeaderDynamic, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_indexedHeaderDynamic, headers, endHeaders: true));
             Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
@@ -190,7 +190,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Index 62 is the first entry in the dynamic table. If there's nothing there, the decoder should throw.
 
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x7e }, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x7e }, headers, endHeaders: true));
             Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
@@ -266,7 +266,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Index 62 is the first entry in the dynamic table. If there's nothing there, the decoder should throw.
 
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x0f, 0x2f }, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x0f, 0x2f }, headers, endHeaders: true));
             Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
@@ -348,7 +348,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Index 62 is the first entry in the dynamic table. If there's nothing there, the decoder should throw.
 
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x1f, 0x2f }, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x1f, 0x2f }, headers, endHeaders: true));
             Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
@@ -361,7 +361,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(DynamicTableInitialMaxSize, _dynamicTable.MaxSize);
 
             var headers = new HttpRequestHeaders();
-            _decoder.Decode(new byte[] { 0x3e }, headers);
+            _decoder.Decode(new byte[] { 0x3e }, headers, endHeaders: true);
 
             Assert.Equal(30, _dynamicTable.MaxSize);
         }
@@ -375,7 +375,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(DynamicTableInitialMaxSize, _dynamicTable.MaxSize);
 
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x3f, 0xe2, 0x1f }, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(new byte[] { 0x3f, 0xe2, 0x1f }, headers, endHeaders: true));
             Assert.Equal(CoreStrings.FormatHPackErrorDynamicTableSizeUpdateTooLarge(4097, DynamicTableInitialMaxSize), exception.Message);
         }
 
@@ -387,7 +387,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .ToArray();
 
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(encoded, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(encoded, headers, endHeaders: true));
             Assert.Equal(CoreStrings.FormatHPackStringLengthTooLarge(4097, HPackDecoder.MaxStringOctets), exception.Message);
         }
 
@@ -421,7 +421,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void WrapsHuffmanDecodingExceptionInHPackDecodingException(byte[] data)
         {
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(data, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(data, headers, endHeaders: true));
             Assert.Equal(CoreStrings.HPackHuffmanError, exception.Message);
             Assert.IsType<HuffmanDecodingException>(exception.InnerException);
         }
@@ -442,7 +442,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(0, _dynamicTable.Size);
 
             var headers = new HttpRequestHeaders();
-            _decoder.Decode(data, headers);
+            _decoder.Decode(data, headers, endHeaders: true);
 
             Assert.Equal(expectedHeaderValue, ((IHeaderDictionary)headers)[expectedHeaderName]);
 

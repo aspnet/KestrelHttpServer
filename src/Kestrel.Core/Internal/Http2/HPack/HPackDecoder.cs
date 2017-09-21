@@ -106,11 +106,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             _dynamicTable = dynamicTable;
         }
 
-        public void Decode(Span<byte> data, IHeaderDictionary headers)
+        public void Decode(Span<byte> data, IHeaderDictionary headers, bool endHeaders)
         {
             for (var i = 0; i < data.Length; i++)
             {
                 OnByte(data[i], headers);
+            }
+
+            if (endHeaders && _state != State.Ready)
+            {
+                throw new HPackDecodingException("The final header block fragment was incomplete and could not be fully decoded.");
             }
         }
 

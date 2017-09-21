@@ -11,7 +11,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             : base(message)
         {
         }
-
         public HPackDecodingException(string message, Exception innerException)
             : base(message, innerException)
         {

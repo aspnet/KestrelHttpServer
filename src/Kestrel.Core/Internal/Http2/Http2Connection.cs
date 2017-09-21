@@ -141,6 +141,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 error = ex;
                 errorCode = ex.ErrorCode;
             }
+            catch (HPackDecodingException ex)
+            {
+                // TODO: log
+                error = ex;
+                errorCode = Http2ErrorCode.COMPRESSION_ERROR;
+            }
             catch (Exception ex)
             {
                 // TODO: log
@@ -350,9 +356,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 _streams[_incomingFrame.StreamId] = _currentHeadersStream;
 
-                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders);
+                var endHeaders = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS;
+                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders, endHeaders);
 
-                if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS)
+                if (endHeaders)
                 {
                     _highestOpenedStreamId = _incomingFrame.StreamId;
                     _ = _currentHeadersStream.ProcessRequestsAsync();
@@ -525,9 +532,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
             }
 
-            _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders);
+            var endHeaders = (_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS;
+            _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders, endHeaders);
 
-            if ((_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS)
+            if (endHeaders)
             {
                 _highestOpenedStreamId = _currentHeadersStream.StreamId;
                 _ = _currentHeadersStream.ProcessRequestsAsync();
