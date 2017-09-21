@@ -286,7 +286,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _currentHeadersStream = new Http2Stream<TContext>(application, new Http2StreamContext
             {
                 ConnectionId = ConnectionId,
-                StreamId =  _incomingFrame.StreamId,
+                StreamId = _incomingFrame.StreamId,
                 ServiceContext = _context.ServiceContext,
                 ConnectionFeatures = _context.ConnectionFeatures,
                 PipeFactory = _context.PipeFactory,
@@ -454,16 +454,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 throw new Http2ConnectionErrorException(Http2ErrorCode.FRAME_SIZE_ERROR);
             }
 
-            if (_incomingFrame.StreamId == 0)
+            if (_incomingFrame.StreamId > _highestOpenedStreamId)
             {
-                if (_incomingFrame.WindowUpdateSizeIncrement == 0)
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            if (_incomingFrame.WindowUpdateSizeIncrement == 0)
+            {
+                if (_incomingFrame.StreamId == 0)
                 {
                     throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
                 }
-            }
-            else
-            {
-                if (_incomingFrame.WindowUpdateSizeIncrement == 0)
+                else
                 {
                     return _frameWriter.WriteRstStreamAsync(_incomingFrame.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
                 }

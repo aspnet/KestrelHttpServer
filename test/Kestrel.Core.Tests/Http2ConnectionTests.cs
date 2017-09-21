@@ -1076,6 +1076,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task WINDOW_UPDATE_Received_StreamIdle_ConnectionError()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await SendWindowUpdateAsync(1, sizeIncrement: 1);
+
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
         public async Task WINDOW_UPDATE_Received_OnStream_SizeIncrementZero_StreamError()
         {
             await InitializeConnectionAsync(_waitForAbortApplication);
