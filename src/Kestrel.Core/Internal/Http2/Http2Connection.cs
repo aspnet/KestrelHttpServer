@@ -196,6 +196,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task ProcessFrameAsync<TContext>(IHttpApplication<TContext> application)
         {
+            if (_incomingFrame.StreamId != 0 && (_incomingFrame.StreamId & 1) == 0)
+            {
+                throw new Http2ConnectionErrorException(Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             switch (_incomingFrame.Type)
             {
                 case Http2FrameType.DATA:
