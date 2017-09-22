@@ -143,17 +143,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 if (_context.Protocols == HttpProtocols.None)
                 {
-                    throw new InvalidOperationException("An endpoint must be configured to serve at least one protocol.");
+                    throw new InvalidOperationException(CoreStrings.EndPointRequiresAtLeastOneProtocol);
                 }
 
                 if (!hasTls && http1Enabled && http2Enabled)
                 {
-                    throw new InvalidOperationException("Using both HTTP/1.x and HTTP/2 on the same endpoint requires the use of TLS.");
+                    throw new InvalidOperationException(CoreStrings.EndPointRequiresTlsForHttp1AndHttp2);
                 }
 
                 if (!http1Enabled && http2Enabled && hasTls && applicationProtocol != "h2")
                 {
-                    throw new InvalidOperationException("HTTP/2 over TLS was not negotiated on an HTTP/2-only endpoint.");
+                    throw new InvalidOperationException(CoreStrings.EndPointHttp2NotNegotiated);
                 }
 
                 var useHttp2 = http2Enabled && (!hasTls || applicationProtocol == "h2");
@@ -170,17 +170,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 await adaptedPipelineTask;
                 await _socketClosedTcs.Task;
             }
-            catch (InvalidOperationException)
-            {
-                _context.Transport.Output.Complete();
-                throw;
-            }
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Unexpected exception in {nameof(HttpConnection)}.{nameof(ProcessRequestsAsync)}.");
             }
             finally
             {
+                // Complete the output in case an exception was thrown before request processing could start.
+                _context.Transport.Output.Complete();
+
                 _context.ServiceContext.ConnectionManager.RemoveConnection(_context.HttpConnectionId);
                 DisposeAdaptedConnections();
 
