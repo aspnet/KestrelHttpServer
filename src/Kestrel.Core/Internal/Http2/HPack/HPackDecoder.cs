@@ -2,10 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
@@ -22,15 +20,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             HeaderValueLength,
             HeaderValueLengthContinue,
             HeaderValue,
-            DynamicTableSize
+            DynamicTableSizeUpdate
         }
 
         private const byte IndexedHeaderFieldMask = 0x80;
-        private const byte LiteralHeaderFieldWithIncrementalIndexingMask = 0x40;
-        private const byte LiteralHeaderFieldWithoutIndexingMask = 0x00;
-        private const byte LiteralHeaderFieldNeverIndexedMask = 0x10;
-        private const byte DynamicTableSizeUpdateMask = 0x20;
+        private const byte LiteralHeaderFieldWithIncrementalIndexingMask = 0xc0;
+        private const byte LiteralHeaderFieldWithoutIndexingMask = 0xf0;
+        private const byte LiteralHeaderFieldNeverIndexedMask = 0xf0;
+        private const byte DynamicTableSizeUpdateMask = 0xe0;
         private const byte HuffmanMask = 0x80;
+
+        private const byte IndexedHeaderFieldRepresentation = 0x80;
+        private const byte LiteralHeaderFieldWithIncrementalIndexingRepresentation = 0x40;
+        private const byte LiteralHeaderFieldWithoutIndexingRepresentation = 0x00;
+        private const byte LiteralHeaderFieldNeverIndexedRepresentation = 0x10;
+        private const byte DynamicTableSizeUpdateRepresentation = 0x20;
+        private const byte HuffmanRepresentation = 0x80;
 
         private const int IndexedHeaderFieldPrefix = 7;
         private const int LiteralHeaderFieldWithIncrementalIndexingPrefix = 6;
@@ -65,9 +70,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             switch (_state)
             {
                 case State.Ready:
-                    if ((b & IndexedHeaderFieldMask) == IndexedHeaderFieldMask)
+                    if ((b & IndexedHeaderFieldMask) == IndexedHeaderFieldRepresentation)
                     {
-                        if (_integerDecoder.BeginDecode((byte)(b & ~IndexedHeaderFieldMask), IndexedHeaderFieldPrefix))
+                        var val = b & ~IndexedHeaderFieldMask;
+
+                        if (_integerDecoder.BeginDecode((byte)val, IndexedHeaderFieldPrefix))
                         {
                             OnIndexedHeaderField(_integerDecoder.Value, headers);
                         }
@@ -76,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                             _state = State.HeaderFieldIndex;
                         }
                     }
-                    else if ((b & LiteralHeaderFieldWithIncrementalIndexingMask) == LiteralHeaderFieldWithIncrementalIndexingMask)
+                    else if ((b & LiteralHeaderFieldWithIncrementalIndexingMask) == LiteralHeaderFieldWithIncrementalIndexingRepresentation)
                     {
                         _index = true;
                         var val = b & ~LiteralHeaderFieldWithIncrementalIndexingMask;
@@ -94,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                             _state = State.HeaderNameIndex;
                         }
                     }
-                    else if ((b & LiteralHeaderFieldWithoutIndexingMask) == LiteralHeaderFieldWithoutIndexingMask)
+                    else if ((b & LiteralHeaderFieldWithoutIndexingMask) == LiteralHeaderFieldWithoutIndexingRepresentation)
                     {
                         _index = false;
                         var val = b & ~LiteralHeaderFieldWithoutIndexingMask;
@@ -112,7 +119,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                             _state = State.HeaderNameIndex;
                         }
                     }
-                    else if ((b & LiteralHeaderFieldNeverIndexedMask) == LiteralHeaderFieldNeverIndexedMask)
+                    else if ((b & LiteralHeaderFieldNeverIndexedMask) == LiteralHeaderFieldNeverIndexedRepresentation)
                     {
                         _index = false;
                         var val = b & ~LiteralHeaderFieldNeverIndexedMask;
@@ -130,7 +137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                             _state = State.HeaderNameIndex;
                         }
                     }
-                    else if ((b & DynamicTableSizeUpdateMask) == DynamicTableSizeUpdateMask)
+                    else if ((b & DynamicTableSizeUpdateMask) == DynamicTableSizeUpdateRepresentation)
                     {
                         if (_integerDecoder.BeginDecode((byte)(b & ~DynamicTableSizeUpdateMask), DynamicTableSizeUpdatePrefix))
                         {
@@ -139,7 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                         }
                         else
                         {
-                            _state = State.DynamicTableSize;
+                            _state = State.DynamicTableSizeUpdate;
                         }
                     }
                     else
@@ -226,7 +233,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                     }
 
                     break;
-                case State.DynamicTableSize:
+                case State.DynamicTableSizeUpdate:
                     if (_integerDecoder.Decode(b))
                     {
                         // TODO: validate that it's less than what's defined via SETTINGS
