@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private const int DynamicTableSizeUpdatePrefix = 5;
         private const int StringLengthPrefix = 7;
 
-        private readonly DynamicTable _dynamicTable = new DynamicTable(4096);
+        private readonly DynamicTable _dynamicTable;
         private readonly IntegerDecoder _integerDecoder = new IntegerDecoder();
 
         private State _state = State.Ready;
@@ -56,6 +56,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private int _stringIndex;
         private bool _index;
         private bool _huffman;
+
+        public HPackDecoder()
+            : this(new DynamicTable(4096))
+        {
+        }
+
+        // For testing.
+        internal HPackDecoder(DynamicTable dynamicTable)
+        {
+            _dynamicTable = dynamicTable;
+        }
 
         public void Decode(Span<byte> data, IHeaderDictionary headers)
         {

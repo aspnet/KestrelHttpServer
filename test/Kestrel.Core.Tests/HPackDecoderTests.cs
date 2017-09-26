@@ -170,7 +170,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             .Concat(_indexedName)
             .ToArray();
 
-        private readonly HPackDecoder _decoder = new HPackDecoder();
+        private readonly DynamicTable _dynamicTable;
+        private readonly HPackDecoder _decoder;
+
+        public HPackDecoderTests()
+        {
+            _dynamicTable = new DynamicTable(4096);
+            _decoder = new HPackDecoder(_dynamicTable);
+        }
 
         [Fact]
         public void DecodesIndexedHeaderField_StaticTable()
@@ -204,49 +211,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_NewName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithIndexingNewName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithIndexing(_literalHeaderFieldWithIndexingNewName, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_NewName_HuffmanEncodedName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithIndexingNewNameHuffmanName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithIndexing(_literalHeaderFieldWithIndexingNewNameHuffmanName, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_NewName_HuffmanEncodedValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithIndexingNewNameHuffmanValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithIndexing(_literalHeaderFieldWithIndexingNewNameHuffmanValue, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_NewName_HuffmanEncodedNameAndValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithIndexingNewNameHuffmanNameAndValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithIndexing(_literalHeaderFieldWithIndexingNewNameHuffmanNameAndValue, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_IndexedName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithIndexingIndexedName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["user-agent"]);
+            TestDecodeWithIndexing(_literalHeaderFieldWithIndexingIndexedName, "user-agent", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_IndexedName_HuffmanEncodedValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithIndexingIndexedNameHuffmanValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["user-agent"]);
+            TestDecodeWithIndexing(_literalHeaderFieldWithIndexingIndexedNameHuffmanValue, "user-agent", "value");
         }
 
         [Fact]
@@ -259,49 +254,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_NewName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithoutIndexingNewName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldWithoutIndexingNewName, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_NewName_HuffmanEncodedName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithoutIndexingNewNameHuffmanName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldWithoutIndexingNewNameHuffmanName, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_NewName_HuffmanEncodedValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithoutIndexingNewNameHuffmanValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldWithoutIndexingNewNameHuffmanValue, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_NewName_HuffmanEncodedNameAndValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithoutIndexingNewNameHuffmanNameAndValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldWithoutIndexingNewNameHuffmanNameAndValue, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_IndexedName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithoutIndexingIndexedName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["user-agent"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldWithoutIndexingIndexedName, "user-agent", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_IndexedName_HuffmanEncodedValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldWithoutIndexingIndexedNameHuffmanValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["user-agent"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldWithoutIndexingIndexedNameHuffmanValue, "user-agent", "value");
         }
 
         [Fact]
@@ -314,49 +297,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_NewName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldNeverIndexedNewName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldNeverIndexedNewName, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_NewName_HuffmanEncodedName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldNeverIndexedNewNameHuffmanName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldNeverIndexedNewNameHuffmanName, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_NewName_HuffmanEncodedValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldNeverIndexedNewNameHuffmanValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldNeverIndexedNewNameHuffmanValue, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_NewName_HuffmanEncodedNameAndValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldNeverIndexedNewNameHuffmanNameAndValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["new-header"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldNeverIndexedNewNameHuffmanNameAndValue, "new-header", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_IndexedName()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldNeverIndexedIndexedName, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["user-agent"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldNeverIndexedIndexedName, "user-agent", "value");
         }
 
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_IndexedName_HuffmanEncodedValue()
         {
-            var headers = new HttpRequestHeaders();
-            _decoder.Decode(_literalHeaderFieldNeverIndexedIndexedNameHuffmanValue, headers);
-            Assert.Equal("value", ((IHeaderDictionary)headers)["user-agent"]);
+            TestDecodeWithoutIndexing(_literalHeaderFieldNeverIndexedIndexedNameHuffmanValue, "user-agent", "value");
         }
 
         [Fact]
@@ -376,6 +347,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesDynamicTableSizeUpdate_GreaterThanLimit_Error()
         {
             Assert.True(false);
+        }
+
+        private void TestDecodeWithIndexing(byte[] data, string expectedHeaderName, string expectedHeaderValue)
+        {
+            TestDecode(data, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: true);
+        }
+
+        private void TestDecodeWithoutIndexing(byte[] data, string expectedHeaderName, string expectedHeaderValue)
+        {
+            TestDecode(data, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: false);
+        }
+
+        private void TestDecode(byte[] data, string expectedHeaderName, string expectedHeaderValue, bool expectDynamicTableEntry)
+        {
+            Assert.Equal(0, _dynamicTable.Count);
+            Assert.Equal(0, _dynamicTable.Size);
+
+            var headers = new HttpRequestHeaders();
+            _decoder.Decode(data, headers);
+
+            Assert.Equal(expectedHeaderValue, ((IHeaderDictionary)headers)[expectedHeaderName]);
+
+            if (expectDynamicTableEntry)
+            {
+                Assert.Equal(1, _dynamicTable.Count);
+                Assert.Equal(expectedHeaderName, _dynamicTable[0].Name);
+                Assert.Equal(expectedHeaderValue, _dynamicTable[0].Value);
+                Assert.Equal(expectedHeaderName.Length + expectedHeaderValue.Length + 32, _dynamicTable.Size);
+            }
+            else
+            {
+                Assert.Equal(0, _dynamicTable.Count);
+                Assert.Equal(0, _dynamicTable.Size);
+            }
         }
     }
 }
