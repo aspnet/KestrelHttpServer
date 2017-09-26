@@ -13,6 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class HPackDecoderTests
     {
+        private const int DynamicTableInitialMaxSize = 4096;
+
         // TODO: verify dynamic table state after decoding
 
         private static readonly byte[] _newHeaderBytes = Encoding.ASCII.GetBytes("new-header");
@@ -170,12 +172,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             .Concat(_indexedName)
             .ToArray();
 
+        // Dynamic Table Size Update
+        private static readonly byte[] _dynamicTableSizeUpdate = new byte[] { 0x3e };
+
         private readonly DynamicTable _dynamicTable;
         private readonly HPackDecoder _decoder;
 
         public HPackDecoderTests()
         {
-            _dynamicTable = new DynamicTable(4096);
+            _dynamicTable = new DynamicTable(DynamicTableInitialMaxSize);
             _decoder = new HPackDecoder(_dynamicTable);
         }
 
@@ -340,7 +345,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesDynamicTableSizeUpdate()
         {
-            Assert.True(false);
+            Assert.Equal(DynamicTableInitialMaxSize, _dynamicTable.MaxSize);
+
+            var headers = new HttpRequestHeaders();
+            _decoder.Decode(_dynamicTableSizeUpdate, headers);
+
+            Assert.Equal(30, _dynamicTable.MaxSize);
         }
 
         [Fact]

@@ -24,6 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public int Size => _size;
 
+        public int MaxSize => _maxSize;
+
         public HeaderField this[int index]
         {
             get
