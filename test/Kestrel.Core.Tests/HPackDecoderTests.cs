@@ -14,20 +14,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     public class HPackDecoderTests
     {
         // TODO: verify dynamic table state after decoding
-        // TODO: add test cases w/ encoded integers
-
-        // n     e     w       -      h     e     a     d     e     r      *
-        // 10101000 10111110 00010110 10011100 10100011 10010000 10110110 01111111
-
-        // v      a     l      u      e    *
-        // 11101110 00111010 00101101 00101111
 
         private static readonly byte[] _newHeaderBytes = Encoding.ASCII.GetBytes("new-header");
 
+        // n     e     w       -      h     e     a     d     e     r      *
+        // 10101000 10111110 00010110 10011100 10100011 10010000 10110110 01111111
         private static readonly byte[] _newHeaderHuffmanBytes = new byte[] { 0xa8, 0xbe, 0x16, 0x9c, 0xa3, 0x90, 0xb6, 0x7f };
 
         private static readonly byte[] _valueBytes = Encoding.ASCII.GetBytes("value");
 
+        // v      a     l      u      e    *
+        // 11101110 00111010 00101101 00101111
         private static readonly byte[] _valueHuffmanBytes = new byte [] { 0xee, 0x3a, 0x2d, 0x2f };
 
         private static readonly byte[] _newName = new byte[] { (byte)_newHeaderBytes.Length }
@@ -98,6 +95,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             .Concat(_indexedNameHuffmanValue)
             .ToArray();
 
+        // Literal Header Field with Incremental Indexing Representation - Indexed Name - Index 62 (first index in dynamic table)
+        private static readonly byte[] _literalHeaderFieldWithIndexingIndexedNameIndex62 = new byte[] { 0x7e }
+            .Concat(_indexedName)
+            .ToArray();
+
         // Literal Header Field without Indexing Representation - New Name - "new-header: value"
         private static readonly byte[] _literalHeaderFieldWithoutIndexingNewName = new byte[] { 0x00 }
             .Concat(_newName)
@@ -118,14 +120,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             .Concat(_newNameHuffmanNameAndValue)
             .ToArray();
 
-        // Literal Header Field without Indexing Representation - Indexed Name - "accept-charset: value"
+        // Literal Header Field without Indexing Representation - Indexed Name - "user-agent: value"
         private static readonly byte[] _literalHeaderFieldWithoutIndexingIndexedName = new byte[] { 0x0f, 0x2b }
             .Concat(_indexedName)
             .ToArray();
 
-        // Literal Header Field without Indexing Representation - Indexed Name - "accept-charset: value" - Huffman encoded value
+        // Literal Header Field without Indexing Representation - Indexed Name - "user-agent: value" - Huffman encoded value
         private static readonly byte[] _literalHeaderFieldWithoutIndexingIndexedNameHuffmanValue = new byte[] { 0x0f, 0x2b }
             .Concat(_indexedNameHuffmanValue)
+            .ToArray();
+
+        // Literal Header Field without Indexing Representation - Indexed Name - Index 62 (first index in dynamic table)
+        private static readonly byte[] _literalHeaderFieldWithoutIndexingIndexedNameIndex62 = new byte[] { 0x0f, 0x2f }
+            .Concat(_indexedName)
             .ToArray();
 
         // Literal Header Field Never Indexed Representation - New Name - "new-header: value"
@@ -148,14 +155,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             .Concat(_newNameHuffmanNameAndValue)
             .ToArray();
 
-        // Literal Header Field Never Indexed Representation - Indexed Name - "accept-charset: value"
+        // Literal Header Field Never Indexed Representation - Indexed Name - "user-agent: value"
         private static readonly byte[] _literalHeaderFieldNeverIndexedIndexedName = new byte[] { 0x0f, 0x2b }
             .Concat(_indexedName)
             .ToArray();
 
-        // Literal Header Field Never Indexed Representation - Indexed Name - "accept-charset: value" - Huffman encoded value
+        // Literal Header Field Never Indexed Representation - Indexed Name - "user-agent: value" - Huffman encoded value
         private static readonly byte[] _literalHeaderFieldNeverIndexedIndexedNameHuffmanValue = new byte[] { 0x0f, 0x2b }
             .Concat(_indexedNameHuffmanValue)
+            .ToArray();
+
+        // Literal Header Field Never Indexed Representation - Indexed Name - Index 62 (first index in dynamic table)
+        private static readonly byte[] _literalHeaderFieldNeverIndexedIndexedNameIndex62 = new byte[] { 0x1f, 0x2f }
+            .Concat(_indexedName)
             .ToArray();
 
         private readonly HPackDecoder _decoder = new HPackDecoder();
@@ -240,7 +252,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_IndexedName_OutOfRange_Error()
         {
-            Assert.True(false);
+            var headers = new HttpRequestHeaders();
+            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_literalHeaderFieldWithIndexingIndexedNameIndex62, headers));
         }
 
         [Fact]
@@ -294,7 +307,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesLiteralHeaderFieldWithoutIndexing_IndexedName_OutOfRange_Error()
         {
-            Assert.True(false);
+            var headers = new HttpRequestHeaders();
+            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_literalHeaderFieldWithoutIndexingIndexedNameIndex62, headers));
         }
 
         [Fact]
@@ -348,7 +362,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesLiteralHeaderFieldNeverIndexed_IndexedName_OutOfRange_Error()
         {
-            Assert.True(false);
+            var headers = new HttpRequestHeaders();
+            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_literalHeaderFieldNeverIndexedIndexedNameIndex62, headers));
         }
 
         [Fact]
