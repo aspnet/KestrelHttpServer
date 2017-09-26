@@ -13,5 +13,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public string Name { get; }
         public string Value { get; }
+        public int Length => Name.Length + Value.Length + 32;
     }
 }
