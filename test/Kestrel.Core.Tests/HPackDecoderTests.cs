@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Linq;
 using System.Text;
 using Microsoft.AspNetCore.Http;
@@ -14,8 +13,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     public class HPackDecoderTests
     {
         private const int DynamicTableInitialMaxSize = 4096;
-
-        // TODO: verify dynamic table state after decoding
 
         private static readonly byte[] _newHeaderBytes = Encoding.ASCII.GetBytes("new-header");
 
@@ -175,13 +172,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         // Dynamic Table Size Update
         private static readonly byte[] _dynamicTableSizeUpdate = new byte[] { 0x3e };
 
+        // Dynamic Table Size Update - 4097 bytes
+        private static readonly byte[] _dynamicTableSizeUpdate4097 = new byte[] { 0x3f, 0xe2, 0x1f };
+
         private readonly DynamicTable _dynamicTable;
         private readonly HPackDecoder _decoder;
 
         public HPackDecoderTests()
         {
             _dynamicTable = new DynamicTable(DynamicTableInitialMaxSize);
-            _decoder = new HPackDecoder(_dynamicTable);
+            _decoder = new HPackDecoder(DynamicTableInitialMaxSize, _dynamicTable);
         }
 
         [Fact]
@@ -210,7 +210,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesIndexedHeaderField_OutOfRange_Error()
         {
             var headers = new HttpRequestHeaders();
-            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_indexedHeaderDynamic, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_indexedHeaderDynamic, headers));
+            Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
         [Fact]
@@ -253,7 +254,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesLiteralHeaderFieldWithIncrementalIndexing_IndexedName_OutOfRange_Error()
         {
             var headers = new HttpRequestHeaders();
-            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_literalHeaderFieldWithIndexingIndexedNameIndex62, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_literalHeaderFieldWithIndexingIndexedNameIndex62, headers));
+            Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
         [Fact]
@@ -296,7 +298,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesLiteralHeaderFieldWithoutIndexing_IndexedName_OutOfRange_Error()
         {
             var headers = new HttpRequestHeaders();
-            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_literalHeaderFieldWithoutIndexingIndexedNameIndex62, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_literalHeaderFieldWithoutIndexingIndexedNameIndex62, headers));
+            Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
         [Fact]
@@ -339,7 +342,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void DecodesLiteralHeaderFieldNeverIndexed_IndexedName_OutOfRange_Error()
         {
             var headers = new HttpRequestHeaders();
-            Assert.Throws<IndexOutOfRangeException>(() => _decoder.Decode(_literalHeaderFieldNeverIndexedIndexedNameIndex62, headers));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_literalHeaderFieldNeverIndexedIndexedNameIndex62, headers));
+            Assert.Equal(CoreStrings.FormatHPackErrorIndexOutOfRange(62), exception.Message);
         }
 
         [Fact]
@@ -356,7 +360,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void DecodesDynamicTableSizeUpdate_GreaterThanLimit_Error()
         {
-            Assert.True(false);
+            Assert.Equal(DynamicTableInitialMaxSize, _dynamicTable.MaxSize);
+
+            var headers = new HttpRequestHeaders();
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(_dynamicTableSizeUpdate4097, headers));
+            Assert.Equal(CoreStrings.FormatHPackErrorDynamicTableSizeUpdateTooLarge(4097, DynamicTableInitialMaxSize), exception.Message);
         }
 
         private void TestDecodeWithIndexing(byte[] data, string expectedHeaderName, string expectedHeaderValue)

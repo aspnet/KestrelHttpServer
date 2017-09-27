@@ -77,6 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private const int DynamicTableSizeUpdatePrefix = 5;
         private const int StringLengthPrefix = 7;
 
+        private readonly int _maxDynamicTableSize;
         private readonly DynamicTable _dynamicTable;
         private readonly IntegerDecoder _integerDecoder = new IntegerDecoder();
 
@@ -90,14 +91,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private bool _index;
         private bool _huffman;
 
-        public HPackDecoder()
-            : this(new DynamicTable(4096))
+        public HPackDecoder(int maxDynamicTableSize)
+            : this(maxDynamicTableSize, new DynamicTable(maxDynamicTableSize))
         {
+            _maxDynamicTableSize = maxDynamicTableSize;
         }
 
         // For testing.
-        internal HPackDecoder(DynamicTable dynamicTable)
+        internal HPackDecoder(int maxDynamicTableSize, DynamicTable dynamicTable)
         {
+            _maxDynamicTableSize = maxDynamicTableSize;
             _dynamicTable = dynamicTable;
         }
 
@@ -195,7 +198,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                     }
                     else
                     {
-                        throw new InvalidOperationException();
+                        // Can't happen
+                        throw new HPackDecodingException($"Byte value {b} does not encode a valid header field representation.");
                     }
 
                     break;
@@ -280,7 +284,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 case State.DynamicTableSizeUpdate:
                     if (_integerDecoder.Decode(b))
                     {
-                        // TODO: validate that it's less than what's defined via SETTINGS
+                        if (_integerDecoder.Value > _maxDynamicTableSize)
+                        {
+                            throw new HPackDecodingException(
+                                CoreStrings.FormatHPackErrorDynamicTableSizeUpdateTooLarge(_integerDecoder.Value, _maxDynamicTableSize));
+                        }
+
                         _dynamicTable.Resize(_integerDecoder.Value);
                         _state = State.Ready;
                     }
@@ -288,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                     break;
                 default:
                     // Can't happen
-                    throw new InvalidOperationException();
+                    throw new HPackDecodingException("The HPACK decoder reached an invalid state.");
             }
         }
 
@@ -321,8 +330,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 : Encoding.ASCII.GetString(_stringOctets, 0, _stringLength);
         }
 
-        private HeaderField GetHeader(int index) => index <= StaticTable.Instance.Length
-            ? StaticTable.Instance[index - 1]
-            : _dynamicTable[index - StaticTable.Instance.Length - 1];
+        private HeaderField GetHeader(int index)
+        {
+            try
+            {
+                return index <= StaticTable.Instance.Count
+                    ? StaticTable.Instance[index - 1]
+                    : _dynamicTable[index - StaticTable.Instance.Count - 1];
+            }
+            catch (IndexOutOfRangeException ex)
+            {
+                throw new HPackDecodingException(CoreStrings.FormatHPackErrorIndexOutOfRange(index), ex);
+            }
+        }
     }
 }

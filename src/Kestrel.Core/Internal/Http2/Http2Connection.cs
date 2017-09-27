@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             _context = context;
             _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input);
-            _hpackDecoder = new HPackDecoder();
+            _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
         }
 
         public string ConnectionId => _context.ConnectionId;

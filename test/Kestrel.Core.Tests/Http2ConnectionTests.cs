@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -77,9 +76,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly (IPipeConnection Transport, IPipeConnection Application) _pair;
         private readonly Http2ConnectionContext _connectionContext;
         private readonly Http2Connection _connection;
-        private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
-        private readonly HPackDecoder _hpackDecoder = new HPackDecoder();
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
+        private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
+        private readonly HPackDecoder _hpackDecoder;
 
         private readonly ConcurrentDictionary<int, TaskCompletionSource<object>> _runningStreams = new ConcurrentDictionary<int, TaskCompletionSource<object>>();
         private readonly Dictionary<string, string> _receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -207,6 +206,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
             };
+
+            _hpackDecoder = new HPackDecoder((int)_clientSettings.HeaderTableSize);
 
             _connectionContext = new Http2ConnectionContext
             {

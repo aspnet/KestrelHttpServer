@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public static StaticTable Instance => _instance;
 
-        public int Length => _staticTable.Length;
+        public int Count => _staticTable.Length;
 
         public HeaderField this[int index] => _staticTable[index];
 

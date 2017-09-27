@@ -1144,6 +1144,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         internal static string FormatEndPointHttp2NotNegotiated()
             => GetString("EndPointHttp2NotNegotiated");
 
+        /// <summary>
+        /// A dynamic table size of {size} octets is larger than the configured maximum size of {maxSize} octets.
+        /// </summary>
+        internal static string HPackErrorDynamicTableSizeUpdateTooLarge
+        {
+            get => GetString("HPackErrorDynamicTableSizeUpdateTooLarge");
+        }
+
+        /// <summary>
+        /// A dynamic table size of {size} octets is larger than the configured maximum size of {maxSize} octets.
+        /// </summary>
+        internal static string FormatHPackErrorDynamicTableSizeUpdateTooLarge(object size, object maxSize)
+            => string.Format(CultureInfo.CurrentCulture, GetString("HPackErrorDynamicTableSizeUpdateTooLarge", "size", "maxSize"), size, maxSize);
+
+        /// <summary>
+        /// Index {index} is outside the bounds of the header field table.
+        /// </summary>
+        internal static string HPackErrorIndexOutOfRange
+        {
+            get => GetString("HPackErrorIndexOutOfRange");
+        }
+
+        /// <summary>
+        /// Index {index} is outside the bounds of the header field table.
+        /// </summary>
+        internal static string FormatHPackErrorIndexOutOfRange(object index)
+            => string.Format(CultureInfo.CurrentCulture, GetString("HPackErrorIndexOutOfRange", "index"), index);
+
         private static string GetString(string name, params string[] formatterNames)
         {
             var value = _resourceManager.GetString(name);
