@@ -23,19 +23,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             DynamicTableSizeUpdate
         }
 
+        // http://httpwg.org/specs/rfc7541.html#rfc.section.6.1
+        //   0   1   2   3   4   5   6   7
+        // +---+---+---+---+---+---+---+---+
+        // | 1 |        Index (7+)         |
+        // +---+---------------------------+
         private const byte IndexedHeaderFieldMask = 0x80;
-        private const byte LiteralHeaderFieldWithIncrementalIndexingMask = 0xc0;
-        private const byte LiteralHeaderFieldWithoutIndexingMask = 0xf0;
-        private const byte LiteralHeaderFieldNeverIndexedMask = 0xf0;
-        private const byte DynamicTableSizeUpdateMask = 0xe0;
-        private const byte HuffmanMask = 0x80;
-
         private const byte IndexedHeaderFieldRepresentation = 0x80;
+
+        // http://httpwg.org/specs/rfc7541.html#rfc.section.6.2.1
+        //   0   1   2   3   4   5   6   7
+        // +---+---+---+---+---+---+---+---+
+        // | 0 | 1 |      Index (6+)       |
+        // +---+---+-----------------------+
+        private const byte LiteralHeaderFieldWithIncrementalIndexingMask = 0xc0;
         private const byte LiteralHeaderFieldWithIncrementalIndexingRepresentation = 0x40;
+
+        // http://httpwg.org/specs/rfc7541.html#rfc.section.6.2.2
+        //   0   1   2   3   4   5   6   7
+        // +---+---+---+---+---+---+---+---+
+        // | 0 | 0 | 0 | 0 |  Index (4+)   |
+        // +---+---+-----------------------+
+        private const byte LiteralHeaderFieldWithoutIndexingMask = 0xf0;
         private const byte LiteralHeaderFieldWithoutIndexingRepresentation = 0x00;
+
+        // http://httpwg.org/specs/rfc7541.html#rfc.section.6.2.3
+        //   0   1   2   3   4   5   6   7
+        // +---+---+---+---+---+---+---+---+
+        // | 0 | 0 | 0 | 1 |  Index (4+)   |
+        // +---+---+-----------------------+
+        private const byte LiteralHeaderFieldNeverIndexedMask = 0xf0;
         private const byte LiteralHeaderFieldNeverIndexedRepresentation = 0x10;
+
+        // http://httpwg.org/specs/rfc7541.html#rfc.section.6.3
+        //   0   1   2   3   4   5   6   7
+        // +---+---+---+---+---+---+---+---+
+        // | 0 | 0 | 1 |   Max size (5+)   |
+        // +---+---------------------------+
+        private const byte DynamicTableSizeUpdateMask = 0xe0;
         private const byte DynamicTableSizeUpdateRepresentation = 0x20;
-        private const byte HuffmanRepresentation = 0x80;
+
+        // http://httpwg.org/specs/rfc7541.html#rfc.section.5.2
+        //   0   1   2   3   4   5   6   7
+        // +---+---+---+---+---+---+---+---+
+        // | H |    String Length (7+)     |
+        // +---+---------------------------+
+        private const byte HuffmanMask = 0x80;
 
         private const int IndexedHeaderFieldPrefix = 7;
         private const int LiteralHeaderFieldWithIncrementalIndexingPrefix = 6;
@@ -181,7 +214,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
                     break;
                 case State.HeaderNameLength:
-                    _huffman = (b & HuffmanMask) == HuffmanMask;
+                    _huffman = (b & HuffmanMask) != 0;
 
                     if (_integerDecoder.BeginDecode((byte)(b & ~HuffmanMask), StringLengthPrefix))
                     {
@@ -210,7 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
                     break;
                 case State.HeaderValueLength:
-                    _huffman = (b & HuffmanMask) == HuffmanMask;
+                    _huffman = (b & HuffmanMask) != 0;
 
                     if (_integerDecoder.BeginDecode((byte)(b & ~HuffmanMask), StringLengthPrefix))
                     {
