@@ -2,10 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
@@ -22,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             HeaderValueLength,
             HeaderValueLengthContinue,
             HeaderValue,
-            DynamicTableSize
+            DynamicTableSizeUpdate
         }
 
         private const byte IndexedHeaderFieldMask = 0x80;
@@ -52,11 +50,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private bool _index;
         private bool _huffman;
 
-        public void Decode(Span<byte> data, IHeaderDictionary headers)
+        public void Decode(Span<byte> data, bool endHeaders, IHeaderDictionary headers)
         {
             for (var i = 0; i < data.Length; i++)
             {
                 OnByte(data[i], headers);
+            }
+
+            if (endHeaders && _state != State.Ready)
+            {
+                throw new HPackDecodingException("The final header block fragment was incomplete and could not be fully decoded.");
             }
         }
 
@@ -139,12 +142,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                         }
                         else
                         {
-                            _state = State.DynamicTableSize;
+                            _state = State.DynamicTableSizeUpdate;
                         }
                     }
                     else
                     {
-                        throw new InvalidOperationException();
+                        throw new HPackDecodingException("Invalid header field representation.");
                     }
 
                     break;
@@ -226,7 +229,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                     }
 
                     break;
-                case State.DynamicTableSize:
+                case State.DynamicTableSizeUpdate:
                     if (_integerDecoder.Decode(b))
                     {
                         // TODO: validate that it's less than what's defined via SETTINGS
