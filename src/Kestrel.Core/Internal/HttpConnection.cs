@@ -136,27 +136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
                 }
 
-                var hasTls = _context.ConnectionFeatures.Get<ITlsConnectionFeature>() != null;
-                var applicationProtocol = _context.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol;
-                var http1Enabled = (_context.Protocols & HttpProtocols.Http1) == HttpProtocols.Http1;
-                var http2Enabled = (_context.Protocols & HttpProtocols.Http2) == HttpProtocols.Http2;
-
-                if (_context.Protocols == HttpProtocols.None)
-                {
-                    throw new InvalidOperationException(CoreStrings.EndPointRequiresAtLeastOneProtocol);
-                }
-
-                if (!hasTls && http1Enabled && http2Enabled)
-                {
-                    throw new InvalidOperationException(CoreStrings.EndPointRequiresTlsForHttp1AndHttp2);
-                }
-
-                if (!http1Enabled && http2Enabled && hasTls && applicationProtocol != "h2")
-                {
-                    throw new InvalidOperationException(CoreStrings.EndPointHttp2NotNegotiated);
-                }
-
-                var useHttp2 = http2Enabled && (!hasTls || applicationProtocol == "h2");
+                var useHttp2 = CanUseHttp2();
 
                 if (useHttp2 && Interlocked.CompareExchange(ref _http2ConnectionState, Http2ConnectionStarted, Http2ConnectionNotStarted) == Http2ConnectionNotStarted)
                 {
@@ -176,9 +156,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
             finally
             {
-                // Complete the output in case an exception was thrown before request processing could start.
-                _context.Transport.Output.Complete();
-
                 _context.ServiceContext.ConnectionManager.RemoveConnection(_context.HttpConnectionId);
                 DisposeAdaptedConnections();
 
@@ -232,6 +209,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public Task StopProcessingNextRequestAsync()
         {
             Debug.Assert(_http1Connection != null, $"{nameof(_http1Connection)} is null");
+            Debug.Assert(_http2Connection != null, $"{nameof(_http2Connection)} is null");
 
             if (Interlocked.Exchange(ref _http2ConnectionState, Http2ConnectionClosed) == Http2ConnectionStarted)
             {
@@ -248,6 +226,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void Abort(Exception ex)
         {
             Debug.Assert(_http1Connection != null, $"{nameof(_http1Connection)} is null");
+            Debug.Assert(_http2Connection != null, $"{nameof(_http2Connection)} is null");
 
             // Abort the connection (if not already aborted)
             if (Interlocked.Exchange(ref _http2ConnectionState, Http2ConnectionClosed) == Http2ConnectionStarted)
@@ -270,6 +249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void SendTimeoutResponse()
         {
             Debug.Assert(_http1Connection != null, $"{nameof(_http1Connection)} is null");
+            Debug.Assert(_http2Connection != null, $"{nameof(_http2Connection)} is null");
 
             RequestTimedOut = true;
             _http1Connection.SendTimeoutResponse();
@@ -278,6 +258,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void StopProcessingNextRequest()
         {
             Debug.Assert(_http1Connection != null, $"{nameof(_http1Connection)} is null");
+            Debug.Assert(_http2Connection != null, $"{nameof(_http2Connection)} is null");
 
             _http1Connection.StopProcessingNextRequest();
         }
@@ -285,10 +266,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private async Task<Stream> ApplyConnectionAdaptersAsync()
         {
             Debug.Assert(_http1Connection != null, $"{nameof(_http1Connection)} is null");
+            Debug.Assert(_http2Connection != null, $"{nameof(_http2Connection)} is null");
 
             var connectionAdapters = _context.ConnectionAdapters;
             var stream = new RawStream(_context.Transport.Input, _context.Transport.Output);
-            var adapterContext = new ConnectionAdapterContext(_http1Connection.ConnectionFeatures, stream);
+            var adapterContext = new ConnectionAdapterContext(_context.ConnectionFeatures, stream);
             _adaptedConnections = new List<IAdaptedConnection>(connectionAdapters.Count);
 
             try
@@ -297,7 +279,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     var adaptedConnection = await connectionAdapters[i].OnConnectionAsync(adapterContext);
                     _adaptedConnections.Add(adaptedConnection);
-                    adapterContext = new ConnectionAdapterContext(_http1Connection.ConnectionFeatures, adaptedConnection.ConnectionStream);
+                    adapterContext = new ConnectionAdapterContext(_context.ConnectionFeatures, adaptedConnection.ConnectionStream);
                 }
             }
             catch (Exception ex)
@@ -315,16 +297,50 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             var adaptedConnections = _adaptedConnections;
             if (adaptedConnections != null)
             {
-                for (int i = adaptedConnections.Count - 1; i >= 0; i--)
+                for (var i = adaptedConnections.Count - 1; i >= 0; i--)
                 {
                     adaptedConnections[i].Dispose();
                 }
             }
         }
 
+        private bool CanUseHttp2()
+        {
+            var hasTls = _context.ConnectionFeatures.Get<ITlsConnectionFeature>() != null;
+            var applicationProtocol = _context.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol;
+            var http1Enabled = (_context.Protocols & HttpProtocols.Http1) == HttpProtocols.Http1;
+            var http2Enabled = (_context.Protocols & HttpProtocols.Http2) == HttpProtocols.Http2;
+
+            string error = null;
+
+            if (_context.Protocols == HttpProtocols.None)
+            {
+                error = CoreStrings.EndPointRequiresAtLeastOneProtocol;
+            }
+
+            if (!hasTls && http1Enabled && http2Enabled)
+            {
+                error = CoreStrings.EndPointRequiresTlsForHttp1AndHttp2;
+            }
+
+            if (!http1Enabled && http2Enabled && hasTls && applicationProtocol != "h2")
+            {
+                error = CoreStrings.EndPointHttp2NotNegotiated;
+            }
+
+            if (error != null)
+            {
+                Log.LogError(0, error);
+                Abort(ex: null);
+            }
+
+            return http2Enabled && (!hasTls || applicationProtocol == "h2");
+        }
+
         public void Tick(DateTimeOffset now)
         {
             Debug.Assert(_http1Connection != null, $"{nameof(_http1Connection)} is null");
+            Debug.Assert(_http2Connection != null, $"{nameof(_http2Connection)} is null");
 
             var timestamp = now.Ticks;
 

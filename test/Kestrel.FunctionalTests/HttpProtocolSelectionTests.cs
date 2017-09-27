@@ -67,38 +67,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private async Task TestError<TException>(HttpProtocols serverProtocols, string expectedErrorMessage)
             where TException : Exception
         {
-            var tcs = new TaskCompletionSource<object>();
-
-            var mockLogger = new Mock<ILogger>();
-            mockLogger
-                .Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>()))
-                .Returns(true);
-            mockLogger
-                .Setup(logger => logger.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.IsAny<object>(),
-                    It.Is<TException>(ex => ex.Message == expectedErrorMessage),
-                    It.IsAny<Func<object, Exception, string>>()))
-                .Callback<LogLevel, EventId, object, Exception, Func<object, Exception, string>>((logLevel, eventId, state, exception, formatter) =>
-                {
-                    tcs.TrySetResult(null);
-                });
-
-            var mockLoggerProvider = new Mock<ILoggerProvider>();
-            mockLoggerProvider
+            var logger = new TestApplicationErrorLogger();
+            var loggerProvider = new Mock<ILoggerProvider>();
+            loggerProvider
                 .Setup(provider => provider.CreateLogger(It.IsAny<string>()))
-                .Returns(mockLogger.Object);
+                .Returns(logger);
 
             var builder = new WebHostBuilder()
-                .ConfigureLogging(loggingBuilder =>
-                {
-                    loggingBuilder.AddProvider(mockLoggerProvider.Object);
-                })
-                .UseKestrel(options =>
-                {
-                    options.Listen(IPAddress.Loopback, 0, listenOptions => listenOptions.Protocols = serverProtocols);
-                })
+                .ConfigureLogging(loggingBuilder => loggingBuilder.AddProvider(loggerProvider.Object))
+                .UseKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions => listenOptions.Protocols = serverProtocols))
                 .Configure(app => app.Run(context => Task.CompletedTask));
 
             using (var host = builder.Build())
@@ -107,9 +84,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 using (var connection = new TestConnection(host.GetPort()))
                 {
-                    await Task.WhenAll(connection.WaitForConnectionClose(), tcs.Task).TimeoutAfter(TimeSpan.FromSeconds(30));
+                    await connection.WaitForConnectionClose().TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
+
+            Assert.Single(logger.Messages, message => message.LogLevel == LogLevel.Error
+                && message.EventId.Id == 0
+                && message.Message == expectedErrorMessage);
         }
     }
 }
