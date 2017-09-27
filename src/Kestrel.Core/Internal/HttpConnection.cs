@@ -136,9 +136,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
                 }
 
-                var useHttp2 = CanUseHttp2();
+                var protocol = SelectProtocol();
 
-                if (useHttp2 && Interlocked.CompareExchange(ref _http2ConnectionState, Http2ConnectionStarted, Http2ConnectionNotStarted) == Http2ConnectionNotStarted)
+                if (protocol == HttpProtocols.None)
+                {
+                    Abort(ex: null);
+                }
+
+                // One of these has to run even if no protocol was selected so the abort propagates and everything completes properly
+                if (protocol == HttpProtocols.Http2 && Interlocked.CompareExchange(ref _http2ConnectionState, Http2ConnectionStarted, Http2ConnectionNotStarted) == Http2ConnectionNotStarted)
                 {
                     await _http2Connection.ProcessAsync(httpApplication);
                 }
@@ -304,7 +310,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        private bool CanUseHttp2()
+        private HttpProtocols SelectProtocol()
         {
             var hasTls = _context.ConnectionFeatures.Get<ITlsConnectionFeature>() != null;
             var applicationProtocol = _context.ConnectionFeatures.Get<ITlsApplicationProtocolFeature>()?.ApplicationProtocol;
@@ -331,10 +337,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             if (error != null)
             {
                 Log.LogError(0, error);
-                Abort(ex: null);
+                return HttpProtocols.None;
             }
 
-            return http2Enabled && (!hasTls || applicationProtocol == "h2");
+            return http2Enabled && (!hasTls || applicationProtocol == "h2") ? HttpProtocols.Http2 : HttpProtocols.Http1;
         }
 
         public void Tick(DateTimeOffset now)
