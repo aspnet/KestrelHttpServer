@@ -325,9 +325,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private string OnString(State nextState)
         {
             _state = nextState;
-            return _huffman
-                ? Huffman.Decode(_stringOctets, 0, _stringLength)
-                : Encoding.ASCII.GetString(_stringOctets, 0, _stringLength);
+
+            if (_huffman)
+            {
+                try
+                {
+                    return Huffman.Decode(_stringOctets, 0, _stringLength);
+                }
+                catch (HuffmanDecodingException ex)
+                {
+                    throw new HPackDecodingException(CoreStrings.HPackHuffmanError, ex);
+                }
+            }
+            else
+            {
+                return Encoding.ASCII.GetString(_stringOctets, 0, _stringLength);
+            }
         }
 
         private HeaderField GetHeader(int index)

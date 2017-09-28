@@ -366,4 +366,13 @@
   <data name="HPackErrorIndexOutOfRange" xml:space="preserve">
     <value>Index {index} is outside the bounds of the header field table.</value>
   </data>
+  <data name="HPackHuffmanErrorIncomplete" xml:space="preserve">
+    <value>Input data could not be fully decoded.</value>
+  </data>
+  <data name="HPackHuffmanErrorEOS" xml:space="preserve">
+    <value>Input data contains the EOS symbol.</value>
+  </data>
+  <data name="HPackHuffmanError" xml:space="preserve">
+    <value>Huffman decoding error.</value>
+  </data>
 </root>

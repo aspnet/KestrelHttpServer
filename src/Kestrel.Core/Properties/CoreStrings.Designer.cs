@@ -1172,6 +1172,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         internal static string FormatHPackErrorIndexOutOfRange(object index)
             => string.Format(CultureInfo.CurrentCulture, GetString("HPackErrorIndexOutOfRange", "index"), index);
 
+        /// <summary>
+        /// Input data could not be fully decoded.
+        /// </summary>
+        internal static string HPackHuffmanErrorIncomplete
+        {
+            get => GetString("HPackHuffmanErrorIncomplete");
+        }
+
+        /// <summary>
+        /// Input data could not be fully decoded.
+        /// </summary>
+        internal static string FormatHPackHuffmanErrorIncomplete()
+            => GetString("HPackHuffmanErrorIncomplete");
+
+        /// <summary>
+        /// Input data contains the EOS symbol.
+        /// </summary>
+        internal static string HPackHuffmanErrorEOS
+        {
+            get => GetString("HPackHuffmanErrorEOS");
+        }
+
+        /// <summary>
+        /// Input data contains the EOS symbol.
+        /// </summary>
+        internal static string FormatHPackHuffmanErrorEOS()
+            => GetString("HPackHuffmanErrorEOS");
+
+        /// <summary>
+        /// Huffman decoding error.
+        /// </summary>
+        internal static string HPackHuffmanError
+        {
+            get => GetString("HPackHuffmanError");
+        }
+
+        /// <summary>
+        /// Huffman decoding error.
+        /// </summary>
+        internal static string FormatHPackHuffmanError()
+            => GetString("HPackHuffmanError");
+
         private static string GetString(string name, params string[] formatterNames)
         {
             var value = _resourceManager.GetString(name);

@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
@@ -315,13 +314,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 next |= (i + 3 < data.Length ? (uint)(data[i + 3] << lastDecodedBits) : 0);
 
                 var ones = (uint)(int.MinValue >> (8 - lastDecodedBits - 1));
-                if (i == count - 1 && (next & ones) == ones)
+                if (i == count - 1 && lastDecodedBits > 0 && (next & ones) == ones)
                 {
                     // Padding
                     break;
                 }
 
-                var ch = Decode(next, out var decodedBits);
+                var validBits = Math.Min(30, (8 - lastDecodedBits) + (count - i - 1) * 8);
+                var ch = Decode(next, validBits, out var decodedBits);
+
+                if (ch == -1)
+                {
+                    throw new HuffmanDecodingException(CoreStrings.HPackHuffmanErrorIncomplete);
+                }
+                else if (ch == 256)
+                {
+                    throw new HuffmanDecodingException(CoreStrings.HPackHuffmanErrorEOS);
+                }
+
                 sb.Append((char)ch);
 
                 lastDecodedBits += decodedBits;
@@ -332,11 +342,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             return sb.ToString();
         }
 
-        public static int Decode(uint data, out int decodedBits)
+        public static int Decode(uint data, int validBits, out int decodedBits)
         {
             var codeMax = 0;
 
-            for (var i = 0; i < _decodingTable.Length; i++)
+            for (var i = 0; i < _decodingTable.Length && _decodingTable[i].codeLength <= validBits; i++)
             {
                 var (codeLength, codes) = _decodingTable[i];
                 var mask = int.MinValue >> (codeLength - 1);
@@ -357,7 +367,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 }
             }
 
-            throw new Exception();
+            decodedBits = 0;
+            return -1;
         }
     }
 }

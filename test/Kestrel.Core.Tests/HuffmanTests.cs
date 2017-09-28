@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Xunit;
 
@@ -9,28 +8,100 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class HuffmanTests
     {
-        [Fact]
-        public void HuffmanDecodeString()
+        public static readonly TheoryData<byte[], string> _validData = new TheoryData<byte[], string>
         {
-                                        //  h        e.......e l........l l      o.......o
-            var encodedHello = new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 };
+            //               h      e         l          l      o         *
+            { new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 }, "hello" },
+            { new byte[] { 0xb6, 0xb9, 0xac, 0x1c, 0x85, 0x58, 0xd5, 0x20, 0xa4, 0xb6, 0xc2, 0xad, 0x61, 0x7b, 0x5a, 0x54, 0x25, 0x1f }, "upgrade-insecure-requests" },
+            // "t
+            { new byte[] { 0xfe, 0x53 }, "\"t" }
+        };
 
-            Assert.Equal("hello", Huffman.Decode(encodedHello, 0, encodedHello.Length));
+        [Theory]
+        [MemberData(nameof(_validData))]
+        public void HuffmanDecodeString(byte[] encoded, string expected)
+        {
+            Assert.Equal(expected, Huffman.Decode(encoded, 0, encoded.Length));
+        }
 
-            var encodedHeader = new byte[]
-            {
-                0xb6, 0xb9, 0xac, 0x1c, 0x85, 0x58, 0xd5, 0x20, 0xa4, 0xb6, 0xc2, 0xad, 0x61, 0x7b, 0x5a, 0x54, 0x25, 0x1f
-            };
+        public static readonly TheoryData<byte[]> _longPaddingData = new TheoryData<byte[]>
+        {
+            //               h      e         l          l      o         *
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111, 0b11111111 },
 
-            Assert.Equal("upgrade-insecure-requests", Huffman.Decode(encodedHeader, 0, encodedHeader.Length));
+            // '&' (8 bits) + 8 bit padding
+            new byte[] { 0xf8, 0xff },
 
-            encodedHeader = new byte[]
-            {
-                // "t
-                0xfe, 0x53
-            };
+            // ':' (7 bits) + 9 bit padding
+            new byte[] { 0xb9, 0xff }
+        };
 
-            Assert.Equal("\"t", Huffman.Decode(encodedHeader, 0, encodedHeader.Length));
+        [Theory]
+        [MemberData(nameof(_longPaddingData))]
+        public void ThrowsOnPaddingLongerThanSevenBits(byte[] encoded)
+        {
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length));
+            Assert.Equal(CoreStrings.HPackHuffmanErrorIncomplete, exception.Message);
+        }
+
+        public static readonly TheoryData<byte[]> _eosData = new TheoryData<byte[]>
+        {
+            new byte[] { 0xff, 0xff, 0xff, 0xff },
+            new byte[] { 0xf8, 0xff, 0xff, 0xff, 0xfc, 0x1f }
+        };
+
+        [Theory]
+        [MemberData(nameof(_eosData))]
+        public void ThrowsOnEOS(byte[] encoded)
+        {
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length));
+            Assert.Equal(CoreStrings.HPackHuffmanErrorEOS, exception.Message);
+        }
+
+        public static readonly TheoryData<byte[]> _incompleteSymbolData = new TheoryData<byte[]>
+        {
+            //             h      e.......e l........l l      o... (incomplete)
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0 },
+
+            // Non-zero padding will be seen as incomplete symbol
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0000 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0001 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0010 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0011 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0100 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0101 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0110 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0111 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1000 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1001 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1010 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1011 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1100 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1101 },
+            //             h      e.......e l........l l      o.......o
+            new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1110 }
+        };
+
+        [Theory]
+        [MemberData(nameof(_incompleteSymbolData))]
+        public void ThrowsOnIncompleteSymbol(byte[] encoded)
+        {
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length));
+            Assert.Equal(CoreStrings.HPackHuffmanErrorIncomplete, exception.Message);
         }
 
         [Theory]
@@ -46,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(HuffmanData))]
         public void HuffmanDecode(int code, uint encoded, int bitLength)
         {
-            Assert.Equal(code, Huffman.Decode(encoded, out var decodedBits));
+            Assert.Equal(code, Huffman.Decode(encoded, bitLength, out var decodedBits));
             Assert.Equal(bitLength, decodedBits);
         }
 
@@ -61,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 #pragma warning restore xUnit1026
             int bitLength)
         {
-            Assert.Equal(code, Huffman.Decode(Huffman.Encode(code).encoded, out var decodedBits));
+            Assert.Equal(code, Huffman.Decode(Huffman.Encode(code).encoded, bitLength, out var decodedBits));
             Assert.Equal(bitLength, decodedBits);
         }
 

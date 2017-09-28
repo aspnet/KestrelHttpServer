@@ -367,6 +367,51 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(CoreStrings.FormatHPackErrorDynamicTableSizeUpdateTooLarge(4097, DynamicTableInitialMaxSize), exception.Message);
         }
 
+        private static readonly byte[] _huffmanLongPadding = new byte[] { 0xf8, 0xff };
+
+        private static readonly byte[] _huffmanEos = new byte[] { 0xff, 0xff, 0xff, 0xff };
+
+        public static readonly TheoryData<byte[]> _huffmanDecodingErrorData = new TheoryData<byte[]>
+        {
+            // Invalid Huffman encoding in header name
+
+            // Literal Header Field with Incremental Indexing - New Name ("a")
+            new byte[] { 0x40, (byte)(0x80 | _huffmanLongPadding.Length) }.Concat(_huffmanLongPadding).ToArray(),
+            new byte[] { 0x40, (byte)(0x80 | _huffmanEos.Length) }.Concat(_huffmanEos).ToArray(),
+
+            // Literal Header Field without Indexing - New Name ("a")
+            new byte[] { 0x00, (byte)(0x80 | _huffmanLongPadding.Length) }.Concat(_huffmanLongPadding).ToArray(),
+            new byte[] { 0x00, (byte)(0x80 | _huffmanEos.Length) }.Concat(_huffmanEos).ToArray(),
+
+            // Literal Header Field Never Indexed - New Name ("a")
+            new byte[] { 0x10, (byte)(0x80 | _huffmanLongPadding.Length) }.Concat(_huffmanLongPadding).ToArray(),
+            new byte[] { 0x10, (byte)(0x80 | _huffmanEos.Length) }.Concat(_huffmanEos).ToArray(),
+
+            // Invalid Huffman encoding in header value
+
+            // Literal Header Field with Incremental Indexing - New Name ("a")
+            new byte[] { 0x40, 0x01, 0x61, (byte)(0x80 | _huffmanLongPadding.Length) }.Concat(_huffmanLongPadding).ToArray(),
+            new byte[] { 0x40, 0x01, 0x61, (byte)(0x80 | _huffmanEos.Length) }.Concat(_huffmanEos).ToArray(),
+
+            // Literal Header Field without Indexing - New Name ("a")
+            new byte[] { 0x00, 0x01, 0x61, (byte)(0x80 | _huffmanLongPadding.Length) }.Concat(_huffmanLongPadding).ToArray(),
+            new byte[] { 0x00, 0x01, 0x61, (byte)(0x80 | _huffmanEos.Length) }.Concat(_huffmanEos).ToArray(),
+
+            // Literal Header Field Never Indexed - New Name ("a")
+            new byte[] { 0x10, 0x01, 0x61, (byte)(0x80 | _huffmanLongPadding.Length) }.Concat(_huffmanLongPadding).ToArray(),
+            new byte[] { 0x10, 0x01, 0x61, (byte)(0x80 | _huffmanEos.Length) }.Concat(_huffmanEos).ToArray(),
+        };
+
+        [Theory]
+        [MemberData(nameof(_huffmanDecodingErrorData))]
+        public void WrapsHuffmanDecodingExceptionInHPackDecodingException(byte[] data)
+        {
+            var headers = new HttpRequestHeaders();
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(data, headers));
+            Assert.Equal(CoreStrings.HPackHuffmanError, exception.Message);
+            Assert.IsType<HuffmanDecodingException>(exception.InnerException);
+        }
+
         private void TestDecodeWithIndexing(byte[] data, string expectedHeaderName, string expectedHeaderValue)
         {
             TestDecode(data, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: true);
