@@ -90,7 +90,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public static readonly TheoryData<byte[]> _eosData = new TheoryData<byte[]>
         {
+            // EOS
             new byte[] { 0xff, 0xff, 0xff, 0xff },
+            // '&' + EOS + '0'
             new byte[] { 0xf8, 0xff, 0xff, 0xff, 0xfc, 0x1f }
         };
 
@@ -104,39 +106,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public static readonly TheoryData<byte[]> _incompleteSymbolData = new TheoryData<byte[]>
         {
-            //             h      e.......e l........l l      o... (incomplete)
+            //             h      e         l          l      o (incomplete)
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0 },
 
             // Non-zero padding will be seen as incomplete symbol
-            //             h      e.......e l........l l      o.......o
+            //             h      e         l          l      o         *
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0000 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0001 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0010 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0011 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0100 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0101 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0110 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_0111 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1000 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1001 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1010 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1011 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1100 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1101 },
-            //             h      e.......e l........l l      o.......o
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1110 }
         };
 
