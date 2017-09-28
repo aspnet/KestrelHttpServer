@@ -15,6 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public string Value { get; }
 
+        // + 32 explained here: http://httpwg.org/specs/rfc7541.html#rfc.section.4.1
         public int Length => Name.Length + Value.Length + 32;
     }
 }

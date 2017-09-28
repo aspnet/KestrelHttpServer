@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public static readonly TheoryData<byte[]> _longPaddingData = new TheoryData<byte[]>
         {
-            //               h      e         l          l      o         *
+            //             h      e         l          l      o         *
             new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111, 0b11111111 },
 
             // '&' (8 bits) + 8 bit padding
