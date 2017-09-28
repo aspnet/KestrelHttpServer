@@ -361,7 +361,7 @@
     <value>HTTP/2 over TLS was not negotiated on an HTTP/2-only endpoint.</value>
   </data>
   <data name="HPackErrorDynamicTableSizeUpdateTooLarge" xml:space="preserve">
-    <value>A dynamic table size of {size} octets is larger than the configured maximum size of {maxSize} octets.</value>
+    <value>A dynamic table size of {size} octets is greater than the configured maximum size of {maxSize} octets.</value>
   </data>
   <data name="HPackErrorIndexOutOfRange" xml:space="preserve">
     <value>Index {index} is outside the bounds of the header field table.</value>
@@ -374,5 +374,8 @@
   </data>
   <data name="HPackHuffmanError" xml:space="preserve">
     <value>Huffman decoding error.</value>
+  </data>
+  <data name="HPackStringLengthTooLarge" xml:space="preserve">
+    <value>Decoded string length of {length} octets is greater than the configured maximum length of {maxStringLength} octets.</value>
   </data>
 </root>

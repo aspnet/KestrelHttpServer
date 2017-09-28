@@ -1145,7 +1145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("EndPointHttp2NotNegotiated");
 
         /// <summary>
-        /// A dynamic table size of {size} octets is larger than the configured maximum size of {maxSize} octets.
+        /// A dynamic table size of {size} octets is greater than the configured maximum size of {maxSize} octets.
         /// </summary>
         internal static string HPackErrorDynamicTableSizeUpdateTooLarge
         {
@@ -1153,7 +1153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// A dynamic table size of {size} octets is larger than the configured maximum size of {maxSize} octets.
+        /// A dynamic table size of {size} octets is greater than the configured maximum size of {maxSize} octets.
         /// </summary>
         internal static string FormatHPackErrorDynamicTableSizeUpdateTooLarge(object size, object maxSize)
             => string.Format(CultureInfo.CurrentCulture, GetString("HPackErrorDynamicTableSizeUpdateTooLarge", "size", "maxSize"), size, maxSize);
@@ -1213,6 +1213,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         internal static string FormatHPackHuffmanError()
             => GetString("HPackHuffmanError");
+
+        /// <summary>
+        /// Decoded string length of {length} octets is greater than the configured maximum length of {maxStringLength} octets.
+        /// </summary>
+        internal static string HPackStringLengthTooLarge
+        {
+            get => GetString("HPackStringLengthTooLarge");
+        }
+
+        /// <summary>
+        /// Decoded string length of {length} octets is greater than the configured maximum length of {maxStringLength} octets.
+        /// </summary>
+        internal static string FormatHPackStringLengthTooLarge(object length, object maxStringLength)
+            => string.Format(CultureInfo.CurrentCulture, GetString("HPackStringLengthTooLarge", "length", "maxStringLength"), length, maxStringLength);
 
         private static string GetString(string name, params string[] formatterNames)
         {

@@ -22,11 +22,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class Http2ConnectionTests : IDisposable
     {
-        private static readonly string _largeHeaderA = new string('a', Http2Frame.MinAllowedMaxFrameSize - Http2Frame.HeaderLength - 8);
+        private static readonly string _largeHeaderValue = new string('a', HPackDecoder.MaxStringOctets);
 
-        private static readonly string _largeHeaderB = new string('b', Http2Frame.MinAllowedMaxFrameSize - Http2Frame.HeaderLength - 8);
-
-        private static readonly IEnumerable<KeyValuePair<string, string>> _postRequestHeaders = new []
+        private static readonly IEnumerable<KeyValuePair<string, string>> _postRequestHeaders = new[]
         {
             new KeyValuePair<string, string>(":method", "POST"),
             new KeyValuePair<string, string>(":path", "/"),
@@ -34,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             new KeyValuePair<string, string>(":scheme", "https"),
         };
 
-        private static readonly IEnumerable<KeyValuePair<string, string>> _browserRequestHeaders = new []
+        private static readonly IEnumerable<KeyValuePair<string, string>> _browserRequestHeaders = new[]
         {
             new KeyValuePair<string, string>(":method", "GET"),
             new KeyValuePair<string, string>(":path", "/"),
@@ -47,23 +45,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             new KeyValuePair<string, string>("upgrade-insecure-requests", "1"),
         };
 
-        private static readonly IEnumerable<KeyValuePair<string, string>> _oneContinuationRequestHeaders = new []
+        private static readonly IEnumerable<KeyValuePair<string, string>> _oneContinuationRequestHeaders = new[]
         {
             new KeyValuePair<string, string>(":method", "GET"),
             new KeyValuePair<string, string>(":path", "/"),
             new KeyValuePair<string, string>(":authority", "127.0.0.1"),
             new KeyValuePair<string, string>(":scheme", "https"),
-            new KeyValuePair<string, string>("a", _largeHeaderA)
+            new KeyValuePair<string, string>("a", _largeHeaderValue),
+            new KeyValuePair<string, string>("b", _largeHeaderValue),
+            new KeyValuePair<string, string>("c", _largeHeaderValue),
+            new KeyValuePair<string, string>("d", _largeHeaderValue)
         };
 
-        private static readonly IEnumerable<KeyValuePair<string, string>> _twoContinuationsRequestHeaders = new []
+        private static readonly IEnumerable<KeyValuePair<string, string>> _twoContinuationsRequestHeaders = new[]
         {
             new KeyValuePair<string, string>(":method", "GET"),
             new KeyValuePair<string, string>(":path", "/"),
             new KeyValuePair<string, string>(":authority", "127.0.0.1"),
             new KeyValuePair<string, string>(":scheme", "https"),
-            new KeyValuePair<string, string>("a", _largeHeaderA),
-            new KeyValuePair<string, string>("b", _largeHeaderB)
+            new KeyValuePair<string, string>("a", _largeHeaderValue),
+            new KeyValuePair<string, string>("b", _largeHeaderValue),
+            new KeyValuePair<string, string>("c", _largeHeaderValue),
+            new KeyValuePair<string, string>("d", _largeHeaderValue),
+            new KeyValuePair<string, string>("e", _largeHeaderValue),
+            new KeyValuePair<string, string>("f", _largeHeaderValue),
+            new KeyValuePair<string, string>("g", _largeHeaderValue),
+            new KeyValuePair<string, string>("h", _largeHeaderValue)
         };
 
         private static readonly byte[] _helloBytes = Encoding.ASCII.GetBytes("hello");
@@ -159,8 +166,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _largeHeadersApplication = context =>
             {
-                context.Response.Headers["a"] = _largeHeaderA;
-                context.Response.Headers["b"] = _largeHeaderB;
+                foreach (var name in new[] { "a", "b", "c", "d", "e", "f", "g", "h" })
+                {
+                    context.Response.Headers[name] = _largeHeaderValue;
+                }
 
                 return Task.CompletedTask;
             };
@@ -1201,15 +1210,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
 
             var headersFrame = await ExpectAsync(Http2FrameType.HEADERS,
-                withLength: 55,
+                withLength: 12361,
                 withFlags: (byte)Http2HeadersFrameFlags.NONE,
                 withStreamId: 1);
             var continuationFrame1 = await ExpectAsync(Http2FrameType.CONTINUATION,
-                withLength: 16373,
+                withLength: 12306,
                 withFlags: (byte)Http2ContinuationFrameFlags.NONE,
                 withStreamId: 1);
             var continuationFrame2 = await ExpectAsync(Http2FrameType.CONTINUATION,
-                withLength: 16373,
+                withLength: 8204,
                 withFlags: (byte)Http2ContinuationFrameFlags.END_HEADERS,
                 withStreamId: 1);
             await ExpectAsync(Http2FrameType.DATA,
@@ -1225,12 +1234,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _hpackDecoder.Decode(continuationFrame2.HeadersPayload, responseHeaders);
 
             var responseHeadersDictionary = (IDictionary<string, StringValues>)responseHeaders;
-            Assert.Equal(5, responseHeadersDictionary.Count);
+            Assert.Equal(11, responseHeadersDictionary.Count);
             Assert.Contains("date", responseHeadersDictionary.Keys, StringComparer.OrdinalIgnoreCase);
             Assert.Equal("200", responseHeadersDictionary[":status"]);
             Assert.Equal("0", responseHeadersDictionary["content-length"]);
-            Assert.Equal(_largeHeaderA, responseHeadersDictionary["a"]);
-            Assert.Equal(_largeHeaderB, responseHeadersDictionary["b"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["a"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["b"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["c"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["d"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["e"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["f"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["g"]);
+            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["h"]);
         }
 
         [Fact]
@@ -1531,7 +1546,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var frame = new Http2Frame();
 
             frame.PrepareContinuation(flags, streamId);
-            var done =_hpackEncoder.Encode(frame.Payload, out var length);
+            var done = _hpackEncoder.Encode(frame.Payload, out var length);
             frame.Length = length;
 
             await SendAsync(frame.Raw);

@@ -379,6 +379,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(CoreStrings.FormatHPackErrorDynamicTableSizeUpdateTooLarge(4097, DynamicTableInitialMaxSize), exception.Message);
         }
 
+        [Fact]
+        public void DecodesStringLength_GreaterThanLimit_Error()
+        {
+            var encoded = _literalHeaderFieldWithoutIndexingNewName
+                .Concat(new byte[] { 0xff, 0x82, 0x1f }) // 4097 encoded with 7-bit prefix
+                .ToArray();
+
+            var headers = new HttpRequestHeaders();
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(encoded, headers));
+            Assert.Equal(CoreStrings.FormatHPackStringLengthTooLarge(4097, HPackDecoder.MaxStringOctets), exception.Message);
+        }
+
         public static readonly TheoryData<byte[]> _huffmanDecodingErrorData = new TheoryData<byte[]>
         {
             // Invalid Huffman encoding in header name

@@ -23,6 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             DynamicTableSizeUpdate
         }
 
+        // TODO: add new configurable limit
+        public const int MaxStringOctets = 4096;
+
         // http://httpwg.org/specs/rfc7541.html#rfc.section.6.1
         //   0   1   2   3   4   5   6   7
         // +---+---+---+---+---+---+---+---+
@@ -80,10 +83,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private readonly int _maxDynamicTableSize;
         private readonly DynamicTable _dynamicTable;
         private readonly IntegerDecoder _integerDecoder = new IntegerDecoder();
+        private readonly byte[] _stringOctets = new byte[MaxStringOctets];
 
         private State _state = State.Ready;
-        // TODO: add new HTTP/2 header size limit and allocate accordingly
-        private byte[] _stringOctets = new byte[Http2Frame.MinAllowedMaxFrameSize];
         private string _headerName = string.Empty;
         private string _headerValue = string.Empty;
         private int _stringLength;
@@ -317,6 +319,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         private void OnStringLength(int length, State nextState)
         {
+            if (length > _stringOctets.Length)
+            {
+                throw new HPackDecodingException(CoreStrings.FormatHPackStringLengthTooLarge(length, _stringOctets.Length));
+            }
+
             _stringLength = length;
             _stringIndex = 0;
             _state = nextState;
