@@ -10,10 +10,54 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
     {
         public static readonly TheoryData<byte[], string> _validData = new TheoryData<byte[], string>
         {
+            // Single 5-bit symbol
+            { new byte[] { 0x07 }, "0" },
+            // Single 6-bit symbol
+            { new byte[] { 0x57 }, "%" },
+            // Single 7-bit symbol
+            { new byte[] { 0xb9 }, ":" },
+            // Single 8-bit symbol
+            { new byte[] { 0xf8 }, "&" },
+            // Single 10-bit symbol
+            { new byte[] { 0xfe, 0x3f }, "!" },
+            // Single 11-bit symbol
+            { new byte[] { 0xff, 0x7f }, "+" },
+            // Single 12-bit symbol
+            { new byte[] { 0xff, 0xaf }, "#" },
+            // Single 13-bit symbol
+            { new byte[] { 0xff, 0xcf }, "$" },
+            // Single 14-bit symbol
+            { new byte[] { 0xff, 0xf3 }, "^" },
+            // Single 15-bit symbol
+            { new byte[] { 0xff, 0xf9 }, "<" },
+            // Single 19-bit symbol
+            { new byte[] { 0xff, 0xfe, 0x1f }, "\\" },
+            // Single 20-bit symbol
+            { new byte[] { 0xff, 0xfe, 0x6f }, "\x80" },
+            // Single 21-bit symbol
+            { new byte[] { 0xff, 0xfe, 0xe7 }, "\x99" },
+            // Single 22-bit symbol
+            { new byte[] { 0xff, 0xff, 0x4b }, "\x81" },
+            // Single 23-bit symbol
+            { new byte[] { 0xff, 0xff, 0xb1 }, "\x01" },
+            // Single 24-bit symbol
+            { new byte[] { 0xff, 0xff, 0xea }, "\x09" },
+            // Single 25-bit symbol
+            { new byte[] { 0xff, 0xff, 0xf6, 0x7f }, "\xc7" },
+            // Single 26-bit symbol
+            { new byte[] { 0xff, 0xff, 0xf8, 0x3f }, "\xc0" },
+            // Single 27-bit symbol
+            { new byte[] { 0xff, 0xff, 0xfb, 0xdf }, "\xcb" },
+            // Single 28-bit symbol
+            { new byte[] { 0xff, 0xff, 0xfe, 0x2f }, "\x02" },
+            // Single 30-bit symbol
+            { new byte[] { 0xff, 0xff, 0xff, 0xf3 }, "\x0a" },
+
             //               h      e         l          l      o         *
             { new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 }, "hello" },
+
+            // Sequences that uncovered errors
             { new byte[] { 0xb6, 0xb9, 0xac, 0x1c, 0x85, 0x58, 0xd5, 0x20, 0xa4, 0xb6, 0xc2, 0xad, 0x61, 0x7b, 0x5a, 0x54, 0x25, 0x1f }, "upgrade-insecure-requests" },
-            // "t
             { new byte[] { 0xfe, 0x53 }, "\"t" }
         };
 
