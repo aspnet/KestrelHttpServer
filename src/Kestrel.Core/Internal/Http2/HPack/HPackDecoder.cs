@@ -115,7 +115,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
             if (endHeaders && _state != State.Ready)
             {
-                throw new HPackDecodingException("The final header block fragment was incomplete and could not be fully decoded.");
+                throw new HPackDecodingException(CoreStrings.HPackErrorIncompleteHeaderBlock);
             }
         }
 

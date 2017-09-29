@@ -391,6 +391,96 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(CoreStrings.FormatHPackStringLengthTooLarge(4097, HPackDecoder.MaxStringOctets), exception.Message);
         }
 
+        public static readonly TheoryData<byte[]> _incompleteHeaderBlockData = new TheoryData<byte[]>
+        {
+            // Indexed Header Field Representation - incomplete index encoding
+            new byte[] { 0xff },
+
+            // Literal Header Field with Incremental Indexing Representation - New Name - incomplete header name length encoding
+            new byte[] { 0x40, 0x7f },
+
+            // Literal Header Field with Incremental Indexing Representation - New Name - incomplete header name
+            new byte[] { 0x40, 0x01 },
+            new byte[] { 0x40, 0x02, 0x61 },
+
+            // Literal Header Field with Incremental Indexing Representation - New Name - incomplete header value length encoding
+            new byte[] { 0x40, 0x01, 0x61, 0x7f },
+
+            // Literal Header Field with Incremental Indexing Representation - New Name - incomplete header value
+            new byte[] { 0x40, 0x01, 0x61, 0x01 },
+            new byte[] { 0x40, 0x01, 0x61, 0x02, 0x61 },
+
+            // Literal Header Field with Incremental Indexing Representation - Indexed Name - incomplete index encoding
+            new byte[] { 0x7f },
+
+            // Literal Header Field with Incremental Indexing Representation - Indexed Name - incomplete header value length encoding
+            new byte[] { 0x7a, 0xff },
+
+            // Literal Header Field with Incremental Indexing Representation - Indexed Name - incomplete header value
+            new byte[] { 0x7a, 0x01 },
+            new byte[] { 0x7a, 0x02, 0x61 },
+
+            // Literal Header Field without Indexing - New Name - incomplete header name length encoding
+            new byte[] { 0x00, 0xff },
+
+            // Literal Header Field without Indexing - New Name - incomplete header name
+            new byte[] { 0x00, 0x01 },
+            new byte[] { 0x00, 0x02, 0x61 },
+
+            // Literal Header Field without Indexing - New Name - incomplete header value length encoding
+            new byte[] { 0x00, 0x01, 0x61, 0xff },
+
+            // Literal Header Field without Indexing - New Name - incomplete header value
+            new byte[] { 0x00, 0x01, 0x61, 0x01 },
+            new byte[] { 0x00, 0x01, 0x61, 0x02, 0x61 },
+
+            // Literal Header Field without Indexing Representation - Indexed Name - incomplete index encoding
+            new byte[] { 0x0f },
+
+            // Literal Header Field without Indexing Representation - Indexed Name - incomplete header value length encoding
+            new byte[] { 0x02, 0xff },
+
+            // Literal Header Field without Indexing Representation - Indexed Name - incomplete header value
+            new byte[] { 0x02, 0x01 },
+            new byte[] { 0x02, 0x02, 0x61 },
+
+            // Literal Header Field Never Indexed - New Name - incomplete header name length encoding
+            new byte[] { 0x10, 0xff },
+
+            // Literal Header Field Never Indexed - New Name - incomplete header name
+            new byte[] { 0x10, 0x01 },
+            new byte[] { 0x10, 0x02, 0x61 },
+
+            // Literal Header Field Never Indexed - New Name - incomplete header value length encoding
+            new byte[] { 0x10, 0x01, 0x61, 0xff },
+
+            // Literal Header Field Never Indexed - New Name - incomplete header value
+            new byte[] { 0x10, 0x01, 0x61, 0x01 },
+            new byte[] { 0x10, 0x01, 0x61, 0x02, 0x61 },
+
+            // Literal Header Field Never Indexed Representation - Indexed Name - incomplete index encoding
+            new byte[] { 0x1f },
+
+            // Literal Header Field Never Indexed Representation - Indexed Name - incomplete header value length encoding
+            new byte[] { 0x12, 0xff },
+
+            // Literal Header Field Never Indexed Representation - Indexed Name - incomplete header value
+            new byte[] { 0x12, 0x01 },
+            new byte[] { 0x12, 0x02, 0x61 },
+
+            // Dynamic Table Size Update - incomplete max size encoding
+            new byte[] { 0x3f }
+        };
+
+        [Theory]
+        [MemberData(nameof(_incompleteHeaderBlockData))]
+        public void DecodesIncompleteHeaderBlock_Error(byte[] encoded)
+        {
+            var headers = new HttpRequestHeaders();
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(encoded, headers, endHeaders: true));
+            Assert.Equal(CoreStrings.HPackErrorIncompleteHeaderBlock, exception.Message);
+        }
+
         public static readonly TheoryData<byte[]> _huffmanDecodingErrorData = new TheoryData<byte[]>
         {
             // Invalid Huffman encoding in header name
@@ -418,31 +508,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         [Theory]
         [MemberData(nameof(_huffmanDecodingErrorData))]
-        public void WrapsHuffmanDecodingExceptionInHPackDecodingException(byte[] data)
+        public void WrapsHuffmanDecodingExceptionInHPackDecodingException(byte[] encoded)
         {
             var headers = new HttpRequestHeaders();
-            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(data, headers, endHeaders: true));
+            var exception = Assert.Throws<HPackDecodingException>(() => _decoder.Decode(encoded, headers, endHeaders: true));
             Assert.Equal(CoreStrings.HPackHuffmanError, exception.Message);
             Assert.IsType<HuffmanDecodingException>(exception.InnerException);
         }
 
-        private void TestDecodeWithIndexing(byte[] data, string expectedHeaderName, string expectedHeaderValue)
+        private void TestDecodeWithIndexing(byte[] encoded, string expectedHeaderName, string expectedHeaderValue)
         {
-            TestDecode(data, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: true);
+            TestDecode(encoded, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: true);
         }
 
-        private void TestDecodeWithoutIndexing(byte[] data, string expectedHeaderName, string expectedHeaderValue)
+        private void TestDecodeWithoutIndexing(byte[] encoded, string expectedHeaderName, string expectedHeaderValue)
         {
-            TestDecode(data, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: false);
+            TestDecode(encoded, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: false);
         }
 
-        private void TestDecode(byte[] data, string expectedHeaderName, string expectedHeaderValue, bool expectDynamicTableEntry)
+        private void TestDecode(byte[] encoded, string expectedHeaderName, string expectedHeaderValue, bool expectDynamicTableEntry)
         {
             Assert.Equal(0, _dynamicTable.Count);
             Assert.Equal(0, _dynamicTable.Size);
 
             var headers = new HttpRequestHeaders();
-            _decoder.Decode(data, headers, endHeaders: true);
+            _decoder.Decode(encoded, headers, endHeaders: true);
 
             Assert.Equal(expectedHeaderValue, ((IHeaderDictionary)headers)[expectedHeaderName]);
 

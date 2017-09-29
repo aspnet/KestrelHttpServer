@@ -378,4 +378,7 @@
   <data name="HPackStringLengthTooLarge" xml:space="preserve">
     <value>Decoded string length of {length} octets is greater than the configured maximum length of {maxStringLength} octets.</value>
   </data>
+  <data name="HPackErrorIncompleteHeaderBlock" xml:space="preserve">
+    <value>The header block was incomplete and could not be fully decoded.</value>
+  </data>
 </root>

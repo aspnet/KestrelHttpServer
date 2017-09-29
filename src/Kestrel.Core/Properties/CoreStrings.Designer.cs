@@ -1228,6 +1228,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         internal static string FormatHPackStringLengthTooLarge(object length, object maxStringLength)
             => string.Format(CultureInfo.CurrentCulture, GetString("HPackStringLengthTooLarge", "length", "maxStringLength"), length, maxStringLength);
 
+        /// <summary>
+        /// The header block was incomplete and could not be fully decoded.
+        /// </summary>
+        internal static string HPackErrorIncompleteHeaderBlock
+        {
+            get => GetString("HPackErrorIncompleteHeaderBlock");
+        }
+
+        /// <summary>
+        /// The header block was incomplete and could not be fully decoded.
+        /// </summary>
+        internal static string FormatHPackErrorIncompleteHeaderBlock()
+            => GetString("HPackErrorIncompleteHeaderBlock");
+
         private static string GetString(string name, params string[] formatterNames)
         {
             var value = _resourceManager.GetString(name);
