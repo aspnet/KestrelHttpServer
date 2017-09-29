@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public int StreamId => _context.StreamId;
 
-        public bool HasReceivedEndStream { get; private set; }
+        public bool EndStreamReceived { get; private set; }
 
         protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
 
@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 if (endStream)
                 {
-                    HasReceivedEndStream = true;
+                    EndStreamReceived = true;
                     RequestBodyPipe.Writer.Complete();
                 }
             }
