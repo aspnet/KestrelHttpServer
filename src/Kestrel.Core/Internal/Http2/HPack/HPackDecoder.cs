@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
@@ -109,11 +108,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             _dynamicTable = dynamicTable;
         }
 
-        public void Decode(Span<byte> data, IHeaderDictionary headers, bool endHeaders)
+        public void Decode(Span<byte> data, bool endHeaders, IHttpHeadersHandler handler)
         {
             for (var i = 0; i < data.Length; i++)
             {
-                OnByte(data[i], headers);
+                OnByte(data[i], handler);
             }
 
             if (endHeaders && _state != State.Ready)
@@ -122,7 +121,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             }
         }
 
-        public void OnByte(byte b, IHeaderDictionary headers)
+        public void OnByte(byte b, IHttpHeadersHandler handler)
         {
             switch (_state)
             {
@@ -133,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
                         if (_integerDecoder.BeginDecode((byte)val, IndexedHeaderFieldPrefix))
                         {
-                            OnIndexedHeaderField(_integerDecoder.Value, headers);
+                            OnIndexedHeaderField(_integerDecoder.Value, handler);
                         }
                         else
                         {
@@ -216,7 +215,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 case State.HeaderFieldIndex:
                     if (_integerDecoder.Decode(b))
                     {
-                        OnIndexedHeaderField(_integerDecoder.Value, headers);
+                        OnIndexedHeaderField(_integerDecoder.Value, handler);
                     }
 
                     break;
@@ -286,7 +285,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                         var headerNameSpan = new Span<byte>(_headerName, 0, _headerNameLength);
                         var headerValueSpan = new Span<byte>(_headerValueOctets, 0, _headerValueLength);
 
-                        headers.Append(headerNameSpan.GetAsciiStringNonNullCharacters(), headerValueSpan.GetAsciiStringNonNullCharacters());
+                        handler.OnHeader(headerNameSpan, headerValueSpan);
 
                         if (_index)
                         {
@@ -315,10 +314,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             }
         }
 
-        private void OnIndexedHeaderField(int index, IHeaderDictionary headers)
+        private void OnIndexedHeaderField(int index, IHttpHeadersHandler handler)
         {
             var header = GetHeader(index);
-            headers.Append(new Span<byte>(header.Name).GetAsciiStringNonNullCharacters(), new Span<byte>(header.Value).GetAsciiStringNonNullCharacters());
+            handler.OnHeader(new Span<byte>(header.Name), new Span<byte>(header.Value));
             _state = State.Ready;
         }
 

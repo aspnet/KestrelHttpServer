@@ -14,13 +14,14 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Primitives;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
-    public class Http2ConnectionTests : IDisposable
+    public class Http2ConnectionTests : IDisposable, IHttpHeadersHandler
     {
         private static readonly string _largeHeaderValue = new string('a', HPackDecoder.MaxStringOctets);
 
@@ -89,6 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private readonly ConcurrentDictionary<int, TaskCompletionSource<object>> _runningStreams = new ConcurrentDictionary<int, TaskCompletionSource<object>>();
         private readonly Dictionary<string, string> _receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _decodedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<int> _abortedStreamIds = new HashSet<int>();
         private readonly object _abortedStreamIdsLock = new object();
 
@@ -231,6 +233,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void Dispose()
         {
             _pipeFactory.Dispose();
+        }
+
+        void IHttpHeadersHandler.OnHeader(Span<byte> name, Span<byte> value)
+        {
+            _decodedHeaders[name.GetAsciiStringNonNullCharacters()] = value.GetAsciiStringNonNullCharacters();
         }
 
         [Fact]
@@ -1249,24 +1256,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
 
-            var responseHeaders = new HttpResponseHeaders();
-            _hpackDecoder.Decode(headersFrame.HeadersPayload, responseHeaders, endHeaders: false);
-            _hpackDecoder.Decode(continuationFrame1.HeadersPayload, responseHeaders, endHeaders: false);
-            _hpackDecoder.Decode(continuationFrame2.HeadersPayload, responseHeaders, endHeaders: true);
+            _hpackDecoder.Decode(headersFrame.HeadersPayload, endHeaders: false, handler: this);
+            _hpackDecoder.Decode(continuationFrame1.HeadersPayload, endHeaders: false, handler: this);
+            _hpackDecoder.Decode(continuationFrame2.HeadersPayload, endHeaders: true, handler: this);
 
-            var responseHeadersDictionary = (IDictionary<string, StringValues>)responseHeaders;
-            Assert.Equal(11, responseHeadersDictionary.Count);
-            Assert.Contains("date", responseHeadersDictionary.Keys, StringComparer.OrdinalIgnoreCase);
-            Assert.Equal("200", responseHeadersDictionary[":status"]);
-            Assert.Equal("0", responseHeadersDictionary["content-length"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["a"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["b"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["c"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["d"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["e"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["f"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["g"]);
-            Assert.Equal(_largeHeaderValue, responseHeadersDictionary["h"]);
+            Assert.Equal(11, _decodedHeaders.Count);
+            Assert.Contains("date", _decodedHeaders.Keys, StringComparer.OrdinalIgnoreCase);
+            Assert.Equal("200", _decodedHeaders[":status"]);
+            Assert.Equal("0", _decodedHeaders["content-length"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["a"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["b"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["c"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["d"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["e"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["f"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["g"]);
+            Assert.Equal(_largeHeaderValue, _decodedHeaders["h"]);
         }
 
         [Fact]

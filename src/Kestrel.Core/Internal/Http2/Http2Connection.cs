@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2Connection : ITimeoutControl, IHttp2StreamLifetimeHandler
+    public class Http2Connection : ITimeoutControl, IHttp2StreamLifetimeHandler, IHttpHeadersHandler
     {
         public static byte[] ClientPreface { get; } = Encoding.ASCII.GetBytes("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
 
@@ -357,7 +357,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _streams[_incomingFrame.StreamId] = _currentHeadersStream;
 
                 var endHeaders = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS;
-                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders, endHeaders);
+                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
 
                 if (endHeaders)
                 {
@@ -533,7 +533,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             var endHeaders = (_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS;
-            _hpackDecoder.Decode(_incomingFrame.HeadersPayload, _currentHeadersStream.RequestHeaders, endHeaders);
+            _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
 
             if (endHeaders)
             {
@@ -577,6 +577,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         void IHttp2StreamLifetimeHandler.OnStreamCompleted(int streamId)
         {
             _streams.TryRemove(streamId, out _);
+        }
+
+        public void OnHeader(Span<byte> name, Span<byte> value)
+        {
+            _currentHeadersStream.OnHeader(name, value);
         }
 
         void ITimeoutControl.SetTimeout(long ticks, TimeoutAction timeoutAction)

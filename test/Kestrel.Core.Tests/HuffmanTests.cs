@@ -108,7 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void ThrowsOnDstNotLargeEnough()
+        public void ThrowsOnDestinationBufferTooSmall()
         {
             //                           h      e         l          l      o         *
             var encoded = new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 };
