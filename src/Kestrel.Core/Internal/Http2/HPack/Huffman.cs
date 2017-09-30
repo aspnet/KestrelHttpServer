@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
@@ -303,22 +302,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         /// <summary>
         /// Decodes a Huffman encoded string from a byte array.
         /// </summary>
-        /// <param name="data">The byte array containing the encoded data.</param>
+        /// <param name="src">The source byte array containing the encoded data.</param>
         /// <param name="offset">The offset in the byte array where the coded data starts.</param>
         /// <param name="count">The number of bytes to decode.</param>
-        /// <returns>The decoded string.</returns>
-        public static string Decode(byte[] data, int offset, int count)
+        /// <param name="dst">The destination byte array to store the decoded data.</param>
+        /// <returns>The number of decoded symbols.</returns>
+        public static int Decode(byte[] src, int offset, int count, byte[] dst)
         {
-            var sb = new StringBuilder();
-
             var i = offset;
+            var j = 0;
             var lastDecodedBits = 0;
             while (i < count)
             {
-                var next = (uint)(data[i] << 24 + lastDecodedBits);
-                next |= (i + 1 < data.Length ? (uint)(data[i + 1] << 16 + lastDecodedBits) : 0);
-                next |= (i + 2 < data.Length ? (uint)(data[i + 2] << 8 + lastDecodedBits) : 0);
-                next |= (i + 3 < data.Length ? (uint)(data[i + 3] << lastDecodedBits) : 0);
+                var next = (uint)(src[i] << 24 + lastDecodedBits);
+                next |= (i + 1 < src.Length ? (uint)(src[i + 1] << 16 + lastDecodedBits) : 0);
+                next |= (i + 2 < src.Length ? (uint)(src[i + 2] << 8 + lastDecodedBits) : 0);
+                next |= (i + 3 < src.Length ? (uint)(src[i + 3] << lastDecodedBits) : 0);
 
                 var ones = (uint)(int.MinValue >> (8 - lastDecodedBits - 1));
                 if (i == count - 1 && lastDecodedBits > 0 && (next & ones) == ones)
@@ -348,7 +347,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                     throw new HuffmanDecodingException(CoreStrings.HPackHuffmanErrorEOS);
                 }
 
-                sb.Append((char)ch);
+                if (j == dst.Length)
+                {
+                    throw new HuffmanDecodingException(CoreStrings.HPackHuffmanErrorDestinationTooSmall);
+                }
+
+                dst[j++] = (byte)ch;
 
                 // If we crossed a byte boundary, advance i so we start at the next byte that's not fully decoded.
                 lastDecodedBits += decodedBits;
@@ -358,7 +362,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 lastDecodedBits %= 8;
             }
 
-            return sb.ToString();
+            return j;
         }
 
         /// <summary>

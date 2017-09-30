@@ -38,19 +38,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         // Literal Header Field Never Indexed Representation - Indexed Name - Index 58 (user-agent)
         private static readonly byte[] _literalHeaderFieldNeverIndexedIndexedName = new byte[] { 0x1f, 0x2b };
 
-        private const string _userAgentString = "user-agent";
+        private static readonly byte[] _userAgentBytes = Encoding.ASCII.GetBytes("user-agent");
 
-        private const string _headerNameString = "new-header";
-
-        private static readonly byte[] _headerNameBytes = Encoding.ASCII.GetBytes(_headerNameString);
+        private static readonly byte[] _headerNameBytes = Encoding.ASCII.GetBytes("new-header");
 
         // n     e     w       -      h     e     a     d     e     r      *
         // 10101000 10111110 00010110 10011100 10100011 10010000 10110110 01111111
         private static readonly byte[] _headerNameHuffmanBytes = new byte[] { 0xa8, 0xbe, 0x16, 0x9c, 0xa3, 0x90, 0xb6, 0x7f };
 
-        private const string _headerValueString = "value";
-
-        private static readonly byte[] _headerValueBytes = Encoding.ASCII.GetBytes(_headerValueString);
+        private static readonly byte[] _headerValueBytes = Encoding.ASCII.GetBytes("value");
 
         // v      a     l      u      e    *
         // 11101110 00111010 00101101 00101111
@@ -103,11 +99,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var headers = new HttpRequestHeaders();
 
             // Add the header to the dynamic table
-            _dynamicTable.Insert(_headerNameString, _headerValueString);
+            _dynamicTable.Insert(_headerNameBytes, _headerValueBytes);
 
             // Index it
             _decoder.Decode(_indexedHeaderDynamic, headers, endHeaders: true);
-            Assert.Equal(_headerValueString, ((IHeaderDictionary)headers)[_headerNameString]);
+            Assert.Equal(Encoding.ASCII.GetString(_headerValueBytes), ((IHeaderDictionary)headers)[Encoding.ASCII.GetString(_headerNameBytes)]);
         }
 
         [Fact]
@@ -126,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -137,7 +133,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -148,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -159,7 +155,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -169,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithIndexing(encoded, _userAgentString, _headerValueString);
+            TestDecodeWithIndexing(encoded, _userAgentBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -179,7 +175,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithIndexing(encoded, _userAgentString, _headerValueString);
+            TestDecodeWithIndexing(encoded, _userAgentBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -202,7 +198,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -213,7 +209,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -224,7 +220,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -235,7 +231,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -245,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _userAgentString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _userAgentBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -255,7 +251,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _userAgentString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _userAgentBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -278,7 +274,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -289,7 +285,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -300,7 +296,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -311,7 +307,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _headerNameString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _headerNameBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -324,7 +320,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValue)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _userAgentString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _userAgentBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -337,7 +333,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Concat(_headerValueHuffman)
                 .ToArray();
 
-            TestDecodeWithoutIndexing(encoded, _userAgentString, _headerValueString);
+            TestDecodeWithoutIndexing(encoded, _userAgentBytes, _headerValueBytes);
         }
 
         [Fact]
@@ -516,17 +512,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.IsType<HuffmanDecodingException>(exception.InnerException);
         }
 
-        private void TestDecodeWithIndexing(byte[] encoded, string expectedHeaderName, string expectedHeaderValue)
+        private void TestDecodeWithIndexing(byte[] encoded, byte[] expectedHeaderName, byte[] expectedHeaderValue)
         {
             TestDecode(encoded, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: true);
         }
 
-        private void TestDecodeWithoutIndexing(byte[] encoded, string expectedHeaderName, string expectedHeaderValue)
+        private void TestDecodeWithoutIndexing(byte[] encoded, byte[] expectedHeaderName, byte[] expectedHeaderValue)
         {
             TestDecode(encoded, expectedHeaderName, expectedHeaderValue, expectDynamicTableEntry: false);
         }
 
-        private void TestDecode(byte[] encoded, string expectedHeaderName, string expectedHeaderValue, bool expectDynamicTableEntry)
+        private void TestDecode(byte[] encoded, byte[] expectedHeaderName, byte[] expectedHeaderValue, bool expectDynamicTableEntry)
         {
             Assert.Equal(0, _dynamicTable.Count);
             Assert.Equal(0, _dynamicTable.Size);
@@ -534,7 +530,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var headers = new HttpRequestHeaders();
             _decoder.Decode(encoded, headers, endHeaders: true);
 
-            Assert.Equal(expectedHeaderValue, ((IHeaderDictionary)headers)[expectedHeaderName]);
+            Assert.Equal(Encoding.ASCII.GetString(expectedHeaderValue), ((IHeaderDictionary)headers)[Encoding.ASCII.GetString(expectedHeaderName)]);
 
             if (expectDynamicTableEntry)
             {

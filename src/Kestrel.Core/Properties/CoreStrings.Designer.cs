@@ -1201,6 +1201,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("HPackHuffmanErrorEOS");
 
         /// <summary>
+        /// The destination buffer is not large enough to store the decoded data.
+        /// </summary>
+        internal static string HPackHuffmanErrorDestinationTooSmall
+        {
+            get => GetString("HPackHuffmanErrorDestinationTooSmall");
+        }
+
+        /// <summary>
+        /// The destination buffer is not large enough to store the decoded data.
+        /// </summary>
+        internal static string FormatHPackHuffmanErrorDestinationTooSmall()
+            => GetString("HPackHuffmanErrorDestinationTooSmall");
+
+        /// <summary>
         /// Huffman decoding error.
         /// </summary>
         internal static string HPackHuffmanError

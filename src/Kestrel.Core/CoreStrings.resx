@@ -372,6 +372,9 @@
   <data name="HPackHuffmanErrorEOS" xml:space="preserve">
     <value>Input data contains the EOS symbol.</value>
   </data>
+  <data name="HPackHuffmanErrorDestinationTooSmall" xml:space="preserve">
+    <value>The destination buffer is not large enough to store the decoded data.</value>
+  </data>
   <data name="HPackHuffmanError" xml:space="preserve">
     <value>Huffman decoding error.</value>
   </data>

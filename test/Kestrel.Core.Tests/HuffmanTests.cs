@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Text;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Xunit;
 
@@ -8,64 +9,66 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class HuffmanTests
     {
-        public static readonly TheoryData<byte[], string> _validData = new TheoryData<byte[], string>
+        public static readonly TheoryData<byte[], byte[]> _validData = new TheoryData<byte[], byte[]>
         {
             // Single 5-bit symbol
-            { new byte[] { 0x07 }, "0" },
+            { new byte[] { 0x07 }, Encoding.ASCII.GetBytes("0") },
             // Single 6-bit symbol
-            { new byte[] { 0x57 }, "%" },
+            { new byte[] { 0x57 }, Encoding.ASCII.GetBytes("%") },
             // Single 7-bit symbol
-            { new byte[] { 0xb9 }, ":" },
+            { new byte[] { 0xb9 }, Encoding.ASCII.GetBytes(":") },
             // Single 8-bit symbol
-            { new byte[] { 0xf8 }, "&" },
+            { new byte[] { 0xf8 }, Encoding.ASCII.GetBytes("&") },
             // Single 10-bit symbol
-            { new byte[] { 0xfe, 0x3f }, "!" },
+            { new byte[] { 0xfe, 0x3f }, Encoding.ASCII.GetBytes("!") },
             // Single 11-bit symbol
-            { new byte[] { 0xff, 0x7f }, "+" },
+            { new byte[] { 0xff, 0x7f }, Encoding.ASCII.GetBytes("+") },
             // Single 12-bit symbol
-            { new byte[] { 0xff, 0xaf }, "#" },
+            { new byte[] { 0xff, 0xaf }, Encoding.ASCII.GetBytes("#") },
             // Single 13-bit symbol
-            { new byte[] { 0xff, 0xcf }, "$" },
+            { new byte[] { 0xff, 0xcf }, Encoding.ASCII.GetBytes("$") },
             // Single 14-bit symbol
-            { new byte[] { 0xff, 0xf3 }, "^" },
+            { new byte[] { 0xff, 0xf3 }, Encoding.ASCII.GetBytes("^") },
             // Single 15-bit symbol
-            { new byte[] { 0xff, 0xf9 }, "<" },
+            { new byte[] { 0xff, 0xf9 }, Encoding.ASCII.GetBytes("<") },
             // Single 19-bit symbol
-            { new byte[] { 0xff, 0xfe, 0x1f }, "\\" },
+            { new byte[] { 0xff, 0xfe, 0x1f }, Encoding.ASCII.GetBytes("\\") },
             // Single 20-bit symbol
-            { new byte[] { 0xff, 0xfe, 0x6f }, "\x80" },
+            { new byte[] { 0xff, 0xfe, 0x6f }, new byte[] { 0x80 } },
             // Single 21-bit symbol
-            { new byte[] { 0xff, 0xfe, 0xe7 }, "\x99" },
+            { new byte[] { 0xff, 0xfe, 0xe7 }, new byte[] { 0x99 } },
             // Single 22-bit symbol
-            { new byte[] { 0xff, 0xff, 0x4b }, "\x81" },
+            { new byte[] { 0xff, 0xff, 0x4b }, new byte[] { 0x81 } },
             // Single 23-bit symbol
-            { new byte[] { 0xff, 0xff, 0xb1 }, "\x01" },
+            { new byte[] { 0xff, 0xff, 0xb1 }, new byte[] { 0x01 } },
             // Single 24-bit symbol
-            { new byte[] { 0xff, 0xff, 0xea }, "\x09" },
+            { new byte[] { 0xff, 0xff, 0xea }, new byte[] { 0x09 } },
             // Single 25-bit symbol
-            { new byte[] { 0xff, 0xff, 0xf6, 0x7f }, "\xc7" },
+            { new byte[] { 0xff, 0xff, 0xf6, 0x7f }, new byte[] { 0xc7 } },
             // Single 26-bit symbol
-            { new byte[] { 0xff, 0xff, 0xf8, 0x3f }, "\xc0" },
+            { new byte[] { 0xff, 0xff, 0xf8, 0x3f }, new byte[] { 0xc0 } },
             // Single 27-bit symbol
-            { new byte[] { 0xff, 0xff, 0xfb, 0xdf }, "\xcb" },
+            { new byte[] { 0xff, 0xff, 0xfb, 0xdf }, new byte[] { 0xcb } },
             // Single 28-bit symbol
-            { new byte[] { 0xff, 0xff, 0xfe, 0x2f }, "\x02" },
+            { new byte[] { 0xff, 0xff, 0xfe, 0x2f }, new byte[] { 0x02 } },
             // Single 30-bit symbol
-            { new byte[] { 0xff, 0xff, 0xff, 0xf3 }, "\x0a" },
+            { new byte[] { 0xff, 0xff, 0xff, 0xf3 }, new byte[] { 0x0a } },
 
             //               h      e         l          l      o         *
-            { new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 }, "hello" },
+            { new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 }, Encoding.ASCII.GetBytes("hello") },
 
             // Sequences that uncovered errors
-            { new byte[] { 0xb6, 0xb9, 0xac, 0x1c, 0x85, 0x58, 0xd5, 0x20, 0xa4, 0xb6, 0xc2, 0xad, 0x61, 0x7b, 0x5a, 0x54, 0x25, 0x1f }, "upgrade-insecure-requests" },
-            { new byte[] { 0xfe, 0x53 }, "\"t" }
+            { new byte[] { 0xb6, 0xb9, 0xac, 0x1c, 0x85, 0x58, 0xd5, 0x20, 0xa4, 0xb6, 0xc2, 0xad, 0x61, 0x7b, 0x5a, 0x54, 0x25, 0x1f }, Encoding.ASCII.GetBytes("upgrade-insecure-requests") },
+            { new byte[] { 0xfe, 0x53 }, Encoding.ASCII.GetBytes("\"t") }
         };
 
         [Theory]
         [MemberData(nameof(_validData))]
-        public void HuffmanDecodeString(byte[] encoded, string expected)
+        public void HuffmanDecodeArray(byte[] encoded, byte[] expected)
         {
-            Assert.Equal(expected, Huffman.Decode(encoded, 0, encoded.Length));
+            var dst = new byte[expected.Length];
+            Assert.Equal(expected.Length, Huffman.Decode(encoded, 0, encoded.Length, dst));
+            Assert.Equal(expected, dst);
         }
 
         public static readonly TheoryData<byte[]> _longPaddingData = new TheoryData<byte[]>
@@ -84,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(_longPaddingData))]
         public void ThrowsOnPaddingLongerThanSevenBits(byte[] encoded)
         {
-            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length));
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length, new byte[encoded.Length * 2]));
             Assert.Equal(CoreStrings.HPackHuffmanErrorIncomplete, exception.Message);
         }
 
@@ -100,8 +103,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(_eosData))]
         public void ThrowsOnEOS(byte[] encoded)
         {
-            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length));
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length, new byte[encoded.Length * 2]));
             Assert.Equal(CoreStrings.HPackHuffmanErrorEOS, exception.Message);
+        }
+
+        [Fact]
+        public void ThrowsOnDstNotLargeEnough()
+        {
+            //                           h      e         l          l      o         *
+            var encoded = new byte[] { 0b100111_00, 0b101_10100, 0b0_101000_0, 0b0111_1111 };
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length, new byte[encoded.Length]));
+            Assert.Equal(CoreStrings.HPackHuffmanErrorDestinationTooSmall, exception.Message);
         }
 
         public static readonly TheoryData<byte[]> _incompleteSymbolData = new TheoryData<byte[]>
@@ -132,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(_incompleteSymbolData))]
         public void ThrowsOnIncompleteSymbol(byte[] encoded)
         {
-            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length));
+            var exception = Assert.Throws<HuffmanDecodingException>(() => Huffman.Decode(encoded, 0, encoded.Length, new byte[encoded.Length * 2]));
             Assert.Equal(CoreStrings.HPackHuffmanErrorIncomplete, exception.Message);
         }
 

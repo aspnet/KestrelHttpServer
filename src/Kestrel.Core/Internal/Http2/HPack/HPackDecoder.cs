@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
@@ -84,12 +84,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private readonly DynamicTable _dynamicTable;
         private readonly IntegerDecoder _integerDecoder = new IntegerDecoder();
         private readonly byte[] _stringOctets = new byte[MaxStringOctets];
+        private readonly byte[] _headerNameOctets = new byte[MaxStringOctets];
+        private readonly byte[] _headerValueOctets = new byte[MaxStringOctets];
 
         private State _state = State.Ready;
-        private string _headerName = string.Empty;
-        private string _headerValue = string.Empty;
-        private int _stringLength;
+        private byte[] _headerName;
         private int _stringIndex;
+        private int _stringLength;
+        private int _headerNameLength;
+        private int _headerValueLength;
         private bool _index;
         private bool _huffman;
 
@@ -249,7 +252,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
                     if (_stringIndex == _stringLength)
                     {
-                        _headerName = OnString(nextState: State.HeaderValueLength);
+                        OnString(nextState: State.HeaderValueLength);
                     }
 
                     break;
@@ -278,12 +281,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
                     if (_stringIndex == _stringLength)
                     {
-                        _headerValue = OnString(nextState: State.Ready);
-                        headers.Append(_headerName, _headerValue);
+                        OnString(nextState: State.Ready);
+
+                        var headerNameSpan = new Span<byte>(_headerName, 0, _headerNameLength);
+                        var headerValueSpan = new Span<byte>(_headerValueOctets, 0, _headerValueLength);
+
+                        headers.Append(headerNameSpan.GetAsciiStringNonNullCharacters(), headerValueSpan.GetAsciiStringNonNullCharacters());
 
                         if (_index)
                         {
-                            _dynamicTable.Insert(_headerName, _headerValue);
+                            _dynamicTable.Insert(headerNameSpan, headerValueSpan);
                         }
                     }
 
@@ -311,7 +318,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private void OnIndexedHeaderField(int index, IHeaderDictionary headers)
         {
             var header = GetHeader(index);
-            headers.Append(header.Name, header.Value);
+            headers.Append(new Span<byte>(header.Name).GetAsciiStringNonNullCharacters(), new Span<byte>(header.Value).GetAsciiStringNonNullCharacters());
             _state = State.Ready;
         }
 
@@ -319,6 +326,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         {
             var header = GetHeader(index);
             _headerName = header.Name;
+            _headerNameLength = header.Name.Length;
             _state = State.HeaderValueLength;
         }
 
@@ -334,25 +342,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             _state = nextState;
         }
 
-        private string OnString(State nextState)
+        private void OnString(State nextState)
         {
-            _state = nextState;
+            int Decode(byte[] dst)
+            {
+                if (_huffman)
+                {
+                    return Huffman.Decode(_stringOctets, 0, _stringLength, dst);
+                }
+                else
+                {
+                    Buffer.BlockCopy(_stringOctets, 0, dst, 0, _stringLength);
+                    return _stringLength;
+                }
+            }
 
-            if (_huffman)
+            try
             {
-                try
+                if (_state == State.HeaderName)
                 {
-                    return Huffman.Decode(_stringOctets, 0, _stringLength);
+                    _headerName = _headerNameOctets;
+                    _headerNameLength = Decode(_headerNameOctets);
                 }
-                catch (HuffmanDecodingException ex)
+                else
                 {
-                    throw new HPackDecodingException(CoreStrings.HPackHuffmanError, ex);
+                    _headerValueLength = Decode(_headerValueOctets);
                 }
             }
-            else
+            catch (HuffmanDecodingException ex)
             {
-                return Encoding.ASCII.GetString(_stringOctets, 0, _stringLength);
+                throw new HPackDecodingException(CoreStrings.HPackHuffmanError, ex);
             }
+
+            _state = nextState;
         }
 
         private HeaderField GetHeader(int index)

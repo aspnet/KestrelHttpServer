@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             }
         }
 
-        public void Insert(string name, string value)
+        public void Insert(Span<byte> name, Span<byte> value)
         {
             var entry = new HeaderField(name, value);
             EnsureSize(_maxSize - entry.Length);
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
                 throw new InvalidOperationException($"Unable to add entry of size {entry.Length} to dynamic table of size {_maxSize}.");
             }
 
-            _buffer[_insertIndex] = new HeaderField(name, value);
+            _buffer[_insertIndex] = entry;
             _insertIndex = (_insertIndex + 1) % _buffer.Length;
             _size += entry.Length;
             _count++;
