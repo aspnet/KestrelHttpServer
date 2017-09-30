@@ -28,8 +28,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
 
-        public bool ExpectData { get; set; }
-
         public override bool IsUpgradableRequest => false;
 
         protected override void OnReset()
