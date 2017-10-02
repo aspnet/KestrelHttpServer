@@ -383,7 +383,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             //
             // To decode a symbol, we scan the decoding table, which is sorted by ascending symbol bit length.
             // For each bit length b, we determine the maximum b-bit encoded value, plus one (that is codeMax).
-            // This is done with to the following logic:
+            // This is done with the following logic:
             //
             // if we're at the first entry in the table,
             //    codeMax = the # of symbols encoded in b bits

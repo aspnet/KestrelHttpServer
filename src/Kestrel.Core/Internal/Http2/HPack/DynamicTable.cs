@@ -7,8 +7,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 {
     public class DynamicTable
     {
-        private readonly HeaderField[] _buffer;
-        private int _maxSize = 4096;
+        private HeaderField[] _buffer;
+        private int _maxSize;
         private int _size;
         private int _count;
         private int _insertIndex;
@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public DynamicTable(int maxSize)
         {
-            _buffer = new HeaderField[maxSize];
+            _buffer = new HeaderField[maxSize / 32];
             _maxSize = maxSize;
         }
 
@@ -41,14 +41,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public void Insert(Span<byte> name, Span<byte> value)
         {
-            var entry = new HeaderField(name, value);
-            EnsureSize(_maxSize - entry.Length);
+            var entryLength = (name.Length + value.Length + 32);
+            EnsureSize(_maxSize - entryLength);
 
-            if (_maxSize < entry.Length)
+            if (entryLength > _maxSize)
             {
-                throw new InvalidOperationException($"Unable to add entry of size {entry.Length} to dynamic table of size {_maxSize}.");
+                // http://httpwg.org/specs/rfc7541.html#rfc.section.4.4
+                // It is not an error to attempt to add an entry that is larger than the maximum size;
+                // an attempt to add an entry larger than the maximum size causes the table to be emptied
+                // of all existing entries and results in an empty table.
+                return;
             }
 
+            var entry = new HeaderField(name, value);
             _buffer[_insertIndex] = entry;
             _insertIndex = (_insertIndex + 1) % _buffer.Length;
             _size += entry.Length;
@@ -58,10 +63,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         public void Resize(int maxSize)
         {
             _maxSize = maxSize;
-            EnsureSize(_maxSize);
+
+            if (maxSize > _maxSize)
+            {
+                var newBuffer = new HeaderField[maxSize / 32];
+                Buffer.BlockCopy(_buffer, 0, newBuffer, 0, _buffer.Length);
+                _buffer = newBuffer;
+            }
+            else
+            {
+                EnsureSize(_maxSize);
+            }
         }
 
-        public void EnsureSize(int size)
+        private void EnsureSize(int size)
         {
             while (_count > 0 && _size > size)
             {
