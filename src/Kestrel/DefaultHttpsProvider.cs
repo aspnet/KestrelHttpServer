@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -56,8 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         }
 
         private static bool HasPrivateKey(X509Certificate2 certificate)
-            => (certificate.GetRSAPrivateKey() is RSACryptoServiceProvider rsaPrivateKey && rsaPrivateKey.CspKeyContainerInfo.Exportable)/* ||
-               (certificate.GetRSAPrivateKey() is RSACng cngPrivateKey && cngPrivateKey.CspKeyContainerInfo.Exportable)*/;
+            => certificate.GetRSAPrivateKey() != null;
 
         private static void DisposeCertificates(IEnumerable<X509Certificate2> certificates)
         {
