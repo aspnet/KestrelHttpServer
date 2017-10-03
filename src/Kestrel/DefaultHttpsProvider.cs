@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 if (certificate == null)
                 {
-                    throw new Exception();
+                    throw new InvalidOperationException("Unable to find ASP.NET Core development certificate.");
                 }
 
                 DisposeCertificates(certificates.Except(new[] { certificate }));
