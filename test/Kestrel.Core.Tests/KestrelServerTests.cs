@@ -38,20 +38,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void StartWithHttpsAddressThrows()
+        public void StartWithHttpsAddressConfiguresHttpsEndpoints()
         {
-            var testLogger = new TestApplicationErrorLogger { ThrowOnCriticalErrors = false };
+            var mockDefaultHttpsProvider = new Mock<IDefaultHttpsProvider>();
 
-            using (var server = CreateServer(new KestrelServerOptions(), testLogger))
+            using (var server = CreateServer(new KestrelServerOptions(), mockDefaultHttpsProvider.Object))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
 
-                var exception = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
+                StartDummyApplication(server);
 
-                Assert.Equal(
-                    $"HTTPS endpoints can only be configured using {nameof(KestrelServerOptions)}.{nameof(KestrelServerOptions.Listen)}().",
-                    exception.Message);
-                Assert.Equal(1, testLogger.CriticalErrorsLogged);
+                mockDefaultHttpsProvider.Verify(provider => provider.ConfigureHttps(It.IsAny<ListenOptions>()), Times.Once);
             }
         }
 
@@ -273,6 +270,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private static KestrelServer CreateServer(KestrelServerOptions options, ILogger testLogger)
         {
             return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new[] { new KestrelTestLoggerProvider(testLogger) }), Mock.Of<IDefaultHttpsProvider>());
+        }
+
+        private static KestrelServer CreateServer(KestrelServerOptions options, IDefaultHttpsProvider defaultHttpsProvider)
+        {
+            return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new[] { new KestrelTestLoggerProvider(Mock.Of<ILogger>()) }), defaultHttpsProvider);
         }
 
         private static void StartDummyApplication(IServer server)
