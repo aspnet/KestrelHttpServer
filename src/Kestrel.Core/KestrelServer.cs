@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -22,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private readonly List<ITransport> _transports = new List<ITransport>();
         private readonly Heartbeat _heartbeat;
         private readonly IServerAddressesFeature _serverAddresses;
+        private readonly IDefaultHttpsProvider _defaultHttpsProvider;
         private readonly ITransportFactory _transportFactory;
 
         private bool _hasStarted;
@@ -52,6 +54,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
             Features.Set(_serverAddresses);
+
+            _defaultHttpsProvider = serviceContext.ServerOptions.ApplicationServices.GetService<IDefaultHttpsProvider>();
         }
 
         private static ServiceContext CreateServiceContext(IOptions<KestrelServerOptions> options, ILoggerFactory loggerFactory)
@@ -152,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     await transport.BindAsync().ConfigureAwait(false);
                 }
 
-                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, Trace, OnBind).ConfigureAwait(false);
+                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, Options, Trace, _defaultHttpsProvider, OnBind).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
