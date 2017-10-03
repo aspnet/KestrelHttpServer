@@ -8,9 +8,9 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -60,7 +60,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var tcs = new TaskCompletionSource<ListenOptions>();
             await AddressBinder.BindAsync(addresses,
                 options,
+                new KestrelServerOptions(),
                 NullLogger.Instance,
+                Mock.Of<IDefaultHttpsProvider>(),
                 endpoint =>
                 {
                     tcs.TrySetResult(endpoint);
@@ -80,7 +82,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await Assert.ThrowsAsync<IOException>(() =>
                 AddressBinder.BindAsync(addresses,
                 options,
+                new KestrelServerOptions(),
                 NullLogger.Instance,
+                Mock.Of<IDefaultHttpsProvider>(),
                 endpoint => throw new AddressInUseException("already in use")));
         }
 
@@ -100,7 +104,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await AddressBinder.BindAsync(addresses,
                 options,
+                new KestrelServerOptions(),
                 logger,
+                Mock.Of<IDefaultHttpsProvider>(),
                 endpoint =>
                 {
                     if (endpoint.IPEndPoint.Address == IPAddress.IPv6Any)
