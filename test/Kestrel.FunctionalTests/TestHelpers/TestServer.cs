@@ -11,10 +11,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Moq;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
@@ -66,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                              {
                                  c.Configure(context.ServerOptions);
                              }
-                             return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), context);
+                             return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), sp.GetRequiredService<IDefaultHttpsProvider>(), context);
                          });
 
                          configureServices(services);

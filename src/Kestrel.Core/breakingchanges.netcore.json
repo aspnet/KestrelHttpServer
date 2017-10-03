@@ -1,0 +1,7 @@
+﻿[
+  {
+    "TypeId": "public class Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer : Microsoft.AspNetCore.Hosting.Server.IServer",
+    "MemberId": "public .ctor(Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions> options, Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal.ITransportFactory transportFactory, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory)",
+    "Kind": "Removal"
+  }
+]

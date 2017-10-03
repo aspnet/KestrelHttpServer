@@ -60,7 +60,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var tcs = new TaskCompletionSource<ListenOptions>();
             await AddressBinder.BindAsync(addresses,
                 options,
-                new KestrelServerOptions(),
                 NullLogger.Instance,
                 Mock.Of<IDefaultHttpsProvider>(),
                 endpoint =>
@@ -81,11 +80,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await Assert.ThrowsAsync<IOException>(() =>
                 AddressBinder.BindAsync(addresses,
-                options,
-                new KestrelServerOptions(),
-                NullLogger.Instance,
-                Mock.Of<IDefaultHttpsProvider>(),
-                endpoint => throw new AddressInUseException("already in use")));
+                    options,
+                    NullLogger.Instance,
+                    Mock.Of<IDefaultHttpsProvider>(),
+                    endpoint => throw new AddressInUseException("already in use")));
         }
 
         [Theory]
@@ -104,7 +102,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await AddressBinder.BindAsync(addresses,
                 options,
-                new KestrelServerOptions(),
                 logger,
                 Mock.Of<IDefaultHttpsProvider>(),
                 endpoint =>

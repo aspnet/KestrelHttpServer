@@ -19,7 +19,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
     {
         public static async Task BindAsync(IServerAddressesFeature addresses,
             List<ListenOptions> listenOptions,
-            KestrelServerOptions serverOptions,
             ILogger logger,
             IDefaultHttpsProvider defaultHttpsProvider,
             Func<ListenOptions, Task> createBinding)
@@ -33,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 Addresses = addresses.Addresses,
                 ListenOptions = listenOptions,
-                ServerOptions = serverOptions,
+                ServerOptions = listenOptions.FirstOrDefault()?.KestrelServerOptions,
                 Logger = logger,
                 DefaultHttpsProvider = defaultHttpsProvider,
                 CreateBinding = createBinding

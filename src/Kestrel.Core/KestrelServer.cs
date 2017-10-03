@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -30,13 +29,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private int _stopping;
         private readonly TaskCompletionSource<object> _stoppedTcs = new TaskCompletionSource<object>();
 
-        public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory)
-            : this(transportFactory, CreateServiceContext(options, loggerFactory))
+        public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory, IDefaultHttpsProvider defaultHttpsProvider)
+            : this(transportFactory, defaultHttpsProvider, CreateServiceContext(options, loggerFactory))
         {
         }
 
         // For testing
-        internal KestrelServer(ITransportFactory transportFactory, ServiceContext serviceContext)
+        internal KestrelServer(ITransportFactory transportFactory, IDefaultHttpsProvider defaultHttpsProvider, ServiceContext serviceContext)
         {
             if (transportFactory == null)
             {
@@ -44,6 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
 
             _transportFactory = transportFactory;
+            _defaultHttpsProvider = defaultHttpsProvider;
             ServiceContext = serviceContext;
 
             var httpHeartbeatManager = new HttpHeartbeatManager(serviceContext.ConnectionManager);
@@ -54,8 +54,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
             Features.Set(_serverAddresses);
-
-            _defaultHttpsProvider = serviceContext.ServerOptions.ApplicationServices.GetService<IDefaultHttpsProvider>();
         }
 
         private static ServiceContext CreateServiceContext(IOptions<KestrelServerOptions> options, ILoggerFactory loggerFactory)
@@ -156,7 +154,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     await transport.BindAsync().ConfigureAwait(false);
                 }
 
-                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, Options, Trace, _defaultHttpsProvider, OnBind).ConfigureAwait(false);
+                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, Trace, _defaultHttpsProvider, OnBind).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
