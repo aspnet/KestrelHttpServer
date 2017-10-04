@@ -22,7 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         private static X509Certificate2 FindDevelopmentCertificate()
         {
-            // TODO: replace this with call to CertificateManager.FindCertificates(CertificatePurpose.HTTPS, StoreName.My, StoreLocation.CurrentUser, isValid: true)
+            // TODO: replace this with call to
+            // CertificateManager.FindCertificates(CertificatePurpose.HTTPS, StoreName.My, StoreLocation.CurrentUser, isValid: true)
             // when that becomes available.
             using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
             {
@@ -30,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 var certificates = store.Certificates.OfType<X509Certificate2>();
                 var certificate = certificates
-                    .FirstOrDefault(c => HasOid(c, AspNetHttpsOid) && !IsExpired(c) /*&& HasPrivateKey(c)*/);
+                    .FirstOrDefault(c => HasOid(c, AspNetHttpsOid) && !IsExpired(c) && HasPrivateKey(c));
 
                 if (certificate == null)
                 {
