@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public DynamicTable(int maxSize)
         {
-            _buffer = new HeaderField[maxSize / 32];
+            _buffer = new HeaderField[maxSize / HeaderField.RfcOverhead];
             _maxSize = maxSize;
         }
 
@@ -41,8 +41,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public void Insert(Span<byte> name, Span<byte> value)
         {
-            var entryLength = (name.Length + value.Length + 32);
-            EnsureSize(_maxSize - entryLength);
+            var entryLength = HeaderField.GetLength(name.Length, value.Length);
+            EnsureAvailable(entryLength);
 
             if (entryLength > _maxSize)
             {
@@ -62,23 +62,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
 
         public void Resize(int maxSize)
         {
-            _maxSize = maxSize;
-
             if (maxSize > _maxSize)
             {
-                var newBuffer = new HeaderField[maxSize / 32];
-                Buffer.BlockCopy(_buffer, 0, newBuffer, 0, _buffer.Length);
+                var newBuffer = new HeaderField[maxSize / HeaderField.RfcOverhead];
+
+                for (var i = 0; i < Count; i++)
+                {
+                    newBuffer[i] = _buffer[i];
+                }
+
                 _buffer = newBuffer;
+                _maxSize = maxSize;
             }
             else
             {
-                EnsureSize(_maxSize);
+                _maxSize = maxSize;
+                EnsureAvailable(0);
             }
         }
 
-        private void EnsureSize(int size)
+        private void EnsureAvailable(int available)
         {
-            while (_count > 0 && _size > size)
+            while (_count > 0 && _maxSize - _size < available)
             {
                 _size -= _buffer[_removeIndex].Length;
                 _count--;

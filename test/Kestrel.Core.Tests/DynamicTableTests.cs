@@ -71,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void NoOpWhenInsertingEntryLargerThanMaxSize()
         {
-            var dynamicTable = new DynamicTable(_header1.Name.Length + _header1.Value.Length + 31);
+            var dynamicTable = new DynamicTable(_header1.Length - 1);
             dynamicTable.Insert(_header1.Name, _header1.Value);
 
             Assert.Equal(0, dynamicTable.Count);
@@ -101,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             VerifyTableEntries(dynamicTable, _header2, _header1);
 
-            dynamicTable.Resize(_header2.Name.Length + _header2.Value.Length + 32);
+            dynamicTable.Resize(_header2.Length);
 
             VerifyTableEntries(dynamicTable, _header2);
         }
@@ -132,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(0, dynamicTable.Count);
             Assert.Equal(0, dynamicTable.Size);
 
-            dynamicTable.Resize(dynamicTable.MaxSize + _header2.Name.Length + _header2.Value.Length + 32);
+            dynamicTable.Resize(dynamicTable.MaxSize + _header2.Length);
             dynamicTable.Insert(_header2.Name, _header2.Value);
 
             VerifyTableEntries(dynamicTable, _header2);
