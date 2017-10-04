@@ -357,7 +357,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _streams[_incomingFrame.StreamId] = _currentHeadersStream;
 
                 var endHeaders = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS;
-                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
+
+                try
+                {
+                    _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
+                }
+                catch (Http2StreamErrorException ex)
+                {
+                    // TODO: log
+                    await _frameWriter.WriteRstStreamAsync(ex.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
+                    return;
+                }
 
                 if (endHeaders)
                 {
@@ -581,6 +591,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void OnHeader(Span<byte> name, Span<byte> value)
         {
+            // http://httpwg.org/specs/rfc7540.html#rfc.section.8.1.2
+            // A request or response containing uppercase header field names MUST be treated as malformed (Section 8.1.2.6).
+            for (var i = 0; i < name.Length; i++)
+            {
+                if (name[i] >= 65 && name[i] <= 90)
+                {
+                    throw new Http2StreamErrorException(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
+                }
+            }
+
             _currentHeadersStream.OnHeader(name, value);
         }
 

@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
-using Microsoft.Extensions.Primitives;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
@@ -777,6 +776,55 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendIncompleteHeadersFrameAsync(streamId: 1);
 
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
+        }
+
+        public static TheoryData<byte[]> UpperCaseHeaderNameData
+        {
+            get
+            {
+                var headerName = "abcdefghijklmnopqrstuvwxyz";
+
+                var headerBlockStart = new byte[]
+                {
+                    0x82, // :method: GET
+                    0x84, // :path: /
+                    0x86, // :scheme: http
+                    0x00, // Literal Header Field without Indexing - New Name,
+                    (byte)headerName.Length, // Header name length
+                };
+
+                var headerBlockEnd = new byte[]
+                {
+                    0x01, // Header value length
+                    0x30 // "0"
+                };
+
+                var data = new TheoryData<byte[]>();
+
+                for (var i = 0; i < headerName.Length; i++)
+                {
+                    var bytes = Encoding.ASCII.GetBytes(headerName);
+                    bytes[i] &= 0xdf;
+
+                    var headerBlock = headerBlockStart.Concat(bytes).Concat(headerBlockEnd).ToArray();
+                    data.Add(headerBlock);
+                }
+
+                return data;
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(UpperCaseHeaderNameData))]
+        public async Task HEADERS_Received_HeaderNameContainsUpperCaseCharacter_StreamError(byte[] headerBlock)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headerBlock);
+
+            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
+
+            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
@@ -1550,6 +1598,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendAsync(frame.Raw);
 
             return done;
+        }
+
+        private async Task SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, byte[] headerBlock)
+        {
+            var frame = new Http2Frame();
+
+            frame.PrepareHeaders(flags, streamId);
+            frame.Length = headerBlock.Length;
+            headerBlock.CopyTo(frame.HeadersPayload);
+
+            await SendAsync(frame.Raw);
         }
 
         private Task SendInvalidHeadersFrameAsync(int streamId, int frameLength, byte padLength)
