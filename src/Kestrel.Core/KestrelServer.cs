@@ -159,7 +159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     await transport.BindAsync().ConfigureAwait(false);
                 }
 
-                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, Trace, _defaultHttpsProvider, OnBind).ConfigureAwait(false);
+                await AddressBinder.BindAsync(_serverAddresses, Options, Trace, _defaultHttpsProvider, OnBind).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var addresses = new ServerAddressesFeature();
             addresses.Addresses.Add($"http://{host}");
-            var options = new List<ListenOptions>();
+            var options = new KestrelServerOptions();
 
             var tcs = new TaskCompletionSource<ListenOptions>();
             await AddressBinder.BindAsync(addresses,
@@ -76,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var addresses = new ServerAddressesFeature();
             addresses.Addresses.Add("http://localhost:5000");
-            var options = new List<ListenOptions>();
+            var options = new KestrelServerOptions();
 
             await Assert.ThrowsAsync<IOException>(() =>
                 AddressBinder.BindAsync(addresses,
@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var logger = new MockLogger();
             var addresses = new ServerAddressesFeature();
             addresses.Addresses.Add(address);
-            var options = new List<ListenOptions>();
+            var options = new KestrelServerOptions();
 
             var ipV6Attempt = false;
             var ipV4Attempt = false;

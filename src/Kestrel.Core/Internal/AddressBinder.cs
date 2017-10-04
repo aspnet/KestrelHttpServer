@@ -18,11 +18,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
     internal class AddressBinder
     {
         public static async Task BindAsync(IServerAddressesFeature addresses,
-            List<ListenOptions> listenOptions,
+            KestrelServerOptions serverOptions,
             ILogger logger,
             IDefaultHttpsProvider defaultHttpsProvider,
             Func<ListenOptions, Task> createBinding)
         {
+            var listenOptions = serverOptions.ListenOptions;
             var strategy = CreateStrategy(
                 listenOptions.ToArray(),
                 addresses.Addresses.ToArray(),
@@ -32,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 Addresses = addresses.Addresses,
                 ListenOptions = listenOptions,
-                ServerOptions = listenOptions.FirstOrDefault()?.KestrelServerOptions,
+                ServerOptions = serverOptions,
                 Logger = logger,
                 DefaultHttpsProvider = defaultHttpsProvider,
                 CreateBinding = createBinding
