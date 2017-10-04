@@ -143,7 +143,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 if (https)
                 {
                     options.KestrelServerOptions = context.ServerOptions;
-                    context.DefaultHttpsProvider?.ConfigureHttps(options);
+                    context.DefaultHttpsProvider.ConfigureHttps(options);
                 }
             }
             catch (Exception ex) when (!(ex is IOException))
@@ -160,7 +160,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 if (https)
                 {
                     options.KestrelServerOptions = context.ServerOptions;
-                    context.DefaultHttpsProvider?.ConfigureHttps(options);
+                    context.DefaultHttpsProvider.ConfigureHttps(options);
                 }
             }
             catch (Exception ex) when (!(ex is IOException))
@@ -241,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             if (https && options != null)
             {
                 options.KestrelServerOptions = context.ServerOptions;
-                context.DefaultHttpsProvider?.ConfigureHttps(options);
+                context.DefaultHttpsProvider.ConfigureHttps(options);
             }
         }
 
