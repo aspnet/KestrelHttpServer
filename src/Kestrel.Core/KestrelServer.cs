@@ -29,13 +29,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private int _stopping;
         private readonly TaskCompletionSource<object> _stoppedTcs = new TaskCompletionSource<object>();
 
-        public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory, IDefaultHttpsProvider defaultHttpsProvider)
-            : this(transportFactory, defaultHttpsProvider, CreateServiceContext(options, loggerFactory))
+        public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory)
+            : this(transportFactory, CreateServiceContext(options, loggerFactory))
         {
         }
 
+        public KestrelServer(IOptions<KestrelServerOptions> options, ITransportFactory transportFactory, ILoggerFactory loggerFactory, IDefaultHttpsProvider defaultHttpsProvider)
+            : this(transportFactory, CreateServiceContext(options, loggerFactory))
+        {
+            _defaultHttpsProvider = defaultHttpsProvider;
+        }
+
         // For testing
-        internal KestrelServer(ITransportFactory transportFactory, IDefaultHttpsProvider defaultHttpsProvider, ServiceContext serviceContext)
+        internal KestrelServer(ITransportFactory transportFactory, ServiceContext serviceContext)
         {
             if (transportFactory == null)
             {
@@ -43,7 +49,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
 
             _transportFactory = transportFactory;
-            _defaultHttpsProvider = defaultHttpsProvider;
             ServiceContext = serviceContext;
 
             var httpHeartbeatManager = new HttpHeartbeatManager(serviceContext.ConnectionManager);

@@ -68,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                              {
                                  c.Configure(context.ServerOptions);
                              }
-                             return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), sp.GetRequiredService<IDefaultHttpsProvider>(), context);
+                             return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), context);
                          });
 
                          configureServices(services);
