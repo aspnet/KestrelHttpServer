@@ -765,7 +765,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task HEADERS_Received_IncompleteHeaderBlockFragment_ConnectionError()
+        public async Task HEADERS_Received_IncompleteHeaderBlock_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
 
@@ -781,14 +781,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headerBlock);
-
             await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
 
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            // Verify that the stream ID can't be re-used
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, _browserRequestHeaders);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.STREAM_CLOSED, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
-        public async Task HEADERS_Received_HeaderBlockContainsUnknownPseudoHeaderField_StreamError()
+        public Task HEADERS_Received_HeaderBlockContainsUnknownPseudoHeaderField_StreamError()
         {
             var headers = new[]
             {
@@ -798,17 +799,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 new KeyValuePair<string, string>(":unknown", "0"),
             };
 
-            await InitializeConnectionAsync(_noopApplication);
-
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
-
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
-
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
         }
 
         [Fact]
-        public async Task HEADERS_Received_HeaderBlockContainsResponsePseudoHeaderField_StreamError()
+        public Task HEADERS_Received_HeaderBlockContainsResponsePseudoHeaderField_StreamError()
         {
             var headers = new[]
             {
@@ -818,39 +813,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 new KeyValuePair<string, string>(":status", "200"),
             };
 
-            await InitializeConnectionAsync(_noopApplication);
-
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
-
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
-
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
         }
 
         [Theory]
         [MemberData(nameof(DuplicatePseudoHeaderFieldData))]
-        public async Task HEADERS_Received_HeaderBlockContainsDuplicatePseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        public Task HEADERS_Received_HeaderBlockContainsDuplicatePseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
         {
-            await InitializeConnectionAsync(_noopApplication);
-
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
-
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
-
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
         }
 
         [Theory]
         [MemberData(nameof(MissingPseudoHeaderFieldData))]
-        public async Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        public Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
         {
-            await InitializeConnectionAsync(_noopApplication);
-
-            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
-
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
-
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
         }
 
         [Theory]
@@ -875,15 +852,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         [Theory]
         [MemberData(nameof(PseudoHeaderFieldAfterRegularHeadersData))]
-        public async Task HEADERS_Received_HeaderBlockContainsPseudoHeaderFieldAfterRegularHeaders_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        public Task HEADERS_Received_HeaderBlockContainsPseudoHeaderFieldAfterRegularHeaders_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        {
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+        }
+
+        private async Task HEADERS_Received_InvalidHeaderFields_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
         {
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
-
             await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
 
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            // Verify that the stream ID can't be re-used
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, _browserRequestHeaders);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.STREAM_CLOSED, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
@@ -1327,7 +1310,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task CONTINUATION_Received_IncompleteHeaderBlockFragment_ConnectionError()
+        public async Task CONTINUATION_Received_IncompleteHeaderBlock_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);
 
@@ -1348,7 +1331,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
 
-            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+            // Verify that the stream ID can't be re-used
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
+            await WaitForConnectionErrorAsync(expectedLastStreamId: 1, expectedErrorCode: Http2ErrorCode.STREAM_CLOSED, ignoreNonGoAwayFrames: false);
         }
 
         [Theory]
@@ -2027,21 +2012,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             get
             {
+                // We can't use HPackEncoder here because it will convert header names to lowercase
                 var headerName = "abcdefghijklmnopqrstuvwxyz";
 
                 var headerBlockStart = new byte[]
                 {
-                    0x82, // :method: GET
-                    0x84, // :path: /
-                    0x86, // :scheme: http
-                    0x00, // Literal Header Field without Indexing - New Name,
+                    0x82,                    // Indexed Header Field - :method: GET
+                    0x84,                    // Indexed Header Field - :path: /
+                    0x86,                    // Indexed Header Field - :scheme: http
+                    0x00,                    // Literal Header Field without Indexing - New Name
                     (byte)headerName.Length, // Header name length
                 };
 
                 var headerBlockEnd = new byte[]
                 {
                     0x01, // Header value length
-                    0x30 // "0"
+                    0x30  // "0"
                 };
 
                 var data = new TheoryData<byte[]>();

@@ -393,24 +393,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 _currentHeadersStream.Reset();
 
-                _streams[_incomingFrame.StreamId] = _currentHeadersStream;
-
                 var endHeaders = (_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_HEADERS) == Http2HeadersFrameFlags.END_HEADERS;
-
-                try
-                {
-                    _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
-
-                    if (endHeaders)
-                    {
-                        StartStream();
-                    }
-                }
-                catch (Http2StreamErrorException ex)
-                {
-                    // TODO: log
-                    await _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
-                }
+                await DecodeHeadersAsync(endHeaders, _incomingFrame.HeadersPayload);
             }
         }
 
@@ -580,21 +564,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             var endHeaders = (_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS;
 
-            try
-            {
-                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
-
-                if (endHeaders)
-                {
-                    StartStream();
-                }
-            }
-            catch (Http2StreamErrorException ex)
-            {
-                return _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
-            }
-
-            return Task.CompletedTask;
+            return DecodeHeadersAsync(endHeaders, _incomingFrame.Payload);
         }
 
         private Task ProcessUnknownFrameAsync()
@@ -607,29 +577,52 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return Task.CompletedTask;
         }
 
-        private void StartStream()
+        private Task DecodeHeadersAsync(bool endHeaders, Span<byte> payload)
         {
             try
             {
-                if (!_isMethodConnect && (_parsedPseudoHeaderFields & _mandatoryRequestPseudoHeaderFields) != _mandatoryRequestPseudoHeaderFields)
-                {
-                    // All HTTP/2 requests MUST include exactly one valid value for the :method, :scheme, and :path pseudo-header
-                    // fields, unless it is a CONNECT request (Section 8.3). An HTTP request that omits mandatory pseudo-header
-                    // fields is malformed (Section 8.1.2.6).
-                    throw new Http2StreamErrorException(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
-                }
+                _hpackDecoder.Decode(payload, endHeaders, handler: this);
 
-                _highestOpenedStreamId = _currentHeadersStream.StreamId;
-                _ = _currentHeadersStream.ProcessRequestsAsync();
+                if (endHeaders)
+                {
+                    StartStream();
+                    ResetRequestHeaderParsingState();
+                }
             }
-            finally
+            catch (Http2StreamErrorException ex)
             {
-                // Reset header parsing state
-                _currentHeadersStream = null;
-                _requestHeaderParsingState = RequestHeaderParsingState.Ready;
-                _parsedPseudoHeaderFields = PseudoHeaderFields.None;
-                _isMethodConnect = false;
+                ResetRequestHeaderParsingState();
+                return _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
             }
+
+            return Task.CompletedTask;
+        }
+
+        private void StartStream()
+        {
+            if (!_isMethodConnect && (_parsedPseudoHeaderFields & _mandatoryRequestPseudoHeaderFields) != _mandatoryRequestPseudoHeaderFields)
+            {
+                // All HTTP/2 requests MUST include exactly one valid value for the :method, :scheme, and :path pseudo-header
+                // fields, unless it is a CONNECT request (Section 8.3). An HTTP request that omits mandatory pseudo-header
+                // fields is malformed (Section 8.1.2.6).
+                throw new Http2StreamErrorException(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            _streams[_incomingFrame.StreamId] = _currentHeadersStream;
+            _ = _currentHeadersStream.ProcessRequestsAsync();
+        }
+
+        private void ResetRequestHeaderParsingState()
+        {
+            if (_requestHeaderParsingState != RequestHeaderParsingState.Trailers)
+            {
+                _highestOpenedStreamId = _currentHeadersStream.StreamId;
+            }
+
+            _currentHeadersStream = null;
+            _requestHeaderParsingState = RequestHeaderParsingState.Ready;
+            _parsedPseudoHeaderFields = PseudoHeaderFields.None;
+            _isMethodConnect = false;
         }
 
         private void ThrowIfIncomingFrameSentToIdleStream()
