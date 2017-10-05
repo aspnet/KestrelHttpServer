@@ -28,16 +28,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             new KeyValuePair<string, string>(":method", "POST"),
             new KeyValuePair<string, string>(":path", "/"),
-            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>(":scheme", "http"),
         };
 
         private static readonly IEnumerable<KeyValuePair<string, string>> _browserRequestHeaders = new[]
         {
             new KeyValuePair<string, string>(":method", "GET"),
             new KeyValuePair<string, string>(":path", "/"),
-            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>(":scheme", "http"),
             new KeyValuePair<string, string>("user-agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/54.0"),
             new KeyValuePair<string, string>("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
             new KeyValuePair<string, string>("accept-language", "en-US,en;q=0.5"),
@@ -49,8 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             new KeyValuePair<string, string>(":method", "GET"),
             new KeyValuePair<string, string>(":path", "/"),
-            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>(":scheme", "http"),
             new KeyValuePair<string, string>("a", _largeHeaderValue),
             new KeyValuePair<string, string>("b", _largeHeaderValue),
             new KeyValuePair<string, string>("c", _largeHeaderValue),
@@ -61,8 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             new KeyValuePair<string, string>(":method", "GET"),
             new KeyValuePair<string, string>(":path", "/"),
-            new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-            new KeyValuePair<string, string>(":scheme", "https"),
+            new KeyValuePair<string, string>(":scheme", "http"),
             new KeyValuePair<string, string>("a", _largeHeaderValue),
             new KeyValuePair<string, string>("b", _largeHeaderValue),
             new KeyValuePair<string, string>("c", _largeHeaderValue),
@@ -778,42 +774,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
         }
 
-        public static TheoryData<byte[]> UpperCaseHeaderNameData
-        {
-            get
-            {
-                var headerName = "abcdefghijklmnopqrstuvwxyz";
-
-                var headerBlockStart = new byte[]
-                {
-                    0x82, // :method: GET
-                    0x84, // :path: /
-                    0x86, // :scheme: http
-                    0x00, // Literal Header Field without Indexing - New Name,
-                    (byte)headerName.Length, // Header name length
-                };
-
-                var headerBlockEnd = new byte[]
-                {
-                    0x01, // Header value length
-                    0x30 // "0"
-                };
-
-                var data = new TheoryData<byte[]>();
-
-                for (var i = 0; i < headerName.Length; i++)
-                {
-                    var bytes = Encoding.ASCII.GetBytes(headerName);
-                    bytes[i] &= 0xdf;
-
-                    var headerBlock = headerBlockStart.Concat(bytes).Concat(headerBlockEnd).ToArray();
-                    data.Add(headerBlock);
-                }
-
-                return data;
-            }
-        }
-
         [Theory]
         [MemberData(nameof(UpperCaseHeaderNameData))]
         public async Task HEADERS_Received_HeaderNameContainsUpperCaseCharacter_StreamError(byte[] headerBlock)
@@ -867,29 +827,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
         }
 
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> DuplicatePseudoHeaderFieldData
-        {
-            get
-            {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
-                var requestHeaders = new[]
-                {
-                    new KeyValuePair<string, string>(":method", "GET"),
-                    new KeyValuePair<string, string>(":path", "/"),
-                    new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-                    new KeyValuePair<string, string>(":scheme", "http"),
-                };
-
-                foreach (var headerField in requestHeaders)
-                {
-                    var headers = requestHeaders.Concat(new[] { new KeyValuePair<string, string>(headerField.Key, headerField.Value) });
-                    data.Add(headers);
-                }
-
-                return data;
-            }
-        }
-
         [Theory]
         [MemberData(nameof(DuplicatePseudoHeaderFieldData))]
         public async Task HEADERS_Received_HeaderBlockContainsDuplicatePseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
@@ -903,28 +840,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
         }
 
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> MissingPseudoHeaderFieldData
-        {
-            get
-            {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
-                var requestHeaders = new[]
-                {
-                    new KeyValuePair<string, string>(":method", "GET"),
-                    new KeyValuePair<string, string>(":path", "/"),
-                    new KeyValuePair<string, string>(":scheme", "http"),
-                };
-
-                foreach (var headerField in requestHeaders)
-                {
-                    var headers = requestHeaders.Except(new[] { headerField });
-                    data.Add(headers);
-                }
-
-                return data;
-            }
-        }
-
         [Theory]
         [MemberData(nameof(MissingPseudoHeaderFieldData))]
         public async Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
@@ -936,29 +851,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
 
             await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
-        }
-
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> ConnectMissingPseudoHeaderFieldData
-        {
-            get
-            {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
-                var methodHeader = new[] { new KeyValuePair<string, string>(":method", "CONNECT") };
-                var requestHeaders = new[]
-                {
-                    new KeyValuePair<string, string>(":path", "/"),
-                    new KeyValuePair<string, string>(":scheme", "http"),
-                    new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-                };
-
-                foreach (var headerField in requestHeaders)
-                {
-                    var headers = methodHeader.Concat(requestHeaders.Except(new[] { headerField }));
-                    data.Add(headers);
-                }
-
-                return data;
-            }
         }
 
         [Theory]
@@ -979,30 +871,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 1);
 
             await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
-        }
-
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> PseudoHeaderFieldAfterRegularHeadersData
-        {
-            get
-            {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
-                var requestHeaders = new[]
-                {
-                    new KeyValuePair<string, string>(":method", "GET"),
-                    new KeyValuePair<string, string>(":path", "/"),
-                    new KeyValuePair<string, string>(":authority", "127.0.0.1"),
-                    new KeyValuePair<string, string>(":scheme", "http"),
-                    new KeyValuePair<string, string>("content-length", "0")
-                };
-
-                foreach (var headerField in requestHeaders.Where(h => h.Key.StartsWith(":")))
-                {
-                    var headers = requestHeaders.Except(new[] { headerField }).Concat(new[] { headerField });
-                    data.Add(headers);
-                }
-
-                return data;
-            }
         }
 
         [Theory]
@@ -1469,6 +1337,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
         }
 
+        [Theory]
+        [MemberData(nameof(MissingPseudoHeaderFieldData))]
+        public async Task CONTINUATION_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            Assert.True(await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, headers));
+            await SendEmptyContinuationFrameAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
+
+            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
+
+            await StopConnectionAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+        }
+
+        [Theory]
+        [MemberData(nameof(ConnectMissingPseudoHeaderFieldData))]
+        public async Task CONTINUATION_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_MethodIsCONNECT_NoError(IEnumerable<KeyValuePair<string, string>> headers)
+        {
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_STREAM, headers);
+            await SendEmptyContinuationFrameAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2HeadersFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+        }
+
         [Fact]
         public async Task CONTINUATION_Sent_WhenHeadersLargerThanFrameLength()
         {
@@ -1791,7 +1694,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             return done;
         }
 
-        private async Task SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, byte[] headerBlock)
+        private Task SendHeadersAsync(int streamId, Http2HeadersFrameFlags flags, byte[] headerBlock)
         {
             var frame = new Http2Frame();
 
@@ -1799,7 +1702,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             frame.Length = headerBlock.Length;
             headerBlock.CopyTo(frame.HeadersPayload);
 
-            await SendAsync(frame.Raw);
+            return SendAsync(frame.Raw);
         }
 
         private Task SendInvalidHeadersFrameAsync(int streamId, int frameLength, byte padLength)
@@ -1844,6 +1747,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendAsync(frame.Raw);
 
             return done;
+        }
+
+        private Task SendEmptyContinuationFrameAsync(int streamId, Http2ContinuationFrameFlags flags)
+        {
+            var frame = new Http2Frame();
+
+            frame.PrepareContinuation(flags, streamId);
+            frame.Length = 0;
+
+            return SendAsync(frame.Raw);
         }
 
         private Task SendIncompleteContinuationFrameAsync(int streamId)
@@ -2107,6 +2020,134 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 Assert.True(_receivedHeaders.TryGetValue(header.Key, out var value), header.Key);
                 Assert.Equal(header.Value, value, ignoreCase: true);
+            }
+        }
+
+        public static TheoryData<byte[]> UpperCaseHeaderNameData
+        {
+            get
+            {
+                var headerName = "abcdefghijklmnopqrstuvwxyz";
+
+                var headerBlockStart = new byte[]
+                {
+                    0x82, // :method: GET
+                    0x84, // :path: /
+                    0x86, // :scheme: http
+                    0x00, // Literal Header Field without Indexing - New Name,
+                    (byte)headerName.Length, // Header name length
+                };
+
+                var headerBlockEnd = new byte[]
+                {
+                    0x01, // Header value length
+                    0x30 // "0"
+                };
+
+                var data = new TheoryData<byte[]>();
+
+                for (var i = 0; i < headerName.Length; i++)
+                {
+                    var bytes = Encoding.ASCII.GetBytes(headerName);
+                    bytes[i] &= 0xdf;
+
+                    var headerBlock = headerBlockStart.Concat(bytes).Concat(headerBlockEnd).ToArray();
+                    data.Add(headerBlock);
+                }
+
+                return data;
+            }
+        }
+
+        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> DuplicatePseudoHeaderFieldData
+        {
+            get
+            {
+                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var requestHeaders = new[]
+                {
+                    new KeyValuePair<string, string>(":method", "GET"),
+                    new KeyValuePair<string, string>(":path", "/"),
+                    new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+                    new KeyValuePair<string, string>(":scheme", "http"),
+                };
+
+                foreach (var headerField in requestHeaders)
+                {
+                    var headers = requestHeaders.Concat(new[] { new KeyValuePair<string, string>(headerField.Key, headerField.Value) });
+                    data.Add(headers);
+                }
+
+                return data;
+            }
+        }
+
+        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> MissingPseudoHeaderFieldData
+        {
+            get
+            {
+                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var requestHeaders = new[]
+                {
+                    new KeyValuePair<string, string>(":method", "GET"),
+                    new KeyValuePair<string, string>(":path", "/"),
+                    new KeyValuePair<string, string>(":scheme", "http"),
+                };
+
+                foreach (var headerField in requestHeaders)
+                {
+                    var headers = requestHeaders.Except(new[] { headerField });
+                    data.Add(headers);
+                }
+
+                return data;
+            }
+        }
+
+        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> ConnectMissingPseudoHeaderFieldData
+        {
+            get
+            {
+                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var methodHeader = new[] { new KeyValuePair<string, string>(":method", "CONNECT") };
+                var requestHeaders = new[]
+                {
+                    new KeyValuePair<string, string>(":path", "/"),
+                    new KeyValuePair<string, string>(":scheme", "http"),
+                    new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+                };
+
+                foreach (var headerField in requestHeaders)
+                {
+                    var headers = methodHeader.Concat(requestHeaders.Except(new[] { headerField }));
+                    data.Add(headers);
+                }
+
+                return data;
+            }
+        }
+
+        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> PseudoHeaderFieldAfterRegularHeadersData
+        {
+            get
+            {
+                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var requestHeaders = new[]
+                {
+                    new KeyValuePair<string, string>(":method", "GET"),
+                    new KeyValuePair<string, string>(":path", "/"),
+                    new KeyValuePair<string, string>(":authority", "127.0.0.1"),
+                    new KeyValuePair<string, string>(":scheme", "http"),
+                    new KeyValuePair<string, string>("content-length", "0")
+                };
+
+                foreach (var headerField in requestHeaders.Where(h => h.Key.StartsWith(":")))
+                {
+                    var headers = requestHeaders.Except(new[] { headerField }).Concat(new[] { headerField });
+                    data.Add(headers);
+                }
+
+                return data;
             }
         }
     }

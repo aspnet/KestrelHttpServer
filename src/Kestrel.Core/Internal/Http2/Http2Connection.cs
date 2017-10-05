@@ -43,6 +43,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private static readonly PseudoHeaderFields _mandatoryRequestPseudoHeaderFields =
             PseudoHeaderFields.Method | PseudoHeaderFields.Path | PseudoHeaderFields.Scheme;
 
+        // For fast pseudo-header field validation
+        private static readonly ulong _authoritLong = HttpUtilities.GetAsciiStringAsLong("authorit");
+        private static readonly uint _methInt = HttpUtilities.GetAsciiStringAsInt("meth");
+        private static readonly ushort _odShort = HttpUtilities.GetAsciiStringAsShort("od");
+        private static readonly uint _pathInt = HttpUtilities.GetAsciiStringAsInt("path");
+        private static readonly uint _scheInt = HttpUtilities.GetAsciiStringAsInt("sche");
+        private static readonly ushort _meShort = HttpUtilities.GetAsciiStringAsShort("me");
+        private static readonly uint _statInt = HttpUtilities.GetAsciiStringAsInt("stat");
+        private static readonly ushort _usShort = HttpUtilities.GetAsciiStringAsShort("us");
+        private static readonly ulong _connInt = HttpUtilities.GetAsciiStringAsInt("CONN");
+        private static readonly ushort _ecShort = HttpUtilities.GetAsciiStringAsShort("EC");
+
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
         private readonly HPackDecoder _hpackDecoder;
@@ -388,33 +400,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 try
                 {
                     _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
+
+                    if (endHeaders)
+                    {
+                        StartStream();
+                    }
                 }
-                catch (Http2StreamErrorException)
+                catch (Http2StreamErrorException ex)
                 {
                     // TODO: log
-                    await _frameWriter.WriteRstStreamAsync(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
-                    return;
-                }
-
-                if (endHeaders)
-                {
-                    if (!_isMethodConnect && (_parsedPseudoHeaderFields & _mandatoryRequestPseudoHeaderFields) != _mandatoryRequestPseudoHeaderFields)
-                    {
-                        // TODO: log
-
-                        // All HTTP/2 requests MUST include exactly one valid value for the :method, :scheme, and :path pseudo-header
-                        // fields, unless it is a CONNECT request (Section 8.3). An HTTP request that omits mandatory pseudo-header
-                        // fields is malformed (Section 8.1.2.6).
-                        await _frameWriter.WriteRstStreamAsync(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
-                        return;
-                    }
-
-                    _highestOpenedStreamId = _incomingFrame.StreamId;
-                    _ = _currentHeadersStream.ProcessRequestsAsync();
-                    _currentHeadersStream = null;
-                    _requestHeaderParsingState = RequestHeaderParsingState.Ready;
-                    _parsedPseudoHeaderFields = PseudoHeaderFields.None;
-                    _isMethodConnect = false;
+                    await _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
                 }
             }
         }
@@ -584,16 +579,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             var endHeaders = (_incomingFrame.ContinuationFlags & Http2ContinuationFrameFlags.END_HEADERS) == Http2ContinuationFrameFlags.END_HEADERS;
-            _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
 
-            if (endHeaders)
+            try
             {
-                _highestOpenedStreamId = _currentHeadersStream.StreamId;
-                _ = _currentHeadersStream.ProcessRequestsAsync();
-                _currentHeadersStream = null;
-                _requestHeaderParsingState = RequestHeaderParsingState.Ready;
-                _parsedPseudoHeaderFields = PseudoHeaderFields.None;
-                _isMethodConnect = false;
+                _hpackDecoder.Decode(_incomingFrame.HeadersPayload, endHeaders, handler: this);
+
+                if (endHeaders)
+                {
+                    StartStream();
+                }
+            }
+            catch (Http2StreamErrorException ex)
+            {
+                return _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
             }
 
             return Task.CompletedTask;
@@ -607,6 +605,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             return Task.CompletedTask;
+        }
+
+        private void StartStream()
+        {
+            try
+            {
+                if (!_isMethodConnect && (_parsedPseudoHeaderFields & _mandatoryRequestPseudoHeaderFields) != _mandatoryRequestPseudoHeaderFields)
+                {
+                    // All HTTP/2 requests MUST include exactly one valid value for the :method, :scheme, and :path pseudo-header
+                    // fields, unless it is a CONNECT request (Section 8.3). An HTTP request that omits mandatory pseudo-header
+                    // fields is malformed (Section 8.1.2.6).
+                    throw new Http2StreamErrorException(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
+                }
+
+                _highestOpenedStreamId = _currentHeadersStream.StreamId;
+                _ = _currentHeadersStream.ProcessRequestsAsync();
+            }
+            finally
+            {
+                // Reset header parsing state
+                _currentHeadersStream = null;
+                _requestHeaderParsingState = RequestHeaderParsingState.Ready;
+                _parsedPseudoHeaderFields = PseudoHeaderFields.None;
+                _isMethodConnect = false;
+            }
         }
 
         private void ThrowIfIncomingFrameSentToIdleStream()
@@ -701,15 +724,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private static readonly ulong _authoritLong = HttpUtilities.GetAsciiStringAsLong("authorit");
-        private static readonly uint _methInt = HttpUtilities.GetAsciiStringAsInt("meth");
-        private static readonly ushort _odShort = HttpUtilities.GetAsciiStringAsShort("od");
-        private static readonly uint _pathInt = HttpUtilities.GetAsciiStringAsInt("path");
-        private static readonly uint _scheInt = HttpUtilities.GetAsciiStringAsInt("sche");
-        private static readonly ushort _meShort = HttpUtilities.GetAsciiStringAsShort("me");
-        private static readonly uint _statInt = HttpUtilities.GetAsciiStringAsInt("stat");
-        private static readonly ushort _usShort = HttpUtilities.GetAsciiStringAsShort("us");
-
         private unsafe bool IsPseudoHeaderField(Span<byte> name, out PseudoHeaderFields headerField)
         {
             headerField = PseudoHeaderFields.None;
@@ -761,9 +775,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             return true;
         }
-
-        private static readonly ulong _connInt = HttpUtilities.GetAsciiStringAsInt("CONN");
-        private static readonly ushort _ecShort = HttpUtilities.GetAsciiStringAsShort("EC");
 
         private static unsafe bool IsConnect(Span<byte> value)
         {
