@@ -2506,6 +2506,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             totalReceived += received;
                         } while (received > 0 && totalReceived < responseSize);
                     }
+                    catch (SocketException) { }
                     catch (IOException)
                     {
                         // Socket.Receive could throw, and that is fine

@@ -5,12 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.IO.Pipelines;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Protocols;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
@@ -18,17 +19,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     {
         private readonly Socket _socket;
         private readonly SocketTransport _transport;
+        private readonly ISocketTrace _trace;
 
         private IList<ArraySegment<byte>> _sendBufferList;
         private const int MinAllocBufferSize = 2048;
 
-        internal SocketConnection(Socket socket, SocketTransport transport)
+        internal SocketConnection(Socket socket, SocketTransport transport, ISocketTrace trace)
         {
             Debug.Assert(socket != null);
             Debug.Assert(transport != null);
+            Debug.Assert(trace != null);
 
             _socket = socket;
             _transport = transport;
+            _trace = trace;
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
             var remoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
@@ -56,6 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
                 {
                     // Tell the reader it's being aborted
+                    _trace.ConnectionWriteFin(ConnectionId);
                     _socket.Dispose();
                 }
 
@@ -90,6 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         if (bytesReceived == 0)
                         {
                             // FIN
+                            _trace.ConnectionReadFin(ConnectionId);
                             break;
                         }
 
@@ -100,7 +106,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         buffer.Commit();
                     }
 
-                    var result = await buffer.FlushAsync();
+                    var flushTask = buffer.FlushAsync();
+
+                    if (!flushTask.IsCompleted)
+                    {
+                        _trace.ConnectionPause(ConnectionId);
+
+                        await flushTask;
+
+                        _trace.ConnectionResume(ConnectionId);
+                    }
+
+                    var result = flushTask.GetAwaiter().GetResult();
                     if (result.IsCompleted)
                     {
                         // Pipe consumer is shut down, do we stop writing
@@ -111,22 +128,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
             {
                 error = new ConnectionResetException(ex.Message, ex);
+                _trace.ConnectionReset(ConnectionId);
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
             {
                 error = new ConnectionAbortedException();
+                _trace.ConnectionError(ConnectionId, error);
             }
             catch (ObjectDisposedException)
             {
                 error = new ConnectionAbortedException();
+                _trace.ConnectionError(ConnectionId, error);
             }
             catch (IOException ex)
             {
                 error = ex;
+                _trace.ConnectionError(ConnectionId, error);
             }
             catch (Exception ex)
             {
                 error = new IOException(ex.Message, ex);
+                _trace.ConnectionError(ConnectionId, error);
             }
             finally
             {
@@ -203,6 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                 }
 
+                _trace.ConnectionWriteFin(ConnectionId);
                 _socket.Shutdown(SocketShutdown.Send);
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)

@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
@@ -16,19 +17,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly SocketTransportFactory _transportFactory;
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
+        private readonly ISocketTrace _trace;
         private Socket _listenSocket;
         private Task _listenTask;
 
-        internal SocketTransport(SocketTransportFactory transportFactory, IEndPointInformation endPointInformation, IConnectionHandler handler)
+        internal SocketTransport(
+            SocketTransportFactory transportFactory,
+            IEndPointInformation endPointInformation,
+            IConnectionHandler handler,
+            ISocketTrace trace)
         {
             Debug.Assert(transportFactory != null);
             Debug.Assert(endPointInformation != null);
             Debug.Assert(endPointInformation.Type == ListenType.IPEndPoint);
             Debug.Assert(handler != null);
+            Debug.Assert(trace != null);
 
             _transportFactory = transportFactory;
             _endPointInformation = endPointInformation;
             _handler = handler;
+            _trace = trace;
 
             _listenSocket = null;
             _listenTask = null;
@@ -105,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
                     acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                    var connection = new SocketConnection(acceptSocket, this);
+                    var connection = new SocketConnection(acceptSocket, this, _trace);
                     _ = connection.StartAsync(_handler);
                 }
             }

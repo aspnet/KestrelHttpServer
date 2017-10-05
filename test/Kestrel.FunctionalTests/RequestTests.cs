@@ -300,7 +300,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv")))
+                .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel",
+                                                               "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
+                                                               "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets")))
                 .Returns(mockLogger.Object);
 
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(mockLoggerFactory.Object)))
@@ -354,7 +356,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv")))
+                .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel",
+                                                               "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
+                                                               "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets")))
                 .Returns(mockLogger.Object);
 
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(mockLoggerFactory.Object)))
@@ -424,7 +428,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(factory => factory.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
             mockLoggerFactory
-                .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel", "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv")))
+                .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel",
+                                                               "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
+                                                               "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets")))
                 .Returns(mockLogger.Object);
 
             using (var server = new TestServer(async context =>
