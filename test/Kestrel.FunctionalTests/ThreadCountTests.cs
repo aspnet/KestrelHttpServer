@@ -14,47 +14,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class ThreadCountTests
     {
-        [ConditionalTheory]
-        [MemberData(nameof(OneToTen))]
-        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "Tests fail on OS X due to low file descriptor limit.")]
-        public async Task OneToTenThreads(int threadCount)
-        {
-            var hostBuilder = new WebHostBuilder()
-                .UseKestrel()
-                .UseLibuv(options =>
-                {
-                    options.ThreadCount = threadCount;
-                })
-                .UseUrls("http://127.0.0.1:0/")
-                .Configure(app =>
-                {
-                    app.Run(context =>
-                    {
-                        return context.Response.WriteAsync("Hello World");
-                    });
-                });
+        //[ConditionalTheory]
+        //[MemberData(nameof(OneToTen))]
+        //[OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "Tests fail on OS X due to low file descriptor limit.")]
+        //public async Task OneToTenThreads(int threadCount)
+        //{
+        //    var hostBuilder = new WebHostBuilder()
+        //        .UseKestrel()
+        //        .UseLibuv(options =>
+        //        {
+        //            options.ThreadCount = threadCount;
+        //        })
+        //        .UseUrls("http://127.0.0.1:0/")
+        //        .Configure(app =>
+        //        {
+        //            app.Run(context =>
+        //            {
+        //                return context.Response.WriteAsync("Hello World");
+        //            });
+        //        });
 
-            using (var host = hostBuilder.Build())
-            {
-                host.Start();
+        //    using (var host = hostBuilder.Build())
+        //    {
+        //        host.Start();
 
-                using (var client = new HttpClient())
-                {
-                    // Send 20 requests just to make sure we don't get any failures
-                    var requestTasks = new List<Task<string>>();
-                    for (int i = 0; i < 20; i++)
-                    {
-                        var requestTask = client.GetStringAsync($"http://127.0.0.1:{host.GetPort()}/");
-                        requestTasks.Add(requestTask);
-                    }
+        //        using (var client = new HttpClient())
+        //        {
+        //            // Send 20 requests just to make sure we don't get any failures
+        //            var requestTasks = new List<Task<string>>();
+        //            for (int i = 0; i < 20; i++)
+        //            {
+        //                var requestTask = client.GetStringAsync($"http://127.0.0.1:{host.GetPort()}/");
+        //                requestTasks.Add(requestTask);
+        //            }
 
-                    foreach (var result in await Task.WhenAll(requestTasks))
-                    {
-                        Assert.Equal("Hello World", result);
-                    }
-                }
-            }
-        }
+        //            foreach (var result in await Task.WhenAll(requestTasks))
+        //            {
+        //                Assert.Equal("Hello World", result);
+        //            }
+        //        }
+        //    }
+        //}
 
         public static TheoryData<int> OneToTen
         {

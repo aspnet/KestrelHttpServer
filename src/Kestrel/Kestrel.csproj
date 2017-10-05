@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kestrel.Core\Kestrel.Core.csproj" />
-    <ProjectReference Include="..\Kestrel.Transport.Libuv\Kestrel.Transport.Libuv.csproj" />
+    <ProjectReference Include="..\Kestrel.Transport.Sockets\Kestrel.Transport.Sockets.csproj" />
   </ItemGroup>
 
 </Project>
