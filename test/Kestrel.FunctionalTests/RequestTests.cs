@@ -69,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             Assert.True(contentLength % bufferLength == 0, $"{nameof(contentLength)} sent must be evenly divisible by {bufferLength}.");
             Assert.True(bufferLength % 256 == 0, $"{nameof(bufferLength)} must be evenly divisible by 256");
 
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel(options =>
                 {
                     options.Limits.MaxRequestBodySize = contentLength;
@@ -155,7 +155,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task DoesNotHangOnConnectionCloseRequest()
         {
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app =>
@@ -185,7 +185,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var requestBodyPersisted = false;
             var responseBodyPersisted = false;
 
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                .UseKestrel()
                .UseUrls("http://127.0.0.1:0")
                .Configure(app =>
@@ -228,7 +228,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public void CanUpgradeRequestWithConnectionKeepAliveUpgradeHeader()
         {
             var dataRead = false;
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                .UseKestrel()
                .UseUrls("http://127.0.0.1:0")
                .Configure(app =>
@@ -470,7 +470,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var appDone = new SemaphoreSlim(0);
             var expectedExceptionThrown = false;
 
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
@@ -514,7 +514,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var appStarted = new SemaphoreSlim(0);
             var requestAborted = new SemaphoreSlim(0);
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(async context =>
@@ -544,7 +544,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public void AbortingTheConnectionSendsFIN()
         {
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0")
                 .Configure(app => app.Run(context =>
@@ -1623,7 +1623,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private async Task TestRemoteIPAddress(string registerAddress, string requestAddress, string expectAddress)
         {
-            var builder = new WebHostBuilder()
+            var builder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls($"http://{registerAddress}:0")
                 .Configure(app =>

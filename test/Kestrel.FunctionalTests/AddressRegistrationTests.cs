@@ -163,7 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private async Task RegisterAddresses_Success(string addressInput, string[] testUrls, int testPort = 0)
         {
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .ConfigureLogging(_configureLoggingDelegate)
                 .UseUrls(addressInput)
@@ -223,7 +223,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private async Task RegisterIPEndPoint_Success(IPEndPoint endPoint, string testUrl, int testPort = 0)
         {
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .ConfigureLogging(_configureLoggingDelegate)
                 .UseKestrel(options =>
                 {
@@ -304,7 +304,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var testLogger = new TestApplicationErrorLogger();
 
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .ConfigureLogging(_configureLoggingDelegate)
                 .UseKestrel()
                 .ConfigureLogging(builder => builder
@@ -336,7 +336,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
                 var port = ((IPEndPoint)socket.LocalEndPoint).Port;
 
-                var hostBuilder = new WebHostBuilder()
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
                     .ConfigureLogging(_configureLoggingDelegate)
                     .UseKestrel()
                     .UseUrls($"http://127.0.0.1:{port}")
@@ -359,7 +359,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 socket.Bind(new IPEndPoint(IPAddress.IPv6Loopback, 0));
                 var port = ((IPEndPoint)socket.LocalEndPoint).Port;
 
-                var hostBuilder = new WebHostBuilder()
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
                     .ConfigureLogging(_configureLoggingDelegate)
                     .UseKestrel()
                     .UseUrls($"http://[::1]:{port}")
@@ -378,7 +378,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var useUrlsAddress = $"http://127.0.0.1:0";
             var testLogger = new TestApplicationErrorLogger();
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel(options =>
                 {
                     options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
@@ -417,7 +417,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var useUrlsAddress = $"http://127.0.0.1:0";
             var testLogger = new TestApplicationErrorLogger();
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .ConfigureLogging(_configureLoggingDelegate)
                 .UseKestrel(options =>
                 {
@@ -455,7 +455,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task DoesNotOverrideDirectConfigurationWithIServerAddressesFeature_IfAddressesEmpty()
         {
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .ConfigureLogging(_configureLoggingDelegate)
                 .UseKestrel(options =>
                 {
@@ -499,7 +499,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public void ThrowsWhenBindingLocalhostToDynamicPort()
         {
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://localhost:0")
                 .Configure(ConfigureEchoAddress);
@@ -515,7 +515,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("ftp://localhost")]
         public void ThrowsForUnsupportedAddressFromHosting(string addr)
         {
-            var hostBuilder = new WebHostBuilder()
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls(addr)
                 .Configure(ConfigureEchoAddress);
@@ -533,7 +533,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 socket.Bind(new IPEndPoint(address, 0));
                 var port = ((IPEndPoint)socket.LocalEndPoint).Port;
 
-                var hostBuilder = new WebHostBuilder()
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
                     .ConfigureLogging(_configureLoggingDelegate)
                     .UseKestrel()
                     .UseUrls($"http://localhost:{port}")
