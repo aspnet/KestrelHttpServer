@@ -870,6 +870,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public Task HEADERS_Received_HeaderBlockContainsConnectionSpecificHeader_StreamError()
+        {
+            var headers = new[]
+            {
+                new KeyValuePair<string, string>(":method", "GET"),
+                new KeyValuePair<string, string>(":path", "/"),
+                new KeyValuePair<string, string>(":scheme", "http"),
+                new KeyValuePair<string, string>("connection", "keep-alive")
+            };
+
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+        }
+
+        [Fact]
+        public Task HEADERS_Received_HeaderBlockContainsTEHeader_ValueIsNotTrailers_StreamError()
+        {
+            var headers = new[]
+            {
+                new KeyValuePair<string, string>(":method", "GET"),
+                new KeyValuePair<string, string>(":path", "/"),
+                new KeyValuePair<string, string>(":scheme", "http"),
+                new KeyValuePair<string, string>("te", "trailers, deflate")
+            };
+
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+        }
+
+        [Fact]
+        public Task HEADERS_Received_HeaderBlockContainsTEHeader_ValueIsTrailers_NoError()
+        {
+            var headers = new[]
+            {
+                new KeyValuePair<string, string>(":method", "GET"),
+                new KeyValuePair<string, string>(":path", "/"),
+                new KeyValuePair<string, string>(":scheme", "http"),
+                new KeyValuePair<string, string>("te", "trailers, deflate")
+            };
+
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+        }
+
+        [Fact]
         public async Task PRIORITY_Received_StreamIdZero_ConnectionError()
         {
             await InitializeConnectionAsync(_noopApplication);

@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private static readonly PseudoHeaderFields _mandatoryRequestPseudoHeaderFields =
             PseudoHeaderFields.Method | PseudoHeaderFields.Path | PseudoHeaderFields.Scheme;
 
-        // For fast pseudo-header field validation
+        // For fast header field validation
         private static readonly ulong _authoritLong = HttpUtilities.GetAsciiStringAsLong("authorit");
         private static readonly uint _methInt = HttpUtilities.GetAsciiStringAsInt("meth");
         private static readonly ushort _odShort = HttpUtilities.GetAsciiStringAsShort("od");
@@ -52,8 +52,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private static readonly ushort _meShort = HttpUtilities.GetAsciiStringAsShort("me");
         private static readonly uint _statInt = HttpUtilities.GetAsciiStringAsInt("stat");
         private static readonly ushort _usShort = HttpUtilities.GetAsciiStringAsShort("us");
-        private static readonly ulong _connInt = HttpUtilities.GetAsciiStringAsInt("CONN");
+        private static readonly uint _connInt = HttpUtilities.GetAsciiStringAsInt("CONN");
         private static readonly ushort _ecShort = HttpUtilities.GetAsciiStringAsShort("EC");
+        private static readonly ushort _teShort = HttpUtilities.GetAsciiStringAsShort("te");
+        private static readonly ulong _connectiLong = HttpUtilities.GetAsciiStringAsLong("connecti");
+        private static readonly ushort _onShort = HttpUtilities.GetAsciiStringAsShort("on");
+        private static readonly ulong _trailersLong = HttpUtilities.GetAsciiStringAsLong("trailers");
 
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
@@ -706,6 +710,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _requestHeaderParsingState = RequestHeaderParsingState.Headers;
             }
 
+            if (IsConnectionSpecificHeaderField(name, value))
+            {
+                throw new Http2StreamErrorException(_currentHeadersStream.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
             // http://httpwg.org/specs/rfc7540.html#rfc.section.8.1.2
             // A request or response containing uppercase header field names MUST be treated as malformed (Section 8.1.2.6).
             for (var i = 0; i < name.Length; i++)
@@ -767,6 +776,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             return true;
+        }
+
+        private static unsafe bool IsConnectionSpecificHeaderField(Span<byte> name, Span<byte> value)
+        {
+            fixed (byte* namePtr = &name.DangerousGetPinnableReference())
+            fixed (byte* valuePtr = &name.DangerousGetPinnableReference())
+            {
+                switch (name.Length)
+                {
+                    case 2:
+                        if (*((ushort*)namePtr) == _teShort)
+                        {
+                            return *((ulong*)valuePtr) != _trailersLong;
+                        }
+
+                        break;
+                    case 10:
+                        return *((ulong*)namePtr) == _connectiLong && *((ushort*)(namePtr + 8)) == _onShort;
+                }
+            }
+
+            return false;
         }
 
         private static unsafe bool IsConnect(Span<byte> value)
