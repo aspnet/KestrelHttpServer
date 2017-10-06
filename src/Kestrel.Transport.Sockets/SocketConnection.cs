@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
@@ -60,7 +61,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 if (await Task.WhenAny(receiveTask, sendTask) == sendTask)
                 {
                     // Tell the reader it's being aborted
-                    _trace.ConnectionWriteFin(ConnectionId);
                     _socket.Dispose();
                 }
 
@@ -71,9 +71,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 // Dispose the socket(should noop if already called)
                 _socket.Dispose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // TODO: Log
+                _trace.LogError(0, ex, $"Unexpected exception in {nameof(SocketConnection)}.{nameof(StartAsync)}.");
             }
         }
 
@@ -225,7 +225,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     }
                 }
 
-                _trace.ConnectionWriteFin(ConnectionId);
                 _socket.Shutdown(SocketShutdown.Send);
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
@@ -246,7 +245,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
+                // Now, complete the input so that no more reads can happen
+                Input.Complete(error ?? new ConnectionAbortedException());
                 Output.Complete(error);
+
+                // Even if _socket.Shutdown() wasn't called above, StartAsync disposes _socket as soon as DoSend completes.
+                _trace.ConnectionWriteFin(ConnectionId);
             }
         }
 
