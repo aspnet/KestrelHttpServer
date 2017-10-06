@@ -46,6 +46,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             RemotePort = remoteEndPoint.Port;
         }
 
+        public override PipeFactory PipeFactory => _transport.TransportFactory.PipeFactory;
+        public override IScheduler InputWriterScheduler => InlineScheduler.Default;
+        public override IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
+
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
             try
@@ -245,12 +249,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             finally
             {
                 // Now, complete the input so that no more reads can happen
-                Input.Complete(error ?? new ConnectionAbortedException());
                 Output.Complete(error);
 
                 // Make sure to close the connection only after the input is aborted
                 _trace.ConnectionWriteFin(ConnectionId);
-                _socket.Shutdown(SocketShutdown.Send);
+                _socket.Shutdown(SocketShutdown.Both);
             }
         }
 
@@ -264,8 +267,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             return segment;
         }
 
-        public override PipeFactory PipeFactory => _transport.TransportFactory.PipeFactory;
-        public override IScheduler InputWriterScheduler => InlineScheduler.Default;
-        public override IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
     }
 }
