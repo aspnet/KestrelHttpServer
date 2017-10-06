@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -51,7 +52,7 @@ namespace SampleApp
                 basePort = 5000;
             }
 
-            var host = new WebHostBuilder()
+            var hostBuilder = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>
                 {
                     factory.AddConsole();
@@ -81,10 +82,19 @@ namespace SampleApp
                     //options.ListenUnixSocket("/tmp/kestrel-test.sock");
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
-                .UseStartup<Startup>()
-                .Build();
+                .UseStartup<Startup>();
 
-            return host.RunAsync();
+            if (string.Equals(Process.GetCurrentProcess().Id.ToString(), Environment.GetEnvironmentVariable("LISTEN_PID")))
+            {
+                // Use libuv if activated by systemd, since that's currently the only transport that supports being passed a socket handle.
+                hostBuilder.UseLibuv(options =>
+                 {
+                     // Uncomment the following line to change the default number of libuv threads for all endpoints.
+                     // options.ThreadCount = 4;
+                 });
+            }
+                
+            return hostBuilder.Build().RunAsync();
         }
     }
 }
