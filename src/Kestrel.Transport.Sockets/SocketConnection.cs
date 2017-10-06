@@ -21,19 +21,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private const int MinAllocBufferSize = 2048;
 
         private readonly Socket _socket;
-        private readonly SocketTransport _transport;
         private readonly ISocketsTrace _trace;
 
         private IList<ArraySegment<byte>> _sendBufferList;
 
-        internal SocketConnection(Socket socket, SocketTransport transport, ISocketsTrace trace)
+        internal SocketConnection(Socket socket, PipeFactory pipeFactory, ISocketsTrace trace)
         {
             Debug.Assert(socket != null);
-            Debug.Assert(transport != null);
+            Debug.Assert(pipeFactory != null);
             Debug.Assert(trace != null);
 
             _socket = socket;
-            _transport = transport;
+            PipeFactory = pipeFactory;
             _trace = trace;
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
@@ -46,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             RemotePort = remoteEndPoint.Port;
         }
 
-        public override PipeFactory PipeFactory => _transport.TransportFactory.PipeFactory;
+        public override PipeFactory PipeFactory { get; }
         public override IScheduler InputWriterScheduler => InlineScheduler.Default;
         public override IScheduler OutputReaderScheduler => TaskRunScheduler.Default;
 

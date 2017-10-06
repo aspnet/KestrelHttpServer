@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 using Microsoft.Extensions.Options;
@@ -12,7 +11,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     public sealed class SocketTransportFactory : ITransportFactory
     {
-        private readonly PipeFactory _pipeFactory = new PipeFactory();
         private readonly SocketsTrace _trace;
 
         public SocketTransportFactory(
@@ -49,9 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 throw new ArgumentNullException(nameof(handler));
             }
 
-            return new SocketTransport(this, endPointInformation, handler, _trace);
+            return new SocketTransport(endPointInformation, handler, _trace);
         }
-
-        internal PipeFactory PipeFactory => _pipeFactory;
     }
 }
