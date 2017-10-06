@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly SocketTransportFactory _transportFactory;
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
-        private readonly ISocketTrace _trace;
+        private readonly ISocketsTrace _trace;
         private Socket _listenSocket;
         private Task _listenTask;
 
@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             SocketTransportFactory transportFactory,
             IEndPointInformation endPointInformation,
             IConnectionHandler handler,
-            ISocketTrace trace)
+            ISocketsTrace trace)
         {
             Debug.Assert(transportFactory != null);
             Debug.Assert(endPointInformation != null);

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    public interface ISocketTrace : ILogger
+    public interface ISocketsTrace : ILogger
     {
         void ConnectionReadFin(string connectionId);
 

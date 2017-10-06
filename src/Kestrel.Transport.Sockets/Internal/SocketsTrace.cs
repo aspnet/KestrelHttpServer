@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    public class SocketTrace : ISocketTrace
+    public class SocketsTrace : ISocketsTrace
     {
         // ConnectionRead: Reserved: 3
 
@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         private readonly ILogger _logger;
 
-        public SocketTrace(ILogger logger)
+        public SocketsTrace(ILogger logger)
         {
             _logger = logger;
         }

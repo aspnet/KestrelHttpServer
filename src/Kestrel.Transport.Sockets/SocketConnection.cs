@@ -22,11 +22,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
         private readonly Socket _socket;
         private readonly SocketTransport _transport;
-        private readonly ISocketTrace _trace;
+        private readonly ISocketsTrace _trace;
 
         private IList<ArraySegment<byte>> _sendBufferList;
 
-        internal SocketConnection(Socket socket, SocketTransport transport, ISocketTrace trace)
+        internal SocketConnection(Socket socket, SocketTransport transport, ISocketsTrace trace)
         {
             Debug.Assert(socket != null);
             Debug.Assert(transport != null);

@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     public sealed class SocketTransportFactory : ITransportFactory
     {
         private readonly PipeFactory _pipeFactory = new PipeFactory();
-        private readonly SocketTrace _trace;
+        private readonly SocketsTrace _trace;
 
         public SocketTransportFactory(
             IOptions<SocketTransportOptions> options,
@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
 
             var logger  = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets");
-            _trace = new SocketTrace(logger);
+            _trace = new SocketsTrace(logger);
         }
 
         public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
