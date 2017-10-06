@@ -18,12 +18,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     internal sealed class SocketConnection : TransportConnection
     {
+        private const int MinAllocBufferSize = 2048;
+
         private readonly Socket _socket;
         private readonly SocketTransport _transport;
         private readonly ISocketTrace _trace;
 
         private IList<ArraySegment<byte>> _sendBufferList;
-        private const int MinAllocBufferSize = 2048;
 
         internal SocketConnection(Socket socket, SocketTransport transport, ISocketTrace trace)
         {
@@ -224,8 +225,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         Output.Advance(buffer.End);
                     }
                 }
-
-                _socket.Shutdown(SocketShutdown.Send);
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
             {
@@ -249,8 +248,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 Input.Complete(error ?? new ConnectionAbortedException());
                 Output.Complete(error);
 
-                // Even if _socket.Shutdown() wasn't called above, StartAsync disposes _socket as soon as DoSend completes.
+                // Make sure to close the connection only after the input is aborted
                 _trace.ConnectionWriteFin(ConnectionId);
+                _socket.Shutdown(SocketShutdown.Send);
             }
         }
 
