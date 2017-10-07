@@ -271,8 +271,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     {
                         listenOptions.UseHttps(new HttpsConnectionAdapterOptions
                         {
-                            ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword"),
-                            HandshakeTimeout = TimeSpan.FromSeconds(1)
+                            ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword")
                         });
                     });
                 })
@@ -286,7 +285,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
                 using (var stream = new NetworkStream(socket, ownsSocket: false))
                 {
-                    // No data should be sent and the connection should be closed in well under 30 seconds.
+                    // No data should be sent and the connection should be closed in 10 seconds.
                     Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(30)));
                 }
             }
@@ -295,6 +294,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             Assert.Equal(2, loggerProvider.FilterLogger.LastEventId);
             Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
             Assert.Equal(HttpsStrings.AuthenticationTimedOut, loggerProvider.FilterLogger.LastLogMessage);
+        }
+
+        [Fact]
+        public async Task HandshakeDoesNotTimeOutIfDisableHandshakeTimeoutSwitchActive()
+        {
+            var hostBuilder = new WebHostBuilder()
+                .UseKestrel(options =>
+                {
+                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                    {
+                        listenOptions.UseHttps(new HttpsConnectionAdapterOptions
+                        {
+                            ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword")
+                        });
+                    });
+                })
+                .Configure(app => app.Run(httpContext => Task.CompletedTask));
+
+            AppContext.SetSwitch(HttpsConnectionAdapter.DisableHandshakeTimeoutSwitch, true);
+
+            try
+            {
+                using (var host = hostBuilder.Build())
+                {
+                    host.Start();
+
+                    using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
+                    using (var stream = new NetworkStream(socket, ownsSocket: false))
+                    {
+                        // No data should be sent and the connection should not be closed by the server.
+                        await Assert.ThrowsAsync<TimeoutException>(async () => await stream.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(30)));
+                    }
+                }
+            }
+            finally
+            {
+                AppContext.SetSwitch(HttpsConnectionAdapter.DisableHandshakeTimeoutSwitch, false);
+            }
         }
 
         private class HandshakeErrorLoggerProvider : ILoggerProvider

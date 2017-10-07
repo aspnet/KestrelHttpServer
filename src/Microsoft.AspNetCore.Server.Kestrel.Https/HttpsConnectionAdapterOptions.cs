@@ -14,10 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
     /// </summary>
     public class HttpsConnectionAdapterOptions
     {
-        private static readonly TimeSpan DefaultHandshakeTimeout = TimeSpan.FromSeconds(10);
-
-        private TimeSpan _handshakeTimeout;
-
         /// <summary>
         /// Initializes a new instance of <see cref="HttpsConnectionAdapterOptions"/>.
         /// </summary>
@@ -25,7 +21,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         {
             ClientCertificateMode = ClientCertificateMode.NoCertificate;
             SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11;
-            _handshakeTimeout = DefaultHandshakeTimeout;
         }
 
         /// <summary>
@@ -57,21 +52,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         /// Specifies whether the certificate revocation list is checked during authentication.
         /// </summary>
         public bool CheckCertificateRevocation { get; set; }
-
-        /// <summary>
-        /// Specifies the maximum amount of time allowed for the TLS/SSL handshake.
-        /// </summary>
-        public TimeSpan HandshakeTimeout
-        {
-            get => _handshakeTimeout;
-            set
-            {
-                if (value <= TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), HttpsStrings.PositiveTimeSpanRequired);
-                }
-                _handshakeTimeout = value != Timeout.InfiniteTimeSpan ? value : TimeSpan.MaxValue;
-            }
-        }
     }
 }

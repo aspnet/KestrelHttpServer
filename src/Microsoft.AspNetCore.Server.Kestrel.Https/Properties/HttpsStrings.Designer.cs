@@ -53,20 +53,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
             => string.Format(CultureInfo.CurrentCulture, GetString("InvalidServerCertificateEku", "thumbprint"), thumbprint);
 
         /// <summary>
-        /// Value must be a positive TimeSpan.
-        /// </summary>
-        internal static string PositiveTimeSpanRequired
-        {
-            get => GetString("PositiveTimeSpanRequired");
-        }
-
-        /// <summary>
-        /// Value must be a positive TimeSpan.
-        /// </summary>
-        internal static string FormatPositiveTimeSpanRequired()
-            => GetString("PositiveTimeSpanRequired");
-
-        /// <summary>
         /// The server certificate parameter is required.
         /// </summary>
         internal static string ServiceCertificateRequired

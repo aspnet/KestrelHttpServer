@@ -19,6 +19,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
         // Indicates that a certificate can be used as a SSL server certificate
         private const string ServerAuthenticationOid = "1.3.6.1.5.5.7.3.1";
 
+        internal const string DisableHandshakeTimeoutSwitch = "Switch.Microsoft.AspNetCore.Server.Kestrel.Https.DisableHandshakeTimeout";
+        private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(10);
+
         private static readonly ClosedAdaptedConnection _closedAdaptedConnection = new ClosedAdaptedConnection();
 
         private readonly HttpsConnectionAdapterOptions _options;
@@ -110,32 +113,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
             try
             {
-                var handshakeTask = sslStream.AuthenticateAsServerAsync(
-                    _serverCertificate, certificateRequired, _options.SslProtocols, _options.CheckCertificateRevocation);
-                var handshakeTimeoutTask = Task.Delay(_options.HandshakeTimeout);
-
-                var firstTask = await Task.WhenAny(handshakeTask, handshakeTimeoutTask);
-
-                if (firstTask == handshakeTimeoutTask)
+                if (AppContext.TryGetSwitch(DisableHandshakeTimeoutSwitch, out var handshakeDisabled) && handshakeDisabled)
                 {
-                    _logger.LogInformation(2, HttpsStrings.AuthenticationTimedOut);
-
-                    // Observe any exception that might be raised from AuthenticateAsServerAsync after the timeout.
-                    ObserveTaskException(handshakeTask);
-
-                    // This will cause the request processing loop to exit immediately and close the underlying connection.
-                    sslStream.Dispose();
-                    return _closedAdaptedConnection;
+                    await sslStream.AuthenticateAsServerAsync(
+                        _serverCertificate, certificateRequired, _options.SslProtocols, _options.CheckCertificateRevocation);
                 }
+                else
+                {
+                    try
+                    {
+                        var handshakeTask = sslStream.AuthenticateAsServerAsync(
+                            _serverCertificate, certificateRequired, _options.SslProtocols, _options.CheckCertificateRevocation);
+                        var handshakeTimeoutTask = Task.Delay(HandshakeTimeout);
 
-                // Observe potential handshake failures.
-                await handshakeTask;
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation(2, HttpsStrings.AuthenticationTimedOut);
-                sslStream.Dispose();
-                return _closedAdaptedConnection;
+                        var firstTask = await Task.WhenAny(handshakeTask, handshakeTimeoutTask);
+
+                        if (firstTask == handshakeTimeoutTask)
+                        {
+                            _logger.LogInformation(2, HttpsStrings.AuthenticationTimedOut);
+
+                            // Observe any exception that might be raised from AuthenticateAsServerAsync after the timeout.
+                            ObserveTaskException(handshakeTask);
+
+                            // This will cause the request processing loop to exit immediately and close the underlying connection.
+                            sslStream.Dispose();
+                            return _closedAdaptedConnection;
+                        }
+
+                        // Observe potential handshake failures.
+                        await handshakeTask;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogInformation(2, HttpsStrings.AuthenticationTimedOut);
+                        sslStream.Dispose();
+                        return _closedAdaptedConnection;
+                    }
+                }
             }
             catch (IOException ex)
             {
