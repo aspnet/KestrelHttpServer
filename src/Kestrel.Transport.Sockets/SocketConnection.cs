@@ -24,6 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly ISocketsTrace _trace;
 
         private IList<ArraySegment<byte>> _sendBufferList;
+        private volatile bool _aborted;
 
         internal SocketConnection(Socket socket, PipeFactory pipeFactory, ISocketsTrace trace)
         {
@@ -134,7 +135,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 error = new ConnectionResetException(ex.Message, ex);
                 _trace.ConnectionReset(ConnectionId);
             }
-            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted ||
+                                             ex.SocketErrorCode == SocketError.Interrupted)
             {
                 error = new ConnectionAbortedException();
                 _trace.ConnectionError(ConnectionId, error);
@@ -156,6 +158,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
+                if (_aborted)
+                {
+                    error = error ?? new ConnectionAbortedException();
+                }
+
                 Input.Complete(error);
             }
         }
@@ -247,10 +254,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             finally
             {
-                // Now, complete the input so that no more reads can happen
                 Output.Complete(error);
 
-                // Make sure to close the connection only after the input is aborted
+                // Make sure to close the connection only after the _aborted flag is set.
+                // Without this, the RequestsCanBeAbortedMidRead test will sometimes fail when
+                // a BadHttpRequestException is thrown instaed of a TaskCanceledException.
+                _aborted = true;
                 _trace.ConnectionWriteFin(ConnectionId);
                 _socket.Shutdown(SocketShutdown.Both);
             }
