@@ -15,11 +15,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Internal.CoreFxLab.Sources" Version="$(CoreFxLabSourcesVersion)" PrivateAssets="All" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="$(AspNetCoreVersion)" />
-    <PackageReference Include="System.Numerics.Vectors" Version="$(CoreFxVersion)" />
-    <PackageReference Include="System.Buffers" Version="$(CoreFxVersion)" />
-    <PackageReference Condition="'$(UseSystemMemory)' == 'true'" Include="System.Memory" Version="$(CoreFxVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Internal.CoreFxLab.Sources" Version="$(MicrosoftAspNetCoreInternalCoreFxLabSourcesPackageVersion)" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="$(MicrosoftAspNetCoreHttpFeaturesPackageVersion)" />
+    <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsPackageVersion)" />
+    <PackageReference Include="System.Buffers" Version="$(SystemBuffersPackageVersion)" />
+    <PackageReference Condition="'$(UseSystemMemory)' == 'true'" Include="System.Memory" Version="$(SystemMemoryPackageVersion)" />
   </ItemGroup>
 
 </Project>
