@@ -807,6 +807,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             private bool CanBindToPort()
             {
+#if MACOS && SOCKETS
+                // Binding to a port with a Socket, disposing the Socket, and rebinding often fails with
+                // SocketError.AddressAlreadyInUse on macOS. This isn't an issue if binding with libuv second.
+                return false;
+#else
                 try
                 {
                     using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
@@ -819,6 +824,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     return false;
                 }
+#endif
             }
         }
     }
