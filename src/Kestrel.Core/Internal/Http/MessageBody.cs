@@ -6,7 +6,6 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -17,6 +16,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly MessageBody _zeroContentLengthKeepAlive = new ForZeroContentLength(keepAlive: true);
 
         private readonly HttpProtocol _context;
+
+        private bool _send100Continue = true;
 
         protected MessageBody(HttpProtocol context)
         {
@@ -41,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await ReadRequestBodyPipeAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -74,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await ReadRequestBodyPipeAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -110,6 +111,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected abstract Task OnConsumeAsync();
 
         public abstract Task StopAsync();
+
+        protected void TryProduceContinue()
+        {
+            if (_send100Continue)
+            {
+                _context.HttpResponseControl.ProduceContinue();
+                _send100Continue = false;
+            }
+        }
+
+        protected ReadableBufferAwaitable ReadRequestBodyPipeAsync()
+        {
+            var awaitable = _context.RequestBodyPipe.Reader.ReadAsync();
+
+            if (!awaitable.IsCompleted)
+            {
+                TryProduceContinue();
+            }
+
+            return awaitable;
+        }
 
         private void TryInit()
         {
