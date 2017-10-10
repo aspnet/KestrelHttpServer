@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public static unsafe ulong GetAsciiStringAsLong(string str)
+        private static unsafe ulong GetAsciiStringAsLong(string str)
         {
             Debug.Assert(str.Length == 8, "String must be exactly 8 (ASCII) characters long.");
 
@@ -59,19 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public static unsafe ushort GetAsciiStringAsShort(string str)
-        {
-            Debug.Assert(str.Length == 2, "String must be exactly 2 (ASCII) characters long.");
-
-            var bytes = Encoding.ASCII.GetBytes(str);
-
-            fixed (byte* ptr = &bytes[0])
-            {
-                return *(ushort*)ptr;
-            }
-        }
-
-        public static unsafe uint GetAsciiStringAsInt(string str)
+        private static unsafe uint GetAsciiStringAsInt(string str)
         {
             Debug.Assert(str.Length == 4, "String must be exactly 4 (ASCII) characters long.");
 
