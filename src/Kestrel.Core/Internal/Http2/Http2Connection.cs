@@ -43,21 +43,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private static readonly PseudoHeaderFields _mandatoryRequestPseudoHeaderFields =
             PseudoHeaderFields.Method | PseudoHeaderFields.Path | PseudoHeaderFields.Scheme;
 
-        // For fast header field validation
-        private static readonly ulong _authoritLong = HttpUtilities.GetAsciiStringAsLong("authorit");
-        private static readonly uint _methInt = HttpUtilities.GetAsciiStringAsInt("meth");
-        private static readonly ushort _odShort = HttpUtilities.GetAsciiStringAsShort("od");
-        private static readonly uint _pathInt = HttpUtilities.GetAsciiStringAsInt("path");
-        private static readonly uint _scheInt = HttpUtilities.GetAsciiStringAsInt("sche");
-        private static readonly ushort _meShort = HttpUtilities.GetAsciiStringAsShort("me");
-        private static readonly uint _statInt = HttpUtilities.GetAsciiStringAsInt("stat");
-        private static readonly ushort _usShort = HttpUtilities.GetAsciiStringAsShort("us");
-        private static readonly uint _connInt = HttpUtilities.GetAsciiStringAsInt("CONN");
-        private static readonly ushort _ecShort = HttpUtilities.GetAsciiStringAsShort("EC");
-        private static readonly ushort _teShort = HttpUtilities.GetAsciiStringAsShort("te");
-        private static readonly ulong _connectiLong = HttpUtilities.GetAsciiStringAsLong("connecti");
-        private static readonly ushort _onShort = HttpUtilities.GetAsciiStringAsShort("on");
-        private static readonly ulong _trailersLong = HttpUtilities.GetAsciiStringAsLong("trailers");
+        private static readonly byte[] _authorityBytes = Encoding.ASCII.GetBytes("authority");
+        private static readonly byte[] _methodBytes = Encoding.ASCII.GetBytes("method");
+        private static readonly byte[] _pathBytes = Encoding.ASCII.GetBytes("path");
+        private static readonly byte[] _schemeBytes = Encoding.ASCII.GetBytes("scheme");
+        private static readonly byte[] _statusBytes = Encoding.ASCII.GetBytes("status");
+        private static readonly byte[] _connectionBytes = Encoding.ASCII.GetBytes("connection");
+        private static readonly byte[] _teBytes = Encoding.ASCII.GetBytes("te");
+        private static readonly byte[] _trailersBytes = Encoding.ASCII.GetBytes("trailers");
+        private static readonly byte[] _connectBytes = Encoding.ASCII.GetBytes("CONNECT");
 
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
@@ -700,7 +694,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 if (headerField == PseudoHeaderFields.Method)
                 {
-                    _isMethodConnect = IsConnect(value);
+                    _isMethodConnect = value.SequenceEqual(_connectBytes);
                 }
 
                 _parsedPseudoHeaderFields |= headerField;
@@ -726,7 +720,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private unsafe bool IsPseudoHeaderField(Span<byte> name, out PseudoHeaderFields headerField)
+        private bool IsPseudoHeaderField(Span<byte> name, out PseudoHeaderFields headerField)
         {
             headerField = PseudoHeaderFields.None;
 
@@ -738,82 +732,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // Skip ':'
             name = name.Slice(1);
 
-            fixed (byte* ptr = &name.DangerousGetPinnableReference())
+            if (name.SequenceEqual(_pathBytes))
             {
-                var longPtr = (ulong*)ptr;
-                var intPtr = (uint*)ptr;
-                var shortPtr = (ushort*)(ptr + 4);
-
-                switch (name.Length)
-                {
-                    case 4:
-                        if (*intPtr == _pathInt)
-                        {
-                            headerField = PseudoHeaderFields.Path;
-                        }
-                        break;
-                    case 6:
-                        if (*intPtr == _methInt && *shortPtr == _odShort)
-                        {
-                            headerField = PseudoHeaderFields.Method;
-                        }
-                        else if (*intPtr == _scheInt && *shortPtr == _meShort)
-                        {
-                            headerField = PseudoHeaderFields.Scheme;
-                        }
-                        else if (*intPtr == _statInt && *shortPtr == _usShort)
-                        {
-                            headerField = PseudoHeaderFields.Method;
-                        }
-                        break;
-                    case 9:
-                        if (*longPtr == _authoritLong && *(ptr + 8) == 'y')
-                        {
-                            headerField = PseudoHeaderFields.Authority;
-                        }
-                        break;
-                }
+                headerField = PseudoHeaderFields.Path;
+            }
+            else if (name.SequenceEqual(_methodBytes))
+            {
+                headerField = PseudoHeaderFields.Method;
+            }
+            else if (name.SequenceEqual(_schemeBytes))
+            {
+                headerField = PseudoHeaderFields.Scheme;
+            }
+            else if (name.SequenceEqual(_statusBytes))
+            {
+                headerField = PseudoHeaderFields.Status;
+            }
+            else if (name.SequenceEqual(_authorityBytes))
+            {
+                headerField = PseudoHeaderFields.Authority;
+            }
+            else
+            {
+                headerField = PseudoHeaderFields.Unknown;
             }
 
             return true;
         }
 
-        private static unsafe bool IsConnectionSpecificHeaderField(Span<byte> name, Span<byte> value)
+        private static bool IsConnectionSpecificHeaderField(Span<byte> name, Span<byte> value)
         {
-            fixed (byte* namePtr = &name.DangerousGetPinnableReference())
-            fixed (byte* valuePtr = &name.DangerousGetPinnableReference())
-            {
-                switch (name.Length)
-                {
-                    case 2:
-                        if (*((ushort*)namePtr) == _teShort)
-                        {
-                            return *((ulong*)valuePtr) != _trailersLong;
-                        }
-
-                        break;
-                    case 10:
-                        return *((ulong*)namePtr) == _connectiLong && *((ushort*)(namePtr + 8)) == _onShort;
-                }
-            }
-
-            return false;
-        }
-
-        private static unsafe bool IsConnect(Span<byte> value)
-        {
-            if (value.Length != 7)
-            {
-                return false;
-            }
-
-            fixed (byte* ptr = &value.DangerousGetPinnableReference())
-            {
-                var intPtr = (uint*)ptr;
-                var shortPtr = (ushort*)(ptr + 4);
-
-                return *intPtr == _connInt && *shortPtr == _ecShort && *(ptr + 6) == 'T';
-            }
+            return name.SequenceEqual(_connectionBytes) || (name.SequenceEqual(_teBytes) && !value.SequenceEqual(_trailersBytes));
         }
 
         void ITimeoutControl.SetTimeout(long ticks, TimeoutAction timeoutAction)
