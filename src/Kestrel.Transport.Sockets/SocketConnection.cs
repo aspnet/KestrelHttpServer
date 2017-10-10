@@ -258,7 +258,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
                 // Make sure to close the connection only after the _aborted flag is set.
                 // Without this, the RequestsCanBeAbortedMidRead test will sometimes fail when
-                // a BadHttpRequestException is thrown instaed of a TaskCanceledException.
+                // a BadHttpRequestException is thrown instead of a TaskCanceledException.
                 _aborted = true;
                 _trace.ConnectionWriteFin(ConnectionId);
                 _socket.Shutdown(SocketShutdown.Both);
