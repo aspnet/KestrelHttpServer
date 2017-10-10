@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Path = 0x4,
             Scheme = 0x8,
             Status = 0x10,
-            Unknown = -1
+            Unknown = 0x40000000
         }
 
         public static byte[] ClientPreface { get; } = Encoding.ASCII.GetBytes("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
