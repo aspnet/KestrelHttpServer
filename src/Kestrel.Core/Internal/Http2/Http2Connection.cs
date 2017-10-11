@@ -185,9 +185,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
             catch (Exception ex)
             {
-                // TODO: log
                 error = ex;
                 errorCode = Http2ErrorCode.INTERNAL_ERROR;
+                throw;
             }
             finally
             {
