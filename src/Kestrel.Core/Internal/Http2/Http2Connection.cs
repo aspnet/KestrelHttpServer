@@ -296,20 +296,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             ThrowIfIncomingFrameSentToIdleStream();
 
-            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream) && !stream.EndStreamReceived)
+            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
+                if (stream.EndStreamReceived)
+                {
+                    // http://httpwg.org/specs/rfc7540.html#rfc.section.5.1
+                    //
+                    // ...an endpoint that receives any frames after receiving a frame with the
+                    // END_STREAM flag set MUST treat that as a connection error (Section 5.4.1)
+                    // of type STREAM_CLOSED, unless the frame is permitted as described below.
+                    //
+                    // (The allowed frame types for this situation are WINDOW_UPDATE, RST_STREAM and PRIORITY)
+                    throw new Http2ConnectionErrorException(CoreStrings.FormatHttp2ErrorStreamHalfClosedRemote(_incomingFrame.Type, stream.StreamId), Http2ErrorCode.STREAM_CLOSED);
+                }
+
                 return stream.OnDataAsync(_incomingFrame.DataPayload,
                     endStream: (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM);
             }
 
-            // http://httpwg.org/specs/rfc7540.html#rfc.section.5.1
-            //
-            // ...an endpoint that receives any frames after receiving a frame with the
-            // END_STREAM flag set MUST treat that as a connection error (Section 5.4.1)
-            // of type STREAM_CLOSED, unless the frame is permitted as described below.
-            //
-            // (The allowed frame types for this situation are WINDOW_UPDATE, RST_STREAM and PRIORITY)
-            //
             // If we couldn't find the stream, it was either alive previously but closed with
             // END_STREAM or RST_STREAM, or it was implicitly closed when the client opened
             // a new stream with a higher ID. Per the spec, we should send RST_STREAM if
@@ -357,7 +361,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 // (The allowed frame types for this situation are WINDOW_UPDATE, RST_STREAM and PRIORITY)
                 if (stream.EndStreamReceived)
                 {
-                    throw new Http2ConnectionErrorException(CoreStrings.FormatHttp2ErrorStreamClosed(_incomingFrame.Type, stream.StreamId), Http2ErrorCode.STREAM_CLOSED);
+                    throw new Http2ConnectionErrorException(CoreStrings.FormatHttp2ErrorStreamHalfClosedRemote(_incomingFrame.Type, stream.StreamId), Http2ErrorCode.STREAM_CLOSED);
                 }
 
                 // TODO: trailers

@@ -1355,6 +1355,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamClosed", "frameType", "streamId"), frameType, streamId);
 
         /// <summary>
+        /// The client sent a {frameType} frame to stream ID {streamId} which is in the "half-closed (remote) state".
+        /// </summary>
+        internal static string Http2ErrorStreamHalfClosedRemote
+        {
+            get => GetString("Http2ErrorStreamHalfClosedRemote");
+        }
+
+        /// <summary>
+        /// The client sent a {frameType} frame to stream ID {streamId} which is in the "half-closed (remote) state".
+        /// </summary>
+        internal static string FormatHttp2ErrorStreamHalfClosedRemote(object frameType, object streamId)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamHalfClosedRemote", "frameType", "streamId"), frameType, streamId);
+
+        /// <summary>
         /// The client sent a {frameType} frame with dependency information that would cause stream ID {streamId} to depend on itself.
         /// </summary>
         internal static string Http2ErrorStreamSelfDependency

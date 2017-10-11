@@ -405,6 +405,9 @@
   <data name="Http2ErrorStreamClosed" xml:space="preserve">
     <value>The client sent a {frameType} frame to closed stream ID {streamId}.</value>
   </data>
+  <data name="Http2ErrorStreamHalfClosedRemote" xml:space="preserve">
+    <value>The client sent a {frameType} frame to stream ID {streamId} which is in the "half-closed (remote) state".</value>
+  </data>
   <data name="Http2ErrorStreamSelfDependency" xml:space="preserve">
     <value>The client sent a {frameType} frame with dependency information that would cause stream ID {streamId} to depend on itself.</value>
   </data>
