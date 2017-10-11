@@ -722,7 +722,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 if (name[i] >= 65 && name[i] <= 90)
                 {
-                     throw new Http2StreamErrorException(_currentHeadersStream.StreamId, CoreStrings.Http2ErrorHeaderNameUppercase, Http2ErrorCode.PROTOCOL_ERROR);
+                    throw new Http2StreamErrorException(_currentHeadersStream.StreamId, CoreStrings.Http2ErrorHeaderNameUppercase, Http2ErrorCode.PROTOCOL_ERROR);
                 }
             }
         }
