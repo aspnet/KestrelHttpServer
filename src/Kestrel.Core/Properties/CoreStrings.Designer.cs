@@ -1257,7 +1257,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("HPackErrorIncompleteHeaderBlock");
 
         /// <summary>
-        /// The client attempted to open a stream with an even stream ID.
+        /// The client sent a {frameType} frame with even stream ID {streamId}.
         /// </summary>
         internal static string Http2ErrorStreamIdEven
         {
@@ -1265,10 +1265,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// The client attempted to open a stream with an even stream ID.
+        /// The client sent a {frameType} frame with even stream ID {streamId}.
         /// </summary>
-        internal static string FormatHttp2ErrorStreamIdEven()
-            => GetString("Http2ErrorStreamIdEven");
+        internal static string FormatHttp2ErrorStreamIdEven(object frameType, object streamId)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamIdEven", "frameType", "streamId"), frameType, streamId);
 
         /// <summary>
         /// The client sent a A PUSH_PROMISE frame.
@@ -1285,7 +1285,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("Http2ErrorPushPromiseReceived");
 
         /// <summary>
-        /// The client sent a {frameType} frame interleaved with headers.
+        /// The client sent a {frameType} frame to stream ID {streamId} before signaling of the header block for stream ID {headersStreamId}.
         /// </summary>
         internal static string Http2ErrorHeadersInterleaved
         {
@@ -1293,251 +1293,97 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// The client sent a {frameType} frame interleaved with headers.
+        /// The client sent a {frameType} frame to stream ID {streamId} before signaling of the header block for stream ID {headersStreamId}.
         /// </summary>
-        internal static string FormatHttp2ErrorHeadersInterleaved(object frameType)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorHeadersInterleaved", "frameType"), frameType);
+        internal static string FormatHttp2ErrorHeadersInterleaved(object frameType, object streamId, object headersStreamId)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorHeadersInterleaved", "frameType", "streamId", "headersStreamId"), frameType, streamId, headersStreamId);
 
         /// <summary>
-        /// The client attempted to open a new stream with ID {newStreamID} while receiving headers for streamID {headersStreamId}.
+        /// The client sent a {frameType} frame with stream ID 0.
         /// </summary>
-        internal static string Http2ErrorHeadersNotDone
+        internal static string Http2ErrorStreamIdZero
         {
-            get => GetString("Http2ErrorHeadersNotDone");
+            get => GetString("Http2ErrorStreamIdZero");
         }
 
         /// <summary>
-        /// The client attempted to open a new stream with ID {newStreamID} while receiving headers for streamID {headersStreamId}.
+        /// The client sent a {frameType} frame with stream ID 0.
         /// </summary>
-        internal static string FormatHttp2ErrorHeadersNotDone(object newStreamID, object headersStreamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorHeadersNotDone", "newStreamID", "headersStreamId"), newStreamID, headersStreamId);
+        internal static string FormatHttp2ErrorStreamIdZero(object frameType)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamIdZero", "frameType"), frameType);
 
         /// <summary>
-        /// The client sent a CONTINUATION frame to stream ID {streamID}, which does not match stream ID {headersStreamId} for which headers are being received.
+        /// The client sent a {frameType} frame with stream ID different than 0.
         /// </summary>
-        internal static string Http2ErrorContinuationStreamIdMismatch
+        internal static string Http2ErrorStreamIdNotZero
         {
-            get => GetString("Http2ErrorContinuationStreamIdMismatch");
+            get => GetString("Http2ErrorStreamIdNotZero");
         }
 
         /// <summary>
-        /// The client sent a CONTINUATION frame to stream ID {streamID}, which does not match stream ID {headersStreamId} for which headers are being received.
+        /// The client sent a {frameType} frame with stream ID different than 0.
         /// </summary>
-        internal static string FormatHttp2ErrorContinuationStreamIdMismatch(object streamID, object headersStreamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorContinuationStreamIdMismatch", "streamID", "headersStreamId"), streamID, headersStreamId);
+        internal static string FormatHttp2ErrorStreamIdNotZero(object frameType)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamIdNotZero", "frameType"), frameType);
 
         /// <summary>
-        /// The client sent a DATA frame with stream ID 0.
+        /// The client sent a {frameType} frame with padding longer than or with the same length as the sent data.
         /// </summary>
-        internal static string Http2ErrorDataFrameStreamIdZero
+        internal static string Http2ErrorPaddingTooLong
         {
-            get => GetString("Http2ErrorDataFrameStreamIdZero");
+            get => GetString("Http2ErrorPaddingTooLong");
         }
 
         /// <summary>
-        /// The client sent a DATA frame with stream ID 0.
+        /// The client sent a {frameType} frame with padding longer than or with the same length as the sent data.
         /// </summary>
-        internal static string FormatHttp2ErrorDataFrameStreamIdZero()
-            => GetString("Http2ErrorDataFrameStreamIdZero");
+        internal static string FormatHttp2ErrorPaddingTooLong(object frameType)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorPaddingTooLong", "frameType"), frameType);
 
         /// <summary>
-        /// The client sent a HEADERS frame with stream ID 0.
+        /// The client sent a {frameType} frame to closed stream ID {streamId}.
         /// </summary>
-        internal static string Http2ErrorHeadersFrameStreamIdZero
+        internal static string Http2ErrorStreamClosed
         {
-            get => GetString("Http2ErrorHeadersFrameStreamIdZero");
+            get => GetString("Http2ErrorStreamClosed");
         }
 
         /// <summary>
-        /// The client sent a HEADERS frame with stream ID 0.
+        /// The client sent a {frameType} frame to closed stream ID {streamId}.
         /// </summary>
-        internal static string FormatHttp2ErrorHeadersFrameStreamIdZero()
-            => GetString("Http2ErrorHeadersFrameStreamIdZero");
+        internal static string FormatHttp2ErrorStreamClosed(object frameType, object streamId)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamClosed", "frameType", "streamId"), frameType, streamId);
 
         /// <summary>
-        /// The client sent a PRIORITY frame with stream ID 0.
+        /// The client sent a {frameType} frame with dependency information that would cause stream ID {streamId} to depend on itself.
         /// </summary>
-        internal static string Http2ErrorPriorityFrameStreamIdZero
+        internal static string Http2ErrorStreamSelfDependency
         {
-            get => GetString("Http2ErrorPriorityFrameStreamIdZero");
+            get => GetString("Http2ErrorStreamSelfDependency");
         }
 
         /// <summary>
-        /// The client sent a PRIORITY frame with stream ID 0.
+        /// The client sent a {frameType} frame with dependency information that would cause stream ID {streamId} to depend on itself.
         /// </summary>
-        internal static string FormatHttp2ErrorPriorityFrameStreamIdZero()
-            => GetString("Http2ErrorPriorityFrameStreamIdZero");
+        internal static string FormatHttp2ErrorStreamSelfDependency(object frameType, object streamId)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamSelfDependency", "frameType", "streamId"), frameType, streamId);
 
         /// <summary>
-        /// The client sent an RST_STREAM frame with stream ID 0.
+        /// The client sent a {frameType} frame with length different than {expectedLength}.
         /// </summary>
-        internal static string Http2ErrorRstStreamFrameStreamIdZero
+        internal static string Http2ErrorUnexpectedFrameLength
         {
-            get => GetString("Http2ErrorRstStreamFrameStreamIdZero");
+            get => GetString("Http2ErrorUnexpectedFrameLength");
         }
 
         /// <summary>
-        /// The client sent an RST_STREAM frame with stream ID 0.
+        /// The client sent a {frameType} frame with length different than {expectedLength}.
         /// </summary>
-        internal static string FormatHttp2ErrorRstStreamFrameStreamIdZero()
-            => GetString("Http2ErrorRstStreamFrameStreamIdZero");
+        internal static string FormatHttp2ErrorUnexpectedFrameLength(object frameType, object expectedLength)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorUnexpectedFrameLength", "frameType", "expectedLength"), frameType, expectedLength);
 
         /// <summary>
-        /// The client sent a SETTINGS frame with stream ID different than 0.
-        /// </summary>
-        internal static string Http2ErrorSettingsFrameStreamIdNotZero
-        {
-            get => GetString("Http2ErrorSettingsFrameStreamIdNotZero");
-        }
-
-        /// <summary>
-        /// The client sent a SETTINGS frame with stream ID different than 0.
-        /// </summary>
-        internal static string FormatHttp2ErrorSettingsFrameStreamIdNotZero()
-            => GetString("Http2ErrorSettingsFrameStreamIdNotZero");
-
-        /// <summary>
-        /// The client sent a PING frame with stream ID different than 0.
-        /// </summary>
-        internal static string Http2ErrorPingFrameStreamIdNotZero
-        {
-            get => GetString("Http2ErrorPingFrameStreamIdNotZero");
-        }
-
-        /// <summary>
-        /// The client sent a PING frame with stream ID different than 0.
-        /// </summary>
-        internal static string FormatHttp2ErrorPingFrameStreamIdNotZero()
-            => GetString("Http2ErrorPingFrameStreamIdNotZero");
-
-        /// <summary>
-        /// The client sent a GOAWAY frame with stream ID different than 0.
-        /// </summary>
-        internal static string Http2ErrorGoAwayFrameStreamIdNotZero
-        {
-            get => GetString("Http2ErrorGoAwayFrameStreamIdNotZero");
-        }
-
-        /// <summary>
-        /// The client sent a GOAWAY frame with stream ID different than 0.
-        /// </summary>
-        internal static string FormatHttp2ErrorGoAwayFrameStreamIdNotZero()
-            => GetString("Http2ErrorGoAwayFrameStreamIdNotZero");
-
-        /// <summary>
-        /// The client sent a DATA frame with padding longer than or with the same length as the sent data.
-        /// </summary>
-        internal static string Http2ErrorDataPaddingTooLong
-        {
-            get => GetString("Http2ErrorDataPaddingTooLong");
-        }
-
-        /// <summary>
-        /// The client sent a DATA frame with padding longer than or with the same length as the sent data.
-        /// </summary>
-        internal static string FormatHttp2ErrorDataPaddingTooLong()
-            => GetString("Http2ErrorDataPaddingTooLong");
-
-        /// <summary>
-        /// The client sent a HEADERS frame with padding longer than or with the same length as the encoded header block fragment.
-        /// </summary>
-        internal static string Http2ErrorHeadersPaddingTooLong
-        {
-            get => GetString("Http2ErrorHeadersPaddingTooLong");
-        }
-
-        /// <summary>
-        /// The client sent a HEADERS frame with padding longer than or with the same length as the encoded header block fragment.
-        /// </summary>
-        internal static string FormatHttp2ErrorHeadersPaddingTooLong()
-            => GetString("Http2ErrorHeadersPaddingTooLong");
-
-        /// <summary>
-        /// The client sent a DATA frame to closed stream ID {streamId}.
-        /// </summary>
-        internal static string Http2ErrorDataStreamClosed
-        {
-            get => GetString("Http2ErrorDataStreamClosed");
-        }
-
-        /// <summary>
-        /// The client sent a DATA frame to closed stream ID {streamId}.
-        /// </summary>
-        internal static string FormatHttp2ErrorDataStreamClosed(object streamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorDataStreamClosed", "streamId"), streamId);
-
-        /// <summary>
-        /// The client sent a HEADERS frame to closed stream ID {streamId}.
-        /// </summary>
-        internal static string Http2ErrorHeadersStreamClosed
-        {
-            get => GetString("Http2ErrorHeadersStreamClosed");
-        }
-
-        /// <summary>
-        /// The client sent a HEADERS frame to closed stream ID {streamId}.
-        /// </summary>
-        internal static string FormatHttp2ErrorHeadersStreamClosed(object streamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorHeadersStreamClosed", "streamId"), streamId);
-
-        /// <summary>
-        /// The client sent a HEADERS frame with dependency information that would cause stream ID {streamId} to depend on itself.
-        /// </summary>
-        internal static string Http2ErrorHeadersSelfDependency
-        {
-            get => GetString("Http2ErrorHeadersSelfDependency");
-        }
-
-        /// <summary>
-        /// The client sent a HEADERS frame with dependency information that would cause stream ID {streamId} to depend on itself.
-        /// </summary>
-        internal static string FormatHttp2ErrorHeadersSelfDependency(object streamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorHeadersSelfDependency", "streamId"), streamId);
-
-        /// <summary>
-        /// The client sent a PRIORITY frame with dependency information that would cause stream ID {streamId} to depend on itself.
-        /// </summary>
-        internal static string Http2ErrorPrioritySelfDependency
-        {
-            get => GetString("Http2ErrorPrioritySelfDependency");
-        }
-
-        /// <summary>
-        /// The client sent a PRIORITY frame with dependency information that would cause stream ID {streamId} to depend on itself.
-        /// </summary>
-        internal static string FormatHttp2ErrorPrioritySelfDependency(object streamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorPrioritySelfDependency", "streamId"), streamId);
-
-        /// <summary>
-        /// The client sent a PRIORITY frame with length different than 5.
-        /// </summary>
-        internal static string Http2ErrorPriorityLengthNotFive
-        {
-            get => GetString("Http2ErrorPriorityLengthNotFive");
-        }
-
-        /// <summary>
-        /// The client sent a PRIORITY frame with length different than 5.
-        /// </summary>
-        internal static string FormatHttp2ErrorPriorityLengthNotFive()
-            => GetString("Http2ErrorPriorityLengthNotFive");
-
-        /// <summary>
-        /// The client sent an RST_STREAM frame with length different than 4.
-        /// </summary>
-        internal static string Http2ErrorRstStreamLengthNotFour
-        {
-            get => GetString("Http2ErrorRstStreamLengthNotFour");
-        }
-
-        /// <summary>
-        /// The client sent an RST_STREAM frame with length different than 4.
-        /// </summary>
-        internal static string FormatHttp2ErrorRstStreamLengthNotFour()
-            => GetString("Http2ErrorRstStreamLengthNotFour");
-
-        /// <summary>
-        /// The client sent a SETTINGS frame with length that is not a multiple of 6.
+        /// The client sent a SETTINGS frame with a length that is not a multiple of 6.
         /// </summary>
         internal static string Http2ErrorSettingsLengthNotMultipleOfSix
         {
@@ -1545,38 +1391,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// The client sent a SETTINGS frame with length that is not a multiple of 6.
+        /// The client sent a SETTINGS frame with a length that is not a multiple of 6.
         /// </summary>
         internal static string FormatHttp2ErrorSettingsLengthNotMultipleOfSix()
             => GetString("Http2ErrorSettingsLengthNotMultipleOfSix");
-
-        /// <summary>
-        /// The client sent a PING frame with length different than 8.
-        /// </summary>
-        internal static string Http2ErrorPingLengthNotEight
-        {
-            get => GetString("Http2ErrorPingLengthNotEight");
-        }
-
-        /// <summary>
-        /// The client sent a PING frame with length different than 8.
-        /// </summary>
-        internal static string FormatHttp2ErrorPingLengthNotEight()
-            => GetString("Http2ErrorPingLengthNotEight");
-
-        /// <summary>
-        /// The client sent a WINDOW_UPDATE frame with length different than 4.
-        /// </summary>
-        internal static string Http2ErrorWindowUpdateLengthNotFour
-        {
-            get => GetString("Http2ErrorWindowUpdateLengthNotFour");
-        }
-
-        /// <summary>
-        /// The client sent a WINDOW_UPDATE frame with length different than 4.
-        /// </summary>
-        internal static string FormatHttp2ErrorWindowUpdateLengthNotFour()
-            => GetString("Http2ErrorWindowUpdateLengthNotFour");
 
         /// <summary>
         /// The client sent a SETTINGS frame with ACK set and length different than 0.
@@ -1635,18 +1453,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("Http2ErrorContinuationWithNoHeaders");
 
         /// <summary>
-        /// The client sent a {frameType} to idle stream ID {streamId}.
+        /// The client sent a {frameType} frame to idle stream ID {streamId}.
         /// </summary>
-        internal static string Http2ErrorIdleStream
+        internal static string Http2ErrorStreamIdle
         {
-            get => GetString("Http2ErrorIdleStream");
+            get => GetString("Http2ErrorStreamIdle");
         }
 
         /// <summary>
-        /// The client sent a {frameType} to idle stream ID {streamId}.
+        /// The client sent a {frameType} frame to idle stream ID {streamId}.
         /// </summary>
-        internal static string FormatHttp2ErrorIdleStream(object frameType, object streamId)
-            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorIdleStream", "frameType", "streamId"), frameType, streamId);
+        internal static string FormatHttp2ErrorStreamIdle(object frameType, object streamId)
+            => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorStreamIdle", "frameType", "streamId"), frameType, streamId);
 
         /// <summary>
         /// The client sent trailers containing one or more pseudo-header fields.

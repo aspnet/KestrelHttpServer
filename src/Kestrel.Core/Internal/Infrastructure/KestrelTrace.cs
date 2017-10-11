@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -65,6 +66,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private static readonly Action<ILogger, string, string, Exception> _responseMinimumDataRateNotSatisfied =
             LoggerMessage.Define<string, string>(LogLevel.Information, 28, @"Connection id ""{ConnectionId}"", Request id ""{TraceIdentifier}"": the connection was closed becuase the response was not read by the client at the specified minimum data rate.");
+
+        private static readonly Action<ILogger, string, Exception> _http2ConnectionError =
+            LoggerMessage.Define<string>(LogLevel.Information, 29, @"Connection id ""{ConnectionId}"": HTTP/2 connection error.");
 
         protected readonly ILogger _logger;
 
@@ -166,6 +170,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
         {
             _responseMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, null);
+        }
+
+        public void Http2ConnectionError(string connectionId, Http2ConnectionErrorException ex)
+        {
+            _http2ConnectionError(_logger, connectionId, ex);
         }
 
         public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)

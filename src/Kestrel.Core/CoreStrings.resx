@@ -385,73 +385,34 @@
     <value>The header block was incomplete and could not be fully decoded.</value>
   </data>
   <data name="Http2ErrorStreamIdEven" xml:space="preserve">
-    <value>The client attempted to open a stream with an even stream ID.</value>
+    <value>The client sent a {frameType} frame with even stream ID {streamId}.</value>
   </data>
   <data name="Http2ErrorPushPromiseReceived" xml:space="preserve">
     <value>The client sent a A PUSH_PROMISE frame.</value>
   </data>
   <data name="Http2ErrorHeadersInterleaved" xml:space="preserve">
-    <value>The client sent a {frameType} frame interleaved with headers.</value>
+    <value>The client sent a {frameType} frame to stream ID {streamId} before signaling of the header block for stream ID {headersStreamId}.</value>
   </data>
-  <data name="Http2ErrorHeadersNotDone" xml:space="preserve">
-    <value>The client attempted to open a new stream with ID {newStreamID} while receiving headers for streamID {headersStreamId}.</value>
+  <data name="Http2ErrorStreamIdZero" xml:space="preserve">
+    <value>The client sent a {frameType} frame with stream ID 0.</value>
   </data>
-  <data name="Http2ErrorContinuationStreamIdMismatch" xml:space="preserve">
-    <value>The client sent a CONTINUATION frame to stream ID {streamID}, which does not match stream ID {headersStreamId} for which headers are being received.</value>
+  <data name="Http2ErrorStreamIdNotZero" xml:space="preserve">
+    <value>The client sent a {frameType} frame with stream ID different than 0.</value>
   </data>
-  <data name="Http2ErrorDataFrameStreamIdZero" xml:space="preserve">
-    <value>The client sent a DATA frame with stream ID 0.</value>
+  <data name="Http2ErrorPaddingTooLong" xml:space="preserve">
+    <value>The client sent a {frameType} frame with padding longer than or with the same length as the sent data.</value>
   </data>
-  <data name="Http2ErrorHeadersFrameStreamIdZero" xml:space="preserve">
-    <value>The client sent a HEADERS frame with stream ID 0.</value>
+  <data name="Http2ErrorStreamClosed" xml:space="preserve">
+    <value>The client sent a {frameType} frame to closed stream ID {streamId}.</value>
   </data>
-  <data name="Http2ErrorPriorityFrameStreamIdZero" xml:space="preserve">
-    <value>The client sent a PRIORITY frame with stream ID 0.</value>
+  <data name="Http2ErrorStreamSelfDependency" xml:space="preserve">
+    <value>The client sent a {frameType} frame with dependency information that would cause stream ID {streamId} to depend on itself.</value>
   </data>
-  <data name="Http2ErrorRstStreamFrameStreamIdZero" xml:space="preserve">
-    <value>The client sent an RST_STREAM frame with stream ID 0.</value>
-  </data>
-  <data name="Http2ErrorSettingsFrameStreamIdNotZero" xml:space="preserve">
-    <value>The client sent a SETTINGS frame with stream ID different than 0.</value>
-  </data>
-  <data name="Http2ErrorPingFrameStreamIdNotZero" xml:space="preserve">
-    <value>The client sent a PING frame with stream ID different than 0.</value>
-  </data>
-  <data name="Http2ErrorGoAwayFrameStreamIdNotZero" xml:space="preserve">
-    <value>The client sent a GOAWAY frame with stream ID different than 0.</value>
-  </data>
-  <data name="Http2ErrorDataPaddingTooLong" xml:space="preserve">
-    <value>The client sent a DATA frame with padding longer than or with the same length as the sent data.</value>
-  </data>
-  <data name="Http2ErrorHeadersPaddingTooLong" xml:space="preserve">
-    <value>The client sent a HEADERS frame with padding longer than or with the same length as the encoded header block fragment.</value>
-  </data>
-  <data name="Http2ErrorDataStreamClosed" xml:space="preserve">
-    <value>The client sent a DATA frame to closed stream ID {streamId}.</value>
-  </data>
-  <data name="Http2ErrorHeadersStreamClosed" xml:space="preserve">
-    <value>The client sent a HEADERS frame to closed stream ID {streamId}.</value>
-  </data>
-  <data name="Http2ErrorHeadersSelfDependency" xml:space="preserve">
-    <value>The client sent a HEADERS frame with dependency information that would cause stream ID {streamId} to depend on itself.</value>
-  </data>
-  <data name="Http2ErrorPrioritySelfDependency" xml:space="preserve">
-    <value>The client sent a PRIORITY frame with dependency information that would cause stream ID {streamId} to depend on itself.</value>
-  </data>
-  <data name="Http2ErrorPriorityLengthNotFive" xml:space="preserve">
-    <value>The client sent a PRIORITY frame with length different than 5.</value>
-  </data>
-  <data name="Http2ErrorRstStreamLengthNotFour" xml:space="preserve">
-    <value>The client sent an RST_STREAM frame with length different than 4.</value>
+  <data name="Http2ErrorUnexpectedFrameLength" xml:space="preserve">
+    <value>The client sent a {frameType} frame with length different than {expectedLength}.</value>
   </data>
   <data name="Http2ErrorSettingsLengthNotMultipleOfSix" xml:space="preserve">
-    <value>The client sent a SETTINGS frame with length that is not a multiple of 6.</value>
-  </data>
-  <data name="Http2ErrorPingLengthNotEight" xml:space="preserve">
-    <value>The client sent a PING frame with length different than 8.</value>
-  </data>
-  <data name="Http2ErrorWindowUpdateLengthNotFour" xml:space="preserve">
-    <value>The client sent a WINDOW_UPDATE frame with length different than 4.</value>
+    <value>The client sent a SETTINGS frame with a length that is not a multiple of 6.</value>
   </data>
   <data name="Http2ErrorSettingsAckLengthNotZero" xml:space="preserve">
     <value>The client sent a SETTINGS frame with ACK set and length different than 0.</value>
@@ -465,8 +426,8 @@
   <data name="Http2ErrorContinuationWithNoHeaders" xml:space="preserve">
     <value>The client sent a CONTINUATION frame not preceded by a HEADERS frame.</value>
   </data>
-  <data name="Http2ErrorIdleStream" xml:space="preserve">
-    <value>The client sent a {frameType} to idle stream ID {streamId}.</value>
+  <data name="Http2ErrorStreamIdle" xml:space="preserve">
+    <value>The client sent a {frameType} frame to idle stream ID {streamId}.</value>
   </data>
   <data name="Http2ErrorTrailersContainPseudoHeaderField" xml:space="preserve">
     <value>The client sent trailers containing one or more pseudo-header fields.</value>
