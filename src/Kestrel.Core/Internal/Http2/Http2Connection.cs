@@ -166,9 +166,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
             }
-            catch (ConnectionAbortedException ex)
+            catch (ConnectionResetException ex)
             {
-                // TODO: log
+                // Don't log ECONNRESET errors when there are no active streams on the connection. Browsers like IE will reset connections regularly.
+                if (_streams.Count > 0)
+                {
+                    Log.RequestProcessingError(ConnectionId, ex);
+                }
+
                 error = ex;
             }
             catch (Http2ConnectionErrorException ex)

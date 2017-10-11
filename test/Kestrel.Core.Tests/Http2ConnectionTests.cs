@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
@@ -1686,7 +1687,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task ConnectionError_AbortsAllStreams()
+        public async Task ConnectionErrorAbortsAllStreams()
         {
             await InitializeConnectionAsync(_waitForAbortApplication);
 
@@ -1708,6 +1709,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Contains(1, _abortedStreamIds);
             Assert.Contains(3, _abortedStreamIds);
             Assert.Contains(5, _abortedStreamIds);
+        }
+
+        [Fact]
+        public async Task ConnectionResetLoggedWithActiveStreams()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, _browserRequestHeaders);
+
+            _pair.Application.Output.Complete(new ConnectionResetException(string.Empty));
+
+            var result = await _pair.Application.Input.ReadAsync();
+            Assert.True(result.IsCompleted);
+            Assert.Single(_logger.Messages, m => m.Exception is ConnectionResetException);
+        }
+
+        [Fact]
+        public async Task ConnectionResetNotLoggedWithNoActiveStreams()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            _pair.Application.Output.Complete(new ConnectionResetException(string.Empty));
+
+            var result = await _pair.Application.Input.ReadAsync();
+            Assert.True(result.IsCompleted);
+            Assert.DoesNotContain(_logger.Messages, m => m.Exception is ConnectionResetException);
         }
 
         private async Task InitializeConnectionAsync(RequestDelegate application)
