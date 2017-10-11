@@ -471,10 +471,31 @@
   <data name="Http2ErrorTrailersContainPseudoHeaderField" xml:space="preserve">
     <value>The client sent trailers containing one or more pseudo-header fields.</value>
   </data>
-  <data name="Http2ErrorTrailerNameNotLowercase" xml:space="preserve">
+  <data name="Http2ErrorHeaderNameUppercase" xml:space="preserve">
+    <value>The client sent a header with uppercase characters in its name.</value>
+  </data>
+  <data name="Http2ErrorTrailerNameUppercase" xml:space="preserve">
     <value>The client sent a trailer with uppercase characters in its name.</value>
   </data>
   <data name="Http2ErrorHeadersWithTrailersNoEndStream" xml:space="preserve">
     <value>The client sent a HEADERS frame containing trailers without setting the END_STREAM flag.</value>
+  </data>
+  <data name="Http2ErrorMissingMandatoryPseudoHeaderFields" xml:space="preserve">
+    <value>Request headers missing one or more mandatory pseudo-header fields.</value>
+  </data>
+  <data name="Http2ErrorPseudoHeaderFieldAfterRegularHeaders" xml:space="preserve">
+    <value>Pseudo-header field found in request headers after regular header fields.</value>
+  </data>
+  <data name="Http2ErrorUnknownPseudoHeaderField" xml:space="preserve">
+    <value>Request headers contain unknown pseudo-header field.</value>
+  </data>
+  <data name="Http2ErrorResponsePseudoHeaderField" xml:space="preserve">
+    <value>Request headers contain response-specific pseudo-header field.</value>
+  </data>
+  <data name="Http2ErrorDuplicatePseudoHeaderField" xml:space="preserve">
+    <value>Request headers contain duplicate pseudo-header field.</value>
+  </data>
+  <data name="Http2ErrorConnectionSpecificHeaderField" xml:space="preserve">
+    <value>Request headers contain connection-specific header field.</value>
   </data>
 </root>

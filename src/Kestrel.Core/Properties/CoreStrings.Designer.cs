@@ -1663,18 +1663,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("Http2ErrorTrailersContainPseudoHeaderField");
 
         /// <summary>
+        /// The client sent a header with uppercase characters in its name.
+        /// </summary>
+        internal static string Http2ErrorHeaderNameUppercase
+        {
+            get => GetString("Http2ErrorHeaderNameUppercase");
+        }
+
+        /// <summary>
+        /// The client sent a header with uppercase characters in its name.
+        /// </summary>
+        internal static string FormatHttp2ErrorHeaderNameUppercase()
+            => GetString("Http2ErrorHeaderNameUppercase");
+
+        /// <summary>
         /// The client sent a trailer with uppercase characters in its name.
         /// </summary>
-        internal static string Http2ErrorTrailerNameNotLowercase
+        internal static string Http2ErrorTrailerNameUppercase
         {
-            get => GetString("Http2ErrorTrailerNameNotLowercase");
+            get => GetString("Http2ErrorTrailerNameUppercase");
         }
 
         /// <summary>
         /// The client sent a trailer with uppercase characters in its name.
         /// </summary>
-        internal static string FormatHttp2ErrorTrailerNameNotLowercase()
-            => GetString("Http2ErrorTrailerNameNotLowercase");
+        internal static string FormatHttp2ErrorTrailerNameUppercase()
+            => GetString("Http2ErrorTrailerNameUppercase");
 
         /// <summary>
         /// The client sent a HEADERS frame containing trailers without setting the END_STREAM flag.
@@ -1689,6 +1703,90 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         internal static string FormatHttp2ErrorHeadersWithTrailersNoEndStream()
             => GetString("Http2ErrorHeadersWithTrailersNoEndStream");
+
+        /// <summary>
+        /// Request headers missing one or more mandatory pseudo-header fields.
+        /// </summary>
+        internal static string Http2ErrorMissingMandatoryPseudoHeaderFields
+        {
+            get => GetString("Http2ErrorMissingMandatoryPseudoHeaderFields");
+        }
+
+        /// <summary>
+        /// Request headers missing one or more mandatory pseudo-header fields.
+        /// </summary>
+        internal static string FormatHttp2ErrorMissingMandatoryPseudoHeaderFields()
+            => GetString("Http2ErrorMissingMandatoryPseudoHeaderFields");
+
+        /// <summary>
+        /// Pseudo-header field found in request headers after regular header fields.
+        /// </summary>
+        internal static string Http2ErrorPseudoHeaderFieldAfterRegularHeaders
+        {
+            get => GetString("Http2ErrorPseudoHeaderFieldAfterRegularHeaders");
+        }
+
+        /// <summary>
+        /// Pseudo-header field found in request headers after regular header fields.
+        /// </summary>
+        internal static string FormatHttp2ErrorPseudoHeaderFieldAfterRegularHeaders()
+            => GetString("Http2ErrorPseudoHeaderFieldAfterRegularHeaders");
+
+        /// <summary>
+        /// Request headers contain unknown pseudo-header field.
+        /// </summary>
+        internal static string Http2ErrorUnknownPseudoHeaderField
+        {
+            get => GetString("Http2ErrorUnknownPseudoHeaderField");
+        }
+
+        /// <summary>
+        /// Request headers contain unknown pseudo-header field.
+        /// </summary>
+        internal static string FormatHttp2ErrorUnknownPseudoHeaderField()
+            => GetString("Http2ErrorUnknownPseudoHeaderField");
+
+        /// <summary>
+        /// Request headers contain response-specific pseudo-header field.
+        /// </summary>
+        internal static string Http2ErrorResponsePseudoHeaderField
+        {
+            get => GetString("Http2ErrorResponsePseudoHeaderField");
+        }
+
+        /// <summary>
+        /// Request headers contain response-specific pseudo-header field.
+        /// </summary>
+        internal static string FormatHttp2ErrorResponsePseudoHeaderField()
+            => GetString("Http2ErrorResponsePseudoHeaderField");
+
+        /// <summary>
+        /// Request headers contain duplicate pseudo-header field.
+        /// </summary>
+        internal static string Http2ErrorDuplicatePseudoHeaderField
+        {
+            get => GetString("Http2ErrorDuplicatePseudoHeaderField");
+        }
+
+        /// <summary>
+        /// Request headers contain duplicate pseudo-header field.
+        /// </summary>
+        internal static string FormatHttp2ErrorDuplicatePseudoHeaderField()
+            => GetString("Http2ErrorDuplicatePseudoHeaderField");
+
+        /// <summary>
+        /// Request headers contain connection-specific header field.
+        /// </summary>
+        internal static string Http2ErrorConnectionSpecificHeaderField
+        {
+            get => GetString("Http2ErrorConnectionSpecificHeaderField");
+        }
+
+        /// <summary>
+        /// Request headers contain connection-specific header field.
+        /// </summary>
+        internal static string FormatHttp2ErrorConnectionSpecificHeaderField()
+            => GetString("Http2ErrorConnectionSpecificHeaderField");
 
         private static string GetString(string name, params string[] formatterNames)
         {
