@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -69,6 +70,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private static readonly Action<ILogger, string, Exception> _http2ConnectionError =
             LoggerMessage.Define<string>(LogLevel.Information, 29, @"Connection id ""{ConnectionId}"": HTTP/2 connection error.");
+
+        private static readonly Action<ILogger, string, int, Exception> _hpackDecodingError =
+            LoggerMessage.Define<string, int>(LogLevel.Information, 30, @"Connection id ""{ConnectionId}"": HPACK decoding error while decoding headers for stream ID {StreamId}.");
 
         protected readonly ILogger _logger;
 
@@ -175,6 +179,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public void Http2ConnectionError(string connectionId, Http2ConnectionErrorException ex)
         {
             _http2ConnectionError(_logger, connectionId, ex);
+        }
+
+        public void HPackDecodingError(string connectionId, int streamId, HPackDecodingException ex)
+        {
+            _hpackDecodingError(_logger, connectionId, streamId, ex);
         }
 
         public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)

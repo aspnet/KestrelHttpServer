@@ -853,7 +853,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await SendIncompleteHeadersFrameAsync(streamId: 1);
 
-            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
+            await WaitForConnectionErrorAsync<HPackDecodingException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 0,
+                expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR,
+                expectedErrorMessage: CoreStrings.HPackErrorIncompleteHeaderBlock);
         }
 
         [Theory]
@@ -1557,7 +1561,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, _postRequestHeaders);
             await SendIncompleteContinuationFrameAsync(streamId: 1);
 
-            await WaitForConnectionErrorAsync(expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR, ignoreNonGoAwayFrames: false);
+            await WaitForConnectionErrorAsync<HPackDecodingException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 0,
+                expectedErrorCode: Http2ErrorCode.COMPRESSION_ERROR,
+                expectedErrorMessage: CoreStrings.HPackErrorIncompleteHeaderBlock);
         }
 
         [Theory]
@@ -2206,12 +2214,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private Task WaitForConnectionStopAsync(int expectedLastStreamId, bool ignoreNonGoAwayFrames)
         {
-            return WaitForConnectionErrorAsync(expectedLastStreamId, Http2ErrorCode.NO_ERROR, ignoreNonGoAwayFrames);
-        }
-
-        private Task WaitForConnectionErrorAsync(int expectedLastStreamId, Http2ErrorCode expectedErrorCode, bool ignoreNonGoAwayFrames)
-        {
-            return WaitForConnectionErrorAsync<Exception>(ignoreNonGoAwayFrames, expectedLastStreamId, expectedErrorCode, expectedErrorMessage: null);
+            return WaitForConnectionErrorAsync<Exception>(ignoreNonGoAwayFrames, expectedLastStreamId, Http2ErrorCode.NO_ERROR, expectedErrorMessage: null);
         }
 
         private async Task WaitForConnectionErrorAsync<TException>(bool ignoreNonGoAwayFrames, int expectedLastStreamId, Http2ErrorCode expectedErrorCode, string expectedErrorMessage)

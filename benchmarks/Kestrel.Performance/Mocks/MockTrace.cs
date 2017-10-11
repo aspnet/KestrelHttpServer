@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -42,5 +43,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate) { }
         public void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier) { }
         public void Http2ConnectionError(string connectionId, Http2ConnectionErrorException ex) { }
+        public void HPackDecodingError(string connectionId, int streamId, HPackDecodingException ex) { }
     }
 }
