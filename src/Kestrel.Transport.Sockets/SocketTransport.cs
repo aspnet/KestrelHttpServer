@@ -6,10 +6,12 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
@@ -50,6 +52,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             IPEndPoint endPoint = _endPointInformation.IPEndPoint;
 
             var listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+            EnableRebinding(listenSocket);
 
             // Kestrel expects IPv6Any to bind to both IPv6 and IPv4
             if (endPoint.Address == IPAddress.IPv6Any)
@@ -126,6 +130,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 {
                     throw;
                 }
+            }
+        }
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int setsockopt(IntPtr socket, int level, int option_name, IntPtr option_value, uint option_len);
+
+        private const int SOL_SOCKET = 0xffff;
+        private const int SO_REUSEADDR = 0x0004;
+
+        private static readonly bool IsUnix = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
+                                              RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
+        // Without setting SO_REUSEADDR on macOS and Linux, binding to a recently used endpoint can fail.
+        // https://github.com/dotnet/corefx/issues/24562
+        private unsafe void EnableRebinding(Socket listenSocket)
+        {
+            if (!IsUnix)
+            {
+                return;
+            }
+
+            int optionValue = 1;
+            var ret = setsockopt(listenSocket.Handle, SOL_SOCKET, SO_REUSEADDR, (IntPtr)(&optionValue), sizeof(int));
+
+            if (ret != 0)
+            {
+                _trace.LogInformation("Setting SO_REUSEADDR failed with errno '{errno}'.", Marshal.GetLastWin32Error());
             }
         }
     }
