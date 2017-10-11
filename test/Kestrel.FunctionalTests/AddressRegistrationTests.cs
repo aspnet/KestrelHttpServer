@@ -526,6 +526,91 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
+        // https://github.com/dotnet/corefx/issues/24562
+        [ConditionalFact]
+        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "Sockets transport fails to rebind on macOS.")]
+        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "Sockets transport fails to rebind on Linux.")]
+        public async Task CanRebindToEndPoint()
+        {
+            var port = GetNextPort();
+            var endPointAddress = $"http://127.0.0.1:{port}/";
+
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
+                .ConfigureLogging(_configureLoggingDelegate)
+                .UseKestrel(options =>
+                {
+                    options.Listen(IPAddress.Loopback, port);
+                })
+                .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(endPointAddress, await HttpClientSlim.GetStringAsync(endPointAddress));
+            }
+
+            hostBuilder = TransportSelector.GetWebHostBuilder()
+                .ConfigureLogging(_configureLoggingDelegate)
+                .UseKestrel(options =>
+                {
+                    options.Listen(IPAddress.Loopback, port);
+                })
+                .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(endPointAddress, await HttpClientSlim.GetStringAsync(endPointAddress));
+            }
+        }
+
+        // https://github.com/dotnet/corefx/issues/24562
+        [ConditionalFact]
+        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "Sockets transport fails to rebind on macOS.")]
+        [OSSkipCondition(OperatingSystems.Linux, SkipReason = "Sockets transport fails to rebind on Linux.")]
+        public async Task CanRebindToMultipleEndPoints()
+        {
+            var port = GetNextPort();
+            var ipv4endPointAddress = $"http://127.0.0.1:{port}/";
+            var ipv6endPointAddress = $"http://[::1]:{port}/";
+
+            var hostBuilder = TransportSelector.GetWebHostBuilder()
+                .ConfigureLogging(_configureLoggingDelegate)
+                .UseKestrel(options =>
+                {
+                    options.Listen(IPAddress.Loopback, port);
+                    options.Listen(IPAddress.IPv6Loopback, port);
+                })
+                .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(ipv4endPointAddress, await HttpClientSlim.GetStringAsync(ipv4endPointAddress));
+                Assert.Equal(ipv6endPointAddress, await HttpClientSlim.GetStringAsync(ipv6endPointAddress));
+            }
+
+            hostBuilder = TransportSelector.GetWebHostBuilder()
+                .ConfigureLogging(_configureLoggingDelegate)
+                .UseKestrel(options =>
+                {
+                    options.Listen(IPAddress.Loopback, port);
+                    options.Listen(IPAddress.IPv6Loopback, port);
+                })
+                .Configure(ConfigureEchoAddress);
+
+            using (var host = hostBuilder.Build())
+            {
+                host.Start();
+
+                Assert.Equal(ipv4endPointAddress, await HttpClientSlim.GetStringAsync(ipv4endPointAddress));
+                Assert.Equal(ipv6endPointAddress, await HttpClientSlim.GetStringAsync(ipv6endPointAddress));
+            }
+        }
+
         private void ThrowsWhenBindingLocalhostToAddressInUse(AddressFamily addressFamily, IPAddress address)
         {
             using (var socket = new Socket(addressFamily, SocketType.Stream, ProtocolType.Tcp))
@@ -810,6 +895,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 #if MACOS && SOCKETS
                 // Binding to a port with a Socket, disposing the Socket, and rebinding often fails with
                 // SocketError.AddressAlreadyInUse on macOS. This isn't an issue if binding with libuv second.
+                // https://github.com/dotnet/corefx/issues/24562
                 return false;
 #else
                 try
