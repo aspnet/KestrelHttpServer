@@ -868,7 +868,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headerBlock);
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
+            await WaitForStreamErrorAsync(
+                ignoreNonRstStreamFrames: false,
+                expectedStreamId: 1,
+                expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR,
+                expectedErrorMessage: CoreStrings.Http2ErrorHeaderNameUppercase);
 
             // Verify that the stream ID can't be re-used
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, _browserRequestHeaders);
@@ -890,7 +894,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 new KeyValuePair<string, string>(":unknown", "0"),
             };
 
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorUnknownPseudoHeaderField);
         }
 
         [Fact]
@@ -904,21 +908,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 new KeyValuePair<string, string>(":status", "200"),
             };
 
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorResponsePseudoHeaderField);
         }
 
         [Theory]
         [MemberData(nameof(DuplicatePseudoHeaderFieldData))]
         public Task HEADERS_Received_HeaderBlockContainsDuplicatePseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
         {
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorDuplicatePseudoHeaderField);
         }
 
         [Theory]
         [MemberData(nameof(MissingPseudoHeaderFieldData))]
         public Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
         {
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorMissingMandatoryPseudoHeaderFields);
         }
 
         [Theory]
@@ -945,15 +949,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MemberData(nameof(PseudoHeaderFieldAfterRegularHeadersData))]
         public Task HEADERS_Received_HeaderBlockContainsPseudoHeaderFieldAfterRegularHeaders_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
         {
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorPseudoHeaderFieldAfterRegularHeaders);
         }
 
-        private async Task HEADERS_Received_InvalidHeaderFields_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        private async Task HEADERS_Received_InvalidHeaderFields_StreamError(IEnumerable<KeyValuePair<string, string>> headers, string expectedErrorMessage)
         {
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
+            await WaitForStreamErrorAsync(
+                ignoreNonRstStreamFrames: false,
+                expectedStreamId: 1,
+                expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR,
+                expectedErrorMessage: expectedErrorMessage);
 
             // Verify that the stream ID can't be re-used
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, _browserRequestHeaders);
@@ -965,7 +973,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public Task HEADERS_Received_HeaderBlockContainsConnectionSpecificHeader_StreamError()
+        public Task HEADERS_Received_HeaderBlockContainsConnectionHeader_StreamError()
         {
             var headers = new[]
             {
@@ -975,7 +983,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 new KeyValuePair<string, string>("connection", "keep-alive")
             };
 
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, CoreStrings.Http2ErrorConnectionSpecificHeaderField);
         }
 
         [Fact]
@@ -989,21 +997,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 new KeyValuePair<string, string>("te", "trailers, deflate")
             };
 
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            return HEADERS_Received_InvalidHeaderFields_StreamError(headers, CoreStrings.Http2ErrorConnectionSpecificHeaderField);
         }
 
         [Fact]
-        public Task HEADERS_Received_HeaderBlockContainsTEHeader_ValueIsTrailers_NoError()
+        public async Task HEADERS_Received_HeaderBlockContainsTEHeader_ValueIsTrailers_NoError()
         {
             var headers = new[]
             {
                 new KeyValuePair<string, string>(":method", "GET"),
                 new KeyValuePair<string, string>(":path", "/"),
                 new KeyValuePair<string, string>(":scheme", "http"),
-                new KeyValuePair<string, string>("te", "trailers, deflate")
+                new KeyValuePair<string, string>("te", "trailers")
             };
 
-            return HEADERS_Received_InvalidHeaderFields_StreamError(headers);
+            await InitializeConnectionAsync(_noopApplication);
+
+            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, headers);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2HeadersFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
         }
 
         [Fact]
@@ -1454,7 +1475,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await WaitForConnectionErrorAsync<Http2ConnectionErrorException>(
                 ignoreNonGoAwayFrames: false,
-                expectedLastStreamId: 0, 
+                expectedLastStreamId: 0,
                 expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR,
                 expectedErrorMessage: CoreStrings.FormatHttp2ErrorHeadersInterleaved(Http2FrameType.WINDOW_UPDATE, streamId: 1, headersStreamId: 1));
         }
@@ -1492,6 +1513,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task WINDOW_UPDATE_Received_OnStream_SizeIncrementZero_ConnectionError()
+        {
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+            await SendWindowUpdateAsync(1, sizeIncrement: 0);
+
+            await WaitForConnectionErrorAsync<Http2ConnectionErrorException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 1,
+                expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR,
+                expectedErrorMessage: CoreStrings.Http2ErrorWindowUpdateIncrementZero);
+        }
+
+        [Fact]
         public async Task WINDOW_UPDATE_Received_StreamIdle_ConnectionError()
         {
             await InitializeConnectionAsync(_waitForAbortApplication);
@@ -1503,19 +1539,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 expectedLastStreamId: 0,
                 expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR,
                 expectedErrorMessage: CoreStrings.FormatHttp2ErrorStreamIdle(Http2FrameType.WINDOW_UPDATE, streamId: 1));
-        }
-
-        [Fact]
-        public async Task WINDOW_UPDATE_Received_OnStream_SizeIncrementZero_StreamError()
-        {
-            await InitializeConnectionAsync(_waitForAbortApplication);
-
-            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
-            await SendWindowUpdateAsync(1, sizeIncrement: 0);
-
-            await WaitForStreamErrorAsync(expectedStreamId: 1, expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: true);
-
-            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: true);
         }
 
         [Fact]
@@ -1578,7 +1601,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.True(await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, headers));
             await SendEmptyContinuationFrameAsync(1, Http2ContinuationFrameFlags.END_HEADERS);
 
-            await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, ignoreNonRstStreamFrames: false);
+            await WaitForStreamErrorAsync(
+                ignoreNonRstStreamFrames: false,
+                expectedStreamId: 1,
+                expectedErrorCode: Http2ErrorCode.PROTOCOL_ERROR,
+                expectedErrorMessage: CoreStrings.Http2ErrorMissingMandatoryPseudoHeaderFields);
 
             // Verify that the stream ID can't be re-used
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS, headers);
@@ -2274,7 +2301,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _pair.Application.Output.Complete();
         }
 
-        private async Task WaitForStreamErrorAsync(int expectedStreamId, Http2ErrorCode expectedErrorCode, bool ignoreNonRstStreamFrames)
+        private async Task WaitForStreamErrorAsync(bool ignoreNonRstStreamFrames, int expectedStreamId, Http2ErrorCode expectedErrorCode, string expectedErrorMessage)
         {
             var frame = await ReceiveFrameAsync();
 
@@ -2291,6 +2318,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(0, frame.Flags);
             Assert.Equal(expectedStreamId, frame.StreamId);
             Assert.Equal(expectedErrorCode, frame.RstStreamErrorCode);
+
+            if (expectedErrorMessage != null)
+            {
+                var message = Assert.Single(_logger.Messages, m => m.Exception is Http2StreamErrorException);
+                Assert.Contains(expectedErrorMessage, message.Exception.Message);
+            }
         }
 
         private void VerifyDecodedRequestHeaders(IEnumerable<KeyValuePair<string, string>> expectedHeaders)

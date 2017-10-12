@@ -550,14 +550,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_incomingFrame.WindowUpdateSizeIncrement == 0)
             {
-                if (_incomingFrame.StreamId == 0)
-                {
-                    throw new Http2ConnectionErrorException(CoreStrings.Http2ErrorWindowUpdateIncrementZero, Http2ErrorCode.PROTOCOL_ERROR);
-                }
-                else
-                {
-                    return _frameWriter.WriteRstStreamAsync(_incomingFrame.StreamId, Http2ErrorCode.PROTOCOL_ERROR);
-                }
+                // http://httpwg.org/specs/rfc7540.html#rfc.section.6.9
+                // A receiver MUST treat the receipt of a WINDOW_UPDATE
+                // frame with an flow-control window increment of 0 as a
+                // stream error (Section 5.4.2) of type PROTOCOL_ERROR;
+                // errors on the connection flow-control window MUST be
+                // treated as a connection error (Section 5.4.1).
+                //
+                // http://httpwg.org/specs/rfc7540.html#rfc.section.5.4.1
+                // An endpoint can end a connection at any time. In
+                // particular, an endpoint MAY choose to treat a stream
+                // error as a connection error.
+                //
+                // Since server initiated stream resets are not yet properly
+                // implemented and tested, we treat all zero length window
+                // increments as connection errors for now.
+                throw new Http2ConnectionErrorException(CoreStrings.Http2ErrorWindowUpdateIncrementZero, Http2ErrorCode.PROTOCOL_ERROR);
             }
 
             return Task.CompletedTask;
@@ -604,7 +612,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
             catch (Http2StreamErrorException ex)
             {
-                // TODO: log
+                Log.Http2StreamError(ConnectionId, ex);
                 ResetRequestHeaderParsingState();
                 return _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
             }

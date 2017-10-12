@@ -1439,7 +1439,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => string.Format(CultureInfo.CurrentCulture, GetString("Http2ErrorSettingsParameterOutOfRange", "parameter"), parameter);
 
         /// <summary>
-        /// The client sent a WINDOW_UPDATE frame with a window size increment equal to 0.
+        /// The client sent a WINDOW_UPDATE frame with a window size increment of 0.
         /// </summary>
         internal static string Http2ErrorWindowUpdateIncrementZero
         {
@@ -1447,7 +1447,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// The client sent a WINDOW_UPDATE frame with a window size increment equal to 0.
+        /// The client sent a WINDOW_UPDATE frame with a window size increment of 0.
         /// </summary>
         internal static string FormatHttp2ErrorWindowUpdateIncrementZero()
             => GetString("Http2ErrorWindowUpdateIncrementZero");

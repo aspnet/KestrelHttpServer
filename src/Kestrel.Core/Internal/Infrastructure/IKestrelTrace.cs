@@ -50,6 +50,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         void Http2ConnectionError(string connectionId, Http2ConnectionErrorException ex);
 
+        void Http2StreamError(string connectionId, Http2StreamErrorException ex);
+
         void HPackDecodingError(string connectionId, int streamId, HPackDecodingException ex);
     }
 }
