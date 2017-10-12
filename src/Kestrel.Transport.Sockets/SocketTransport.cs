@@ -136,25 +136,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         [DllImport("libc", SetLastError = true)]
         private static extern int setsockopt(IntPtr socket, int level, int option_name, IntPtr option_value, uint option_len);
 
-        private const int SOL_SOCKET = 0xffff;
-        private const int SO_REUSEADDR = 0x0004;
-
-        private static readonly bool IsUnix = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-                                              RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        private const int SOL_SOCKET_OSX = 0xffff;
+        private const int SO_REUSEADDR_OSX = 0x0004;
+        private const int SOL_SOCKET_LINUX = 0x0001;
+        private const int SO_REUSEADDR_LINUX = 0x0002;
 
         // Without setting SO_REUSEADDR on macOS and Linux, binding to a recently used endpoint can fail.
         // https://github.com/dotnet/corefx/issues/24562
         private unsafe void EnableRebinding(Socket listenSocket)
         {
-            if (!IsUnix)
+            var optionValue = 1;
+            var setsockoptStatus = 0;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                return;
+                setsockoptStatus = setsockopt(listenSocket.Handle, SOL_SOCKET_LINUX, SO_REUSEADDR_LINUX,
+                                              (IntPtr)(&optionValue), sizeof(int));
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                setsockoptStatus = setsockopt(listenSocket.Handle, SOL_SOCKET_OSX, SO_REUSEADDR_OSX,
+                                              (IntPtr)(&optionValue), sizeof(int));
             }
 
-            int optionValue = 1;
-            var ret = setsockopt(listenSocket.Handle, SOL_SOCKET, SO_REUSEADDR, (IntPtr)(&optionValue), sizeof(int));
-
-            if (ret != 0)
+            if (setsockoptStatus != 0)
             {
                 _trace.LogInformation("Setting SO_REUSEADDR failed with errno '{errno}'.", Marshal.GetLastWin32Error());
             }
