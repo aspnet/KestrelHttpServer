@@ -8,7 +8,6 @@
     <MicrosoftAspNetCoreHttpAbstractionsPackageVersion>2.0.1-rtm-105</MicrosoftAspNetCoreHttpAbstractionsPackageVersion>
     <MicrosoftAspNetCoreHttpFeaturesPackageVersion>2.0.1-rtm-105</MicrosoftAspNetCoreHttpFeaturesPackageVersion>
     <MicrosoftAspNetCoreHttpPackageVersion>2.0.1-rtm-105</MicrosoftAspNetCoreHttpPackageVersion>
-    <MicrosoftAspNetCoreInternalCoreFxLabSourcesPackageVersion>2.0.0-rtm-21470</MicrosoftAspNetCoreInternalCoreFxLabSourcesPackageVersion>
     <MicrosoftAspNetCoreTestingPackageVersion>2.0.0</MicrosoftAspNetCoreTestingPackageVersion>
     <MicrosoftAspNetCoreWebUtilitiesPackageVersion>2.0.1-rtm-105</MicrosoftAspNetCoreWebUtilitiesPackageVersion>
     <MicrosoftExtensionsLoggingAbstractionsPackageVersion>2.0.0</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
