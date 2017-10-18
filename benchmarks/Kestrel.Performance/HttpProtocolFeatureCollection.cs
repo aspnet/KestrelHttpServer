@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -14,69 +16,70 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
     [Config(typeof(CoreConfig))]
     public class HttpProtocolFeatureCollection
     {
-        private readonly Http1Connection<object> _http1Connection;
-        private IFeatureCollection _collection;
+        private readonly IFeatureCollection _collection;
 
-        [Benchmark(Baseline = true)]
-        public IHttpRequestFeature GetFirstViaFastFeature()
+        [Benchmark]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public IHttpRequestFeature GetViaTypeOf_First()
         {
-            return (IHttpRequestFeature)GetFastFeature(typeof(IHttpRequestFeature));
+            return (IHttpRequestFeature)_collection[typeof(IHttpRequestFeature)];
         }
 
         [Benchmark]
-        public IHttpRequestFeature GetFirstViaType()
-        {
-            return (IHttpRequestFeature)Get(typeof(IHttpRequestFeature));
-        }
-
-        [Benchmark]
-        public IHttpRequestFeature GetFirstViaExtension()
-        {
-            return _collection.GetType<IHttpRequestFeature>();
-        }
-
-        [Benchmark]
-        public IHttpRequestFeature GetFirstViaGeneric()
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public IHttpRequestFeature GetViaGeneric_First()
         {
             return _collection.Get<IHttpRequestFeature>();
         }
 
         [Benchmark]
-        public IHttpSendFileFeature GetLastViaFastFeature()
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public IHttpSendFileFeature GetViaTypeOf_Last()
         {
-            return (IHttpSendFileFeature)GetFastFeature(typeof(IHttpSendFileFeature));
+            return (IHttpSendFileFeature)_collection[typeof(IHttpSendFileFeature)];
         }
 
         [Benchmark]
-        public IHttpSendFileFeature GetLastViaType()
-        {
-            return (IHttpSendFileFeature)Get(typeof(IHttpSendFileFeature));
-        }
-
-        [Benchmark]
-        public IHttpSendFileFeature GetLastViaExtension()
-        {
-            return _collection.GetType<IHttpSendFileFeature>();
-        }
-
-        [Benchmark]
-        public IHttpSendFileFeature GetLastViaGeneric()
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public IHttpSendFileFeature GetViaGeneric_Last()
         {
             return _collection.Get<IHttpSendFileFeature>();
         }
 
-        private object Get(Type type)
+        [Benchmark]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public object GetViaTypeOf_Custom()
         {
-            return _collection[type];
+            return (IHttpCustomFeature)_collection[typeof(IHttpCustomFeature)];
         }
 
-        private object GetFastFeature(Type type)
+        [Benchmark]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public object GetViaGeneric_Custom()
         {
-            return _http1Connection.FastFeatureGet(type);
+            return _collection.Get<IHttpCustomFeature>();
+        }
+
+
+        [Benchmark]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public object GetViaTypeOf_NotFound()
+        {
+            return (IHttpNotFoundFeature)_collection[typeof(IHttpNotFoundFeature)];
+        }
+
+        [Benchmark]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public object GetViaGeneric_NotFound()
+        {
+            return _collection.Get<IHttpNotFoundFeature>();
         }
 
         public HttpProtocolFeatureCollection()
         {
+            var pipeFactory = new PipeFactory();
+            var pair = pipeFactory.CreateConnectionPair();
+
             var serviceContext = new ServiceContext
             {
                 HttpParserFactory = _ => NullParser<Http1ParsingHandler>.Instance,
@@ -86,24 +89,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             {
                 ServiceContext = serviceContext,
                 ConnectionFeatures = new FeatureCollection(),
-                PipeFactory = new PipeFactory()
+                PipeFactory = pipeFactory,
+                Application = pair.Application,
+                Transport = pair.Transport
             };
 
-            _http1Connection = new Http1Connection<object>(application: null, context: http1ConnectionContext);
+            var http1Connection = new Http1Connection<object>(application: null, context: http1ConnectionContext);
+            http1Connection.Reset();
+
+            _collection = http1Connection;
+
+            IHttpSendFileFeature sendFileFeature = new SendFileFeature();
+            _collection.Set(sendFileFeature);
         }
 
-        [IterationSetup]
-        public void Setup()
+
+        private class SendFileFeature : IHttpSendFileFeature
         {
-            _collection = _http1Connection;
+            public Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellation)
+            {
+                throw new System.NotImplementedException();
+            }
         }
 
-    }
-    public static class IFeatureCollectionExtensions
-    {
-        public static T GetType<T>(this IFeatureCollection collection)
+        private interface IHttpCustomFeature
         {
-            return (T)collection[typeof(T)];
+        }
+
+        private interface IHttpNotFoundFeature
+        {
         }
     }
 }

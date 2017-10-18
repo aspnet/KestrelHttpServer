@@ -393,7 +393,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override void OnReset()
         {
-            FastFeatureSet(typeof(IHttpUpgradeFeature), this);
+            ResetIHttpUpgradeFeature();
 
             _requestTimedOut = false;
             _requestTargetForm = HttpRequestTarget.Unknown;

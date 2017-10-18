@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
-using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
@@ -244,20 +243,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             set => MinResponseDataRate = value;
         }
 
-        object IFeatureCollection.this[Type key]
+        protected void ResetIHttpUpgradeFeature()
         {
-            get => FastFeatureGet(key) ?? ConnectionFeatures[key];
-            set => FastFeatureSet(key, value);
+            _currentIHttpUpgradeFeature = this;
         }
 
-        TFeature IFeatureCollection.Get<TFeature>()
+        protected void ResetIHttp2StreamIdFeature()
         {
-            return (TFeature)(FastFeatureGet(typeof(TFeature)) ?? ConnectionFeatures[typeof(TFeature)]);
-        }
-
-        void IFeatureCollection.Set<TFeature>(TFeature instance)
-        {
-            FastFeatureSet(typeof(TFeature), instance);
+            _currentIHttp2StreamIdFeature = this;
         }
 
         void IHttpResponseFeature.OnStarting(Func<object, Task> callback, object state)
