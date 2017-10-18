@@ -139,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 ReadResult result;
                 do
                 {
-                    result = await ReadRequestBodyPipeAsync();
+                    result = await _context.RequestBodyPipe.Reader.ReadAsync();
                     _context.RequestBodyPipe.Reader.Advance(result.Buffer.End);
                 } while (!result.IsCompleted);
             }

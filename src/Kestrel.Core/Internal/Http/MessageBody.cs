@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await ReadRequestBodyPipeAsync();
+                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await ReadRequestBodyPipeAsync();
+                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -119,18 +119,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _context.HttpResponseControl.ProduceContinue();
                 _send100Continue = false;
             }
-        }
-
-        protected ReadableBufferAwaitable ReadRequestBodyPipeAsync()
-        {
-            var awaitable = _context.RequestBodyPipe.Reader.ReadAsync();
-
-            if (!awaitable.IsCompleted)
-            {
-                TryProduceContinue();
-            }
-
-            return awaitable;
         }
 
         private void TryInit()
