@@ -375,11 +375,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
         }
 
+        protected virtual void InitializeParsing()
+        {
+        }
+
+        protected virtual void FinishParsing()
+        {
+        }
+
+        protected virtual bool BeginRead(out ReadableBufferAwaitable awaitable)
+        {
+            awaitable = default;
+            return false;
+        }
+
         protected abstract string CreateRequestId();
 
         protected abstract MessageBody CreateMessageBody();
 
-        protected abstract Task<bool> ParseRequestAsync();
+        protected abstract bool TryParseRequest(ReadResult result, out bool endConnection);
 
         protected abstract void CreateHttpContext();
 
@@ -436,10 +450,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 while (_keepAlive)
                 {
-                    if (!await ParseRequestAsync())
+                    InitializeParsing();
+                    var result = default(ReadResult);
+                    var endConnection = false;
+                    do
+                    {
+                        if (BeginRead(out var awaitable))
+                        {
+                            result = await awaitable;
+                        }
+                    } while (!TryParseRequest(result, out endConnection));
+
+                    if (endConnection)
                     {
                         return;
                     }
+
+                    FinishParsing();
 
                     var messageBody = CreateMessageBody();
 
@@ -655,7 +682,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             try
             {
                 var count = onStarting.Count;
-                for(var i = 0; i < count; i++)
+                for (var i = 0; i < count; i++)
                 {
                     var entry = onStarting.Pop();
                     var task = entry.Key.Invoke(entry.Value);
