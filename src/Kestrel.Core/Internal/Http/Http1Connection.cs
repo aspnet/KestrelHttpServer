@@ -413,15 +413,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected override MessageBody CreateMessageBody()
             => Http1MessageBody.For(_httpVersion, HttpRequestHeaders, this);
 
+        protected override void BeginRequestProcessing()
+        {
+            // Reset the features and timeout.
+            Reset();
+            TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.StopProcessingNextRequest);
+        }
+
         protected override bool BeginRead(out ReadableBufferAwaitable awaitable)
         {
-            if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
-            {
-                // Reset the features and timeout.
-                Reset();
-                TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.StopProcessingNextRequest);
-            }
-
             awaitable = Input.ReadAsync();
             return true;
         }
@@ -479,7 +479,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             endConnection = false;
-            if(_requestProcessingStatus == RequestProcessingStatus.AppStarted)
+            if (_requestProcessingStatus == RequestProcessingStatus.AppStarted)
             {
                 EnsureHostHeaderExists();
                 return true;
