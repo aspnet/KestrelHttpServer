@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 ListenOptions = listenOptions,
                 ServerOptions = serverOptions,
                 Logger = logger,
-                DefaultHttpsProvider = defaultHttpsProvider,
+                DefaultHttpsProvider = defaultHttpsProvider ?? UnconfiguredDefaultHttpsProvider.Instance,
                 CreateBinding = createBinding
             };
 
@@ -330,6 +330,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     await BindAddressAsync(address, context).ConfigureAwait(false);
                 }
+            }
+        }
+
+        private class UnconfiguredDefaultHttpsProvider : IDefaultHttpsProvider
+        {
+            public static readonly UnconfiguredDefaultHttpsProvider Instance = new UnconfiguredDefaultHttpsProvider();
+
+            private UnconfiguredDefaultHttpsProvider()
+            {
+            }
+
+            public void ConfigureHttps(ListenOptions listenOptions)
+            {
+                throw new InvalidOperationException(CoreStrings.UnableToConfigureHttpsBindings);
             }
         }
     }

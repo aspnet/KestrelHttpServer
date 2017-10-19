@@ -51,6 +51,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 mockDefaultHttpsProvider.Verify(provider => provider.ConfigureHttps(It.IsAny<ListenOptions>()), Times.Once);
             }
         }
+ 
+        [Fact]
+        public void KestrelServerThrowsUsefulExceptionIfDefaultHttpsProviderNotAdded()
+        {
+            var mockDefaultHttpsProvider = new Mock<IDefaultHttpsProvider>();
+
+            using (var server = CreateServer(new KestrelServerOptions(), defaultHttpsProvider: null))
+            {
+                server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
+
+                var ex = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
+                Assert.Equal(CoreStrings.UnableToConfigureHttpsBindings, ex.Message);
+            }
+        }
+ 
+        [Fact]
+        public void KestrelServerDoesNotThrowIfNoDefaultHttpsProviderButNoHttpUrls()
+        {
+            var mockDefaultHttpsProvider = new Mock<IDefaultHttpsProvider>();
+
+            using (var server = CreateServer(new KestrelServerOptions(), defaultHttpsProvider: null))
+            {
+                server.Features.Get<IServerAddressesFeature>().Addresses.Add("http://127.0.0.1:0");
+
+                StartDummyApplication(server);
+            }
+        }
+ 
+        [Fact]
+        public void KestrelServerDoesNotThrowIfNoDefaultHttpsProviderButManualListenOptions()
+        {
+            var mockDefaultHttpsProvider = new Mock<IDefaultHttpsProvider>();
+
+            var serverOptions = new KestrelServerOptions();
+            serverOptions.Listen(new IPEndPoint(IPAddress.Loopback, 0));
+
+            using (var server = CreateServer(serverOptions, defaultHttpsProvider: null))
+            {
+                server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
+
+                StartDummyApplication(server);
+            }
+        }
 
         [Fact]
         public void StartWithPathBaseInAddressThrows()
