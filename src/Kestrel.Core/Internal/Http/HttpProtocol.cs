@@ -311,7 +311,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _onStarting = null;
             _onCompleted = null;
 
-            _requestProcessingStatus = RequestProcessingStatus.RequestPending;
             _autoChunk = false;
             _applicationException = null;
             _requestRejectedException = null;
@@ -372,14 +371,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         protected virtual void OnRequestProcessingEnded()
-        {
-        }
-
-        protected virtual void InitializeParsing()
-        {
-        }
-
-        protected virtual void FinishParsing()
         {
         }
 
@@ -450,7 +441,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 while (_keepAlive)
                 {
-                    InitializeParsing();
+                    // Reset state
+                    _requestProcessingStatus = RequestProcessingStatus.RequestPending;
+
                     var result = default(ReadResult);
                     var endConnection = false;
                     do
@@ -465,8 +458,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     {
                         return;
                     }
-
-                    FinishParsing();
 
                     var messageBody = CreateMessageBody();
 
