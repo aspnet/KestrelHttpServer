@@ -343,6 +343,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             public void ConfigureHttps(ListenOptions listenOptions)
             {
+                // We have to throw here. If this is called, it's because the user asked for "https" binding but for some
+                // reason didn't provide a certificate and didn't use the "DefaultHttpsProvider". This means if we no-op,
+                // we'll silently downgrade to HTTP, which is bad.
                 throw new InvalidOperationException(CoreStrings.UnableToConfigureHttpsBindings);
             }
         }
