@@ -118,6 +118,6 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="HttpsUrlProvidedButNoDevelopmentCertificateFound" xml:space="preserve">
-    <value>An 'https' URL was provided, but a development certificate could not be found.</value>
+    <value>Unable to configure HTTPS endpoint. For information on configuring HTTPS see https://go.microsoft.com/fwlink/?linkid=848054</value>
   </data>
 </root>

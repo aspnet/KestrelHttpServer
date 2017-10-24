@@ -55,8 +55,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void KestrelServerThrowsUsefulExceptionIfDefaultHttpsProviderNotAdded()
         {
-            var mockDefaultHttpsProvider = new Mock<IDefaultHttpsProvider>();
-
             using (var server = CreateServer(new KestrelServerOptions(), defaultHttpsProvider: null))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
@@ -69,8 +67,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void KestrelServerDoesNotThrowIfNoDefaultHttpsProviderButNoHttpUrls()
         {
-            var mockDefaultHttpsProvider = new Mock<IDefaultHttpsProvider>();
-
             using (var server = CreateServer(new KestrelServerOptions(), defaultHttpsProvider: null))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("http://127.0.0.1:0");
@@ -317,7 +313,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private static KestrelServer CreateServer(KestrelServerOptions options, IDefaultHttpsProvider defaultHttpsProvider)
         {
-            return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new[] { new KestrelTestLoggerProvider(Mock.Of<ILogger>()) }), defaultHttpsProvider);
+            return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new[] { new KestrelTestLoggerProvider() }), defaultHttpsProvider);
         }
 
         private static void StartDummyApplication(IServer server)

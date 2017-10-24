@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Certificates.Generation;
@@ -19,53 +18,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private readonly ILogger<DefaultHttpsProvider> _logger;
 
-        public Func<X509Certificate2> DefaultCertificateResolver { get; set; }
-
         public DefaultHttpsProvider(ILogger<DefaultHttpsProvider> logger)
         {
             _logger = logger;
-            DefaultCertificateResolver = FindDevelopmentCertificate;
         }
 
         public void ConfigureHttps(ListenOptions listenOptions)
-        {
-            var cert = DefaultCertificateResolver();
-            if (cert == null)
-            {
-                throw new InvalidOperationException(KestrelStrings.HttpsUrlProvidedButNoDevelopmentCertificateFound);
-            }
-            listenOptions.UseHttps(cert);
-        }
-
-        private X509Certificate2 FindDevelopmentCertificate()
         {
             var certificate = _certificateManager.ListCertificates(CertificatePurpose.HTTPS, StoreName.My, StoreLocation.CurrentUser, isValid: true)
                 .FirstOrDefault();
             if (certificate != null)
             {
-                _logger.LogDebug("Using development certificate: {certificateSubjectName} (Thumbprint: {certificateThumbprint})", certificate.Subject, certificate.Thumbprint);
-                return certificate;
+                _logger.LocatedDevelopmentCertificate(certificate);
+                listenOptions.UseHttps(certificate);
             }
             else
             {
-                _logger.LogDebug("Development certificate could not be found");
-                return null;
-            }
-        }
-
-        private void DisposeCertificates(IEnumerable<X509Certificate2> certificates)
-        {
-            foreach (var certificate in certificates)
-            {
-                try
-                {
-                    certificate.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    // Accessing certificate may cause additional exceptions.
-                    _logger.LogError(ex, "Error disposing of certficate.");
-                }
+                _logger.UnableToLocateDevelopmentCertificate();
+                throw new InvalidOperationException(KestrelStrings.HttpsUrlProvidedButNoDevelopmentCertificateFound);
             }
         }
     }
