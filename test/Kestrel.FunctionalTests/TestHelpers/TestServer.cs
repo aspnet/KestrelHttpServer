@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
@@ -37,12 +39,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
         }
 
+        public TestServer(RequestDelegate app, TestServiceContext context, ILoggerFactory loggerFactory)
+            : this(app, context, new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)), loggerFactory, _ => { })
+        {
+        }
+
         public TestServer(RequestDelegate app, TestServiceContext context, ListenOptions listenOptions)
             : this(app, context, listenOptions, _ => { })
         {
         }
 
         public TestServer(RequestDelegate app, TestServiceContext context, ListenOptions listenOptions, Action<IServiceCollection> configureServices)
+            : this(app, context, listenOptions, NullLoggerFactory.Instance, configureServices)
+        {
+        }
+
+        public TestServer(RequestDelegate app, TestServiceContext context, ListenOptions listenOptions, ILoggerFactory loggerFactory, Action<IServiceCollection> configureServices)
         {
             _app = app;
             _listenOptions = listenOptions;
@@ -55,6 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                      })
                      .ConfigureServices(services =>
                      {
+                         services.AddSingleton(loggerFactory);
                          services.AddSingleton<IStartup>(this);
                          services.AddSingleton(context.LoggerFactory);
                          services.AddSingleton<IServer>(sp =>

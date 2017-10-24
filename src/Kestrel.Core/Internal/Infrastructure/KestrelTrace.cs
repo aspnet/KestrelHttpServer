@@ -174,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _requestBodyMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
         }
 
-        public void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
+        public virtual void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
         {
             _responseMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, null);
         }
