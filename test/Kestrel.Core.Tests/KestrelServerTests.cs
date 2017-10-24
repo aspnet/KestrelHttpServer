@@ -313,7 +313,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private static KestrelServer CreateServer(KestrelServerOptions options, IDefaultHttpsProvider defaultHttpsProvider)
         {
-            return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new[] { new KestrelTestLoggerProvider() }), defaultHttpsProvider);
+            return new KestrelServer(Options.Create(options), new MockTransportFactory(), new LoggerFactory(new[] { new KestrelTestLoggerProvider(Mock.Of<ILogger>()) }), defaultHttpsProvider);
         }
 
         private static void StartDummyApplication(IServer server)
