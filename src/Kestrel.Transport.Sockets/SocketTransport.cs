@@ -23,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private readonly ISocketsTrace _trace;
         private Socket _listenSocket;
         private Task _listenTask;
+        private volatile bool _unbinding;
 
         internal SocketTransport(
             IEndPointInformation endPointInformation,
@@ -37,9 +38,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _endPointInformation = endPointInformation;
             _handler = handler;
             _trace = trace;
-
-            _listenSocket = null;
-            _listenTask = null;
         }
 
         public Task BindAsync()
@@ -89,13 +87,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             if (_listenSocket != null)
             {
-                var listenSocket = _listenSocket;
-                _listenSocket = null;
-
-                listenSocket.Dispose();
+                _unbinding = true;
+                _listenSocket.Dispose();
 
                 Debug.Assert(_listenTask != null);
                 await _listenTask.ConfigureAwait(false);
+                _unbinding = false;
+                _listenSocket = null;
                 _listenTask = null;
             }
         }
@@ -122,7 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             catch (Exception)
             {
-                if (_listenSocket == null)
+                if (_unbinding)
                 {
                     // Means we must be unbinding.  Eat the exception.
                 }
