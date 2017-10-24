@@ -2476,8 +2476,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
                 };
 
-                var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
-                    .UseConnectionLogging(loggerFactory, nameof(LoggingConnectionAdapter));
+                var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
+                listenOptions.ConnectionAdapters.Add(new LoggingConnectionAdapter(loggerFactory.CreateLogger<LoggingConnectionAdapter>()));
 
                 var appLogger = loggerFactory.CreateLogger("App");
                 async Task App(HttpContext context)

@@ -30,11 +30,6 @@ namespace Microsoft.AspNetCore.Hosting
         public static ListenOptions UseConnectionLogging(this ListenOptions listenOptions, string loggerName)
         {
             var loggerFactory = listenOptions.KestrelServerOptions.ApplicationServices.GetRequiredService<ILoggerFactory>();
-            return listenOptions.UseConnectionLogging(loggerFactory, loggerName);
-        }
-
-        internal static ListenOptions UseConnectionLogging(this ListenOptions listenOptions, ILoggerFactory loggerFactory, string loggerName)
-        {
             var logger = loggerFactory.CreateLogger(loggerName ?? nameof(LoggingConnectionAdapter));
             listenOptions.ConnectionAdapters.Add(new LoggingConnectionAdapter(logger));
             return listenOptions;
