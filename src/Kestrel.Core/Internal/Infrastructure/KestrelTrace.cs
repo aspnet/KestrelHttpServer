@@ -84,121 +84,121 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _logger = logger;
         }
 
-        public void ConnectionStart(string connectionId)
+        public virtual void ConnectionStart(string connectionId)
         {
             _connectionStart(_logger, connectionId, null);
         }
 
-        public void ConnectionStop(string connectionId)
+        public virtual void ConnectionStop(string connectionId)
         {
             _connectionStop(_logger, connectionId, null);
         }
 
-        public void ConnectionPause(string connectionId)
+        public virtual void ConnectionPause(string connectionId)
         {
             _connectionPause(_logger, connectionId, null);
         }
 
-        public void ConnectionResume(string connectionId)
+        public virtual void ConnectionResume(string connectionId)
         {
             _connectionResume(_logger, connectionId, null);
         }
 
-        public void ConnectionKeepAlive(string connectionId)
+        public virtual void ConnectionKeepAlive(string connectionId)
         {
             _connectionKeepAlive(_logger, connectionId, null);
         }
 
-        public void ConnectionRejected(string connectionId)
+        public virtual void ConnectionRejected(string connectionId)
         {
             _connectionRejected(_logger, connectionId, null);
         }
 
-        public void ConnectionDisconnect(string connectionId)
+        public virtual void ConnectionDisconnect(string connectionId)
         {
             _connectionDisconnect(_logger, connectionId, null);
         }
 
-        public void ApplicationError(string connectionId, string traceIdentifier, Exception ex)
+        public virtual void ApplicationError(string connectionId, string traceIdentifier, Exception ex)
         {
             _applicationError(_logger, connectionId, traceIdentifier, ex);
         }
 
-        public void ConnectionHeadResponseBodyWrite(string connectionId, long count)
+        public virtual void ConnectionHeadResponseBodyWrite(string connectionId, long count)
         {
             _connectionHeadResponseBodyWrite(_logger, connectionId, count, null);
         }
 
-        public void NotAllConnectionsClosedGracefully()
+        public virtual void NotAllConnectionsClosedGracefully()
         {
             _notAllConnectionsClosedGracefully(_logger, null);
         }
 
-        public void ConnectionBadRequest(string connectionId, BadHttpRequestException ex)
+        public virtual void ConnectionBadRequest(string connectionId, BadHttpRequestException ex)
         {
             _connectionBadRequest(_logger, connectionId, ex.Message, ex);
         }
 
-        public void RequestProcessingError(string connectionId, Exception ex)
+        public virtual void RequestProcessingError(string connectionId, Exception ex)
         {
             _requestProcessingError(_logger, connectionId, ex);
         }
 
-        public void NotAllConnectionsAborted()
+        public virtual void NotAllConnectionsAborted()
         {
             _notAllConnectionsAborted(_logger, null);
         }
 
-        public void HeartbeatSlow(TimeSpan interval, DateTimeOffset now)
+        public virtual void HeartbeatSlow(TimeSpan interval, DateTimeOffset now)
         {
             _heartbeatSlow(_logger, interval, now, null);
         }
 
-        public void ApplicationNeverCompleted(string connectionId)
+        public virtual void ApplicationNeverCompleted(string connectionId)
         {
             _applicationNeverCompleted(_logger, connectionId, null);
         }
 
-        public void RequestBodyStart(string connectionId, string traceIdentifier)
+        public virtual void RequestBodyStart(string connectionId, string traceIdentifier)
         {
             _requestBodyStart(_logger, connectionId, traceIdentifier, null);
         }
 
-        public void RequestBodyDone(string connectionId, string traceIdentifier)
+        public virtual void RequestBodyDone(string connectionId, string traceIdentifier)
         {
             _requestBodyDone(_logger, connectionId, traceIdentifier, null);
         }
 
-        public void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate)
+        public virtual void RequestBodyMininumDataRateNotSatisfied(string connectionId, string traceIdentifier, double rate)
         {
             _requestBodyMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
         }
 
-        public void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
+        public virtual void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
         {
             _responseMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, null);
         }
 
-        public void Http2ConnectionError(string connectionId, Http2ConnectionErrorException ex)
+        public virtual void Http2ConnectionError(string connectionId, Http2ConnectionErrorException ex)
         {
             _http2ConnectionError(_logger, connectionId, ex);
         }
 
-        public void Http2StreamError(string connectionId, Http2StreamErrorException ex)
+        public virtual void Http2StreamError(string connectionId, Http2StreamErrorException ex)
         {
             _http2StreamError(_logger, connectionId, ex);
         }
 
-        public void HPackDecodingError(string connectionId, int streamId, HPackDecodingException ex)
+        public virtual void HPackDecodingError(string connectionId, int streamId, HPackDecodingException ex)
         {
             _hpackDecodingError(_logger, connectionId, streamId, ex);
         }
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             => _logger.Log(logLevel, eventId, state, exception, formatter);
 
-        public bool IsEnabled(LogLevel logLevel) => _logger.IsEnabled(logLevel);
+        public virtual bool IsEnabled(LogLevel logLevel) => _logger.IsEnabled(logLevel);
 
-        public IDisposable BeginScope<TState>(TState state) => _logger.BeginScope(state);
+        public virtual IDisposable BeginScope<TState>(TState state) => _logger.BeginScope(state);
     }
 }

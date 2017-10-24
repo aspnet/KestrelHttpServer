@@ -2460,6 +2460,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var responseSize = chunks * chunkSize;
 
                 var requestAborted = new ManualResetEventSlim();
+                var messageLogged = new ManualResetEventSlim();
+                var mockKestrelTrace = new Mock<KestrelTrace>(loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel")) { CallBase = true };
+                mockKestrelTrace
+                    .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
+                    .Callback(() => messageLogged.Set());
                 var kestrelTrace = new KestrelTrace(loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
 
                 var testContext = new TestServiceContext
@@ -2507,6 +2512,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                         var sw = Stopwatch.StartNew();
                         logger.LogInformation("Waiting for connection to abort.");
+                        Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(120)), "The expected message was not logged within the timeout period.");
                         Assert.True(requestAborted.Wait(TimeSpan.FromSeconds(120)), "The request was not aborted within the timeout period.");
                         sw.Stop();
                         logger.LogInformation("Connection was aborted after {totalMilliseconds}ms.", sw.ElapsedMilliseconds);
