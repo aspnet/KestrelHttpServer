@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -2471,6 +2472,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 var testContext = new TestServiceContext
                 {
+                    LoggerFactory = loggerFactory,
                     Log = mockKestrelTrace.Object,
                     SystemClock = new SystemClock(),
                     ServerOptions =
@@ -2481,6 +2483,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         }
                     }
                 };
+
+                var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
+                    .UseConnectionLogging(loggerFactory, nameof(LoggingConnectionAdapter));
 
                 var appLogger = loggerFactory.CreateLogger("App");
                 async Task App(HttpContext context)
@@ -2497,7 +2502,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
                 }
 
-                using (var server = new TestServer(App, testContext, loggerFactory))
+                using (var server = new TestServer(App, testContext, listenOptions))
                 {
                     using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
                     {

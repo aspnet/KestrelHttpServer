@@ -39,53 +39,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
         }
 
-        public TestServer(RequestDelegate app, TestServiceContext context, ILoggerFactory loggerFactory)
-            : this(app, context, new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)), loggerFactory, _ => { })
-        {
-        }
-
         public TestServer(RequestDelegate app, TestServiceContext context, ListenOptions listenOptions)
             : this(app, context, listenOptions, _ => { })
         {
         }
 
         public TestServer(RequestDelegate app, TestServiceContext context, ListenOptions listenOptions, Action<IServiceCollection> configureServices)
-            : this(app, context, listenOptions, NullLoggerFactory.Instance, configureServices)
-        {
-        }
-
-        public TestServer(RequestDelegate app, TestServiceContext context, ListenOptions listenOptions, ILoggerFactory loggerFactory, Action<IServiceCollection> configureServices)
         {
             _app = app;
             _listenOptions = listenOptions;
             Context = context;
 
             _host = TransportSelector.GetWebHostBuilder()
-                     .UseKestrel(o =>
-                     {
-                         o.ListenOptions.Add(_listenOptions);
-                     })
-                     .ConfigureServices(services =>
-                     {
-                         services.AddSingleton(loggerFactory);
-                         services.AddSingleton<IStartup>(this);
-                         services.AddSingleton(context.LoggerFactory);
-                         services.AddSingleton<IServer>(sp =>
-                         {
-                             // Manually configure options on the TestServiceContext.
-                             // We're doing this so we can use the same instance that was passed in
-                             var configureOptions = sp.GetServices<IConfigureOptions<KestrelServerOptions>>();
-                             foreach (var c in configureOptions)
-                             {
-                                 c.Configure(context.ServerOptions);
-                             }
-                             return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), context);
-                         });
+                .UseKestrel(o =>
+                {
+                    o.ListenOptions.Add(_listenOptions);
+                })
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<IStartup>(this);
+                    services.AddSingleton(context.LoggerFactory);
+                    services.AddSingleton<IServer>(sp =>
+                    {
+                        // Manually configure options on the TestServiceContext.
+                        // We're doing this so we can use the same instance that was passed in
+                        var configureOptions = sp.GetServices<IConfigureOptions<KestrelServerOptions>>();
+                        foreach (var c in configureOptions)
+                        {
+                            c.Configure(context.ServerOptions);
+                        }
+                        return new KestrelServer(sp.GetRequiredService<ITransportFactory>(), context);
+                    });
 
-                         configureServices(services);
-                     })
-                     .UseSetting(WebHostDefaults.ApplicationKey, typeof(TestServer).GetTypeInfo().Assembly.FullName)
-                     .Build();
+                    configureServices(services);
+                })
+                .UseSetting(WebHostDefaults.ApplicationKey, typeof(TestServer).GetTypeInfo().Assembly.FullName)
+                .Build();
 
             _host.Start();
         }
