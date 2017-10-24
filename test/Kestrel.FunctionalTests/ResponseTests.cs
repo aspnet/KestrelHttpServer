@@ -2465,12 +2465,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 mockKestrelTrace
                     .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
                     .Callback(() => messageLogged.Set());
-                var kestrelTrace = new KestrelTrace(loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
 
                 var testContext = new TestServiceContext
                 {
                     LoggerFactory = loggerFactory,
-                    Log = kestrelTrace,
+                    Log = mockKestrelTrace.Object,
                     SystemClock = new SystemClock(),
                     ServerOptions =
                     {
