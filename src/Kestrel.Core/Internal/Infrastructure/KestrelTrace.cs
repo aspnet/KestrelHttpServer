@@ -84,27 +84,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _logger = logger;
         }
 
-        public virtual void ConnectionStart(string connectionId)
+        public void ConnectionStart(string connectionId)
         {
             _connectionStart(_logger, connectionId, null);
         }
 
-        public virtual void ConnectionStop(string connectionId)
+        public void ConnectionStop(string connectionId)
         {
             _connectionStop(_logger, connectionId, null);
         }
 
-        public virtual void ConnectionPause(string connectionId)
+        public void ConnectionPause(string connectionId)
         {
             _connectionPause(_logger, connectionId, null);
         }
 
-        public virtual void ConnectionResume(string connectionId)
+        public void ConnectionResume(string connectionId)
         {
             _connectionResume(_logger, connectionId, null);
         }
 
-        public virtual void ConnectionKeepAlive(string connectionId)
+        public void ConnectionKeepAlive(string connectionId)
         {
             _connectionKeepAlive(_logger, connectionId, null);
         }
@@ -114,17 +114,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _connectionRejected(_logger, connectionId, null);
         }
 
-        public virtual void ConnectionDisconnect(string connectionId)
+        public void ConnectionDisconnect(string connectionId)
         {
             _connectionDisconnect(_logger, connectionId, null);
         }
 
-        public virtual void ApplicationError(string connectionId, string traceIdentifier, Exception ex)
+        public void ApplicationError(string connectionId, string traceIdentifier, Exception ex)
         {
             _applicationError(_logger, connectionId, traceIdentifier, ex);
         }
 
-        public virtual void ConnectionHeadResponseBodyWrite(string connectionId, long count)
+        public void ConnectionHeadResponseBodyWrite(string connectionId, long count)
         {
             _connectionHeadResponseBodyWrite(_logger, connectionId, count, null);
         }
@@ -139,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _connectionBadRequest(_logger, connectionId, ex.Message, ex);
         }
 
-        public virtual void RequestProcessingError(string connectionId, Exception ex)
+        public void RequestProcessingError(string connectionId, Exception ex)
         {
             _requestProcessingError(_logger, connectionId, ex);
         }
@@ -149,22 +149,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _notAllConnectionsAborted(_logger, null);
         }
 
-        public virtual void HeartbeatSlow(TimeSpan interval, DateTimeOffset now)
+        public void HeartbeatSlow(TimeSpan interval, DateTimeOffset now)
         {
             _heartbeatSlow(_logger, interval, now, null);
         }
 
-        public virtual void ApplicationNeverCompleted(string connectionId)
+        public void ApplicationNeverCompleted(string connectionId)
         {
             _applicationNeverCompleted(_logger, connectionId, null);
         }
 
-        public virtual void RequestBodyStart(string connectionId, string traceIdentifier)
+        public void RequestBodyStart(string connectionId, string traceIdentifier)
         {
             _requestBodyStart(_logger, connectionId, traceIdentifier, null);
         }
 
-        public virtual void RequestBodyDone(string connectionId, string traceIdentifier)
+        public void RequestBodyDone(string connectionId, string traceIdentifier)
         {
             _requestBodyDone(_logger, connectionId, traceIdentifier, null);
         }
@@ -174,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _requestBodyMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, rate, null);
         }
 
-        public virtual void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
+        public void ResponseMininumDataRateNotSatisfied(string connectionId, string traceIdentifier)
         {
             _responseMinimumDataRateNotSatisfied(_logger, connectionId, traceIdentifier, null);
         }
@@ -194,11 +194,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _hpackDecodingError(_logger, connectionId, streamId, ex);
         }
 
-        public virtual void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             => _logger.Log(logLevel, eventId, state, exception, formatter);
 
-        public virtual bool IsEnabled(LogLevel logLevel) => _logger.IsEnabled(logLevel);
+        public bool IsEnabled(LogLevel logLevel) => _logger.IsEnabled(logLevel);
 
-        public virtual IDisposable BeginScope<TState>(TState state) => _logger.BeginScope(state);
+        public IDisposable BeginScope<TState>(TState state) => _logger.BeginScope(state);
     }
 }
