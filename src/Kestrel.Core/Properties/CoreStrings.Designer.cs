@@ -1621,7 +1621,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("Http2ErrorConnectionSpecificHeaderField");
 
         /// <summary>
-        /// Unable to configure default https bindings, no IDefaultHttpsProvider service was provided.
+        /// Unable to configure default https bindings because no IDefaultHttpsProvider service was provided.
         /// </summary>
         internal static string UnableToConfigureHttpsBindings
         {
@@ -1629,7 +1629,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         /// <summary>
-        /// Unable to configure default https bindings, no IDefaultHttpsProvider service was provided.
+        /// Unable to configure default https bindings because no IDefaultHttpsProvider service was provided.
         /// </summary>
         internal static string FormatUnableToConfigureHttpsBindings()
             => GetString("UnableToConfigureHttpsBindings");

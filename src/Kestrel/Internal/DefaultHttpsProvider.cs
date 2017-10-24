@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             var cert = DefaultCertificateResolver();
             if (cert == null)
             {
-                throw new InvalidOperationException("Kestrel was bound to an 'https' URL, but a certificate could not be found.");
+                throw new InvalidOperationException(KestrelStrings.HttpsUrlProvidedButNoDevelopmentCertificateFound);
             }
             listenOptions.UseHttps(cert);
         }

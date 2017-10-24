@@ -61,9 +61,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
 
-                StartDummyApplication(server);
-                //var ex = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
-                //Assert.Equal(CoreStrings.UnableToConfigureHttpsBindings, ex.Message);
+                var ex = Assert.Throws<InvalidOperationException>(() => StartDummyApplication(server));
+                Assert.Equal(CoreStrings.UnableToConfigureHttpsBindings, ex.Message);
             }
         }
  
