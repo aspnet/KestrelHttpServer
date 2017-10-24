@@ -110,12 +110,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             {
                 while (true)
                 {
-                    var acceptSocket = await _listenSocket.AcceptAsync();
+                    try
+                    {
+                        var acceptSocket = await _listenSocket.AcceptAsync();
+                        acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                    acceptSocket.NoDelay = _endPointInformation.NoDelay;
-
-                    var connection = new SocketConnection(acceptSocket, _pipeFactory, _trace);
-                    _ = connection.StartAsync(_handler);
+                        var connection = new SocketConnection(acceptSocket, _pipeFactory, _trace);
+                        _ = connection.StartAsync(_handler);
+                    }
+                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+                    {
+                        // REVIEW: Should there be a seperate log message for a connection reset this early?
+                        _trace.ConnectionReset("(null)");
+                    }
                 }
             }
             catch (Exception)
