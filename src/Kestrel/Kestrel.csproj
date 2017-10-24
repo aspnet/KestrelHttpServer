@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Hosting" />
+    <PackageReference Include="Microsoft.AspNetCore.Certificates.Generation.Sources" />
   </ItemGroup>
 
   <ItemGroup>

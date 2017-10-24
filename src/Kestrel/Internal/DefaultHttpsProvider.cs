@@ -5,62 +5,54 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Certificates.Generation;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
     public class DefaultHttpsProvider : IDefaultHttpsProvider
     {
-        private const string AspNetHttpsOid = "1.3.6.1.4.1.311.84.1.1";
+        private static readonly CertificateManager _certificateManager = new CertificateManager();
 
-        public Func<X509Certificate2> DefaultCertificateResolver { get; set; } = FindDevelopmentCertificate;
+        private readonly ILogger<DefaultHttpsProvider> _logger;
+
+        public Func<X509Certificate2> DefaultCertificateResolver { get; set; }
+
+        public DefaultHttpsProvider(ILogger<DefaultHttpsProvider> logger)
+        {
+            _logger = logger;
+            DefaultCertificateResolver = FindDevelopmentCertificate;
+        }
 
         public void ConfigureHttps(ListenOptions listenOptions)
         {
-            listenOptions.UseHttps(DefaultCertificateResolver());
+            var cert = DefaultCertificateResolver();
+            if (cert == null)
+            {
+                throw new InvalidOperationException("Kestrel was bound to an 'https' URL, but a certificate could not be found.");
+            }
+            listenOptions.UseHttps(cert);
         }
 
-        private static X509Certificate2 FindDevelopmentCertificate()
+        private X509Certificate2 FindDevelopmentCertificate()
         {
-            // TODO: replace this with call to
-            // CertificateManager.FindCertificates(CertificatePurpose.HTTPS, StoreName.My, StoreLocation.CurrentUser, isValid: true)
-            // when that becomes available.
-            using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
+            var certificate = _certificateManager.ListCertificates(CertificatePurpose.HTTPS, StoreName.My, StoreLocation.CurrentUser, isValid: true)
+                .FirstOrDefault();
+            if (certificate != null)
             {
-                store.Open(OpenFlags.ReadOnly);
-
-                var certificates = store.Certificates.OfType<X509Certificate2>();
-                var certificate = certificates
-                    .FirstOrDefault(c => HasOid(c, AspNetHttpsOid) && !IsExpired(c) && HasPrivateKey(c));
-
-                if (certificate == null)
-                {
-                    throw new InvalidOperationException("Unable to find ASP.NET Core development certificate.");
-                }
-
-                DisposeCertificates(certificates.Except(new[] { certificate }));
-
+                _logger.LogDebug("Using development certificate: {certificateSubjectName} (Thumbprint: {certificateThumbprint})", certificate.Subject, certificate.Thumbprint);
                 return certificate;
+            }
+            else
+            {
+                _logger.LogDebug("Development certificate could not be found");
+                return null;
             }
         }
 
-        private static bool HasOid(X509Certificate2 certificate, string oid) =>
-            certificate.Extensions
-                .OfType<X509Extension>()
-                .Any(e => string.Equals(oid, e.Oid.Value, StringComparison.Ordinal));
-
-        private static bool IsExpired(X509Certificate2 certificate)
-        {
-            var now = DateTimeOffset.Now;
-            return now < certificate.NotBefore || now > certificate.NotAfter;
-        }
-
-        private static bool HasPrivateKey(X509Certificate2 certificate)
-            => certificate.GetRSAPrivateKey() != null;
-
-        private static void DisposeCertificates(IEnumerable<X509Certificate2> certificates)
+        private void DisposeCertificates(IEnumerable<X509Certificate2> certificates)
         {
             foreach (var certificate in certificates)
             {
@@ -68,8 +60,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 {
                     certificate.Dispose();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Accessing certificate may cause additional exceptions.
+                    _logger.LogError(ex, "Error disposing of certficate.");
                 }
             }
         }
