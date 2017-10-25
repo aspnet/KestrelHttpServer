@@ -10,8 +10,8 @@ namespace Microsoft.AspNetCore.Testing
     {
         private readonly ILogger _testLogger;
 
-        public KestrelTestLoggerProvider()
-            : this(new TestApplicationErrorLogger() { ThrowOnCriticalErrors = false })
+        public KestrelTestLoggerProvider(bool throwOnCriticalErrors = true)
+            : this(new TestApplicationErrorLogger() { ThrowOnCriticalErrors = throwOnCriticalErrors })
         {
         }
 
