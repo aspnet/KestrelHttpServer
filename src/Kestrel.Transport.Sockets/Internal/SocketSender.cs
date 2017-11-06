@@ -20,8 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public SocketSender(Socket socket)
         {
             _socket = socket;
-            _eventArgs.UserToken = this;
-            _eventArgs.Completed += (_, e) => ((SocketSender)e.UserToken).SendCompleted(e);
+            _eventArgs.UserToken = _awaitable;
+            _eventArgs.Completed += (_, e) => SendCompleted(e, (SocketAwaitable)e.UserToken);
         }
 
         public SocketAwaitable SendAsync(ReadableBuffer buffers)
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             if (!_socket.SendAsync(_eventArgs))
             {
-                SendCompleted(_eventArgs);
+                SendCompleted(_eventArgs, _awaitable);
             }
 
             return _awaitable;
@@ -43,35 +43,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         private SocketAwaitable SendAsync(Buffer<byte> buffer)
         {
-            var segment = GetArraySegment(buffer);
+            var segment = buffer.GetArray();
 
             _eventArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
 
             if (!_socket.SendAsync(_eventArgs))
             {
-                SendCompleted(_eventArgs);
+                SendCompleted(_eventArgs, _awaitable);
             }
 
             return _awaitable;
-        }
-
-        private void SendCompleted(SocketAsyncEventArgs e)
-        {
-            // Clear buffer(s) to prevent the SetBuffer buffer and BufferList from both being
-            // set for the next write operation. This is unnecessary for reads since they never
-            // set BufferList.
-
-            if (e.BufferList != null)
-            {
-                e.BufferList.Clear();
-                e.BufferList = null;
-            }
-            else
-            {
-                e.SetBuffer(null, 0, 0);
-            }
-
-            _awaitable.Complete(e.BytesTransferred, e.SocketError);
         }
 
         private List<ArraySegment<byte>> GetBufferList(ReadableBuffer buffer)
@@ -89,20 +70,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             foreach (var b in buffer)
             {
-                _bufferList.Add(GetArraySegment(b));
+                _bufferList.Add(b.GetArray());
             }
 
             return _bufferList;
         }
 
-        private static ArraySegment<byte> GetArraySegment(Buffer<byte> buffer)
+        private static void SendCompleted(SocketAsyncEventArgs e, SocketAwaitable awaitable)
         {
-            if (!buffer.TryGetArray(out var segment))
+            // Clear buffer(s) to prevent the SetBuffer buffer and BufferList from both being
+            // set for the next write operation. This is unnecessary for reads since they never
+            // set BufferList.
+
+            if (e.BufferList != null)
             {
-                throw new InvalidOperationException();
+                e.BufferList.Clear();
+                e.BufferList = null;
+            }
+            else
+            {
+                e.SetBuffer(null, 0, 0);
             }
 
-            return segment;
+            awaitable.Complete(e.BytesTransferred, e.SocketError);
         }
     }
 }

@@ -15,30 +15,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public SocketReceiver(Socket socket)
         {
             _socket = socket;
-            _eventArgs.UserToken = this;
-            _eventArgs.Completed += (_, e) => ((SocketReceiver)e.UserToken).ReceiveCompleted(e);
+            _eventArgs.UserToken = _awaitable;
+            _eventArgs.Completed += (_, e) => ((SocketAwaitable)e.UserToken).Complete(e.BytesTransferred, e.SocketError);
         }
 
         public SocketAwaitable ReceiveAsync(Buffer<byte> buffer)
         {
-            if (!buffer.TryGetArray(out var segment))
-            {
-                throw new InvalidOperationException();
-            }
+            var segment = buffer.GetArray();
 
             _eventArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
 
             if (!_socket.ReceiveAsync(_eventArgs))
             {
-                ReceiveCompleted(_eventArgs);
+                _awaitable.Complete(_eventArgs.BytesTransferred, _eventArgs.SocketError);
             }
 
             return _awaitable;
-        }
-
-        private void ReceiveCompleted(SocketAsyncEventArgs e)
-        {
-            _awaitable.Complete(e.BytesTransferred, e.SocketError);
         }
     }
 }

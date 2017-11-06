@@ -44,8 +44,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             RemoteAddress = remoteEndPoint.Address;
             RemotePort = remoteEndPoint.Port;
 
-            _sender = new SocketSender(_socket);
             _receiver = new SocketReceiver(_socket);
+            _sender = new SocketSender(_socket);
         }
 
         public override PipeFactory PipeFactory { get; }
