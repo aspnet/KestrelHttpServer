@@ -40,6 +40,7 @@ namespace Http2SampleApp
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>();
 
+            hostBuilder.Build().Run();
         }
     }
 }
