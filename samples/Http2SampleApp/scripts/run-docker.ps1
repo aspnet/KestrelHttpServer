@@ -1,1 +1,1 @@
-docker run -p 5000:5000 --rm kestrel-http2-sample
+docker run -p 5000:5000 -it --rm kestrel-http2-sample
