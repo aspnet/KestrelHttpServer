@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             OpenSsl.OpenSSL_add_all_algorithms();
         }
 
-        public TlsStream(Stream innerStream, string certificatePath, string privateKeyPath, IEnumerable<string> protocols)
+        public TlsStream(Stream innerStream, string certificatePath, string password, IEnumerable<string> protocols)
         {
             _innerStream = innerStream;
             _protocols = ToWireFormat(protocols);
@@ -48,6 +48,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
             {
                 throw new Exception("Unable to create SSL context.");
             }
+
+            OpenSsl.SSL_CTX_Set_Pfx(_ctx, certificatePath, password);
 
             OpenSsl.SSL_CTX_set_ecdh_auto(_ctx, 1);
 

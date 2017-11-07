@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Hosting
 {
     public static class ListenOptionsTlsExtensions
     {
-        public static ListenOptions UseTls(this ListenOptions listenOptions, string certificatePath, string privateKeyPath)
+        public static ListenOptions UseTls(this ListenOptions listenOptions, string certificatePath, string password)
         {
             return listenOptions.UseTls(new TlsConnectionAdapterOptions
             {
