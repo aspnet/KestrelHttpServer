@@ -19,19 +19,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
         private const int BIO_C_SET_BUF_MEM_EOF_RETURN = 130;
         private const int SSL_CTRL_SET_ECDH_AUTO = 94;
 
-        public static int SSL_library_init()
+        public static void SSL_library_init()
         {
-            return NativeMethods.SSL_library_init();
+            try
+            {
+                // Try OpenSSL 1.0.2
+                NativeMethods.SSL_library_init();
+            }
+            catch (EntryPointNotFoundException)
+            {
+                // It's fine, OpenSSL 1.1 doesn't need initialization
+            }
         }
 
         public static void SSL_load_error_strings()
         {
-            NativeMethods.SSL_load_error_strings();
+            try
+            {
+                NativeMethods.SSL_load_error_strings();
+            }
+            catch (EntryPointNotFoundException)
+            {
+                // Also fine, OpenSSL 1.1 doesn't need it.
+            }
         }
 
         public static void OpenSSL_add_all_algorithms()
         {
-            NativeMethods.OPENSSL_add_all_algorithms_noconf();
+            try
+            {
+                NativeMethods.OPENSSL_add_all_algorithms_noconf();
+            }
+            catch (EntryPointNotFoundException)
+            {
+                // Also fine, OpenSSL 1.1 doesn't need it.
+            }
         }
 
         public static IntPtr TLSv1_2_method()
@@ -107,6 +129,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
         public static int SSL_get_error(IntPtr ssl, int ret)
         {
             return NativeMethods.SSL_get_error(ssl, ret);
+        }
+
+        public static int ERR_get_error()
+        {
+            return NativeMethods.ERR_get_error();
+        }
+
+        public static string ERR_error_string(int error)
+        {
+            var buf = NativeMethods.ERR_error_string(error, IntPtr.Zero);
+
+            // Don't free the buffer! It's a static buffer
+            return Marshal.PtrToStringAnsi(buf);
         }
 
         public static void SSL_set_accept_state(IntPtr ssl)
@@ -263,6 +298,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern void ERR_load_BIO_strings();
+
+            [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
+            public static extern int ERR_get_error();
+
+            [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
+            public static extern IntPtr ERR_error_string(int error, IntPtr buf);
         }
     }
 }

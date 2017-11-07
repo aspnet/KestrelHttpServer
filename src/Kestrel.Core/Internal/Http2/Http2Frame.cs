@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
@@ -66,5 +67,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         }
 
         public Span<byte> Payload => new Span<byte>(_data, PayloadOffset, Length);
+
+        public void TraceFrame(ILogger logger, string connectionId)
+        {
+            if(logger.IsEnabled(LogLevel.Trace))
+            {
+                logger.LogTrace("Connection id {ConnectionId} received {Type} frame with flags 0x{Flags:x} and length {Length} for stream ID {StreamId}", connectionId, Type, Flags, Length, StreamId);
+                switch (Type)
+                {
+                    case Http2FrameType.DATA:
+                        DataTraceFrame(logger);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
     }
 }

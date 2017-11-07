@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 {
@@ -181,9 +182,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
                     {
                         var error = OpenSsl.SSL_get_error(_ssl, ret);
 
-                        if (error != 2)
+                        if (error == 1)
                         {
-                            throw new IOException($"TLS handshake failed: {nameof(OpenSsl.SSL_do_handshake)} error {error}.");
+                            // SSL error, get it from the OpenSSL error queue
+                            error = OpenSsl.ERR_get_error();
+                            if (error == 336130204)
+                            {
+                                throw new InvalidOperationException("Unencrypted HTTP traffic was sent to an HTTPS endpoint");
+                            }
+                            var errorString = OpenSsl.ERR_error_string(error);
+                            throw new IOException($"TLS handshake failed: {nameof(OpenSsl.SSL_do_handshake)} error {error}. {errorString}");
                         }
                     }
 

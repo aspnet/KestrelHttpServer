@@ -25,6 +25,8 @@ namespace Http2SampleApp
             var hostBuilder = new WebHostBuilder()
                 .ConfigureLogging((_, factory) =>
                 {
+                    // Set logging to the MAX.
+                    factory.SetMinimumLevel(LogLevel.Trace);
                     factory.AddConsole();
                 })
                 .UseKestrel(options =>
