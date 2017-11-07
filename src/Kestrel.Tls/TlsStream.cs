@@ -15,6 +15,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 {
     public class TlsStream : Stream
     {
+        // Error code that indicates that a handshake failed because unencrypted HTTP was sent
+        private const int SSL_ERROR_HTTP_REQUEST = 336130204;
+
         private static unsafe OpenSsl.alpn_select_cb_t _alpnSelectCallback = AlpnSelectCallback;
 
         private readonly Stream _innerStream;
@@ -186,7 +189,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
                         {
                             // SSL error, get it from the OpenSSL error queue
                             error = OpenSsl.ERR_get_error();
-                            if (error == 336130204)
+                            if (error == SSL_ERROR_HTTP_REQUEST)
                             {
                                 throw new InvalidOperationException("Unencrypted HTTP traffic was sent to an HTTPS endpoint");
                             }
