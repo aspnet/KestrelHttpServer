@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -33,6 +34,7 @@ namespace Http2SampleApp
 
                     options.Listen(IPAddress.Any, basePort, listenOptions =>
                     {
+                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
                         listenOptions.UseTls("cert/testCert.pem", "cert/testCert.key");
                         listenOptions.UseConnectionLogging();
                     });
