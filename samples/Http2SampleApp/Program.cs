@@ -37,7 +37,7 @@ namespace Http2SampleApp
                     options.Listen(IPAddress.Any, basePort, listenOptions =>
                     {
                         listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-                        listenOptions.UseTls("testCert.pfx", "testPassword");
+                        listenOptions.UseTls("cert/testCert.pem", "cert/testCert.key");
                         listenOptions.UseConnectionLogging();
                     });
                 })
