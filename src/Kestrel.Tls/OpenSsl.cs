@@ -15,6 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
         public const int OPENSSL_NPN_NEGOTIATED = 1;
         public const int SSL_TLSEXT_ERR_OK = 0;
         public const int SSL_TLSEXT_ERR_NOACK = 3;
+        public const int SSL_CTRL_CHAIN = 88;
 
         private const int BIO_C_SET_BUF_MEM_EOF_RETURN = 130;
         private const int SSL_CTRL_SET_ECDH_AUTO = 94;
@@ -93,6 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
                     }
                     if (NativeMethods.SSL_CTX_use_certificate(ctx, cert) != 1) return -1;
                     if (NativeMethods.SSL_CTX_use_PrivateKey(ctx, key) != 1) return -1;
+                    if (NativeMethods.SSL_CTX_ctrl(ctx, SSL_CTRL_CHAIN, 1, ca) != 1) return -1;
                     return 1;
                 }
             }
@@ -356,6 +358,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tls
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern void sk_X509_pop_free(IntPtr ca);
+
+            [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
+            public static extern int SSL_CTX_ctrl(IntPtr ctx, int cmd, int larg, IntPtr parg);
 
             [DllImport("libssl", CallingConvention = CallingConvention.Cdecl)]
             public static extern int SSL_CTX_set1_chain(IntPtr ctx, IntPtr sk);
