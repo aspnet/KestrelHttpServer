@@ -1,4 +1,4 @@
-FROM microsoft/dotnet:2.0.0-runtime-stretch
+FROM microsoft/aspnetcore:2.0.0-stretch
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
