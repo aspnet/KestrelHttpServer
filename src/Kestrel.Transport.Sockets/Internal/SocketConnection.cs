@@ -243,16 +243,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 _socket.Shutdown(SocketShutdown.Both);
             }
         }
-
-        private static ArraySegment<byte> GetArraySegment(Memory<byte> buffer)
-        {
-            if (!buffer.TryGetArray(out var segment))
-            {
-                throw new InvalidOperationException();
-            }
-
-            return segment;
-        }
-
     }
 }
