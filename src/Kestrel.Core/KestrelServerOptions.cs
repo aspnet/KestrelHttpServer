@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
@@ -103,6 +104,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             var listenOptions = new ListenOptions(endPoint) { KestrelServerOptions = this };
             configure(listenOptions);
             ListenOptions.Add(listenOptions);
+        }
+
+        public void ListenPrefix(string prefix) => ListenPrefix(prefix, configure => { });
+
+        public void ListenPrefix(string prefix, Action<ListenOptions> configure)
+        {
+            if (string.IsNullOrEmpty(prefix))
+            {
+                throw new ArgumentNullException(nameof(prefix));
+            }
+            if (configure == null)
+            {
+                throw new ArgumentNullException(nameof(configure));
+            }
+
+            var listenOptions = new ListenOptions(ListenType.Prefix)
+            {
+                Prefix = prefix,
+                KestrelServerOptions = this,
+            };
+            configure(listenOptions);
+            ListenOptions.Add(listenOptions);
+        }
+
+        public void ListenLocalhost(int port) => ListenLocalhost(port, configure => { });
+
+        public void ListenLocalhost(int port, bool useHttps) => ListenLocalhost(port, useHttps, configure => { });
+
+        public void ListenLocalhost(int port, Action<ListenOptions> configure) => ListenLocalhost(port, false, options => { });
+
+        public void ListenLocalhost(int port, bool useHttps, Action<ListenOptions> configure)
+        {
+            var scheme = useHttps ? "https" : "http";
+            ListenPrefix($"{scheme}://localhost:{port}", configure);
         }
 
         /// <summary>

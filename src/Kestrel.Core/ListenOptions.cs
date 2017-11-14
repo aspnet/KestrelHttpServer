@@ -21,15 +21,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         private FileHandleType _handleType;
         private readonly List<Func<ConnectionDelegate, ConnectionDelegate>> _components = new List<Func<ConnectionDelegate, ConnectionDelegate>>();
 
-        internal ListenOptions(IPEndPoint endPoint)
+        internal ListenOptions(ListenType type)
         {
-            Type = ListenType.IPEndPoint;
+            Type = type;
+        }
+
+        internal ListenOptions(IPEndPoint endPoint)
+            : this(ListenType.IPEndPoint)
+        {
             IPEndPoint = endPoint;
         }
 
         internal ListenOptions(string socketPath)
+            : this(ListenType.SocketPath)
         {
-            Type = ListenType.SocketPath;
             SocketPath = socketPath;
         }
 
@@ -39,8 +44,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         internal ListenOptions(ulong fileHandle, FileHandleType handleType)
+            : this(ListenType.FileHandle)
         {
-            Type = ListenType.FileHandle;
             FileHandle = fileHandle;
             switch (handleType)
             {
@@ -57,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// <summary>
         /// The type of interface being described: either an <see cref="IPEndPoint"/>, Unix domain socket path, or a file descriptor.
         /// </summary>
-        public ListenType Type { get; }
+        public ListenType Type { get; internal set; }
 
         public FileHandleType HandleType
         {
@@ -92,17 +97,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         public IPEndPoint IPEndPoint { get; set; }
 
+        internal string Prefix { get; set; }
+
         /// <summary>
         /// The absolute path to a Unix domain socket to bind to.
         /// Only set if the <see cref="ListenOptions"/> <see cref="Type"/> is <see cref="ListenType.SocketPath"/>.
         /// </summary>
-        public string SocketPath { get; }
+        public string SocketPath { get; internal set; }
 
         /// <summary>
         /// A file descriptor for the socket to open.
         /// Only set if the <see cref="ListenOptions"/> <see cref="Type"/> is <see cref="ListenType.FileHandle"/>.
         /// </summary>
-        public ulong FileHandle { get; }
+        public ulong FileHandle { get; internal set; }
 
         /// <summary>
         /// Enables an <see cref="IConnectionAdapter"/> to resolve and use services registered by the application during startup.
@@ -148,6 +155,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             switch (Type)
             {
+                case ListenType.Prefix:
+                    return Prefix;
                 case ListenType.IPEndPoint:
                     return $"{scheme}://{IPEndPoint}";
                 case ListenType.SocketPath:
@@ -181,6 +190,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
 
             return app;
+        }
+
+        // primarily used for cloning localhost to two IPEndpoints
+        internal ListenOptions CloneAs(ListenType type)
+        {
+            var options = new ListenOptions(type)
+            {
+                HandleType = HandleType,
+                IPEndPoint = IPEndPoint,
+                KestrelServerOptions = KestrelServerOptions,
+                NoDelay = NoDelay,
+                Prefix = Prefix,
+                Protocols = Protocols,
+            };
+            options.ConnectionAdapters.AddRange(ConnectionAdapters);
+            return options;
         }
     }
 }

@@ -73,7 +73,19 @@ namespace SampleApp
                     options.Listen(IPAddress.Loopback, basePort + 1, listenOptions =>
                     {
                         listenOptions.UseHttps("testCert.pfx", "testPassword");
-                        listenOptions.UseConnectionLogging();
+                    });
+
+                    options.ListenLocalhost(basePort + 2);
+
+                    // Use the default certificate
+                    options.ListenLocalhost(basePort + 3, useHttps: true);
+
+                    // Use the default certificate
+                    options.ListenPrefix($"https://*:{basePort + 4}");
+
+                    options.ListenPrefix($"https://*:{basePort + 5}", listenOptions =>
+                    {
+                        listenOptions.UseHttps("testCert.pfx", "testPassword");
                     });
 
                     options.UseSystemd();

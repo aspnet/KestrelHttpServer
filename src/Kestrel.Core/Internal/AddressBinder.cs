@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
@@ -109,9 +111,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             return true;
         }
 
-        private static Task BindEndpointAsync(IPEndPoint endpoint, AddressBindContext context)
-            => BindEndpointAsync(new ListenOptions(endpoint), context);
-
         private static async Task BindEndpointAsync(ListenOptions endpoint, AddressBindContext context)
         {
             try
@@ -122,12 +121,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 throw new IOException(CoreStrings.FormatEndpointAlreadyInUse(endpoint), ex);
             }
-
             context.ListenOptions.Add(endpoint);
         }
 
-        private static async Task BindLocalhostAsync(ServerAddress address, AddressBindContext context, bool https)
+        private static async Task BindLocalhostAsync(ListenOptions listenOptions, AddressBindContext context)
         {
+            var address = ServerAddress.FromUrl(listenOptions.Prefix);
+            Debug.Assert(string.Equals(address.Host, "localhost", StringComparison.OrdinalIgnoreCase));
             if (address.Port == 0)
             {
                 throw new InvalidOperationException(CoreStrings.DynamicPortOnLocalhostNotSupported);
@@ -137,14 +137,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             try
             {
-                var options = new ListenOptions(new IPEndPoint(IPAddress.Loopback, address.Port));
+                var options = listenOptions.CloneAs(ListenType.IPEndPoint);
+                options.IPEndPoint = new IPEndPoint(IPAddress.Loopback, address.Port);
                 await BindEndpointAsync(options, context).ConfigureAwait(false);
-                
-                if (https)
-                {
-                    options.KestrelServerOptions = context.ServerOptions;
-                    context.DefaultHttpsProvider.ConfigureHttps(options);
-                }
             }
             catch (Exception ex) when (!(ex is IOException))
             {
@@ -154,14 +149,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             try
             {
-                var options = new ListenOptions(new IPEndPoint(IPAddress.IPv6Loopback, address.Port));
+                var options = listenOptions.CloneAs(ListenType.IPEndPoint);
+                options.IPEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, address.Port);
                 await BindEndpointAsync(options, context).ConfigureAwait(false);
-
-                if (https)
-                {
-                    options.KestrelServerOptions = context.ServerOptions;
-                    context.DefaultHttpsProvider.ConfigureHttps(options);
-                }
             }
             catch (Exception ex) when (!(ex is IOException))
             {
@@ -179,18 +169,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             context.Addresses.Add(address.ToString());
         }
 
-        private static async Task BindAddressAsync(string address, AddressBindContext context)
+        private static Task BindAddressAsync(string address, AddressBindContext context)
         {
-            var parsedAddress = ServerAddress.FromUrl(address);
-            var https = false;
+            return BindAddressAsync(new ListenOptions(ListenType.Prefix)
+            {
+                Prefix = address,
+                KestrelServerOptions = context.ServerOptions,
+            }, context);
+        }
+
+        private static async Task BindAddressAsync(ListenOptions listenOptions, AddressBindContext context)
+        {
+            var parsedAddress = ServerAddress.FromUrl(listenOptions.Prefix);
+            var addHttps = false;
 
             if (parsedAddress.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
             {
-                https = true;
+                addHttps = true;
             }
             else if (!parsedAddress.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(CoreStrings.FormatUnsupportedAddressScheme(address));
+                throw new InvalidOperationException(CoreStrings.FormatUnsupportedAddressScheme(listenOptions.Prefix));
+            }
+
+            // Https may already be configured for this endpoint
+            if (addHttps && !listenOptions.ConnectionAdapters.Any(f => f.IsHttps))
+            {
+                listenOptions.KestrelServerOptions = context.ServerOptions;
+                context.DefaultHttpsProvider.ConfigureHttps(listenOptions);
             }
 
             if (!string.IsNullOrEmpty(parsedAddress.PathBase))
@@ -198,50 +204,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 throw new InvalidOperationException(CoreStrings.FormatConfigurePathBaseFromMethodCall($"{nameof(IApplicationBuilder)}.UsePathBase()"));
             }
 
-            ListenOptions options = null;
             if (parsedAddress.IsUnixPipe)
             {
-                options = new ListenOptions(parsedAddress.UnixPipePath);
-                await BindEndpointAsync(options, context).ConfigureAwait(false);
-                context.Addresses.Add(options.GetDisplayName());
+                listenOptions.Type = ListenType.SocketPath;
+                listenOptions.SocketPath = parsedAddress.UnixPipePath;
+                await BindEndpointAsync(listenOptions, context).ConfigureAwait(false);
+                context.Addresses.Add(listenOptions.GetDisplayName());
             }
             else if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
             {
                 // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                await BindLocalhostAsync(parsedAddress, context, https).ConfigureAwait(false);
+                await BindLocalhostAsync(listenOptions, context).ConfigureAwait(false);
             }
             else
             {
                 if (TryCreateIPEndPoint(parsedAddress, out var endpoint))
                 {
-                    options = new ListenOptions(endpoint);
-                    await BindEndpointAsync(options, context).ConfigureAwait(false);
+                    listenOptions.Type = ListenType.IPEndPoint;
+                    listenOptions.IPEndPoint = endpoint;
+                    await BindEndpointAsync(listenOptions, context).ConfigureAwait(false);
                 }
                 else
                 {
                     // when address is 'http://hostname:port', 'http://*:port', or 'http://+:port'
                     try
                     {
-                        options = new ListenOptions(new IPEndPoint(IPAddress.IPv6Any, parsedAddress.Port));
-                        await BindEndpointAsync(options, context).ConfigureAwait(false);
+                        listenOptions.Type = ListenType.IPEndPoint;
+                        listenOptions.IPEndPoint = new IPEndPoint(IPAddress.IPv6Any, parsedAddress.Port);
+                        await BindEndpointAsync(listenOptions, context).ConfigureAwait(false);
                     }
                     catch (Exception ex) when (!(ex is IOException))
                     {
                         context.Logger.LogDebug(CoreStrings.FormatFallbackToIPv4Any(parsedAddress.Port));
 
                         // for machines that do not support IPv6
-                        options = new ListenOptions(new IPEndPoint(IPAddress.Any, parsedAddress.Port));
-                        await BindEndpointAsync(options, context).ConfigureAwait(false);
+                        listenOptions.IPEndPoint = new IPEndPoint(IPAddress.Any, parsedAddress.Port);
+                        await BindEndpointAsync(listenOptions, context).ConfigureAwait(false);
                     }
                 }
 
-                context.Addresses.Add(options.GetDisplayName());
-            }
-
-            if (https && options != null)
-            {
-                options.KestrelServerOptions = context.ServerOptions;
-                context.DefaultHttpsProvider.ConfigureHttps(options);
+                context.Addresses.Add(listenOptions.GetDisplayName());
             }
         }
 
@@ -256,7 +258,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 context.Logger.LogDebug(CoreStrings.BindingToDefaultAddress, Constants.DefaultServerAddress);
 
-                await BindLocalhostAsync(ServerAddress.FromUrl(Constants.DefaultServerAddress), context, https: false).ConfigureAwait(false);
+                await BindLocalhostAsync(new ListenOptions(ListenType.Prefix)
+                {
+                    Prefix = Constants.DefaultServerAddress,
+                    KestrelServerOptions = context.ServerOptions,
+                }, context).ConfigureAwait(false);
             }
         }
 
@@ -308,9 +314,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 foreach (var endpoint in _endpoints)
                 {
-                    await BindEndpointAsync(endpoint, context).ConfigureAwait(false);
+                    if (endpoint.Type == ListenType.Prefix)
+                    {
+                        await BindAddressAsync(endpoint, context);
+                    }
+                    else
+                    {
+                        await BindEndpointAsync(endpoint, context).ConfigureAwait(false);
 
-                    context.Addresses.Add(endpoint.GetDisplayName());
+                        context.Addresses.Add(endpoint.GetDisplayName());
+                    }
                 }
             }
         }
