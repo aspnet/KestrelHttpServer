@@ -8,6 +8,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
     /// </summary>
     public enum ListenType
     {
+        Prefix,
         IPEndPoint,
         SocketPath,
         FileHandle
