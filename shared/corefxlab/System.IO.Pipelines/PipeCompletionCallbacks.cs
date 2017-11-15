@@ -62,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines
             }
             finally
             {
-                _pool.Return(_callbacks);
+                _pool.Return(_callbacks, clearArray: true);
             }
         }
     }
