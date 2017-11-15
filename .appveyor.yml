@@ -3,11 +3,9 @@ init:
 branches:
   only:
     - master
-    - release
     - dev
-    - feature/dev-si
     - /^(.*\/)?ci-.*$/
-    - /^rel\/.*/
+    - /^release\/.*/
 build_script:
   - ps: .\build.ps1
 clone_depth: 1
