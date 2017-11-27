@@ -3,26 +3,20 @@
 
 using Xunit;
 using Microsoft.AspNetCore.Http;
+using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class ReasonPhraseTests
     {
         [Theory]
-        [InlineData(999, "Unknown")]
-        [InlineData(999, null)]
-        public void UnknownStatusCodes(int statusCode, string reasonPhrase)
+        [InlineData(999, "Unknown", "999 Unknown")]
+        [InlineData(999, null, "999 ")]
+        public void UnknownStatusCodes(int statusCode, string reasonPhrase, string expectedResult)
         {
             var bytes = Internal.Http.ReasonPhrases.ToStatusBytes(statusCode, reasonPhrase);
             Assert.NotNull(bytes);
-            if (string.IsNullOrEmpty(reasonPhrase))
-            {
-                Assert.Equal(0x20, bytes[bytes.Length - 1]);
-            }
-            else
-            {
-                Assert.NotEqual(0x20, bytes[bytes.Length - 1]);
-            }
+            Assert.Equal(expectedResult, Encoding.ASCII.GetString(bytes));
         }
 
         [Theory]
