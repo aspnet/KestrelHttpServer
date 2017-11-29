@@ -119,7 +119,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines
                     break;
                 }
 
-                var remaining = (_currentSpan.Length - _index);
+                var remaining = _currentSpan.Length - _index;
 
                 _index += remaining;
                 length -= remaining;
