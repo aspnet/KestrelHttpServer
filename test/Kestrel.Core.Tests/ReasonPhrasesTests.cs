@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(999, "Unknown", "999 Unknown")]
         [InlineData(999, null, "999 ")]
-		[InlineData(StatusCodes.Status200OK, "OK", "200 OK")]
+        [InlineData(StatusCodes.Status200OK, "OK", "200 OK")]
         [InlineData(StatusCodes.Status200OK, null, "200 OK")]
         public void Formatting(int statusCode, string reasonPhrase, string expectedResult)
         {
