@@ -21,7 +21,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class HttpConnection : ITimeoutControl, IConnectionTimeoutFeature
+    public class HttpConnection : ITimeoutControl, IConnectionTimeoutFeature, IProcessRequests
     {
         private readonly HttpConnectionContext _context;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -29,9 +29,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private IList<IAdaptedConnection> _adaptedConnections;
         private IPipeConnection _adaptedTransport;
 
+        private readonly object _protocolSelectionLock = new object();
+        private IProcessRequests _requestProcessor;
         private Http1Connection _http1Connection;
-        private Http2Connection _http2Connection;
-        private int _state;
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
@@ -52,6 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public HttpConnection(HttpConnectionContext context)
         {
             _context = context;
+            _requestProcessor = this;
         }
 
         // For testing
@@ -102,7 +103,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 AdaptedPipeline adaptedPipeline = null;
                 var adaptedPipelineTask = Task.CompletedTask;
 
-
                 // _adaptedTransport must be set prior to adding the connection to the manager in order
                 // to allow the connection to be aported prior to protocol selection.
                 _adaptedTransport = _context.Transport;
@@ -133,34 +133,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
                 }
 
-                switch (SelectProtocol())
+                IProcessRequests requestProcessor = null;
+
+                lock (_protocolSelectionLock)
                 {
-                    case HttpProtocols.Http1:
-                        // _http1Connection must be initialized before adding the connection to the connection manager
-                        _http1Connection = CreateHttp1Connection(httpApplication, _adaptedTransport, application);
-
-                        if (Interlocked.CompareExchange(ref _state, State.Connected, State.Initializing) == State.Initializing)
+                    // Ensure that the connection hasn't already been stopped.
+                    if (_requestProcessor == this)
+                    {
+                        switch (SelectProtocol())
                         {
-                            await _http1Connection.ProcessRequestsAsync();
+                            case HttpProtocols.Http1:
+                                // _http1Connection must be initialized before adding the connection to the connection manager
+                                requestProcessor = _http1Connection = CreateHttp1Connection(_adaptedTransport, application);
+                                break;
+                            case HttpProtocols.Http2:
+                                // _http2Connection must be initialized before yielding control to the transport thread,
+                                // to prevent a race condition where _http2Connection.Abort() is called just as
+                                // _http2Connection is about to be initialized.
+                                requestProcessor = CreateHttp2Connection(_adaptedTransport, application);
+                                break;
+                            case HttpProtocols.None:
+                                // An error was already logged in SelectProtocol(), but we should close the connection.
+                                Abort(ex: null);
+                                break;
+                            default:
+                                // SelectProtocol() only returns Http1, Http2 or None.
+                                throw new Exception($"{nameof(SelectProtocol)} returned something other than Http1, Http2 or None.");
                         }
-                        break;
-                    case HttpProtocols.Http2:
-                        // _http2Connection must be initialized before yielding control to the transport thread,
-                        // to prevent a race condition where _http2Connection.Abort() is called just as
-                        // _http2Connection is about to be initialized.
-                        _http2Connection = CreateHttp2Connection(httpApplication, _adaptedTransport, application);
 
-                        if (Interlocked.CompareExchange(ref _state, State.Connected, State.Initializing) == State.Initializing)
-                        {
-                             await _http2Connection.ProcessAsync(httpApplication);
-                        }
-                        break;
-                    case HttpProtocols.None:
-                       Abort(ex: null);
-                       break;
-                    default:
-                       // SelectProtocol() only returns Http1, Http2 or None.
-                       throw new Exception("SelectProtocol() returned something other than Http1, Http2 or None.");
+                        _requestProcessor = requestProcessor;
+                    }
+                }
+
+                if (requestProcessor != null)
+                {
+                    await requestProcessor.ProcessRequestsAsync(httpApplication);
                 }
 
                 await adaptedPipelineTask;
@@ -169,6 +176,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             catch (Exception ex)
             {
                 Log.LogError(0, ex, $"Unexpected exception in {nameof(HttpConnection)}.{nameof(ProcessRequestsAsync)}.");
+                Abort(ex);
             }
             finally
             {
@@ -184,9 +192,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        private Http1Connection<TContext> CreateHttp1Connection<TContext>(IHttpApplication<TContext> httpApplication, IPipeConnection transport, IPipeConnection application)
+        // For testing only
+        internal void Initialize(IPipeConnection transport, IPipeConnection application)
         {
-            return new Http1Connection<TContext>(httpApplication, new Http1ConnectionContext
+            _requestProcessor = _http1Connection = CreateHttp1Connection(transport, application);
+        }
+
+        private Http1Connection CreateHttp1Connection(IPipeConnection transport, IPipeConnection application)
+        {
+            return new Http1Connection(new Http1ConnectionContext
             {
                 ConnectionId = _context.ConnectionId,
                 ConnectionFeatures = _context.ConnectionFeatures,
@@ -200,14 +214,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             });
         }
 
-        // For testing only
-        internal void Initialize<TContext>(IHttpApplication<TContext> httpApplication, IPipeConnection transport, IPipeConnection application)
-        {
-            _http1Connection = CreateHttp1Connection(httpApplication, transport, application);
-            _state = State.Connected;
-        }
-
-        private Http2Connection CreateHttp2Connection<TContext>(IHttpApplication<TContext> httpApplication, IPipeConnection transport, IPipeConnection application)
+        private Http2Connection CreateHttp2Connection(IPipeConnection transport, IPipeConnection application)
         {
             return new Http2Connection(new Http2ConnectionContext
             {
@@ -229,31 +236,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _socketClosedTcs.TrySetResult(null);
         }
 
-        private void CloseUninitializedConnection()
-        {
-            Debug.Assert(_adaptedTransport != null);
-
-            // CancelPendingRead signals the transport directly to close the connection
-            // without any potential interference from connection adapters.
-            _context.Application.Input.CancelPendingRead();
-
-            _adaptedTransport.Input.Complete();
-            _adaptedTransport.Output.Complete();
-        }
-
         public Task StopProcessingNextRequestAsync()
         {
-            switch (Interlocked.Exchange(ref _state, State.Closed))
+            lock (_protocolSelectionLock)
             {
-               case State.Initializing:
-                   CloseUninitializedConnection();
-                   break;
-               case State.Connected:
-                   Debug.Assert(_http1Connection != null || _http2Connection != null);
-
-                   _http1Connection?.StopProcessingNextRequest();
-                   _http2Connection?.Stop();
-                   break;
+                _requestProcessor?.StopProcessingNextRequest();
+                _requestProcessor = null;
             }
 
             return _lifetimeTask;
@@ -261,18 +249,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Abort(Exception ex)
         {
-            // Abort the connection (if not already aborted)
-            switch (Interlocked.Exchange(ref _state, State.Closed))
+            lock (_protocolSelectionLock)
             {
-                case State.Initializing:
-                    CloseUninitializedConnection();
-                    break;
-                case State.Connected:
-                    Debug.Assert(_http1Connection != null || _http2Connection != null);
-
-                    _http1Connection?.Abort(ex);
-                    _http2Connection?.Abort(ex);
-                    break;
+                _requestProcessor?.Abort(ex);
+                _requestProcessor = null;
             }
         }
 
@@ -281,21 +261,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Abort(ex);
 
             return _lifetimeTask;
-        }
-
-        private void SendTimeoutResponse()
-        {
-            Debug.Assert(_http1Connection != null);
-
-            RequestTimedOut = true;
-            _http1Connection.SendTimeoutResponse();
-        }
-
-        private void StopProcessingNextRequest()
-        {
-            Debug.Assert(_http1Connection != null);
-
-            _http1Connection.StopProcessingNextRequest();
         }
 
         private async Task<Stream> ApplyConnectionAdaptersAsync()
@@ -398,16 +363,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     {
                         case TimeoutAction.StopProcessingNextRequest:
                             // Http/2 keep-alive timeouts are not yet supported.
-                            if (_http1Connection != null)
-                            {
-                                StopProcessingNextRequest();
-                            }
+                            _http1Connection?.StopProcessingNextRequest();
                             break;
                         case TimeoutAction.SendTimeoutResponse:
                             // HTTP/2 timeout responses are not yet supported.
                             if (_http1Connection != null)
                             {
-                                SendTimeoutResponse();
+                                RequestTimedOut = true;
+                                _http1Connection.SendTimeoutResponse();
                             }
                             break;
                         case TimeoutAction.AbortConnection:
@@ -448,7 +411,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         if (rate < minRequestBodyDataRate.BytesPerSecond && !Debugger.IsAttached)
                         {
                             Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _http1Connection.TraceIdentifier, minRequestBodyDataRate.BytesPerSecond);
-                            SendTimeoutResponse();
+                            RequestTimedOut = true;
+                            _http1Connection.SendTimeoutResponse();
                         }
                     }
 
@@ -604,11 +568,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             ResetTimeout(timeSpan.Ticks, TimeoutAction.AbortConnection);
         }
 
-        private static class State
+        private void CloseUninitializedConnection()
         {
-            public const int Initializing = 0;
-            public const int Connected = 1;
-            public const int Closed = 2;
+            Debug.Assert(_adaptedTransport != null);
+
+            // CancelPendingRead signals the transport directly to close the connection
+            // without any potential interference from connection adapters.
+            _context.Application.Input.CancelPendingRead();
+
+            _adaptedTransport.Input.Complete();
+            _adaptedTransport.Output.Complete();
+        }
+
+        // These IStoppableConnection methods only get called if the server shuts down during initialization.
+        Task IProcessRequests.ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
+        {
+            throw new Exception($"{nameof(IProcessRequests)}.{nameof(IProcessRequests.ProcessRequestsAsync)}" +
+                                $"should never be called on {nameof(HttpConnection)}.");
+        }
+
+        void IProcessRequests.StopProcessingNextRequest()
+        {
+            CloseUninitializedConnection();
+        }
+
+        void IProcessRequests.Abort(Exception ex)
+        {
+            CloseUninitializedConnection();
         }
     }
 }
