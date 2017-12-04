@@ -21,7 +21,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class HttpConnection : ITimeoutControl, IConnectionTimeoutFeature, IProcessRequests
+    public class HttpConnection : ITimeoutControl, IConnectionTimeoutFeature, IRequestProcessor
     {
         private readonly HttpConnectionContext _context;
         private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private IPipeConnection _adaptedTransport;
 
         private readonly object _protocolSelectionLock = new object();
-        private IProcessRequests _requestProcessor;
+        private IRequestProcessor _requestProcessor;
         private Http1Connection _http1Connection;
 
         private long _lastTimestamp;
@@ -133,7 +133,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
                 }
 
-                IProcessRequests requestProcessor = null;
+                IRequestProcessor requestProcessor = null;
 
                 lock (_protocolSelectionLock)
                 {
@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                                 break;
                             default:
                                 // SelectProtocol() only returns Http1, Http2 or None.
-                                throw new Exception($"{nameof(SelectProtocol)} returned something other than Http1, Http2 or None.");
+                                throw new NotSupportedException($"{nameof(SelectProtocol)} returned something other than Http1, Http2 or None.");
                         }
 
                         _requestProcessor = requestProcessor;
@@ -175,8 +175,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
             catch (Exception ex)
             {
-                Log.LogError(0, ex, $"Unexpected exception in {nameof(HttpConnection)}.{nameof(ProcessRequestsAsync)}.");
-                Abort(ex);
+                Log.LogCritical(0, ex, $"Unexpected exception in {nameof(HttpConnection)}.{nameof(ProcessRequestsAsync)}.");
             }
             finally
             {
@@ -581,18 +580,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         }
 
         // These IStoppableConnection methods only get called if the server shuts down during initialization.
-        Task IProcessRequests.ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
+        Task IRequestProcessor.ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application)
         {
-            throw new Exception($"{nameof(IProcessRequests)}.{nameof(IProcessRequests.ProcessRequestsAsync)}" +
-                                $"should never be called on {nameof(HttpConnection)}.");
+            throw new NotSupportedException();
         }
 
-        void IProcessRequests.StopProcessingNextRequest()
+        void IRequestProcessor.StopProcessingNextRequest()
         {
             CloseUninitializedConnection();
         }
 
-        void IProcessRequests.Abort(Exception ex)
+        void IRequestProcessor.Abort(Exception ex)
         {
             CloseUninitializedConnection();
         }

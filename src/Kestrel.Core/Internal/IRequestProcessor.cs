@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public interface IProcessRequests
+    public interface IRequestProcessor
     {
         Task ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application);
         void StopProcessingNextRequest();
