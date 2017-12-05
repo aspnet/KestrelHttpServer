@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -27,6 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     public abstract partial class Frame : IFrameControl
     {
+        private static readonly bool[] HostCharValidity = new bool[127];
+
         private const byte ByteAsterisk = (byte)'*';
         private const byte ByteForwardSlash = (byte)'/';
         private const byte BytePercentage = (byte)'%';
@@ -84,6 +87,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
         private Uri _absoluteRequestTarget;
+
+        static Frame()
+        {
+            // Matches Http.Sys
+            // Matches RFC 3986 except "*" / "+" / "," / ";" / "=" and "%" HEXDIG HEXDIG which are not allowed by Http.Sys
+            HostCharValidity['!'] = true;
+            HostCharValidity['$'] = true;
+            HostCharValidity['&'] = true;
+            HostCharValidity['\''] = true;
+            HostCharValidity['('] = true;
+            HostCharValidity[')'] = true;
+            HostCharValidity['-'] = true;
+            HostCharValidity['.'] = true;
+            HostCharValidity['_'] = true;
+            HostCharValidity['~'] = true;
+            for (var ch = '0'; ch <= '9'; ch++)
+            {
+                HostCharValidity[ch] = true;
+            }
+            for (var ch = 'A'; ch <= 'Z'; ch++)
+            {
+                HostCharValidity[ch] = true;
+            }
+            for (var ch = 'a'; ch <= 'z'; ch++)
+            {
+                HostCharValidity[ch] = true;
+            }
+        }
 
         public Frame(FrameContext frameContext)
         {
@@ -1329,9 +1360,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             FrameRequestHeaders.Append(name, valueString);
         }
 
-        protected void EnsureHostHeaderExists()
+        protected internal void EnsureHostHeaderExists()
         {
-            if (_httpVersion == Http.HttpVersion.Http10)
+            if (_httpVersion == Http.HttpVersion.Http10 && _frameContext.ServiceContext.UseRelaxedHostHeaderValidation)
             {
                 return;
             }
@@ -1343,8 +1374,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // Host header field with an invalid field-value.
 
             var host = FrameRequestHeaders.HeaderHost;
+            var hostText = host.ToString();
             if (host.Count <= 0)
             {
+                if (_httpVersion == Http.HttpVersion.Http10)
+                {
+                    return;
+                }
                 ThrowRequestRejected(RequestRejectionReason.MissingHostHeader);
             }
             else if (host.Count > 1)
@@ -1355,7 +1391,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 if (!host.Equals(RawTarget))
                 {
-                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, host.ToString());
+                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
                 }
             }
             else if (_requestTargetForm == HttpRequestTarget.AbsoluteForm)
@@ -1367,13 +1403,116 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 // System.Uri doesn't not tell us if the port was in the original string or not.
                 // When IsDefaultPort = true, we will allow Host: with or without the default port
-                var authorityAndPort = _absoluteRequestTarget.Authority + ":" + _absoluteRequestTarget.Port;
-                if ((host != _absoluteRequestTarget.Authority || !_absoluteRequestTarget.IsDefaultPort)
-                    && host != authorityAndPort)
+                if (host != _absoluteRequestTarget.Authority)
                 {
-                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, host.ToString());
+                    if (!_absoluteRequestTarget.IsDefaultPort
+                        || host != _absoluteRequestTarget.Authority + ":" + _absoluteRequestTarget.Port.ToString(CultureInfo.InvariantCulture))
+                    {
+                        ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+                    }
                 }
             }
+
+            // Validate format:
+
+            // The spec allows empty values
+            if (string.IsNullOrEmpty(hostText) || _frameContext.ServiceContext.UseRelaxedHostHeaderValidation)
+            {
+                return;
+            }
+
+            if (hostText[0] == '[')
+            {
+                ValidateIPv6Host(hostText);
+                return;
+            }
+
+            if (hostText[0] == ':')
+            {
+                // Only a port
+                ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+            }
+
+            var i = 0;
+            for ( ; i < hostText.Length; i++)
+            {
+                if (!IsValidHostChar(hostText[i]))
+                {
+                    break;
+                }
+            }
+            ValidateHostPort(hostText, i);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsValidHostChar(char ch)
+        {
+            return ch < HostCharValidity.Length && HostCharValidity[ch];
+        }
+
+        // The lead '[' was already checked
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ValidateIPv6Host(string hostText)
+        {
+            for (var i = 1; i < hostText.Length; i++)
+            {
+                var ch = hostText[i];
+                if (ch == ']')
+                {
+                    // [::1] is the shortest valid IPv6 host
+                    if (i < 4)
+                    {
+                        ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+                    }
+                    ValidateHostPort(hostText, i + 1);
+                    return;
+                }
+
+                if (!IsHex(ch) && ch != ':' && ch != '.')
+                {
+                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+                }
+            }
+
+            // Must contain a ']'
+            ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ValidateHostPort(string hostText, int offset)
+        {
+            if (offset == hostText.Length)
+            {
+                return;
+            }
+
+            if (hostText[offset] != ':' || hostText.Length == offset + 1)
+            {
+                // Must have at least one number after the colon if present.
+                ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+            }
+
+            for (var i = offset + 1; i < hostText.Length; i++)
+            {
+                if (!IsNumeric(hostText[i]))
+                {
+                    ThrowRequestRejected(RequestRejectionReason.InvalidHostHeader, hostText);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsNumeric(char ch)
+        {
+            return '0' <= ch && ch <= '9';
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsHex(char ch)
+        {
+            return IsNumeric(ch)
+                || ('a' <= ch && ch <= 'f')
+                || ('A' <= ch && ch <= 'F');
         }
 
         private IPipe CreateRequestBodyPipe()

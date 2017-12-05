@@ -22,5 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public FrameConnectionManager ConnectionManager { get; set; }
 
         public KestrelServerOptions ServerOptions { get; set; }
+
+        internal bool UseRelaxedHostHeaderValidation { get; set; }
     }
 }

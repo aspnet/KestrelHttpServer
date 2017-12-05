@@ -132,6 +132,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()));
         }
 
+        [Theory]
+        [MemberData(nameof(HostHeaderInvalidData))]
+        public Task BadRequestFor10BadHostHeaderFormat(string host)
+        {
+            return TestBadRequest(
+                $"GET / HTTP/1.0\r\nHost: {host}\r\n\r\n",
+                "400 Bad Request",
+                CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()));
+        }
+
+        [Theory]
+        [MemberData(nameof(HostHeaderInvalidData))]
+        public Task BadRequestFor11BadHostHeaderFormat(string host)
+        {
+            return TestBadRequest(
+                $"GET / HTTP/1.1\r\nHost: {host}\r\n\r\n",
+                "400 Bad Request",
+                CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()));
+        }
+
         [Fact]
         public async Task BadRequestLogsAreNotHigherThanInformation()
         {
@@ -238,6 +258,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         public static IEnumerable<object[]> InvalidRequestHeaderData => HttpParsingData.RequestHeaderInvalidData;
 
-        public static TheoryData<string, string> InvalidHostHeaderData => HttpParsingData.HostHeaderInvalidData;
+        public static TheoryData<string, string> InvalidHostHeaderData => HttpParsingData.AuthorityHostHeaderInvalidData;
+
+        public static TheoryData<string> HostHeaderInvalidData => HttpParsingData.HostHeaderInvalidData;
     }
 }

@@ -19,6 +19,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
     public class KestrelServer : IServer
     {
+        private const string UseRelaxedHostHeaderValidationSwitch = "Switch.Microsoft.AspNetCore.Server.Kestrel.UseRelaxedHostHeaderValidation";
+
         private readonly List<ITransport> _transports = new List<ITransport>();
         private readonly Heartbeat _heartbeat;
         private readonly IServerAddressesFeature _serverAddresses;
@@ -91,6 +93,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     throw new NotSupportedException(CoreStrings.FormatUnknownTransportMode(serverOptions.ApplicationSchedulingMode));
             }
 
+            AppContext.TryGetSwitch(UseRelaxedHostHeaderValidationSwitch, out var useRelaxedHostHeaderValidation);
+
             return new ServiceContext
             {
                 Log = trace,
@@ -99,7 +103,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 SystemClock = systemClock,
                 DateHeaderValueManager = dateHeaderValueManager,
                 ConnectionManager = connectionManager,
-                ServerOptions = serverOptions
+                ServerOptions = serverOptions,
+                UseRelaxedHostHeaderValidation = useRelaxedHostHeaderValidation,
             };
         }
 

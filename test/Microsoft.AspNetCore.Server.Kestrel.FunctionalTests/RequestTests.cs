@@ -594,7 +594,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     var requestTarget = new Uri(requestUrl, UriKind.Absolute);
                     var host = requestTarget.Authority;
-                    if (!requestTarget.IsDefaultPort)
+                    if (requestTarget.IsDefaultPort)
                     {
                         host += ":" + requestTarget.Port;
                     }
@@ -1649,6 +1649,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        public static TheoryData<string, string> HostHeaderData => HttpParsingData.HostHeaderData;
+        public static TheoryData<string, string> HostHeaderData => HttpParsingData.TargetHostHeaderData;
     }
 }

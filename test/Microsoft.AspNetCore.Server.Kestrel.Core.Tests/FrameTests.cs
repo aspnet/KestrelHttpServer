@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 using Moq;
 using Xunit;
 
@@ -820,6 +821,69 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.StartsWith(CoreStrings.NonNegativeNumberOrNullRequired, ex.Message);
         }
 
+        [Fact]
+        public void Http10HostHeaderNotRequired()
+        {
+            _frame.HttpVersion = "HTTP/1.0";
+            _frame.EnsureHostHeaderExists();
+        }
+
+        [Fact]
+        public void Http10HostHeaderAllowed()
+        {
+            _frame.HttpVersion = "HTTP/1.0";
+            _frame.RequestHeaders[HeaderNames.Host] = "localhost:5000";
+            _frame.EnsureHostHeaderExists();
+        }
+
+        [Theory]
+        [MemberData(nameof(HostHeaderData))]
+        public void ValidHostHeadersAccepted(string host)
+        {
+            _frame.RequestHeaders[HeaderNames.Host] = host;
+            _frame.EnsureHostHeaderExists();
+        }
+
+        [Theory]
+        [MemberData(nameof(HostHeaderInvalidData))]
+        public void BadRequestFor10BadHostHeaderFormat(string host)
+        {
+            _frame.HttpVersion = "HTTP/1.0";
+            _frame.RequestHeaders[HeaderNames.Host] = host;
+            var ex = Assert.Throws<BadHttpRequestException>(() => _frame.EnsureHostHeaderExists());
+            Assert.Equal(CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()), ex.Message);
+        }
+
+        [Theory]
+        [MemberData(nameof(HostHeaderInvalidData))]
+        public void BadRequestFor11BadHostHeaderFormat(string host)
+        {
+            _frame.HttpVersion = "HTTP/1.1";
+            _frame.RequestHeaders[HeaderNames.Host] = host;
+            var ex = Assert.Throws<BadHttpRequestException>(() => _frame.EnsureHostHeaderExists());
+            Assert.Equal(CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()), ex.Message);
+        }
+
+        [Theory]
+        [MemberData(nameof(HostHeaderInvalidData))]
+        public void NoBadRequestFor10BadHostHeaderFormatWithSwitch(string host)
+        {
+            _serviceContext.UseRelaxedHostHeaderValidation = true;
+            _frame.HttpVersion = "HTTP/1.0";
+            _frame.RequestHeaders[HeaderNames.Host] = host;
+            _frame.EnsureHostHeaderExists();
+        }
+
+        [Theory]
+        [MemberData(nameof(HostHeaderInvalidData))]
+        public void NoBadRequestFor11BadHostHeaderFormatWithSwitch(string host)
+        {
+            _serviceContext.UseRelaxedHostHeaderValidation = true;
+            _frame.HttpVersion = "HTTP/1.1";
+            _frame.RequestHeaders[HeaderNames.Host] = host;
+            _frame.EnsureHostHeaderExists();
+        }
+
         private static async Task WaitForCondition(TimeSpan timeout, Func<bool> condition)
         {
             const int MaxWaitLoop = 150;
@@ -960,5 +1024,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public bool TryGetValue(string key, out StringValues value) => _innerHeaders.TryGetValue(key, out value);
             IEnumerator IEnumerable.GetEnumerator() => _innerHeaders.GetEnumerator();
         }
+
+        public static TheoryData<string> HostHeaderData => HttpParsingData.HostHeaderData;
+
+        public static TheoryData<string> HostHeaderInvalidData => HttpParsingData.HostHeaderInvalidData;
     }
 }
