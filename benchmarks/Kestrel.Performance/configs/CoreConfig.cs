@@ -25,11 +25,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         public CoreConfig(Job job)
         {
-            Add(DefaultConfig.Instance);
+            Add(JitOptimizationsValidator.DontFailOnError);
+            
+            Add(ConsoleLogger.Default);
+            Add(MarkdownExporter.GitHub);
 
             Add(MemoryDiagnoser.Default);
             Add(StatisticColumn.OperationsPerSecond);
 
+            Add
             Add(job);
         }
     }
