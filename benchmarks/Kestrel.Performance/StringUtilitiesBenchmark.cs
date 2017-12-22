@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [AspNetCoreBenchmark]
     public class StringUtilitiesBenchmark
     {
         private const int Iterations = 500_000;

@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [AspNetCoreBenchmark]
     public class DotSegmentRemovalBenchmark
     {
         // Immutable

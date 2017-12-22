@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Testing;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [AspNetCoreBenchmark]
     public class Http1WritingBenchmark
     {
         // Standard completed task

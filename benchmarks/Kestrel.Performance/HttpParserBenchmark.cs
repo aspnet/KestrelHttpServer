@@ -8,8 +8,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [AspNetCoreBenchmark]
-
     public class HttpParserBenchmark : IHttpRequestLineHandler, IHttpHeadersHandler
     {
         private readonly HttpParser<Adapter> _parser = new HttpParser<Adapter>();
