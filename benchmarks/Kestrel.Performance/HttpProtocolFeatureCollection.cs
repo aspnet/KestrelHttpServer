@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [ParameterizedJobConfig(typeof(CoreConfig))]
+    [AspNetCoreBenchmark]
     public class HttpProtocolFeatureCollection
     {
         private readonly Http1Connection _http1Connection;

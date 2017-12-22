@@ -8,7 +8,7 @@ using BenchmarkDotNet.Attributes;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [ParameterizedJobConfig(typeof(CoreConfig))]
+    [AspNetCoreBenchmark]
     public class PipeThroughputBenchmark
     {
         private const int _writeLenght = 57;

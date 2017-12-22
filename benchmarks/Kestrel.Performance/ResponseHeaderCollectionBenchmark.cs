@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
-    [ParameterizedJobConfig(typeof(CoreConfig))]
+    [AspNetCoreBenchmark]
     public class ResponseHeaderCollectionBenchmark
     {
         private const int InnerLoopCount = 512;
