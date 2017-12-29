@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             try
             {
-                connectionHandler.OnConnection(this);
+                connectionHandler?.OnConnection(this);
 
                 // Spawn send and receive logic
                 Task receiveTask = DoReceive();

@@ -6,7 +6,8 @@ namespace System.IO.Pipelines
     {
         public static (IPipeConnection Transport, IPipeConnection Application) CreateConnectionPair(MemoryPool memoryPool)
         {
-            return CreateConnectionPair(new PipeOptions(memoryPool), new PipeOptions(memoryPool));
+            var options = new PipeOptions(memoryPool);
+            return CreateConnectionPair(options, options);
         }
 
         public static (IPipeConnection Transport, IPipeConnection Application) CreateConnectionPair(PipeOptions inputOptions, PipeOptions outputOptions)

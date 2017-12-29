@@ -89,5 +89,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             => _logger.Log(logLevel, eventId, state, exception, formatter);
+
+        public static ISocketsTrace Nil => NilTrace.Default;
+
+        private sealed class NilTrace : ISocketsTrace
+        {
+            public static readonly ISocketsTrace Default = new NilTrace();
+            private NilTrace() { }
+
+            IDisposable ILogger.BeginScope<TState>(TState state) => null;
+
+            void ISocketsTrace.ConnectionError(string connectionId, Exception ex) { }
+
+            void ISocketsTrace.ConnectionPause(string connectionId) { }
+
+            void ISocketsTrace.ConnectionReadFin(string connectionId) { }
+
+            void ISocketsTrace.ConnectionReset(string connectionId) { }
+
+            void ISocketsTrace.ConnectionResume(string connectionId) { }
+
+            void ISocketsTrace.ConnectionWriteFin(string connectionId) { }
+
+            bool ILogger.IsEnabled(LogLevel logLevel) => false;
+
+            void ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter) { }
+        }
     }
 }
