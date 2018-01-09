@@ -199,6 +199,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         internal void Initialize(IPipeConnection transport, IPipeConnection application)
         {
             _requestProcessor = _http1Connection = CreateHttp1Connection(transport, application);
+            _protocolSelectionState = ProtocolSelectionState.Selected;
         }
 
         private Http1Connection CreateHttp1Connection(IPipeConnection transport, IPipeConnection application)
