@@ -44,11 +44,13 @@ namespace Microsoft.AspNetCore.Testing
             if (logLevel == LogLevel.Critical && ThrowOnCriticalErrors)
 #endif
             {
-                Console.WriteLine($"Log {logLevel}[{eventId}]: {formatter(state, exception)} {exception?.Message}");
+                var log = $"Log {logLevel}[{eventId}]: {formatter(state, exception)} {exception?.Message}";
+
+                Console.WriteLine(log);
 
                 if (logLevel == LogLevel.Critical && ThrowOnCriticalErrors)
                 {
-                    throw new Exception("Unexpected critical error.", exception);
+                    throw new Exception($"Unexpected critical error. {log}", exception);
                 }
             }
 
