@@ -279,7 +279,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             else
                             {
                                 var current = reader.Position;
-                                var currentSlice = buffer.Slice(current);
+                                var currentSlice = buffer.Slice(current, bufferEnd);
 
                                 var lineEndPosition = currentSlice.PositionOf(ByteLF);
                                 // Split buffers
