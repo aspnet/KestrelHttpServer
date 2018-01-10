@@ -330,7 +330,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var actual = (int)Math.Min(readableBuffer.Length, _inputLength);
                 _inputLength -= actual;
 
-                consumed = readableBuffer.Move(readableBuffer.Start, actual);
+                consumed = readableBuffer.Seek(readableBuffer.Start, actual);
                 examined = consumed;
 
                 Copy(readableBuffer.Slice(0, actual), writableBuffer);
@@ -524,8 +524,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 do
                 {
-                    Position extensionCursor;
-                    if (ReadOnlyBuffer.Seek(buffer.Start, buffer.End, out extensionCursor, ByteCR) == -1)
+                    Position? extensionCursorPosition = buffer.PositionOf(ByteCR);
+                    if (extensionCursorPosition == null)
                     {
                         // End marker not found yet
                         consumed = buffer.End;
@@ -534,6 +534,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         return;
                     };
 
+                    var extensionCursor = extensionCursorPosition.Value;
                     var charsToByteCRExclusive = buffer.Slice(0, extensionCursor).Length;
 
                     var sufixBuffer = buffer.Slice(extensionCursor);
@@ -570,7 +571,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             private void ReadChunkedData(ReadOnlyBuffer buffer, WritableBuffer writableBuffer, out Position consumed, out Position examined)
             {
                 var actual = Math.Min(buffer.Length, _inputLength);
-                consumed = buffer.Move(buffer.Start, actual);
+                consumed = buffer.Seek(buffer.Start, actual);
                 examined = consumed;
 
                 Copy(buffer.Slice(0, actual), writableBuffer);

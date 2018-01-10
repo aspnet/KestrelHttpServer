@@ -157,7 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 var maskFieldName = GetMaskFieldName(methodInfo.MaskLength);
                 var httpMethodFieldName = GetHttpMethodFieldName(methodInfo);
 
-                result.AppendFormat("            SetKnownMethod({0}, {1}, {2}.{3}, {4});", maskFieldName, httpMethodFieldName, typeof(String).Name, methodInfo.HttpMethod, methodInfo.MaskLength - 1);
+                result.AppendFormat("            SetKnownMethod({0}, {1}, HttpMethod.{3}, {4});", maskFieldName, httpMethodFieldName, typeof(String).Name, methodInfo.HttpMethod, methodInfo.MaskLength - 1);
 
                 if (index < methodsInfo.Count - 1)
                 {
@@ -180,7 +180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             {
                 var methodInfo = methodsInfo[index];
 
-                result.AppendFormat("            _methodNames[(byte){0}.{1}] = {2}.{3};", typeof(String).Name, methodInfo.HttpMethod, typeof(HttpMethods).Name, methodInfo.HttpMethod);
+                result.AppendFormat("            _methodNames[(byte)HttpMethod.{1}] = {2}.{3};", typeof(String).Name, methodInfo.HttpMethod, typeof(HttpMethods).Name, methodInfo.HttpMethod);
 
                 if (index < methodsInfo.Count - 1)
                 {

@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var lineIndex = span.IndexOf(ByteLF);
             if (lineIndex >= 0)
             {
-                consumed = buffer.Move(consumed, lineIndex + 1);
+                consumed = buffer.Seek(consumed, lineIndex + 1);
                 span = span.Slice(0, lineIndex + 1);
             }
             else if (buffer.IsSingleSpan)
@@ -204,7 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 while (!reader.End)
                 {
-                    var span = reader.Span;
+                    var span = reader.CurrentSegment;
                     var remaining = span.Length - reader.Index;
 
                     fixed (byte* pBuffer = &MemoryMarshal.GetReference(span))
@@ -279,16 +279,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             else
                             {
                                 var current = reader.Position;
+                                var currentSlice = buffer.Slice(current);
 
+                                var lineEndPosition = currentSlice.PositionOf(ByteLF);
                                 // Split buffers
-                                if (ReadOnlyBuffer.Seek(current, bufferEnd, out var lineEnd, ByteLF) == -1)
+                                if (lineEndPosition == null)
                                 {
                                     // Not there
                                     return false;
                                 }
 
+                                var lineEnd = lineEndPosition.Value;
+
                                 // Make sure LF is included in lineEnd
-                                lineEnd = buffer.Move(lineEnd, 1);
+                                lineEnd = buffer.Seek(lineEnd, 1);
                                 var headerSpan = buffer.Slice(current, lineEnd).ToSpan();
                                 length = headerSpan.Length;
 
@@ -416,13 +420,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static bool TryGetNewLine(ref ReadOnlyBuffer buffer, out Position found)
         {
-            var start = buffer.Start;
-            if (ReadOnlyBuffer.Seek(start, buffer.End, out found, ByteLF) != -1)
+            var byteLfPosition = buffer.PositionOf(ByteLF);
+            if (byteLfPosition != null)
             {
                 // Move 1 byte past the \n
-                found = buffer.Move(found, 1);
+                found = buffer.Seek(byteLfPosition.Value, 1);
                 return true;
             }
+
+            found = default;
             return false;
         }
 
