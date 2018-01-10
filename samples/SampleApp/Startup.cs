@@ -76,7 +76,7 @@ namespace SampleApp
                     });
 
                     // Run callbacks on the transport thread
-                    options.ApplicationSchedulingMode = SchedulingMode.Inline;
+                    //options.ApplicationSchedulingMode = SchedulingMode.Inline;
 
                     options.Listen(IPAddress.Loopback, basePort, listenOptions =>
                     {
@@ -130,7 +130,7 @@ namespace SampleApp
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>();
 
-            if (string.Equals(Process.GetCurrentProcess().Id.ToString(), Environment.GetEnvironmentVariable("LISTEN_PID")))
+            //if (string.Equals(Process.GetCurrentProcess().Id.ToString(), Environment.GetEnvironmentVariable("LISTEN_PID")))
             {
                 // Use libuv if activated by systemd, since that's currently the only transport that supports being passed a socket handle.
                 hostBuilder.UseLibuv(options =>
@@ -139,7 +139,7 @@ namespace SampleApp
                      // options.ThreadCount = 4;
                  });
             }
-                
+
             return hostBuilder.Build().RunAsync();
         }
 

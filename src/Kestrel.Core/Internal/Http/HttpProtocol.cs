@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -902,11 +903,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private static void WriteChunk(WritableBuffer writableBuffer, ArraySegment<byte> buffer)
         {
-            var writer = new WritableBufferWriter(writableBuffer);
+            var writer = OutputWriter.Create(writableBuffer);
             if (buffer.Count > 0)
             {
                 ChunkWriter.WriteBeginChunkBytes(ref writer, buffer.Count);
-                writer.Write(buffer.Array, buffer.Offset, buffer.Count);
+                writer.Write(new ReadOnlySpan<byte>(buffer.Array, buffer.Offset, buffer.Count));
                 ChunkWriter.WriteEndChunkBytes(ref writer);
             }
         }

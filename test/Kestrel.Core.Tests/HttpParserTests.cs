@@ -298,7 +298,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var requestHandler = new RequestHandler();
             Assert.False(parser.ParseHeaders(requestHandler, buffer1, out var consumed, out var examined, out var consumedBytes));
 
-            Assert.Equal(buffer1.Move(buffer1.Start, headerLine.Length - 1), consumed);
+            Assert.Equal(buffer1.Seek(buffer1.Start, headerLine.Length - 1), consumed);
             Assert.Equal(buffer1.End, examined);
             Assert.Equal(headerLine.Length - 1, consumedBytes);
 

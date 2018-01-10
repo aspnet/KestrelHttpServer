@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
@@ -115,7 +116,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var buffer = _pipeWriter.Alloc(1);
-                var writer = new WritableBufferWriter(buffer);
+                var writer = OutputWriter.Create(buffer);
 
                 writer.Write(_bytesHttpVersion11);
                 var statusBytes = ReasonPhrases.ToStatusBytes(statusCode, reasonPhrase);
@@ -177,10 +178,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 writableBuffer = _pipeWriter.Alloc(1);
-                var writer = new WritableBufferWriter(writableBuffer);
+                var writer = OutputWriter.Create(writableBuffer);
                 if (buffer.Count > 0)
                 {
-                    writer.Write(buffer.Array, buffer.Offset, buffer.Count);
+                    writer.Write(new ReadOnlySpan<byte>(buffer.Array, buffer.Offset, buffer.Count));
                     bytesWritten += buffer.Count;
                 }
 

@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return result;
         }
 
-        public unsafe static void WriteAsciiNoValidation(ref this WritableBufferWriter buffer, string data)
+        public unsafe static void WriteAsciiNoValidation(ref this OutputWriter<WritableBuffer> buffer, string data)
         {
             if (string.IsNullOrEmpty(data))
             {
@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe static void WriteNumeric(ref this WritableBufferWriter buffer, ulong number)
+        public unsafe static void WriteNumeric(ref this OutputWriter<WritableBuffer> buffer, ulong number)
         {
             const byte AsciiDigitStart = (byte)'0';
 
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void WriteNumericMultiWrite(ref this WritableBufferWriter buffer, ulong number)
+        private static void WriteNumericMultiWrite(ref this OutputWriter<WritableBuffer> buffer, ulong number)
         {
             const byte AsciiDigitStart = (byte)'0';
 
@@ -141,11 +141,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             while (value != 0);
 
             var length = _maxULongByteLength - position;
-            buffer.Write(byteBuffer, position, length);
+            buffer.Write(new ReadOnlySpan<byte>(byteBuffer, position, length));
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private unsafe static void WriteAsciiMultiWrite(ref this WritableBufferWriter buffer, string data)
+        private unsafe static void WriteAsciiMultiWrite(ref this OutputWriter<WritableBuffer> buffer, string data)
         {
             var remaining = data.Length;
 

@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void WritesNumericToAscii(ulong number)
         {
             var writerBuffer = _pipe.Writer.Alloc();
-            var writer = new WritableBufferWriter(writerBuffer);
+            var writer = OutputWriter.Create(writerBuffer);
             writer.WriteNumeric(number);
             writerBuffer.FlushAsync().GetAwaiter().GetResult();
 
@@ -52,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void WritesNumericAcrossSpanBoundaries(int gapSize)
         {
             var writerBuffer = _pipe.Writer.Alloc(100);
-            var writer = new WritableBufferWriter(writerBuffer);
+            var writer = OutputWriter.Create(writerBuffer);
             // almost fill up the first block
             var spacer = new byte[writer.Span.Length - gapSize];
             writer.Write(spacer);
@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void EncodesAsAscii(string input, byte[] expected)
         {
             var writerBuffer = _pipe.Writer.Alloc();
-            var writer = new WritableBufferWriter(writerBuffer);
+            var writer = OutputWriter.Create(writerBuffer);
             writer.WriteAsciiNoValidation(input);
             writerBuffer.FlushAsync().GetAwaiter().GetResult();
             var reader = _pipe.Reader.ReadAsync().GetAwaiter().GetResult();
@@ -110,7 +110,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // WriteAscii doesn't validate if characters are in the ASCII range
             // but it shouldn't produce more than one byte per character
             var writerBuffer = _pipe.Writer.Alloc();
-            var writer = new WritableBufferWriter(writerBuffer);
+            var writer = OutputWriter.Create(writerBuffer);
             writer.WriteAsciiNoValidation(input);
             writerBuffer.FlushAsync().GetAwaiter().GetResult();
             var reader = _pipe.Reader.ReadAsync().GetAwaiter().GetResult();
@@ -123,7 +123,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             const byte maxAscii = 0x7f;
             var writerBuffer = _pipe.Writer.Alloc();
-            var writer = new WritableBufferWriter(writerBuffer);
+            var writer = OutputWriter.Create(writerBuffer);
             for (var i = 0; i < maxAscii; i++)
             {
                 writer.WriteAsciiNoValidation(new string((char)i, 1));
@@ -152,7 +152,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var testString = new string(' ', stringLength);
             var writerBuffer = _pipe.Writer.Alloc(100);
-            var writer = new WritableBufferWriter(writerBuffer);
+            var writer = OutputWriter.Create(writerBuffer);
             // almost fill up the first block
             var spacer = new byte[writer.Span.Length - gapSize];
             writer.Write(spacer);
