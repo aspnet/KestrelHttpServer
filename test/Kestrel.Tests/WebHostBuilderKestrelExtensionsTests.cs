@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tests
         }
 
         [Fact]
-        public void LibuvTransportCanBeManuallySelected()
+        public void LibuvTransportCanBeManuallySelectedIndependentOfOrder()
         {
             var hostBuilder = new WebHostBuilder()
                 .UseKestrel()
@@ -69,11 +69,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tests
                 .Configure(app => { });
 
             Assert.IsType<LibuvTransportFactory>(hostBuilder.Build().Services.GetService<ITransportFactory>());
+
+            var hostBuilderReversed = new WebHostBuilder()
+                .UseLibuv()
+                .UseKestrel()
+                .Configure(app => { });
+
+            Assert.IsType<LibuvTransportFactory>(hostBuilderReversed.Build().Services.GetService<ITransportFactory>());
         }
 
-
         [Fact]
-        public void SocketsTransportCanBeManuallySelected()
+        public void SocketsTransportCanBeManuallySelectedIndependentOfOrder()
         {
             var hostBuilder = new WebHostBuilder()
                 .UseKestrel()
@@ -81,6 +87,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tests
                 .Configure(app => { });
 
             Assert.IsType<SocketTransportFactory>(hostBuilder.Build().Services.GetService<ITransportFactory>());
+
+            var hostBuilderReversed = new WebHostBuilder()
+                .UseSockets()
+                .UseKestrel()
+                .Configure(app => { });
+
+            Assert.IsType<SocketTransportFactory>(hostBuilderReversed.Build().Services.GetService<ITransportFactory>());
         }
     }
 }

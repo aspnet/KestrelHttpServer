@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Hosting
@@ -28,7 +29,7 @@ namespace Microsoft.AspNetCore.Hosting
             return hostBuilder.ConfigureServices(services =>
             {
                 // Don't override an already-configured transport
-                services.AddSingleton<ITransportFactory, LibuvTransportFactory>();
+                services.TryAddSingleton<ITransportFactory, LibuvTransportFactory>();
 
                 services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelServerOptionsSetup>();
                 services.AddSingleton<IServer, KestrelServer>();
