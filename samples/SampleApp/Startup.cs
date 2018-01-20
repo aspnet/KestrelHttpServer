@@ -67,7 +67,7 @@ namespace SampleApp
 
                     options.ConfigureEndpointDefaults(opt =>
                     {
-                        opt.Protocols = HttpProtocols.Http1;
+                        // opt.Protocols = HttpProtocols.Http1;
                     });
 
                     options.ConfigureHttpsDefaults(httpsOptions =>
@@ -115,7 +115,7 @@ namespace SampleApp
                         .Configure(context.Configuration.GetSection("Kestrel"))
                         .Endpoint("NamedEndpoint", opt =>
                         {
-                            opt.ListenOptions.Protocols = HttpProtocols.Http1;
+                            // opt.ListenOptions.Protocols = HttpProtocols.Http1;
                         })
                         .Endpoint("NamedHttpsEndpoint", opt =>
                         {
