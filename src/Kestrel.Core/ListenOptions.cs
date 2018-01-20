@@ -19,6 +19,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     /// </summary>
     public class ListenOptions : IEndPointInformation, IConnectionBuilder
     {
+        private const string Http2ExperimentSwitch = "Switch.Microsoft.AspNetCore.Server.Kestrel.Experiential.Http2";
+        private const string Http1AndHttp2ExperimentSwitch = "Switch.Microsoft.AspNetCore.Server.Kestrel.Experiential.Http1AndHttp2";
+
         private FileHandleType _handleType;
         private readonly List<Func<ConnectionDelegate, ConnectionDelegate>> _components = new List<Func<ConnectionDelegate, ConnectionDelegate>>();
 
@@ -26,6 +29,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         {
             Type = ListenType.IPEndPoint;
             IPEndPoint = endPoint;
+
+            if (AppContext.TryGetSwitch(Http1AndHttp2ExperimentSwitch, out var isEnabled))
+            {
+                Protocols = HttpProtocols.Http1AndHttp2;
+            }
+            else if (AppContext.TryGetSwitch(Http2ExperimentSwitch, out isEnabled))
+            {
+                Protocols = HttpProtocols.Http2;
+            }
         }
 
         internal ListenOptions(string socketPath)
@@ -123,7 +135,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// The protocols enabled on this endpoint.
         /// </summary>
         /// <remarks>Defaults to HTTP/1.x only.</remarks>
-        public HttpProtocols Protocols { get; set; } = HttpProtocols.Http1;
+        internal HttpProtocols Protocols { get; set; } = HttpProtocols.Http1;
 
         /// <summary>
         /// Gets the <see cref="List{IConnectionAdapter}"/> that allows each connection <see cref="System.IO.Stream"/>
