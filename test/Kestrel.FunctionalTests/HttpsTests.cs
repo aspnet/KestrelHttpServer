@@ -108,7 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // Close socket immediately
                 }
 
-                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
             }
 
             Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
@@ -144,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await stream.WriteAsync(new byte[10], 0, 10);
                 }
 
-                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
             }
 
             Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
@@ -251,7 +251,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            await tcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+            await tcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
         }
 
         // Regression test for https://github.com/aspnet/KestrelHttpServer/issues/1693
@@ -349,7 +349,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+            await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
             Assert.Equal(2, loggerProvider.FilterLogger.LastEventId);
             Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
         }

@@ -368,7 +368,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
                 }
 
-                var disposedStatusCode = await disposedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                var disposedStatusCode = await disposedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
                 Assert.Equal(expectedServerStatusCode, (HttpStatusCode)disposedStatusCode);
             }
 
@@ -538,7 +538,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // Wait for message to be logged before disposing the socket.
                     // Disposing the socket will abort the connection and HttpProtocol._requestAborted
                     // might be 1 by the time ProduceEnd() gets called and the message is logged.
-                    await logTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await logTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
 
@@ -740,10 +740,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "hello, world");
 
                     // Wait for error message to be logged.
-                    await logTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await logTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
 
                     // The server should close the connection in this situation.
-                    await connection.WaitForConnectionClose().TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await connection.WaitForConnectionClose().TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
 
@@ -772,7 +772,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await httpContext.Response.WriteAsync("hello,");
 
                 // Wait until the request is aborted so we know HttpProtocol will skip the response content length check.
-                Assert.True(await requestAborted.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.True(await requestAborted.WaitAsync(TimeSpan.FromSeconds(30)));
             }, new TestServiceContext { Log = mockTrace.Object }))
             {
                 using (var connection = server.CreateConnection())
@@ -796,7 +796,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // Await before disposing the server to prevent races between the
                 // abort triggered by the connection RST and the abort called when
                 // disposing the server.
-                Assert.True(await requestAborted.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.True(await requestAborted.WaitAsync(TimeSpan.FromSeconds(30)));
             }
 
             // With the server disposed we know all connections were drained and all messages were logged.
@@ -1706,7 +1706,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(async httpContext =>
             {
-                Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(10)));
+                Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(30)));
             }, testContext, listenOptions))
             {
                 using (var connection = server.CreateConnection())
@@ -2152,7 +2152,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var lifetime = httpContext.Features.Get<IHttpRequestLifetimeFeature>();
 
                 lifetime.RequestAborted.Register(() => requestAbortedWh.Set());
-                Assert.True(requestAbortedWh.Wait(TimeSpan.FromSeconds(10)));
+                Assert.True(requestAbortedWh.Wait(TimeSpan.FromSeconds(30)));
 
                 try
                 {
@@ -2176,15 +2176,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
 
-                    Assert.True(requestStartWh.Wait(TimeSpan.FromSeconds(10)));
+                    Assert.True(requestStartWh.Wait(TimeSpan.FromSeconds(30)));
                 }
 
                 // Write failed - can throw TaskCanceledException or OperationCanceledException,
                 // dependending on how far the canceled write goes.
-                await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TimeSpan.FromSeconds(15));
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TimeSpan.FromSeconds(30));
 
                 // RequestAborted tripped
-                Assert.True(requestAbortedWh.Wait(TimeSpan.FromSeconds(1)));
+                Assert.True(requestAbortedWh.Wait(TimeSpan.FromSeconds(30)));
             }
         }
 
@@ -2342,7 +2342,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "hello, world");
 
                     // Wait for all callbacks to be called.
-                    await onStartingTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await onStartingTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
 
@@ -2394,7 +2394,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "hello, world");
 
                     // Wait for all callbacks to be called.
-                    await onCompletedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await onCompletedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
 
@@ -2657,7 +2657,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             await reader.ReadToEndAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
                         }
 
-                        Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
+                        Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(30)));
                     }
                 }
             }

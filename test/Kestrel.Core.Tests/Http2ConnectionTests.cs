@@ -192,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     sem.Release();
                 });
 
-                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
             };
 
             _largeHeadersApplication = context =>
@@ -220,7 +220,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     sem.Release();
                 });
 
-                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
 
                 _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
             };
@@ -240,7 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     sem.Release();
                 });
 
-                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+                await sem.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
 
                 await context.Response.Body.FlushAsync();
 

@@ -310,7 +310,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var connection = server.CreateConnection())
                 {
                     // Wait until connection is established
-                    Assert.True(await connectionStarted.WaitAsync(TimeSpan.FromSeconds(10)));
+                    Assert.True(await connectionStarted.WaitAsync(TimeSpan.FromSeconds(30)));
 
                     // Force a reset
                     connection.Socket.LingerState = new LingerOption(true, 0);
@@ -320,7 +320,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // This check MUST come before disposing the server, otherwise there's a race where the RST
                 // is still in flight when the connection is aborted, leading to the reset never being received
                 // and therefore not logged.
-                Assert.True(await connectionReset.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.True(await connectionReset.WaitAsync(TimeSpan.FromSeconds(30)));
             }
 
             Assert.False(loggedHigherThanDebug);
@@ -388,7 +388,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // This check MUST come before disposing the server, otherwise there's a race where the RST
                 // is still in flight when the connection is aborted, leading to the reset never being received
                 // and therefore not logged.
-                Assert.True(await connectionReset.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.True(await connectionReset.WaitAsync(TimeSpan.FromSeconds(30)));
             }
 
             Assert.False(loggedHigherThanDebug);
@@ -523,7 +523,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     var token = context.RequestAborted;
                     token.Register(() => requestAborted.Release(2));
-                    await requestAborted.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await requestAborted.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
                 }));
 
             using (var host = builder.Build())
@@ -536,7 +536,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     socket.Send(Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n"));
                     await appStarted.WaitAsync();
                     socket.Shutdown(SocketShutdown.Send);
-                    await requestAborted.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await requestAborted.WaitAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
         }
@@ -620,7 +620,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "4",
                         "Done")
-                        .TimeoutAfter(TimeSpan.FromSeconds(10));
+                        .TimeoutAfter(TimeSpan.FromSeconds(30));
 
                     await Task.WhenAll(pathTcs.Task, rawTargetTcs.Task, queryTcs.Task).TimeoutAfter(TimeSpan.FromSeconds(30));
                     Assert.Equal(new PathString(expectedPath), pathTcs.Task.Result);
@@ -648,7 +648,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }))
             {
                 var requestId = await HttpClientSlim.GetStringAsync($"http://{server.EndPoint}")
-                    .TimeoutAfter(TimeSpan.FromSeconds(10));
+                    .TimeoutAfter(TimeSpan.FromSeconds(30));
                 Assert.Equal(knownId, requestId);
             }
         }
@@ -689,7 +689,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                            $"Date: {server.Context.DateHeaderValue}",
                            $"Content-Length: {identifierLength}",
                            "",
-                           "").TimeoutAfter(TimeSpan.FromSeconds(10));
+                           "").TimeoutAfter(TimeSpan.FromSeconds(30));
 
                         var read = await connection.Reader.ReadAsync(buffer, 0, identifierLength);
                         Assert.Equal(identifierLength, read);
@@ -950,7 +950,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async httpContext =>
             {
                 // This will hang if 0 content length is not assumed by the server
-                Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(10)));
+                Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TimeSpan.FromSeconds(30)));
             }, testContext, listenOptions))
             {
                 using (var connection = server.CreateConnection())
@@ -1169,7 +1169,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var read = 0;
                 while (read < message.Length)
                 {
-                    read += await duplexStream.ReadAsync(buffer, read, buffer.Length - read).TimeoutAfter(TimeSpan.FromSeconds(10));
+                    read += await duplexStream.ReadAsync(buffer, read, buffer.Length - read).TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
 
                 await duplexStream.WriteAsync(buffer, 0, read);
@@ -1476,7 +1476,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "a");
 
-                    Assert.True(appEvent.Wait(TimeSpan.FromSeconds(10)));
+                    Assert.True(appEvent.Wait(TimeSpan.FromSeconds(30)));
 
                     await Task.Delay(TimeSpan.FromSeconds(5));
 
