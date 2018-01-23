@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var listenerSecondary = new ListenerSecondary(transportContextSecondary);
             await listenerSecondary.StartAsync(pipeName, pipeMessage, listenOptions, libuvThreadSecondary);
 
-            var maxWait = Task.Delay(TimeSpan.FromSeconds(30));
+            var maxWait = Task.Delay(TestConstants.DefaultTimeout);
             // wait for ListenerPrimary.ReadCallback to add the secondary pipe
             while (listenerPrimary.UvPipeCount == listenerCount)
             {

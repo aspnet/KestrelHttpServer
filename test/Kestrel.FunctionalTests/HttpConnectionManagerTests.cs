@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     await connection.SendEmptyGet();
 
-                    Assert.True(await appStartedWh.WaitAsync(TimeSpan.FromSeconds(30)));
+                    Assert.True(await appStartedWh.WaitAsync(TestConstants.DefaultTimeout));
 
                     // Close connection without waiting for a response
                 }
