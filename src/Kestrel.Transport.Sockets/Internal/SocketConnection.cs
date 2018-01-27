@@ -57,6 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
+            Exception error = null;
             try
             {
                 connectionHandler.OnConnection(this);
@@ -76,17 +77,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 // Now wait for both to complete
                 await receiveTask;
-                var error = await sendTask;
+                error = await sendTask;
 
                 // Dispose the socket(should noop if already called)
                 _socket.Dispose();
-
-                // Complete the output after disposing the socket
-                Output.Complete(error);
             }
             catch (Exception ex)
             {
                 _trace.LogError(0, ex, $"Unexpected exception in {nameof(SocketConnection)}.{nameof(StartAsync)}.");
+            }
+            finally
+            {
+                // Complete the output after disposing the socket
+                Output.Complete(error);
             }
         }
 
