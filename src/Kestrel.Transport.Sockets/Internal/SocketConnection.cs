@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 // Spawn send and receive logic
                 Task receiveTask = DoReceive();
-                Task sendTask = DoSend();
+                Task<Exception> sendTask = DoSend();
 
                 // If the sending task completes then close the receive
                 // We don't need to do this in the other direction because the kestrel
@@ -76,10 +76,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 // Now wait for both to complete
                 await receiveTask;
-                await sendTask;
+                var error = await sendTask;
 
                 // Dispose the socket(should noop if already called)
                 _socket.Dispose();
+
+                // Complete the output after disposing the socket
+                Output.Complete(error);
             }
             catch (Exception ex)
             {
@@ -181,7 +184,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
         }
 
-        private async Task DoSend()
+        private async Task<Exception> DoSend()
         {
             Exception error = null;
 
@@ -233,8 +236,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
             finally
             {
-                Output.Complete(error);
-
                 // Make sure to close the connection only after the _aborted flag is set.
                 // Without this, the RequestsCanBeAbortedMidRead test will sometimes fail when
                 // a BadHttpRequestException is thrown instead of a TaskCanceledException.
@@ -242,6 +243,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 _trace.ConnectionWriteFin(ConnectionId);
                 _socket.Shutdown(SocketShutdown.Both);
             }
+
+            return error;
         }
     }
 }
