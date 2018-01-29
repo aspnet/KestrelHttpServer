@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
-            Exception error = null;
+            Exception sendError = null;
             try
             {
                 connectionHandler.OnConnection(this);
@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 // Now wait for both to complete
                 await receiveTask;
-                error = await sendTask;
+                sendError = await sendTask;
 
                 // Dispose the socket(should noop if already called)
                 _socket.Dispose();
@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             finally
             {
                 // Complete the output after disposing the socket
-                Output.Complete(error);
+                Output.Complete(sendError);
             }
         }
 
