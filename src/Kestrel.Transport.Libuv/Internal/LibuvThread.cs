@@ -10,6 +10,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal.Coalescing;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.Extensions.Logging;
 
@@ -25,6 +26,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly LibuvTransport _transport;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
+        //private readonly TimerBasedCoalescingScheduler _outputReaderScheduler;
+        private readonly ThreadBasedCoalescingScheduler _outputReaderScheduler;
         private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
@@ -54,6 +57,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             // Don't do this for debug builds, so we know if the thread isn't terminating.
             _thread.IsBackground = true;
 #endif
+            //_outputReaderScheduler = new TimerBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), this);
+            _outputReaderScheduler = new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), this);
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             MemoryPool = new MemoryPool();
@@ -70,6 +75,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         public UvLoopHandle Loop { get { return _loop; } }
 
         public MemoryPool MemoryPool { get; }
+
+        public PipeScheduler OutputReaderScheduler => _outputReaderScheduler;
 
         public WriteReqPool WriteReqPool { get; }
 
@@ -296,6 +303,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
             finally
             {
+                _outputReaderScheduler.Dispose();
                 MemoryPool.Dispose();
                 WriteReqPool.Dispose();
                 _threadTcs.SetResult(null);

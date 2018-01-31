@@ -194,7 +194,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     listener.FreeBuffer();
 
                     listener._closed = true;
-
                 }, this).ConfigureAwait(false);
             }
             else

@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         private volatile bool _aborted;
 
-        internal SocketConnection(Socket socket, MemoryPool memoryPool, ISocketsTrace trace)
+        internal SocketConnection(Socket socket, MemoryPool memoryPool, PipeScheduler outputReaderScheduler, ISocketsTrace trace)
         {
             Debug.Assert(socket != null);
             Debug.Assert(memoryPool != null);
@@ -36,6 +36,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _socket = socket;
             MemoryPool = memoryPool;
+            OutputReaderScheduler = outputReaderScheduler;
+
             _trace = trace;
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
@@ -53,7 +55,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public override MemoryPool MemoryPool { get; }
         public override PipeScheduler InputWriterScheduler => PipeScheduler.Inline;
-        public override PipeScheduler OutputReaderScheduler => PipeScheduler.ThreadPool;
+        //public override Scheduler OutputReaderScheduler => Scheduler.TaskRun;
+        public override PipeScheduler OutputReaderScheduler { get; }
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {

@@ -9,10 +9,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal.Coalescing;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 using Microsoft.Extensions.Logging;
 
@@ -21,6 +23,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     internal sealed class SocketTransport : ITransport
     {
         private readonly MemoryPool _memoryPool = new MemoryPool();
+//        private readonly TimerBasedCoalescingScheduler _outputReaderScheduler =
+//            new TimerBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), Scheduler.Inline);
+        private readonly ThreadBasedCoalescingScheduler _outputReaderScheduler =
+            new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
+
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
         private readonly IApplicationLifetime _appLifetime;
@@ -117,6 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         public Task StopAsync()
         {
             _memoryPool.Dispose();
+            _outputReaderScheduler.Dispose();
             return Task.CompletedTask;
         }
 
@@ -131,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         var acceptSocket = await _listenSocket.AcceptAsync();
                         acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                        var connection = new SocketConnection(acceptSocket, _memoryPool, _trace);
+                        var connection = new SocketConnection(acceptSocket, _memoryPool, _outputReaderScheduler, _trace);
                         _ = connection.StartAsync(_handler);
                     }
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)

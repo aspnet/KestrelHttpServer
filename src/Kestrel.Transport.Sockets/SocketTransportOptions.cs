@@ -10,6 +10,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     // TODO: Come up with some options
     public class SocketTransportOptions
     {
-
     }
 }
