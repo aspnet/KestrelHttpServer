@@ -24,9 +24,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     {
         private readonly MemoryPool _memoryPool = new MemoryPool();
 //        private readonly TimerBasedCoalescingScheduler _outputReaderScheduler =
-//            new TimerBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), Scheduler.Inline);
-        private readonly ThreadBasedCoalescingScheduler _outputReaderScheduler =
-            new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
+//            new TimerBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
+//        private readonly ThreadBasedCoalescingScheduler _outputReaderScheduler =
+//            new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
+        private readonly ThreadBasedCoalescingScheduler[] _outputReaderSchedulers = new ThreadBasedCoalescingScheduler[4];
+        private int _lastSchedulerId;
 
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
@@ -53,6 +55,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _handler = handler;
             _appLifetime = applicationLifetime;
             _trace = trace;
+
+            for (var i = 0; i < _outputReaderSchedulers.Length; i++)
+            {
+                _outputReaderSchedulers[i] = new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
+            }
         }
 
         public Task BindAsync()
@@ -124,7 +131,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         public Task StopAsync()
         {
             _memoryPool.Dispose();
-            _outputReaderScheduler.Dispose();
+
+            foreach (var scheduler in _outputReaderSchedulers)
+            {
+                scheduler.Dispose();
+            }
+
             return Task.CompletedTask;
         }
 
@@ -139,7 +151,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         var acceptSocket = await _listenSocket.AcceptAsync();
                         acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                        var connection = new SocketConnection(acceptSocket, _memoryPool, _outputReaderScheduler, _trace);
+                        _lastSchedulerId = (_lastSchedulerId + 1) % _outputReaderSchedulers.Length;
+
+                        var connection = new SocketConnection(acceptSocket, _memoryPool, _outputReaderSchedulers[_lastSchedulerId], _trace);
                         _ = connection.StartAsync(_handler);
                     }
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
