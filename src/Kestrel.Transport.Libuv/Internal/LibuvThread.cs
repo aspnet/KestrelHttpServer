@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _thread.IsBackground = true;
 #endif
             //_outputReaderScheduler = new TimerBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), this);
-            _outputReaderScheduler = new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), this);
+            _outputReaderScheduler = new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1.75), this);
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             MemoryPool = new MemoryPool();

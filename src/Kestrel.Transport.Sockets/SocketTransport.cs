@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 //            new TimerBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
 //        private readonly ThreadBasedCoalescingScheduler _outputReaderScheduler =
 //            new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
-        private readonly ThreadBasedCoalescingScheduler[] _outputReaderSchedulers = new ThreadBasedCoalescingScheduler[4];
+        private readonly ThreadBasedCoalescingScheduler[] _outputReaderSchedulers = new ThreadBasedCoalescingScheduler[2];
         private int _lastSchedulerId;
 
         private readonly IEndPointInformation _endPointInformation;
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             for (var i = 0; i < _outputReaderSchedulers.Length; i++)
             {
-                _outputReaderSchedulers[i] = new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(1), PipeScheduler.Inline);
+                _outputReaderSchedulers[i] = new ThreadBasedCoalescingScheduler(TimeSpan.FromMilliseconds(2), PipeScheduler.Inline);
             }
         }
 
