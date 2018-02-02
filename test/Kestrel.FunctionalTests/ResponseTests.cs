@@ -2497,8 +2497,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (StartLog(out var loggerFactory))
             {
-                var logger = loggerFactory.CreateLogger($"{typeof(ResponseTests).FullName}.{nameof(ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate)}");
-
+                var logger = loggerFactory.CreateLogger("ConnClosedWhenRespDoesNotSatisfyMinDataRate");
                 var chunkSize = 64 * 1024;
                 var chunks = 128;
                 var responseSize = chunks * chunkSize;
