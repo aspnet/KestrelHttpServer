@@ -93,21 +93,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Benchmark(OperationsPerInvoke = Iterations)]
-        public unsafe byte[] AsciiBytesToStringVectorCheckShifts()
-        {
-            for (uint i = 0; i < Iterations; i++)
-            {
-                fixed (byte* pBytes = &_asciiBytes[0])
-                fixed (char* pString = _asciiString)
-                {
-                    TryGetAsciiStringVectorCheckShifts(pBytes, pString, _asciiBytes.Length);
-                }
-            }
-
-            return _asciiBytes;
-        }
-
-        [Benchmark(OperationsPerInvoke = Iterations)]
         public unsafe byte[] AsciiBytesToStringVectorWiden()
         {
             // Widen Acceleration is post netcoreapp2.0
@@ -343,131 +328,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             return isValid;
         }
 
-        public static unsafe bool TryGetAsciiStringVectorCheckShifts(byte* input, char* output, int count)
-        {
-            // Calcuate end position
-            var end = input + count;
-            // Start as valid
-            var isValid = true;
-            do
-            {
-                // If Vector not-accelerated or remaining less than vector size
-                if (!Vector.IsHardwareAccelerated || input > end - Vector<sbyte>.Count)
-                {
-                    if (IntPtr.Size == 8) // Use Intrinsic switch for branch elimination
-                    {
-                        // 64-bit: Loop longs by default
-                        while (input <= end - sizeof(long))
-                        {
-                            isValid &= CheckBytesInAsciiRange(((long*)input)[0]);
-
-                            long x0 = ((int*)input)[0];                  // 0x00000000fedcba98
-                            x0 = (x0 ^ (x0 << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                            x0 = (x0 ^ (x0 << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                            ((long*)output)[0] = x0;
-
-                            long x1 = ((int*)input)[1];                  // 0x00000000fedcba98
-                            x1 = (x1 ^ (x1 << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                            x1 = (x1 ^ (x1 << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                            ((long*)output)[1] = x1;
-
-                            input += sizeof(long);
-                            output += sizeof(long);
-                        }
-                        if (input <= end - sizeof(int))
-                        {
-                            int i = ((int*)input)[0];
-                            isValid &= CheckBytesInAsciiRange(i);
-
-                            long x = i;                               // 0x00000000fedcba98
-                            x = (x ^ (x << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                            x = (x ^ (x << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                            ((long*)output)[0] = x;
-
-                            input += sizeof(int);
-                            output += sizeof(int);
-                        }
-                    }
-                    else
-                    {
-                        // 32-bit: Loop ints by default
-                        while (input <= end - sizeof(int))
-                        {
-                            isValid &= CheckBytesInAsciiRange(((int*)input)[0]);
-
-                            output[0] = (char)input[0];
-                            output[1] = (char)input[1];
-                            output[2] = (char)input[2];
-                            output[3] = (char)input[3];
-
-                            input += sizeof(int);
-                            output += sizeof(int);
-                        }
-                    }
-                    if (input <= end - sizeof(short))
-                    {
-                        isValid &= CheckBytesInAsciiRange(((short*)input)[0]);
-
-                        output[0] = (char)input[0];
-                        output[1] = (char)input[1];
-
-                        input += sizeof(short);
-                        output += sizeof(short);
-                    }
-                    if (input < end)
-                    {
-                        isValid &= CheckBytesInAsciiRange(((sbyte*)input)[0]);
-                        output[0] = (char)input[0];
-                    }
-
-                    return isValid;
-                }
-
-                // do/while as entry condition already checked
-                do
-                {
-                    isValid &= CheckBytesInAsciiRange(Unsafe.AsRef<Vector<sbyte>>(input));
-
-                    // Vector.Widen is only netcoreapp2.1+ so let's do this manually
-                    var i = 0;
-                    do
-                    {
-                        // Vectors are min 16 byte, so lets do 16 byte loops
-                        i += 16;
-                        // Unrolled byte-wise widen
-
-                        long x0 = ((int*)input)[0];                  // 0x00000000fedcba98
-                        x0 = (x0 ^ (x0 << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                        x0 = (x0 ^ (x0 << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                        ((long*)output)[0] = x0;
-
-                        long x1 = ((int*)input)[1];                  // 0x00000000fedcba98
-                        x1 = (x1 ^ (x1 << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                        x1 = (x1 ^ (x1 << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                        ((long*)output)[1] = x1;
-
-                        long x2 = ((int*)input)[2];                  // 0x00000000fedcba98
-                        x2 = (x2 ^ (x2 << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                        x2 = (x2 ^ (x2 << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                        ((long*)output)[2] = x2;
-
-                        long x3 = ((int*)input)[3];                  // 0x00000000fedcba98
-                        x3 = (x3 ^ (x3 << 16)) & 0x0000ffff0000ffff; // 0x0000fedc0000ba98
-                        x3 = (x3 ^ (x3 << 8)) & 0x00ff00ff00ff00ff; // 0x00fe00dc00ba0098
-                        ((long*)output)[3] = x3;
-
-                        input += 16;
-                        output += 16;
-                    } while (i < Vector<sbyte>.Count);
-                } while (input <= end - Vector<sbyte>.Count);
-
-                // Vector path done, loop back to do non-Vector
-                // If is a exact multiple of vector size, bail now
-            } while (input > end - Vector<sbyte>.Count);
-
-            return isValid;
-        }
-
         public static unsafe bool TryGetAsciiString(byte* input, char* output, int count)
         {
             var i = 0;
@@ -595,13 +455,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             VerifyString(verification, '\0');
             BlankString(' ');
             AsciiBytesToStringVectorCheck();
-            VerifyString(verification, ' ');
-
-            BlankString('\0');
-            AsciiBytesToStringVectorCheckShifts();
-            VerifyString(verification, '\0');
-            BlankString(' ');
-            AsciiBytesToStringVectorCheckShifts();
             VerifyString(verification, ' ');
 
             BlankString('\0');
