@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
@@ -89,8 +90,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         string IHttpRequestFeature.Method
         {
-            get => Method;
-            set => Method = value;
+            get
+            {
+                if (_methodText != null)
+                {
+                    return _methodText;
+                }
+
+                _methodText = HttpUtilities.MethodToString(Method) ?? string.Empty;
+                return _methodText;
+            }
+            set
+            {
+                Method = HttpUtilities.GetKnownMethod(value);
+                _methodText = value;
+            }
         }
 
         string IHttpRequestFeature.PathBase
