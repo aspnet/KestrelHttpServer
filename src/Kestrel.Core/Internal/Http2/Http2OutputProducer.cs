@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,6 +53,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public void WriteResponseHeaders(int statusCode, string ReasonPhrase, HttpResponseHeaders responseHeaders)
         {
             _frameWriter.WriteResponseHeaders(_streamId, statusCode, responseHeaders);
+        }
+
+        public Task WriteAsync(Stream stream, long? count, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }

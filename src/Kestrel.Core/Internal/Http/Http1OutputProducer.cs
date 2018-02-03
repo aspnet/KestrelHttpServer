@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -24,8 +25,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly ITimeoutControl _timeoutControl;
         private readonly IKestrelTrace _log;
 
-        // This locks access to to all of the below fields
-        private readonly object _contextLock = new object();
+        // This locks access to the output writing fields below
+        protected readonly SemaphoreSlim _contextSemaphore = new SemaphoreSlim(1);
 
         private bool _completed = false;
 
@@ -76,7 +77,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void Write<T>(Action<PipeWriter, T> callback, T state)
         {
-            lock (_contextLock)
+            _contextSemaphore.Wait();
+            try
             {
                 if (_completed)
                 {
@@ -87,11 +89,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 callback(buffer, state);
                 buffer.Commit();
             }
+            finally
+            {
+                _contextSemaphore.Release();
+            }
         }
 
         public Task WriteAsync<T>(Action<PipeWriter, T> callback, T state)
         {
-            lock (_contextLock)
+            var task = _contextSemaphore.WaitAsync();
+#if NETCOREAPP2_1
+            if (!task.IsCompletedSuccessfully)
+            {
+                return WriteAsync(task, callback, state);
+            }
+#else
+            if (!task.IsCompleted || task.IsFaulted || task.IsCanceled)
+            {
+                return WriteAsync(task, callback, state);
+            }
+#endif
+            return WriteAsyncWithLock(callback, state);
+        }
+
+        private async Task WriteAsync<T>(Task task, Action<PipeWriter, T> callback, T state)
+        {
+            await task;
+            await WriteAsyncWithLock(callback, state);
+        }
+
+        private Task WriteAsyncWithLock<T>(Action<PipeWriter, T> callback, T state)
+        {
+            try
             {
                 if (_completed)
                 {
@@ -102,13 +131,72 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 callback(buffer, state);
                 buffer.Commit();
             }
+            finally
+            {
+                _contextSemaphore.Release();
+            }
 
             return FlushAsync();
         }
 
+#if NETCOREAPP2_1
+        public async Task WriteAsync(Stream stream, long? count, CancellationToken cancellationToken)
+        {
+            const int maxBlockSize = 4032; // Should be: Environment.SystemPageSize https://github.com/dotnet/corefxlab/pull/2099
+
+            var buffer = _pipeWriter;
+            var remaining = count ?? long.MaxValue;
+            int outputBytes;
+            do
+            {
+                await _contextSemaphore.WaitAsync();
+                try
+                {
+                    if (_completed)
+                    {
+                        return;
+                    }
+
+                    var memory = buffer.GetMemory(remaining > maxBlockSize ? maxBlockSize : (int)remaining);
+                    // Read the stream directly into the output buffer
+                    if (memory.Length > remaining)
+                    {
+                        memory = memory.Slice((int)remaining);
+                    }
+                    outputBytes = await stream.ReadAsync(memory, cancellationToken);
+                    remaining -= outputBytes;
+                    if (outputBytes > 0)
+                    {
+                        buffer.Advance(outputBytes);
+                        buffer.Commit();
+                    }
+                }
+                finally
+                {
+                    _contextSemaphore.Release();
+                }
+
+                // WriteAsync() - not forced flush here
+                await buffer.FlushAsync(cancellationToken);
+            } while (outputBytes > 0 && !cancellationToken.IsCancellationRequested);
+            // FlushAsync() - forced flush; or better move it to outer loop
+
+            if (count.HasValue && remaining > 0)
+            {
+                // throw
+            }
+        }
+#else
+        public Task WriteAsync(Stream stream, long? count, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+#endif
+
         public void WriteResponseHeaders(int statusCode, string reasonPhrase, HttpResponseHeaders responseHeaders)
         {
-            lock (_contextLock)
+            _contextSemaphore.Wait();
+            try
             {
                 if (_completed)
                 {
@@ -125,11 +213,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 writer.Write(_bytesEndHeaders);
                 buffer.Commit();
             }
+            finally
+            {
+                _contextSemaphore.Release();
+            }
         }
 
         public void Dispose()
         {
-            lock (_contextLock)
+            _contextSemaphore.Wait();
+            try
             {
                 if (_completed)
                 {
@@ -140,11 +233,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _completed = true;
                 _pipeWriter.Complete();
             }
+            finally
+            {
+                _contextSemaphore.Release();
+            }
         }
 
         public void Abort(Exception error)
         {
-            lock (_contextLock)
+            _contextSemaphore.Wait();
+            try
             {
                 if (_completed)
                 {
@@ -156,6 +254,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 _outputPipeReader.CancelPendingRead();
                 _pipeWriter.Complete(error);
+            }
+            finally
+            {
+                _contextSemaphore.Release();
             }
         }
 
@@ -170,7 +272,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             var writableBuffer = default(PipeWriter);
             long bytesWritten = 0;
-            lock (_contextLock)
+
+            _contextSemaphore.Wait();
+            try
             {
                 if (_completed)
                 {
@@ -186,6 +290,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 writableBuffer.Commit();
+            }
+            finally
+            {
+                _contextSemaphore.Release();
             }
 
             return FlushAsync(writableBuffer, bytesWritten, cancellationToken);
