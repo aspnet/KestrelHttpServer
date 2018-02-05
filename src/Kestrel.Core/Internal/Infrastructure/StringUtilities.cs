@@ -93,11 +93,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 {
                     var vector = Unsafe.AsRef<Vector<sbyte>>(input);
                     isValid &= CheckBytesInAsciiRange(vector);
-                    // Vectorized widen, byte vector to two short vectors
-                    // Split to two stage https://github.com/dotnet/coreclr/issues/13024#issuecomment-321413029
-                    Vector.Widen(vector, out var vector1, out var vector2);
-                    Unsafe.AsRef<Vector<short>>(output) = vector1;
-                    Unsafe.AsRef<Vector<short>>(output + Vector<short>.Count) = vector2;
+                    Vector.Widen(
+                        vector, 
+                        out Unsafe.AsRef<Vector<short>>(output), 
+                        out Unsafe.AsRef<Vector<short>>(output + Vector<short>.Count));
 
                     input += Vector<sbyte>.Count;
                     output += Vector<sbyte>.Count;
