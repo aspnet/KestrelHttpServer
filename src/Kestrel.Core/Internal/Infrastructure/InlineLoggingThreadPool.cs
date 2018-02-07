@@ -16,27 +16,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _log = log;
         }
 
-        public override void Run(Action action)
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception e)
-            {
-                _log.LogError(0, e, "InlineLoggingThreadPool.Run");
-            }
-        }
+        public override void Run(Action action) 
+            => RunInline(action);
 
-        public override void UnsafeRun(WaitCallback action, object state)
-        {
-            action(state);
-        }
+        public override void UnsafeRun(WaitCallback action, object state) 
+            => action(state);
 
-        public override void Schedule(Action action)
-        {
-            Run(action);
-        }
+        public override void Schedule(Action action) 
+            => RunInline(action);
 
         public override void Schedule(Action<object> action, object state)
         {
@@ -47,6 +34,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             catch (Exception e)
             {
                 _log.LogError(0, e, "InlineLoggingThreadPool.Schedule");
+            }
+        }
+
+        // Non-virtual method as common point to call through to
+        private void RunInline(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                _log.LogError(0, e, "InlineLoggingThreadPool.RunInline");
             }
         }
     }
