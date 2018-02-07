@@ -40,24 +40,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             };
         }
 
-        public override void Run(Action action)
-        {
-            System.Threading.ThreadPool.QueueUserWorkItem(_runAction, action);
-        }
+        public override void Run(Action action) 
+            => RunOnThreadPool(action);
 
         public override void UnsafeRun(WaitCallback action, object state)
         {
+#if NETSTANDARD2_0
             System.Threading.ThreadPool.QueueUserWorkItem(action, state);
+#else
+            // Lower contention if already on threadpool thread, otherwise same behaviour
+            System.Threading.ThreadPool.QueueUserWorkItem(action, state, preferLocal: true);
+#endif
         }
 
-        public override void Schedule(Action action)
-        {
-            Run(action);
-        }
+        public override void Schedule(Action action) 
+            => RunOnThreadPool(action);
 
         public override void Schedule(Action<object> action, object state)
         {
-            Run(() => action(state));
+            Action closure = () => action(state);
+            RunOnThreadPool(closure);
+        }
+
+        // Non-virtual method as common point to call through to
+        protected void RunOnThreadPool(Action action)
+        {
+#if NETSTANDARD2_0
+            System.Threading.ThreadPool.QueueUserWorkItem(_runAction, action);
+#else
+            // Lower contention if already on threadpool thread, otherwise same behaviour
+            System.Threading.ThreadPool.QueueUserWorkItem(_runAction, action, preferLocal: true);
+#endif
         }
     }
 }
