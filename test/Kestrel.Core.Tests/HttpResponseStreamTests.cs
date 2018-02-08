@@ -99,8 +99,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var stream = new HttpResponseStream(Mock.Of<IHttpBodyControlFeature>(), Mock.Of<IHttpResponseControl>());
             stream.StartAcceptingWrites();
             stream.StopAcceptingWrites();
-            Assert.Throws<ObjectDisposedException>(() => { stream.WriteAsync(new byte[1], 0, 1); });
-        }
+			var ex = Assert.Throws<ObjectDisposedException>(() => { stream.WriteAsync(new byte[1], 0, 1); });
+			Assert.Contains(CoreStrings.WritingToResponseAfterResponseEnded, ex.Message);
+		}
 
         [Fact]
         public async Task SynchronousWritesThrowIfDisallowedByIHttpBodyControlFeature()

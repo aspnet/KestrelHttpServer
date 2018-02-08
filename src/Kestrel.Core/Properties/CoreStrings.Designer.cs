@@ -878,10 +878,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         internal static string FormatWritingToResponseBodyNotSupported(object statusCode)
             => string.Format(CultureInfo.CurrentCulture, GetString("WritingToResponseBodyNotSupported", "statusCode"), statusCode);
 
-        /// <summary>
-        /// Connection shutdown abnormally.
-        /// </summary>
-        internal static string ConnectionShutdownError
+		/// <summary>
+		/// Cannot write to the response because the response has ended.
+		/// </summary>
+		internal static string WritingToResponseAfterResponseEnded
+		{
+			get => GetString("WritingToResponseAfterResponseEnded");
+		}
+
+		/// <summary>
+		/// Connection shutdown abnormally.
+		/// </summary>
+		internal static string ConnectionShutdownError
         {
             get => GetString("ConnectionShutdownError");
         }
