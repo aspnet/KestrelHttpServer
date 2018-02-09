@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
@@ -106,6 +107,119 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             }
 
             return _asciiBytes;
+        }
+
+        [Benchmark(OperationsPerInvoke = Iterations)]
+        public unsafe byte[] AsciiBytesToStringSpanWiden()
+        {
+            // Widen Acceleration is post netcoreapp2.0
+            for (uint i = 0; i < Iterations; i++)
+            {
+                fixed (char* pString = _asciiString)
+                {
+                    TryGetAsciiStringWidenSpan(_asciiBytes, new Span<char>(pString, _asciiString.Length));
+                }
+            }
+
+            return _asciiBytes;
+        }
+
+        public static bool TryGetAsciiStringWidenSpan(ReadOnlySpan<byte> input, Span<char> output)
+        {
+            // Start as valid
+            var isValid = true;
+
+            do
+            {
+                // If Vector not-accelerated or remaining less than vector size
+                if (!Vector.IsHardwareAccelerated || input.Length < Vector<sbyte>.Count)
+                {
+                    if (IntPtr.Size == 8) // Use Intrinsic switch for branch elimination
+                    {
+                        // 64-bit: Loop longs by default
+                        while ((uint)sizeof(long) <= (uint)input.Length)
+                        {
+                            isValid &= CheckBytesInAsciiRange(MemoryMarshal.Cast<byte, long>(input)[0]);
+
+                            output[0] = (char)input[0];
+                            output[1] = (char)input[1];
+                            output[2] = (char)input[2];
+                            output[3] = (char)input[3];
+                            output[4] = (char)input[4];
+                            output[5] = (char)input[5];
+                            output[6] = (char)input[6];
+                            output[7] = (char)input[7];
+
+                            input = input.Slice(sizeof(long));
+                            output = output.Slice(sizeof(long));
+                        }
+                        if ((uint)sizeof(int) <= (uint)input.Length)
+                        {
+                            isValid &= CheckBytesInAsciiRange(MemoryMarshal.Cast<byte, int>(input)[0]);
+
+                            output[0] = (char)input[0];
+                            output[1] = (char)input[1];
+                            output[2] = (char)input[2];
+                            output[3] = (char)input[3];
+
+                            input = input.Slice(sizeof(int));
+                            output = output.Slice(sizeof(int));
+                        }
+                    }
+                    else
+                    {
+                        // 32-bit: Loop ints by default
+                        while ((uint)sizeof(int) <= (uint)input.Length)
+                        {
+                            isValid &= CheckBytesInAsciiRange(MemoryMarshal.Cast<byte, int>(input)[0]);
+
+                            output[0] = (char)input[0];
+                            output[1] = (char)input[1];
+                            output[2] = (char)input[2];
+                            output[3] = (char)input[3];
+
+                            input = input.Slice(sizeof(int));
+                            output = output.Slice(sizeof(int));
+                        }
+                    }
+                    if ((uint)sizeof(short) <= (uint)input.Length)
+                    {
+                        isValid &= CheckBytesInAsciiRange(MemoryMarshal.Cast<byte, short>(input)[0]);
+
+                        output[0] = (char)input[0];
+                        output[1] = (char)input[1];
+
+                        input = input.Slice(sizeof(short));
+                        output = output.Slice(sizeof(short));
+                    }
+                    if ((uint)sizeof(byte) <= (uint)input.Length)
+                    {
+                        isValid &= CheckBytesInAsciiRange((sbyte)input[0]);
+                        output[0] = (char)input[0];
+                    }
+
+                    return isValid;
+                }
+
+                // do/while as entry condition already checked
+                do
+                {
+                    var vector = MemoryMarshal.Cast<byte, Vector<sbyte>>(input)[0];
+                    isValid &= CheckBytesInAsciiRange(vector);
+                    Vector.Widen(
+                        vector,
+                        out MemoryMarshal.Cast<char, Vector<short>>(output)[0],
+                        out MemoryMarshal.Cast<char, Vector<short>>(output)[1]);
+
+                    input = input.Slice(Vector<sbyte>.Count);
+                    output = output.Slice(Vector<sbyte>.Count);
+                } while (input.Length >= Vector<sbyte>.Count);
+
+                // Vector path done, loop back to do non-Vector
+                // If is a exact multiple of vector size, bail now
+            } while (input.Length > 0);
+
+            return isValid;
         }
 
         public static unsafe bool TryGetAsciiStringVectorWiden(byte* input, char* output, int count)
@@ -461,6 +575,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             VerifyString(verification, '\0');
             BlankString(' ');
             AsciiBytesToStringVectorWiden();
+            VerifyString(verification, ' ');
+
+            BlankString('\0');
+            AsciiBytesToStringSpanWiden();
+            VerifyString(verification, '\0');
+            BlankString(' ');
+            AsciiBytesToStringSpanWiden();
             VerifyString(verification, ' ');
         }
 
