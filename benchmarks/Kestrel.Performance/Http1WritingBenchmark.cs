@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private static readonly Func<object, Task> _psuedoAsyncTaskFunc = (obj) => _psuedoAsyncTask;
 
         private readonly TestHttp1Connection _http1Connection;
-        private (IDuplexPipe Transport, IDuplexPipe Application) _pair;
+        private DuplexPipe.DuplexPipePair _pair;
 
         private readonly byte[] _writeData;
 

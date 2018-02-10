@@ -94,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private static readonly byte[] _maxData = Encoding.ASCII.GetBytes(new string('a', Http2Frame.MinAllowedMaxFrameSize));
 
         private readonly MemoryPool _memoryPool = new MemoryPool();
-        private readonly (IDuplexPipe Transport, IDuplexPipe Application) _pair;
+        private readonly DuplexPipe.DuplexPipePair _pair;
         private readonly TestApplicationErrorLogger _logger;
         private readonly Http2ConnectionContext _connectionContext;
         private readonly Http2Connection _connection;
