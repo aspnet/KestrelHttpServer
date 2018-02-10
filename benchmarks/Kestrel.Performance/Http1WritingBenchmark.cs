@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         {
             using (var memoryPool = new MemoryPool())
             {
-                var pair = PipeFactory.CreateConnectionPair(memoryPool);
+                var pair = DuplexPipe.CreateConnectionPair(memoryPool);
                 _pair = pair;
 
                 var serviceContext = new ServiceContext

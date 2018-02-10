@@ -122,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public Http2ConnectionTests()
         {
-            _pair = PipeFactory.CreateConnectionPair(_memoryPool);
+            _pair = DuplexPipe.CreateConnectionPair(_memoryPool);
 
             _noopApplication = context => Task.CompletedTask;
 
