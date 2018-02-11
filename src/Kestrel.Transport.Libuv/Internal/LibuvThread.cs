@@ -3,10 +3,11 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO.Pipelines;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -20,20 +21,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
         // otherwise it needs to wait till the next pass of the libuv loop
-        private readonly int _maxLoops = 8;
+        private readonly int _maxWorkBatch = 1024 * 8; // previous was queue size 1024 * 8 loops == 8192 work items
+        private readonly int _maxCloseHandleBatch = 256 * 8; // previous was queue size 1024 * 8 loops == 2048 work items
 
         private readonly LibuvTransport _transport;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
-        private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<VoidResult> _threadTcs = new TaskCompletionSource<VoidResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
-        private Queue<Work> _workAdding = new Queue<Work>(1024);
-        private Queue<Work> _workRunning = new Queue<Work>(1024);
-        private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
-        private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>(256);
-        private readonly object _workSync = new object();
-        private readonly object _closeHandleSync = new object();
+
+        private CachelinePaddedInt _workAlerted;
+        private ConcurrentQueue<Work> _work = new ConcurrentQueue<Work>();
+        private CachelinePaddedInt _closeHandleAlerted;
+        private ConcurrentQueue<CloseHandle> _closeHandles = new ConcurrentQueue<CloseHandle>();
+        
         private readonly object _startSync = new object();
         private bool _stopImmediate = false;
         private bool _initCompleted = false;
@@ -60,13 +62,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             WriteReqPool = new WriteReqPool(this, _log);
         }
 
-        // For testing
-        public LibuvThread(LibuvTransport transport, int maxLoops)
-            : this(transport)
-        {
-            _maxLoops = maxLoops;
-        }
-
         public UvLoopHandle Loop { get { return _loop; } }
 
         public MemoryPool MemoryPool { get; }
@@ -85,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public Task StartAsync()
         {
-            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tcs = new TaskCompletionSource<VoidResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             _thread.Start(tcs);
             return tcs.Task;
         }
@@ -179,11 +174,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 State = state
             };
 
-            lock (_workSync)
-            {
-                _workAdding.Enqueue(work);
-            }
-            _post.Send();
+            _work.Enqueue(work);
+
+            NofityWork();
         }
 
         private void Post(Action<LibuvThread> callback)
@@ -193,7 +186,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public Task PostAsync<T>(Action<T> callback, T state)
         {
-            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tcs = new TaskCompletionSource<VoidResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             var work = new Work
             {
                 CallbackAdapter = CallbackAdapter<T>.PostAsyncCallbackAdapter,
@@ -202,12 +195,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 Completion = tcs
             };
 
-            lock (_workSync)
-            {
-                _workAdding.Enqueue(work);
-            }
-            _post.Send();
+            _work.Enqueue(work);
+
+            NofityWork();
             return tcs.Task;
+        }
+
+        private void NofityWork()
+        {
+            if (Interlocked.Exchange(ref _workAlerted.Value, 1) == 0)
+            {
+                _post.Send();
+            }
         }
 
         public void Walk(Action<IntPtr> callback)
@@ -227,29 +226,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
             EnqueueCloseHandle(callback, handle);
-            _post.Send();
+
+            NofityCloseHandle();
+
+            void NofityCloseHandle()
+            {
+                if (Interlocked.Exchange(ref _closeHandleAlerted.Value, 1) == 0 && 
+                    _workAlerted.Value == 0)
+                {
+                    _post.Send();
+                }
+            }
         }
 
         private void EnqueueCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
             var closeHandle = new CloseHandle { Callback = callback, Handle = handle };
-            lock (_closeHandleSync)
-            {
-                _closeHandleAdding.Enqueue(closeHandle);
-            }
+            _closeHandles.Enqueue(closeHandle);
         }
 
         private void ThreadStart(object parameter)
         {
             lock (_startSync)
             {
-                var tcs = (TaskCompletionSource<int>)parameter;
+                var tcs = (TaskCompletionSource<VoidResult>)parameter;
                 try
                 {
                     _loop.Init(_transport.Libuv);
                     _post.Init(_loop, OnPost, EnqueueCloseHandle);
                     _initCompleted = true;
-                    tcs.SetResult(0);
+                    tcs.SetResult(default);
                 }
                 catch (Exception ex)
                 {
@@ -298,7 +304,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 MemoryPool.Dispose();
                 WriteReqPool.Dispose();
-                _threadTcs.SetResult(null);
+                _threadTcs.SetResult(default);
 
 #if DEBUG
                 // Check for handle leaks after disposing everything
@@ -309,80 +315,101 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void OnPost()
         {
-            var loopsRemaining = _maxLoops;
-            bool wasWork;
+            DoPostWork(maxItems: _maxWorkBatch);
+
+            DoPostCloseHandle(maxItems: _maxCloseHandleBatch);
+        }
+
+        private void DoPostWork(int maxItems)
+        {
+            var i = 0;
+            var queue = _work;
+            bool shouldLoop;
             do
             {
-                wasWork = DoPostWork();
-                wasWork = DoPostCloseHandle() || wasWork;
-                loopsRemaining--;
-            } while (wasWork && loopsRemaining > 0);
+                i++;
+                if (queue.TryDequeue(out var work))
+                {
+                    var completion = work.Completion;
+                    try
+                    {
+                        work.CallbackAdapter(work.Callback, work.State);
+                        completion?.TrySetResult(default);
+                    }
+                    catch (Exception ex)
+                    {
+                        HandleWorkException(completion, ex);
+                    }
+
+                    shouldLoop = i < maxItems;
+                }
+                else
+                {
+                    shouldLoop = false;
+                }
+
+                if (!shouldLoop && i <= maxItems && Volatile.Read(ref _workAlerted.Value) == 1)
+                {
+                    Volatile.Write(ref _workAlerted.Value, 0);
+                    // Loop once more after changing the alert value; to catch any added items in activation race
+                    shouldLoop = true;
+                }
+            } while (shouldLoop);
+
+            void HandleWorkException(TaskCompletionSource<VoidResult> completion, Exception ex)
+            {
+                if (completion != null)
+                {
+                    completion.TrySetException(ex);
+                }
+                else
+                {
+                    _log.LogError(0, ex, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
+                    ExceptionDispatchInfo.Capture(ex).Throw();
+                }
+            }
         }
 
-        private bool DoPostWork()
+        private void DoPostCloseHandle(int maxItems)
         {
-            Queue<Work> queue;
-            lock (_workSync)
+            var i = 0;
+            var queue = _closeHandles;
+            bool shouldLoop;
+            do
             {
-                queue = _workAdding;
-                _workAdding = _workRunning;
-                _workRunning = queue;
-            }
-
-            bool wasWork = queue.Count > 0;
-
-            while (queue.Count != 0)
-            {
-                var work = queue.Dequeue();
-                try
+                i++;
+                if (queue.TryDequeue(out var closeHandle))
                 {
-                    work.CallbackAdapter(work.Callback, work.State);
-                    work.Completion?.TrySetResult(null);
-                }
-                catch (Exception ex)
-                {
-                    if (work.Completion != null)
+                    try
                     {
-                        work.Completion.TrySetException(ex);
+                        closeHandle.Callback(closeHandle.Handle);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _log.LogError(0, ex, $"{nameof(LibuvThread)}.{nameof(DoPostWork)}");
-                        throw;
+                        HandleCloseHandleException(ex);
                     }
+
+                    shouldLoop = i < maxItems;
                 }
-            }
-
-            return wasWork;
-        }
-
-        private bool DoPostCloseHandle()
-        {
-            Queue<CloseHandle> queue;
-            lock (_closeHandleSync)
-            {
-                queue = _closeHandleAdding;
-                _closeHandleAdding = _closeHandleRunning;
-                _closeHandleRunning = queue;
-            }
-
-            bool wasWork = queue.Count > 0;
-
-            while (queue.Count != 0)
-            {
-                var closeHandle = queue.Dequeue();
-                try
+                else
                 {
-                    closeHandle.Callback(closeHandle.Handle);
+                    shouldLoop = false;
                 }
-                catch (Exception ex)
+
+                if (!shouldLoop && i <= maxItems && Volatile.Read(ref _closeHandleAlerted.Value) == 1)
                 {
-                    _log.LogError(0, ex, $"{nameof(LibuvThread)}.{nameof(DoPostCloseHandle)}");
-                    throw;
+                    Volatile.Write(ref _closeHandleAlerted.Value, 0);
+                    // Loop once more after changing the alert value; to catch any added items in activation race
+                    shouldLoop = true;
                 }
             }
+            while (shouldLoop);
 
-            return wasWork;
+            void HandleCloseHandleException(Exception ex)
+            {
+                _log.LogError(0, ex, $"{nameof(LibuvThread)}.{nameof(DoPostCloseHandle)}");
+                ExceptionDispatchInfo.Capture(ex).Throw();
+            }
         }
 
         private static async Task<bool> WaitAsync(Task task, TimeSpan timeout)
@@ -405,7 +432,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             public Action<object, object> CallbackAdapter;
             public object Callback;
             public object State;
-            public TaskCompletionSource<object> Completion;
+            public TaskCompletionSource<VoidResult> Completion;
         }
 
         private struct CloseHandle
@@ -418,6 +445,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             public static readonly Action<object, object> PostCallbackAdapter = (callback, state) => ((Action<T>)callback).Invoke((T)state);
             public static readonly Action<object, object> PostAsyncCallbackAdapter = (callback, state) => ((Action<T>)callback).Invoke((T)state);
+        }
+
+        private readonly struct VoidResult { }
+
+        [StructLayout(LayoutKind.Explicit, Size = 128)]
+        private struct CachelinePaddedInt
+        {
+            [FieldOffset(offset: 64)]
+            public int Value;
         }
     }
 }
