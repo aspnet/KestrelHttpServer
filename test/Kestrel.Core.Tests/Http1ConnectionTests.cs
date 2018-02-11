@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
@@ -790,6 +791,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Assert
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() => ((IHttpMaxRequestBodySizeFeature)_http1Connection).MaxRequestBodySize = -1);
             Assert.StartsWith(CoreStrings.NonNegativeNumberOrNullRequired, ex.Message);
+        }
+
+        [Fact]
+        public async Task ConsumesRequestBeforeClosingConnection()
+        {
+            var httpApplication = new DummyApplication(async context =>
+            {
+                var buffer = new byte[10];
+                await context.Response.Body.WriteAsync(buffer, 0, 10);
+            });
+
+            var requestProcessingTask = _http1Connection.ProcessRequestsAsync(httpApplication);
+
+            var requestCompleted = false;
+            _application.Output.OnReaderCompleted((exception, state) => { requestCompleted = true; }, null);
+
+            var data = Encoding.ASCII.GetBytes("POST / HTTP/1.1\r\nHost:\r\nConnection: close\r\ncontent-length: 1\r\n\r\n");
+            await _application.Output.WriteAsync(data);
+
+            // Wait for ProcessRequestsAsync to process the request
+            // Unfortunately there is no way to know when it is waiting on the request body
+            await Task.Delay(150);
+
+            Assert.False(requestCompleted);
+
+            data = Encoding.ASCII.GetBytes("a");
+            await _application.Output.WriteAsync(data);
+            await requestProcessingTask.TimeoutAfter(TestConstants.DefaultTimeout);
         }
 
         private static async Task WaitForCondition(TimeSpan timeout, Func<bool> condition)
