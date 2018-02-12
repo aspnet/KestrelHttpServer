@@ -31,9 +31,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
 
-        private CachelinePaddedInt _workAlerted;
+        private CachelinePaddedInt _workActive;
         private ConcurrentQueue<Work> _work = new ConcurrentQueue<Work>();
-        private CachelinePaddedInt _closeHandleAlerted;
+        private CachelinePaddedInt _closeHandleActive;
         private ConcurrentQueue<CloseHandle> _closeHandles = new ConcurrentQueue<CloseHandle>();
         
         private readonly object _startSync = new object();
@@ -203,9 +203,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void NofityWork()
         {
-            if (Interlocked.Exchange(ref _workAlerted.Value, 1) == 0)
+            if (TryActivateWorkProcessing())
             {
-                _post.Send();
+                WakupProcessing();
             }
         }
 
@@ -225,17 +225,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
-            EnqueueCloseHandle(callback, handle);
+            var closeHandle = new CloseHandle { Callback = callback, Handle = handle };
+            _closeHandles.Enqueue(closeHandle);
 
             NofityCloseHandle();
+        }
 
-            void NofityCloseHandle()
+        private void NofityCloseHandle()
+        {
+            if (TryActivateCloseHandleProcessing())
             {
-                if (Interlocked.Exchange(ref _closeHandleAlerted.Value, 1) == 0 && 
-                    _workAlerted.Value == 0)
-                {
-                    _post.Send();
-                }
+                WakupProcessing();
             }
         }
 
@@ -243,6 +243,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             var closeHandle = new CloseHandle { Callback = callback, Handle = handle };
             _closeHandles.Enqueue(closeHandle);
+
+            // Already on Libuv thread at earlier stage, don't need to wakeup processing,
+            // just activate the queue
+            ActivateCloseHandleProcessing();
         }
 
         private void ThreadStart(object parameter)
@@ -313,6 +317,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
+        private void WakupProcessing()
+        {
+            _post.Send();
+        }
+
         private void OnPost()
         {
             DoPostWork(maxItems: _maxWorkBatch);
@@ -320,12 +329,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             DoPostCloseHandle(maxItems: _maxCloseHandleBatch);
         }
 
+        private bool TryActivateWorkProcessing() => Interlocked.Exchange(ref _workActive.Value, 1) == 0;
+        private void DeactivateWorkProcessing() => Volatile.Write(ref _workActive.Value, 0);
+        private bool IsWorkProcessingActive => Volatile.Read(ref _workActive.Value) == 1;
+
         private void DoPostWork(int maxItems)
         {
             var i = 0;
             var queue = _work;
-            bool shouldLoop;
-            do
+            bool shouldLoop = IsWorkProcessingActive;
+            while (shouldLoop)
             {
                 i++;
                 if (queue.TryDequeue(out var work))
@@ -348,13 +361,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     shouldLoop = false;
                 }
 
-                if (!shouldLoop && i <= maxItems && Volatile.Read(ref _workAlerted.Value) == 1)
+                if (!shouldLoop && i <= maxItems && IsWorkProcessingActive)
                 {
-                    Volatile.Write(ref _workAlerted.Value, 0);
-                    // Loop once more after changing the alert value; to catch any added items in activation race
+                    DeactivateWorkProcessing();
+                    // Loop once more after deactivating; to catch any added items in activation race
                     shouldLoop = true;
                 }
-            } while (shouldLoop);
+            }
 
             void HandleWorkException(TaskCompletionSource<VoidResult> completion, Exception ex)
             {
@@ -370,12 +383,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
+        private bool TryActivateCloseHandleProcessing() => Interlocked.Exchange(ref _closeHandleActive.Value, 1) == 0 && _workActive.Value == 0;
+        private void ActivateCloseHandleProcessing() => Volatile.Write(ref _closeHandleActive.Value, 1);
+        private void DeactivateCloseHandleProcessing() => Volatile.Write(ref _closeHandleActive.Value, 0);
+        private bool IsCloseHandleProcessingActive => Volatile.Read(ref _closeHandleActive.Value) == 1;
+
         private void DoPostCloseHandle(int maxItems)
         {
             var i = 0;
             var queue = _closeHandles;
-            bool shouldLoop;
-            do
+            bool shouldLoop = IsCloseHandleProcessingActive;
+            while (shouldLoop)
             {
                 i++;
                 if (queue.TryDequeue(out var closeHandle))
@@ -396,14 +414,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                     shouldLoop = false;
                 }
 
-                if (!shouldLoop && i <= maxItems && Volatile.Read(ref _closeHandleAlerted.Value) == 1)
+                if (!shouldLoop && i <= maxItems && IsCloseHandleProcessingActive)
                 {
-                    Volatile.Write(ref _closeHandleAlerted.Value, 0);
-                    // Loop once more after changing the alert value; to catch any added items in activation race
+                    DeactivateCloseHandleProcessing();
+                    // Loop once more after deactivating; to catch any added items in activation race
                     shouldLoop = true;
                 }
             }
-            while (shouldLoop);
 
             void HandleCloseHandleException(Exception ex)
             {
