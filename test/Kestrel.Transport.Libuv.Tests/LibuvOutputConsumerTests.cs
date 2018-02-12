@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             _mockLibuv = new MockLibuv();
 
             var libuvTransport = new LibuvTransport(_mockLibuv, new TestLibuvTransportContext(), new ListenOptions((ulong)0));
-            _libuvThread = new LibuvThread(libuvTransport, maxLoops: 1);
+            _libuvThread = new LibuvThread(libuvTransport);
             _libuvThread.StartAsync().Wait();
         }
 
