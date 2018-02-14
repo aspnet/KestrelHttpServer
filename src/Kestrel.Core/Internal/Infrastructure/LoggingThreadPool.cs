@@ -17,10 +17,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             _log = log;
 
-            // Curry and capture log in closures once
-            // The currying is done in functions of the same name to improve the
+            // Curry and capture log in closure once
+            // The currying is done in function of the same name to improve the
             // call stack for exceptions and profiling else it shows up as LoggingThreadPool.ctor>b__4_0
-            // and you aren't sure which of the 3 functions was called.
             RunAction();
         }
 
@@ -35,29 +34,96 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(0, e, "LoggingThreadPool.Run");
+                    _log.LogError(0, e, "LoggingThreadPool.RunAction");
                 }
             };
         }
 
         public override void Run(Action action)
         {
-            System.Threading.ThreadPool.QueueUserWorkItem(_runAction, action);
+            if (Thread.CurrentThread.IsThreadPoolThread)
+            {
+                RunIsOnThreadPool(action);
+            }
+            else
+            {
+                RunOnThreadPool(action);
+            }
         }
 
         public override void UnsafeRun(WaitCallback action, object state)
         {
-            System.Threading.ThreadPool.QueueUserWorkItem(action, state);
+            if (Thread.CurrentThread.IsThreadPoolThread)
+            {
+                action(state);
+            }
+            else
+            {
+                System.Threading.ThreadPool.QueueUserWorkItem(action, state);
+            }
         }
 
         public override void Schedule(Action action)
         {
-            Run(action);
+            if (Thread.CurrentThread.IsThreadPoolThread)
+            {
+                RunIsOnThreadPool(action);
+            }
+            else
+            {
+                RunOnThreadPool(action);
+            }
         }
 
         public override void Schedule(Action<object> action, object state)
         {
-            Run(() => action(state));
+            if (Thread.CurrentThread.IsThreadPoolThread)
+            {
+                RunIsOnThreadPool(action, state);
+            }
+            else
+            {
+                // Closure outside of method as C# compiler will make it anyway if not used
+                // https://github.com/dotnet/roslyn/issues/22589
+                RunOnThreadPoolWithClosure(action, state);
+            }
+        }
+
+        // Non-virtual methods as common point to call through to
+
+        private void RunOnThreadPoolWithClosure(Action<object> action, object state)
+        {
+            Action closure = () => action(state);
+            System.Threading.ThreadPool.QueueUserWorkItem(_runAction, closure);
+        }
+
+        private void RunOnThreadPool(Action action)
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem(_runAction, action);
+        }
+
+        private void RunIsOnThreadPool(Action<object> action, object state)
+        {
+            try
+            {
+                action(state);
+            }
+            catch (Exception e)
+            {
+                _log.LogError(0, e, "LoggingThreadPool.RunIsOnThreadPool");
+            }
+        }
+
+        private void RunIsOnThreadPool(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                _log.LogError(0, e, "LoggingThreadPool.RunIsOnThreadPool");
+            }
         }
     }
 }
