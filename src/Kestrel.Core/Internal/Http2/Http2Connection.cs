@@ -403,7 +403,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     LocalEndPoint = _context.LocalEndPoint,
                     RemoteEndPoint = _context.RemoteEndPoint,
                     StreamLifetimeHandler = this,
-                    FrameWriter = _frameWriter
+                    FrameWriter = _frameWriter,
+                    ApplicationScheduler = _context.ApplicationScheduler
                 });
 
                 if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == Http2HeadersFrameFlags.END_STREAM)

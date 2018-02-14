@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
+using System.Threading;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 
@@ -23,5 +24,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public IPEndPoint RemoteEndPoint { get; set; }
         public IDuplexPipe Transport { get; set; }
         public IDuplexPipe Application { get; set; }
+        public PipeScheduler ApplicationScheduler { get; set; }
     }
 }
