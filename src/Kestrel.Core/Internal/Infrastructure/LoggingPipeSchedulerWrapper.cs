@@ -46,6 +46,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _innerScheduler.Schedule(_runAction, action);
         }
 
+        // REVIEW: This allocates a closure per call like the old LoggingThreadPool but unlike
+        // the old InilneLoggingThreadPool. I'm pretty sure Pipes only uses this overload to
+        // invoke completion callbacks which is pretty rare.
         public override void Schedule(Action<object> action, object state)
         {
             Schedule(() => action(state));

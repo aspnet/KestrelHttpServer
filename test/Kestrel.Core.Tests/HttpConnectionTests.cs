@@ -36,6 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 HttpConnectionId = long.MinValue,
                 Application = pair.Application,
                 Transport = pair.Transport,
+                ApplicationScheduler = PipeScheduler.Inline,
                 ServiceContext = new TestServiceContext
                 {
                     SystemClock = new SystemClock()

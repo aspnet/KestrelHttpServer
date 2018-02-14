@@ -37,6 +37,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             _socket = socket;
             MemoryPool = memoryPool;
             _trace = trace;
+
+            // REVIEW: Ideally we'd use the inline scheduler for the socket transport, but
+            // this doesn't play nicely with the request body reader scheduler selection at the moment.
             ApplicationScheduler = PipeScheduler.ThreadPool;
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint;

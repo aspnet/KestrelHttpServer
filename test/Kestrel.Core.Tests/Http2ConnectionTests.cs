@@ -259,7 +259,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 },
                 MemoryPool = _memoryPool,
                 Application = _pair.Application,
-                Transport = _pair.Transport
+                Transport = _pair.Transport,
+                ApplicationScheduler = PipeScheduler.Inline
             };
             _connection = new Http2Connection(_connectionContext);
         }
