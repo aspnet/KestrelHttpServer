@@ -422,7 +422,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 Output.Abort(error);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
-                ThreadPool.QueueUserWorkItem(state => ((HttpProtocol)state).CancelRequestAbortedToken(), this);
+
+                // REVIEW: Should this still QUWI even if the user selects the inline scheduler?
+                // Should we remove the closure allocation? Or maybe allocate the closure once at the start of the connection?
+                // I'm using the ApplicationScheduler for now so we don't have to introduce timeouts in LibuvOutputConsumerTests.
+
+                //ThreadPool.QueueUserWorkItem(state => ((HttpProtocol)state).CancelRequestAbortedToken(), this);
+                _context.ApplicationScheduler.Schedule(CancelRequestAbortedToken);
             }
         }
 
@@ -1328,6 +1334,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
         }
 
+        // REVIEW/TODO: The request body pipe reader scheduler shouldn't be influenced by the transport
+        // since an app that calls read synchronously will almost certainly deadlock regardless of transport.
+        // I think using the inline scheduler is only OK if the app developer asks for it via KestrelServerOptions.
         private Pipe CreateRequestBodyPipe()
             => new Pipe(new PipeOptions
             (
