@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         internal PipeOptions AdaptedInputPipeOptions => new PipeOptions
         (
             pool: MemoryPool,
-            readerScheduler: _context.ServiceContext.ThreadPool,
+            readerScheduler: _context.ApplicationScheduler,
             writerScheduler: PipeScheduler.Inline,
             pauseWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
@@ -214,7 +214,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 ServiceContext = _context.ServiceContext,
                 TimeoutControl = this,
                 Transport = transport,
-                Application = application
+                Application = application,
+                ApplicationScheduler = _context.ApplicationScheduler
             });
         }
 
@@ -229,7 +230,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 LocalEndPoint = LocalEndPoint,
                 RemoteEndPoint = RemoteEndPoint,
                 Application = application,
-                Transport = transport
+                Transport = transport,
+                ApplicationScheduler = _context.ApplicationScheduler
             });
         }
 

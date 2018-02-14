@@ -35,7 +35,6 @@ namespace Microsoft.AspNetCore.Testing
         {
             LoggerFactory = loggerFactory;
             Log = kestrelTrace;
-            ThreadPool = new LoggingThreadPool(Log);
             SystemClock = new MockSystemClock();
             DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
             ConnectionManager = new HttpConnectionManager(Log, ResourceCounter.Unlimited);

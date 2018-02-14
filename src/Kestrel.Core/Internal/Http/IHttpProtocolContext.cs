@@ -4,6 +4,7 @@
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net;
+using System.Threading;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -16,5 +17,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         MemoryPool MemoryPool { get; set; }
         IPEndPoint RemoteEndPoint { get; set; }
         IPEndPoint LocalEndPoint { get; set; }
+        PipeScheduler ApplicationScheduler { get; set; }
     }
 }

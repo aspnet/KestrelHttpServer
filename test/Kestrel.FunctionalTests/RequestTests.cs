@@ -997,7 +997,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var testContext = new TestServiceContext();
             // FIN callbacks are scheduled so run inline to make this test more reliable
-            testContext.ThreadPool = new InlineLoggingThreadPool(testContext.Log);
+            testContext.ServerOptions.ApplicationSchedulingMode = SchedulingMode.Inline;
 
             using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
             {

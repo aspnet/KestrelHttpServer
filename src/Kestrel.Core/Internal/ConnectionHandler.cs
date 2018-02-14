@@ -34,10 +34,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             var transportFeature = connectionContext.Features.Get<IConnectionTransportFeature>();
 
+            // Override the transport-recommended app scheduler if a custom ApplicationSchedulingMode has been selected.
+            PipeScheduler innerScheduler;
+
+            switch (_serviceContext.ServerOptions.ApplicationSchedulingMode)
+            {
+                case SchedulingMode.ThreadPool:
+                    innerScheduler = PipeScheduler.ThreadPool;
+                    break;
+                case SchedulingMode.Inline:
+                    innerScheduler = PipeScheduler.Inline;
+                    break;
+                default:
+                    innerScheduler = transportFeature.ApplicationScheduler;
+                    break;
+            }
+
+            // Wrap the application scheduler so exceptions are observed if any scheduled actions throw.
+            transportFeature.ApplicationScheduler = new LoggingPipeSchedulerWrapper(innerScheduler, Log);
+
             // REVIEW: Unfortunately, we still need to use the service context to create the pipes since the settings
             // for the scheduler and limits are specified here
-            var inputOptions = GetInputPipeOptions(_serviceContext, transportFeature.MemoryPool, transportFeature.InputWriterScheduler);
-            var outputOptions = GetOutputPipeOptions(_serviceContext, transportFeature.MemoryPool, transportFeature.OutputReaderScheduler);
+            var inputOptions = GetInputPipeOptions(_serviceContext, transportFeature);
+            var outputOptions = GetOutputPipeOptions(_serviceContext, transportFeature);
 
             var pair = DuplexPipe.CreateConnectionPair(inputOptions, outputOptions);
 
@@ -83,20 +102,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         }
 
         // Internal for testing
-        internal static PipeOptions GetInputPipeOptions(ServiceContext serviceContext, MemoryPool memoryPool, PipeScheduler writerScheduler) => new PipeOptions
+        internal static PipeOptions GetInputPipeOptions(
+            ServiceContext serviceContext,
+            IConnectionTransportFeature transportFeature) => new PipeOptions
         (
-            pool: memoryPool,
-            readerScheduler: serviceContext.ThreadPool,
-            writerScheduler: writerScheduler,
+            pool: transportFeature.MemoryPool,
+            readerScheduler: transportFeature.ApplicationScheduler,
+            writerScheduler: transportFeature.InputWriterScheduler,
             pauseWriterThreshold: serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             resumeWriterThreshold: serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
         );
 
-        internal static PipeOptions GetOutputPipeOptions(ServiceContext serviceContext, MemoryPool memoryPool, PipeScheduler readerScheduler) => new PipeOptions
+        internal static PipeOptions GetOutputPipeOptions(
+            ServiceContext serviceContext,
+            IConnectionTransportFeature transportFeature) => new PipeOptions
         (
-            pool: memoryPool,
-            readerScheduler: readerScheduler,
-            writerScheduler: serviceContext.ThreadPool,
+            pool: transportFeature.MemoryPool,
+            readerScheduler: transportFeature.OutputReaderScheduler,
+            writerScheduler: transportFeature.ApplicationScheduler,
             pauseWriterThreshold: GetOutputResponseBufferSize(serviceContext),
             resumeWriterThreshold: GetOutputResponseBufferSize(serviceContext)
         );
