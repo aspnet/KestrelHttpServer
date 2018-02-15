@@ -402,7 +402,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected override void OnReset()
         {
             FastFeatureSet(typeof(IHttpUpgradeFeature), this);
-
+#if NETCOREAPP2_1
+            FastFeatureSet(typeof(IHttpSendFileFeature), this);
+#endif
             _requestTimedOut = false;
             _requestTargetForm = HttpRequestTarget.Unknown;
             _absoluteRequestTarget = null;
