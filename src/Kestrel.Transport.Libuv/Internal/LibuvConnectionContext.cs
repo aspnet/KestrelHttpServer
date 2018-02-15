@@ -14,6 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         public LibuvConnectionContext(ListenerContext context)
         {
             ListenerContext = context;
+            ApplicationScheduler = PipeScheduler.ThreadPool;
         }
 
         public ListenerContext ListenerContext { get; set; }

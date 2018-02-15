@@ -700,8 +700,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var logger = new TestApplicationErrorLogger();
             var serviceContext = new TestServiceContext
             {
-                Log = new TestKestrelTrace(logger),
-                ThreadPool = new InlineLoggingThreadPool(new TestKestrelTrace(logger))
+                Log = new TestKestrelTrace(logger)
             };
             var transportContext = new TestLibuvTransportContext { Log = new LibuvTrace(logger) };
 
@@ -715,7 +714,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 MemoryPool = _memoryPool,
                 TimeoutControl = Mock.Of<ITimeoutControl>(),
                 Application = pair.Application,
-                Transport = pair.Transport
+                Transport = pair.Transport,
+                ApplicationScheduler = new LoggingPipeSchedulerWrapper(PipeScheduler.Inline, new TestKestrelTrace(logger))
             });
 
             if (cts != null)

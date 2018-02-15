@@ -78,27 +78,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             var systemClock = new SystemClock();
             var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
 
-            // TODO: This logic will eventually move into the IConnectionHandler<T> and off
-            // the service context once we get to https://github.com/aspnet/KestrelHttpServer/issues/1662
-            KestrelThreadPool threadPool = null;
-            switch (serverOptions.ApplicationSchedulingMode)
-            {
-                case SchedulingMode.Default:
-                case SchedulingMode.ThreadPool:
-                    threadPool = new LoggingThreadPool(trace);
-                    break;
-                case SchedulingMode.Inline:
-                    threadPool = new InlineLoggingThreadPool(trace);
-                    break;
-                default:
-                    throw new NotSupportedException(CoreStrings.FormatUnknownTransportMode(serverOptions.ApplicationSchedulingMode));
-            }
-
             return new ServiceContext
             {
                 Log = trace,
                 HttpParser = new HttpParser<Http1ParsingHandler>(trace.IsEnabled(LogLevel.Information)),
-                ThreadPool = threadPool,
                 SystemClock = systemClock,
                 DateHeaderValueManager = dateHeaderValueManager,
                 ConnectionManager = connectionManager,
@@ -234,6 +217,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             {
                 throw new InvalidOperationException(
                     CoreStrings.FormatMaxRequestBufferSmallerThanRequestHeaderBuffer(Options.Limits.MaxRequestBufferSize.Value, Options.Limits.MaxRequestHeadersTotalSize));
+            }
+
+            if (Options.ApplicationSchedulingMode != SchedulingMode.Default &&
+                Options.ApplicationSchedulingMode != SchedulingMode.ThreadPool &&
+                Options.ApplicationSchedulingMode != SchedulingMode.Inline)
+            {
+                throw new NotSupportedException(CoreStrings.FormatUnknownTransportMode(Options.ApplicationSchedulingMode));
             }
         }
     }

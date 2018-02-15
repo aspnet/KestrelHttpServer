@@ -47,7 +47,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 MemoryPool = transportFeature.MemoryPool,
                 ConnectionAdapters = _connectionAdapters,
                 Transport = connectionContext.Transport,
-                Application = transportFeature.Application
+                Application = transportFeature.Application,
+                ApplicationScheduler = transportFeature.ApplicationScheduler
             };
 
             var connectionFeature = connectionContext.Features.Get<IHttpConnectionFeature>();
@@ -68,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             var connection = new HttpConnection(httpConnectionContext);
 
             var processingTask = connection.StartRequestProcessing(_application);
-            
+
             connectionContext.Transport.Input.OnWriterCompleted((error, state) =>
             {
                 ((HttpConnection)state).Abort(error);

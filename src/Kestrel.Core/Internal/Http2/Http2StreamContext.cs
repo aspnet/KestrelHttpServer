@@ -4,6 +4,7 @@
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net;
+using System.Threading;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
@@ -20,5 +21,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public IPEndPoint LocalEndPoint { get; set; }
         public IHttp2StreamLifetimeHandler StreamLifetimeHandler { get; set; }
         public IHttp2FrameWriter FrameWriter { get; set; }
+        public PipeScheduler ApplicationScheduler { get; set; }
     }
 }
