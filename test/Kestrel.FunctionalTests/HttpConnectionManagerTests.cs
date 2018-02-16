@@ -3,14 +3,7 @@
 
 using System;
 using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Testing;
 using Microsoft.AspNetCore.Testing.xunit;
-using Microsoft.Extensions.Logging;
-using Moq;
-using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
