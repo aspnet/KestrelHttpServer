@@ -724,7 +724,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        protected Task FireOnCompleted()
+        protected void FireOnCompleted()
         {
             Stack<KeyValuePair<Func<object, Task>, object>> onCompleted;
             lock (_onCompletedSync)
@@ -733,29 +733,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _onCompleted = null;
             }
 
-            if (onCompleted == null)
-            {
-                return Task.CompletedTask;
-            }
-            else
-            {
-                return FireOnCompletedAwaited(onCompleted);
-            }
+            FireOnCompletedAwaited(onCompleted);
         }
 
-        private async Task FireOnCompletedAwaited(Stack<KeyValuePair<Func<object, Task>, object>> onCompleted)
+        private void FireOnCompletedAwaited(Stack<KeyValuePair<Func<object, Task>, object>> onCompleted)
         {
-            foreach (var entry in onCompleted)
+            Task.Run(async () =>
             {
-                try
+                foreach (var entry in onCompleted)
                 {
-                    await entry.Key.Invoke(entry.Value);
+                    try
+                    {
+                        await entry.Key.Invoke(entry.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    ReportApplicationError(ex);
-                }
-            }
+            });
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
