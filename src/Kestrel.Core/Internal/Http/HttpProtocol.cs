@@ -737,10 +737,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 return Task.CompletedTask;
             }
-            else
-            {
-                return FireOnCompletedAwaited(onCompleted);
-            }
+            return FireOnCompletedAwaited(onCompleted);
         }
 
         private async Task FireOnCompletedAwaited(Stack<KeyValuePair<Func<object, Task>, object>> onCompleted)

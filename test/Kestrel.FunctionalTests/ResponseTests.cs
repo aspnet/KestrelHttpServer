@@ -147,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var onStartingCalled = false;
             var onCompletedCalled = false;
-            var onCompletedTask = Task.Run(() => onCompletedCalled = true);
+            var onCompleted = Task.Run(() => onCompletedCalled = true);
 
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
@@ -157,7 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     app.Run(context =>
                     {
                         context.Response.OnStarting(() => Task.Run(() => onStartingCalled = true));
-                        context.Response.OnCompleted(() => onCompletedTask);
+                        context.Response.OnCompleted(() => onCompleted);
 
                         // Prevent OnStarting call (see HttpProtocol.ProcessRequestsAsync()).
                         throw new Exception();
@@ -174,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
                     Assert.False(onStartingCalled);
-                    onCompletedTask.Wait();
+                    await onCompleted;
                     Assert.True(onCompletedCalled);
                 }
             }
@@ -297,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task OnCompletedExceptionShouldPreventAResponse()
+        public async Task OnCompletedExceptionShouldNotPreventAResponse()
         {
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
@@ -307,10 +307,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     app.Run(async context =>
                     {
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-                        context.Response.OnCompleted(async () =>
-                        {
-                            throw new Exception();
-                        });
+                        context.Response.OnCompleted(async () => throw new Exception());
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
                         await context.Response.WriteAsync("hello, world");
                     });
@@ -323,7 +320,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var client = new HttpClient())
                 {
                     var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-
                     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
                 }
             }
@@ -2059,10 +2055,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var testContext = new TestServiceContext();
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-            var onCompletedCalled1 = Task.Run(async () => throw new Exception());
-            var onCompletedCalled2 = Task.Run(async () => throw new Exception());
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
             var testLogger = new TestApplicationErrorLogger();
             testContext.Log = new KestrelTrace(testLogger);
@@ -2070,8 +2062,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async httpContext =>
             {
                 var response = httpContext.Response;
-                response.OnCompleted(async () => await onCompletedCalled1);
-                response.OnCompleted(async () => await onCompletedCalled2);
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+                response.OnCompleted(async () => throw new Exception());
+                response.OnCompleted(async () => throw new Exception());
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
                 response.Headers["Content-Length"] = new[] { "11" };
 
@@ -2095,14 +2089,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
 
             // All OnCompleted callbacks should be called even if they throw.
-            try
-            {
-                Task.WaitAll(onCompletedCalled1, onCompletedCalled2, Task.Delay(TimeSpan.FromSeconds(1)));
-            }
-            catch (AggregateException)
-            {
-
-            }
             Assert.Equal(2, testLogger.ApplicationErrorsLogged);
         }
 
