@@ -492,40 +492,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(HttpUtilities.MethodToString(allowedMethod), exception.AllowedHeader);
         }
 
-        [Theory]
-        [InlineData("g", HttpMethod.Custom, "g")]
-        [InlineData("G", HttpMethod.Custom, "G")]
-        [InlineData("get", HttpMethod.Custom, "get")]
-        [InlineData("GET", HttpMethod.Get, "GET")]
-        [InlineData("put", HttpMethod.Custom, "put")]
-        [InlineData("PUT", HttpMethod.Put, "PUT")]
-        [InlineData("post", HttpMethod.Custom, "post")]
-        [InlineData("POST", HttpMethod.Post, "POST")]
-        [InlineData("head", HttpMethod.Custom, "head")]
-        [InlineData("HEAD", HttpMethod.Head, "HEAD")]
-        [InlineData("patch", HttpMethod.Custom, "patch")]
-        [InlineData("PATCH", HttpMethod.Patch, "PATCH")]
-        [InlineData("trace", HttpMethod.Custom, "trace")]
-        [InlineData("TRACE", HttpMethod.Trace, "TRACE")]
-        [InlineData("delete", HttpMethod.Custom, "delete")]
-        [InlineData("DELETE", HttpMethod.Delete, "DELETE")]
-        [InlineData("options", HttpMethod.Custom, "options")]
-        [InlineData("OPTIONS", HttpMethod.Options, "OPTIONS")]
-        [InlineData("connect", HttpMethod.Custom, "connect")]
-        [InlineData("CONNECT", HttpMethod.Connect, "CONNECT")]
-        [InlineData("unknown", HttpMethod.Custom, "unknown")]
-        [InlineData("UNKNOWN", HttpMethod.Custom, "UNKNOWN")]
-        public void RequestFeatureMethodSetsFrameEnum(string method, HttpMethod expectedEnum, string expectedString)
-        {
-            using (var input = new TestInput())
-            {
-                ((IHttpRequestFeature)input.Http1Connection).Method = method;
-
-                Assert.Equal(expectedEnum, input.Http1Connection.Method);
-                Assert.Equal(expectedString, ((IHttpRequestFeature)input.Http1Connection).Method);
-            }
-        }
-
         [Fact]
         public void ProcessRequestsAsyncEnablesKeepAliveTimeout()
         {
@@ -566,7 +532,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             // Arrange
             _http1Connection.HttpVersion = "HTTP/1.1";
-            ((IHttpRequestFeature)_http1Connection).Method = "HEAD";
+            _http1Connection.Method = HttpMethod.Head;
 
             // Act/Assert
             await _http1Connection.WriteAsync(new ArraySegment<byte>(new byte[1]));
@@ -577,7 +543,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             // Arrange
             _http1Connection.HttpVersion = "HTTP/1.1";
-            ((IHttpRequestFeature)_http1Connection).Method = "HEAD";
+            _http1Connection.Method = HttpMethod.Head;
 
             // Act/Assert
             await _http1Connection.WriteAsync(new ArraySegment<byte>(new byte[1]), default(CancellationToken));
@@ -588,7 +554,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             // Arrange
             _http1Connection.HttpVersion = "HTTP/1.1";
-            ((IHttpRequestFeature)_http1Connection).Method = "HEAD";
+            _http1Connection.Method = HttpMethod.Head;
 
             // Act
             _http1Connection.ResponseHeaders.Add("Transfer-Encoding", "chunked");
