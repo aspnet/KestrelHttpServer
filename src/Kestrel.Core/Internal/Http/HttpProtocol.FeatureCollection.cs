@@ -243,6 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             get => MinResponseDataRate;
             set => MinResponseDataRate = value;
         }
+
         protected void ResetIHttpUpgradeFeature()
         {
             _currentIHttpUpgradeFeature = this;
