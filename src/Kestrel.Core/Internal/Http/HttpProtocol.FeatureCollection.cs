@@ -102,7 +102,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
             set
             {
-                Method = HttpUtilities.GetKnownMethod(value);
                 _methodText = value;
             }
         }
