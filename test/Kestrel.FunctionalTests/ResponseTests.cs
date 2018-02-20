@@ -147,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var onStartingCalled = false;
             var onCompletedCalled = false;
-            var onCompleted = Task.Run(() => onCompletedCalled = true);
+            var onCompletedTcs = new TaskCompletionSource<object>();
 
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
@@ -157,7 +157,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     app.Run(context =>
                     {
                         context.Response.OnStarting(() => Task.Run(() => onStartingCalled = true));
-                        context.Response.OnCompleted(() => onCompleted);
+                        context.Response.OnCompleted(() => Task.Run(() =>
+                        {
+                            onCompletedCalled = true;
+                            onCompletedTcs.SetResult(null);
+                        }));
 
                         // Prevent OnStarting call (see HttpProtocol.ProcessRequestsAsync()).
                         throw new Exception();
@@ -174,7 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
                     Assert.False(onStartingCalled);
-                    await onCompleted;
+                    await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
                     Assert.True(onCompletedCalled);
                 }
             }
