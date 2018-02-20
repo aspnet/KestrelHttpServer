@@ -77,6 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public IHttpResponseControl HttpResponseControl { get; set; }
 
         public Pipe RequestBodyPipe { get; }
+        public PipeReader RequestBodyPipeReader { get; set; }
 
         public ServiceContext ServiceContext => _context.ServiceContext;
         private IPEndPoint LocalEndPoint => _context.LocalEndPoint;

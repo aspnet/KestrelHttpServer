@@ -169,13 +169,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override void OnReadStarted()
         {
-            _pumpTask = PumpAsync();
+            if (_context.RequestBodyPipeReader == null)
+            {
+                _pumpTask = PumpAsync();
+            }
         }
 
         protected virtual bool Read(ReadOnlyBuffer<byte> readableBuffer, PipeWriter writableBuffer, out SequencePosition consumed, out SequencePosition examined)
         {
             throw new NotImplementedException();
         }
+
+        public abstract void TrimReadResult(ref ReadResult raw);
+        public abstract void Advance(long consumedBytes);
 
         private void TryStartTimingReads()
         {
@@ -267,7 +273,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return keepAlive ? MessageBody.ZeroContentLengthKeepAlive : MessageBody.ZeroContentLengthClose;
                 }
 
-                return new ForContentLength(keepAlive, contentLength, context);
+                var body = new ForContentLength(keepAlive, contentLength, context);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body);
+                return body;
             }
 
             // Avoid slowing down most common case
@@ -302,6 +310,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 examined = readableBuffer.End;
                 return false;
             }
+
+            public override void Advance(long consumedBytes)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void TrimReadResult(ref ReadResult raw)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private class ForContentLength : Http1MessageBody
@@ -315,6 +333,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 RequestKeepAlive = keepAlive;
                 _contentLength = contentLength;
                 _inputLength = _contentLength;
+            }
+
+            public override void TrimReadResult(ref ReadResult raw)
+            {
+                if (_inputLength == 0)
+                {
+                    throw new InvalidOperationException("Attempted to read from completed Content-Length request body.");
+                }
+
+                if (raw.Buffer.Length > _inputLength)
+                {
+                    raw = new ReadResult(raw.Buffer.Slice(0, _inputLength), raw.IsCancelled, true);
+                }
+                else if (raw.Buffer.Length == _inputLength)
+                {
+                    raw = new ReadResult(raw.Buffer, raw.IsCancelled, true);
+                }
+            }
+
+            public override void Advance(long consumedBytes)
+            {
+                _inputLength -= consumedBytes;
             }
 
             protected override bool Read(ReadOnlyBuffer<byte> readableBuffer, PipeWriter writableBuffer, out SequencePosition consumed, out SequencePosition examined)
@@ -662,6 +702,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 BadHttpRequestException.Throw(RequestRejectionReason.BadChunkSizeData);
                 return -1; // can't happen, but compiler complains
+            }
+
+            public override void TrimReadResult(ref ReadResult raw)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Advance(long consumedBytes)
+            {
+                throw new NotImplementedException();
             }
 
             private enum Mode

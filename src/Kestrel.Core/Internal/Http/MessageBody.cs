@@ -39,9 +39,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             TryInit();
 
+            var pipeReader = _context.RequestBodyPipeReader ?? _context.RequestBodyPipe.Reader;
+
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await pipeReader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -63,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+                    pipeReader.AdvanceTo(consumed);
                 }
             }
         }
@@ -72,16 +74,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             TryInit();
 
+            var pipeReader = _context.RequestBodyPipeReader ?? _context.RequestBodyPipe.Reader;
+
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                Console.WriteLine("CopyToAsync pre pipeReader.ReadAsync");
+
+                var result = await pipeReader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
+                Console.WriteLine("CopyToAsync post pipeReader.ReadAsync");
                 try
                 {
                     if (!readableBuffer.IsEmpty)
                     {
+                        Console.WriteLine("!readableBuffer.IsEmpty");
                         foreach (var memory in readableBuffer)
                         {
                             // REVIEW: This *could* be slower if 2 things are true
@@ -97,12 +105,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     }
                     else if (result.IsCompleted)
                     {
+                        Console.WriteLine("result.IsCompleted");
                         return;
                     }
                 }
                 finally
                 {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+                    pipeReader.AdvanceTo(consumed);
                 }
             }
         }
