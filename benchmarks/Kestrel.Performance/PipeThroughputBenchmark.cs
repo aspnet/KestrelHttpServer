@@ -5,6 +5,7 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
@@ -14,12 +15,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         private const int InnerLoopCount = 512;
 
         private Pipe _pipe;
-        private MemoryPool _memoryPool;
+        private MemoryPool<byte> _memoryPool;
 
         [IterationSetup]
         public void Setup()
         {
-            _memoryPool = new MemoryPool();
+            _memoryPool = KestrelMemoryPool.Create();
             _pipe = new Pipe(new PipeOptions(_memoryPool));
         }
 

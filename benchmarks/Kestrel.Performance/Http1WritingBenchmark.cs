@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Testing;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Performance
@@ -93,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         private TestHttp1Connection MakeHttp1Connection()
         {
-            using (var memoryPool = new MemoryPool())
+            using (var memoryPool = KestrelMemoryPool.Create())
             {
                 var pair = DuplexPipe.CreateConnectionPair(memoryPool);
                 _pair = pair;
