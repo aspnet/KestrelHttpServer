@@ -317,7 +317,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 // Vector path done, loop back to do non-Vector
                 // If is a exact multiple of vector size, bail now
-            } while (input > end - Vector<sbyte>.Count);
+            } while (input < end);
 
             return isValid;
         }
@@ -436,7 +436,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
                 // Vector path done, loop back to do non-Vector
                 // If is a exact multiple of vector size, bail now
-            } while (input > end - Vector<sbyte>.Count);
+            } while (input < end);
 
             return isValid;
         }
