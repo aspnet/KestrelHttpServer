@@ -69,14 +69,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             var responseHeaders = _http1Connection.ResponseHeaders;
             responseHeaders["Content-Type"] = "text/plain";
             responseHeaders.ContentLength = _helloWorldPayload.Length;
-            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default(CancellationToken));
+            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default);
         }
 
         private Task PlaintextChunked()
         {
             var responseHeaders = _http1Connection.ResponseHeaders;
             responseHeaders["Content-Type"] = "text/plain";
-            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default(CancellationToken));
+            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default);
         }
 
         private Task LiveAspNet()
@@ -87,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             responseHeaders["Strict-Transport-Security"] = "max-age=31536000; includeSubdomains";
             responseHeaders["Vary"] = "Accept-Encoding";
             responseHeaders["X-Powered-By"] = "ASP.NET";
-            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default(CancellationToken));
+            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default);
         }
 
         private Task PlaintextWithCookie()
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             responseHeaders["Content-Type"] = "text/plain";
             responseHeaders["Set-Cookie"] = "prov=20629ccd-8b0f-e8ef-2935-cd26609fc0bc; __qca=P0-1591065732-1479167353442; _ga=GA1.2.1298898376.1479167354; _gat=1; sgt=id=9519gfde_3347_4762_8762_df51458c8ec2; acct=t=why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric&s=why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric";
             responseHeaders.ContentLength = _helloWorldPayload.Length;
-            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default(CancellationToken));
+            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default);
         }
 
         private Task PlaintextChunkedWithCookie()
@@ -104,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             var responseHeaders = _http1Connection.ResponseHeaders;
             responseHeaders["Content-Type"] = "text/plain";
             responseHeaders["Set-Cookie"] = "prov=20629ccd-8b0f-e8ef-2935-cd26609fc0bc; __qca=P0-1591065732-1479167353442; _ga=GA1.2.1298898376.1479167354; _gat=1; sgt=id=9519gfde_3347_4762_8762_df51458c8ec2; acct=t=why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric&s=why-is-%e0%a5%a7%e0%a5%a8%e0%a5%a9-numeric";
-            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default(CancellationToken));
+            return _http1Connection.WriteAsync(new ArraySegment<byte>(_helloWorldPayload), default);
         }
 
         [IterationSetup]
