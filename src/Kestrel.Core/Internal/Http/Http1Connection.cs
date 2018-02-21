@@ -61,12 +61,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Input.CancelPendingRead();
         }
 
-        public void SendTimeoutResponse()
-        {
-            _requestTimedOut = true;
-            Input.CancelPendingRead();
-        }
-
         public void ParseRequest(ReadOnlyBuffer<byte> buffer, out SequencePosition consumed, out SequencePosition examined)
         {
             consumed = buffer.Start;
@@ -403,7 +397,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             ResetIHttpUpgradeFeature();
 
-            _requestTimedOut = false;
             _requestTargetForm = HttpRequestTarget.Unknown;
             _absoluteRequestTarget = null;
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
@@ -479,7 +472,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 endConnection = true;
                 return true;
             }
-            else if (RequestTimedOut)
+            else if (TimeoutControl.RequestTimedOut)
             {
                 // In this case, there is an ongoing request but the start line/header parsing has timed out, so send
                 // a 408 response.

@@ -49,11 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 try
                 {
-                    if (_context.RequestTimedOut)
-                    {
-                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
-                    }
-                    else if (!readableBuffer.IsEmpty)
+                    if (!readableBuffer.IsEmpty)
                     {
                         //  buffer.Count is int
                         var actual = (int) Math.Min(readableBuffer.Length, buffer.Length);
@@ -88,11 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 try
                 {
-                    if (_context.RequestTimedOut)
-                    {
-                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
-                    }
-                    else if (!readableBuffer.IsEmpty)
+                    if (!readableBuffer.IsEmpty)
                     {
                         foreach (var memory in readableBuffer)
                         {
@@ -141,7 +133,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private void TryInit()
         {
-            if (!_context.HasStartedConsumingRequestBody)
+            if (!_context.HasStartedConsumingRequestBody && _context.RequestBodyPipeReader == null)
             {
                 OnReadStarting();
                 _context.HasStartedConsumingRequestBody = true;
@@ -149,7 +141,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        protected virtual void OnReadStarting()
+
+        public virtual void OnReadStarting()
         {
         }
 

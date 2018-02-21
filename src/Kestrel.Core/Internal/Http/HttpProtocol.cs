@@ -79,7 +79,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public Pipe RequestBodyPipe { get; }
         public PipeReader RequestBodyPipeReader { get; set; }
-        public bool RequestTimedOut => _requestTimedOut;
 
         public ServiceContext ServiceContext => _context.ServiceContext;
         private IPEndPoint LocalEndPoint => _context.LocalEndPoint;

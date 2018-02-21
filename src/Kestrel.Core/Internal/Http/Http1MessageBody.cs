@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     var result = await awaitable;
 
-                    if (_context.RequestTimedOut)
+                    if (_context.TimeoutControl.RequestTimedOut)
                     {
                         BadHttpRequestException.Throw(RequestRejectionReason.RequestTimeout);
                     }
@@ -133,11 +133,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override async Task OnConsumeAsync()
         {
-            if (_context.RequestTimedOut)
-            {
-                _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
-            }
-
             _context.TimeoutControl.SetTimeout(Constants.RequestBodyDrainTimeout.Ticks, TimeoutAction.SendTimeoutResponse);
 
             try
@@ -148,12 +143,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 do
                 {
                     result = await pipeReader.ReadAsync();
-
-                    if (_context.RequestTimedOut)
-                    {
-                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
-                    }
-
                     pipeReader.AdvanceTo(result.Buffer.End);
                 } while (!result.IsCompleted);
             }
@@ -182,10 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override void OnReadStarted()
         {
-            if (_context.RequestBodyPipeReader == null)
-            {
-                _pumpTask = PumpAsync();
-            }
+            _pumpTask = PumpAsync();
         }
 
         protected virtual bool Read(ReadOnlyBuffer<byte> readableBuffer, PipeWriter writableBuffer, out SequencePosition consumed, out SequencePosition examined)
@@ -256,7 +242,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var body = new ForUpgrade(context);
-                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body, context.TimeoutControl);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context, body);
                 return body;
             }
 
@@ -277,7 +263,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var body = new ForChunkedEncoding(keepAlive, context);
-                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body, context.TimeoutControl);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context, body);
                 return body;
             }
 
@@ -291,7 +277,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var body = new ForContentLength(keepAlive, contentLength, context);
-                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body, context.TimeoutControl);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context, body);
                 return body;
             }
 
@@ -398,7 +384,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 return _inputLength == 0;
             }
 
-            protected override void OnReadStarting()
+            public override void OnReadStarting()
             {
                 if (_contentLength > _context.MaxRequestBodySize)
                 {
