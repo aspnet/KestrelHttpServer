@@ -49,7 +49,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 try
                 {
-                    if (!readableBuffer.IsEmpty)
+                    if (_context.RequestTimedOut)
+                    {
+                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
+                    }
+                    else if (!readableBuffer.IsEmpty)
                     {
                         //  buffer.Count is int
                         var actual = (int) Math.Min(readableBuffer.Length, buffer.Length);
@@ -84,7 +88,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 try
                 {
-                    if (!readableBuffer.IsEmpty)
+                    if (_context.RequestTimedOut)
+                    {
+                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
+                    }
+                    else if (!readableBuffer.IsEmpty)
                     {
                         foreach (var memory in readableBuffer)
                         {

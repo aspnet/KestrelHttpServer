@@ -26,7 +26,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected readonly long _keepAliveTicks;
         private readonly long _requestHeadersTimeoutTicks;
 
-        private volatile bool _requestTimedOut;
         private uint _requestCount;
 
         private HttpRequestTarget _requestTargetForm = HttpRequestTarget.Unknown;
@@ -48,7 +47,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public PipeReader Input => _context.Transport.Input;
 
         public ITimeoutControl TimeoutControl => _context.TimeoutControl;
-        public bool RequestTimedOut => _requestTimedOut;
 
         public override bool IsUpgradableRequest => _upgradeAvailable;
 

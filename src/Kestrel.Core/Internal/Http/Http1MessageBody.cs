@@ -133,6 +133,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override async Task OnConsumeAsync()
         {
+            if (_context.RequestTimedOut)
+            {
+                _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
+            }
+
             _context.TimeoutControl.SetTimeout(Constants.RequestBodyDrainTimeout.Ticks, TimeoutAction.SendTimeoutResponse);
 
             try
@@ -143,6 +148,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 do
                 {
                     result = await pipeReader.ReadAsync();
+
+                    if (_context.RequestTimedOut)
+                    {
+                        _context.ThrowRequestRejected(RequestRejectionReason.RequestTimeout);
+                    }
+
                     pipeReader.AdvanceTo(result.Buffer.End);
                 } while (!result.IsCompleted);
             }
@@ -245,7 +256,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var body = new ForUpgrade(context);
-                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body, context.TimeoutControl);
                 return body;
             }
 
@@ -266,7 +277,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var body = new ForChunkedEncoding(keepAlive, context);
-                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body, context.TimeoutControl);
                 return body;
             }
 
@@ -280,7 +291,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 var body = new ForContentLength(keepAlive, contentLength, context);
-                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body, context.TimeoutControl);
                 return body;
             }
 

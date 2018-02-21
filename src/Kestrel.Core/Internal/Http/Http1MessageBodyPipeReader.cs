@@ -16,21 +16,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         private readonly PipeReader _connectionReader;
         private readonly Http1MessageBody _messageBody;
+        private readonly ITimeoutControl _timeoutControl;
 
         private ValueAwaiter<ReadResult> _lastAwaitedRead;
         private ReadResult _lastReadResult;
         private Exception _encodingException;
+
         private bool _consumedAll;
         private bool _examinedAll;
+
+        private bool _startedTimingReads;
+        private long _lastReadLength;
+        private long _lastUnconsumedLength;
 
         private bool _trimmedAll;
         private SequencePosition _trimConsumed;
         private SequencePosition _trimExamined;
 
-        public Http1MessageBodyPipeReader(PipeReader connectionReader, Http1MessageBody messageBody)
+        public Http1MessageBodyPipeReader(PipeReader connectionReader, Http1MessageBody messageBody, ITimeoutControl timeoutControl)
         {
             _connectionReader = connectionReader;
             _messageBody = messageBody;
+            _timeoutControl = timeoutControl;
         }
 
         public bool IsCompleted => _examinedAll || _lastAwaitedRead.IsCompleted;
@@ -95,6 +102,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _lastReadResult = _lastAwaitedRead.GetResult();
                 TrimLastReadResult();
+
+                // Like before, we're measuring the data rate for the decoded body.
+                _lastReadLength = _lastReadResult.Buffer.Length;
+                StopTimingRead();
             }
 
             return _lastReadResult;
@@ -121,6 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (!_lastAwaitedRead.IsCompleted)
             {
                 _messageBody.TryProduceContinue();
+                StartTimingRead();
             }
 
             return new ValueAwaiter<ReadResult>(this);
@@ -157,7 +169,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // REVIEW: Is it possible for this condition to be false when the entire buffer was consumed?
             if (consumed == _lastReadResult.Buffer.End)
             {
-                consumedBytes = _lastReadResult.Buffer.Length;
+                consumedBytes = _lastReadLength;
 
                 if (_examinedAll)
                 {
@@ -170,6 +182,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 consumedBytes = _lastReadResult.Buffer.Slice(_lastReadResult.Buffer.Start, consumed).Length;
             }
 
+            _lastUnconsumedLength = _lastReadLength - consumedBytes;
+            _timeoutControl.BytesRead(consumedBytes);
             _messageBody.Advance(consumedBytes);
         }
 
@@ -193,6 +207,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             _examinedAll = _lastReadResult.IsCompleted;
+        }
+
+        private void StartTimingRead()
+        {
+            if (_messageBody.RequestUpgrade)
+            {
+                return;
+            }
+
+            if (!_startedTimingReads)
+            {
+                _startedTimingReads = true;
+                _timeoutControl.StartTimingReads();
+            }
+            else
+            {
+                _timeoutControl.ResumeTimingReads();
+            }
+        }
+
+        private void StopTimingRead()
+        {
+            if (_messageBody.RequestUpgrade)
+            {
+                return;
+            }
+
+            if (_startedTimingReads)
+            {
+                // Don't double count bytes that weren't consumed in the last read.
+                _timeoutControl.BytesRead(_lastReadLength - _lastUnconsumedLength);
+                _timeoutControl.PauseTimingReads();
+            }
         }
     }
 }

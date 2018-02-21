@@ -47,6 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected RequestProcessingStatus _requestProcessingStatus;
         protected volatile bool _keepAlive; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
+        protected volatile bool _requestTimedOut;
         protected bool _upgradeAvailable;
         private bool _canHaveBody;
         private bool _autoChunk;
@@ -78,6 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public Pipe RequestBodyPipe { get; }
         public PipeReader RequestBodyPipeReader { get; set; }
+        public bool RequestTimedOut => _requestTimedOut;
 
         public ServiceContext ServiceContext => _context.ServiceContext;
         private IPEndPoint LocalEndPoint => _context.LocalEndPoint;
@@ -1294,11 +1296,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 Log.IsEnabled(LogLevel.Information)
                     ? target.GetAsciiStringEscaped(Constants.MaxExceptionDetailSize)
                     : string.Empty);
-
-        public void SetBadRequestState(RequestRejectionReason reason)
-        {
-            SetBadRequestState(BadHttpRequestException.GetException(reason));
-        }
 
         public void SetBadRequestState(BadHttpRequestException ex)
         {
