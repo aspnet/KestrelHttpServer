@@ -552,11 +552,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 PauseStreams();
 
-                if (_onCompleted != null)
-                {
-                    await FireOnCompleted();
-                }
-
                 if (badRequestException == null)
                 {
                     // If _requestAbort is set, the connection has already been closed.
@@ -597,6 +592,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         // meaningful status code to log.
                         StatusCode = 0;
                     }
+                }
+
+                if (_onCompleted != null)
+                {
+                    await FireOnCompleted();
                 }
 
                 if (badRequestException != null)
