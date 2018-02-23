@@ -359,6 +359,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
+        [Fact]
+        public async Task InvalidChunkedEncodingInRequestShouldNotBlockOnCompleted()
+        {
+            var onCompletedCalled = false;
+            using (var server = new TestServer(httpContext =>
+            {
+                httpContext.Response.OnCompleted(_ =>
+                {
+                    onCompletedCalled = true;
+                    return Task.CompletedTask;
+                }, null);
+                return Task.CompletedTask;
+            }))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "gg");
+                    await connection.ReceiveForcedEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 0",
+                        "",
+                        "");
+                }
+            }
+            Assert.True(onCompletedCalled);
+        }
+
         private static async Task ResponseStatusCodeSetBeforeHttpContextDispose(
             RequestDelegate handler,
             HttpStatusCode? expectedClientStatusCode,
