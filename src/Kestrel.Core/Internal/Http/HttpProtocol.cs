@@ -737,6 +737,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 return Task.CompletedTask;
             }
+
             return FireOnCompletedAwaited(onCompleted);
         }
 

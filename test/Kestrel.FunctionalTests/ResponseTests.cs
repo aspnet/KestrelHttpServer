@@ -310,9 +310,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     app.Run(async context =>
                     {
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-                        context.Response.OnCompleted(async () => throw new Exception());
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+                        context.Response.OnCompleted(_ => throw new Exception(), null);
                         await context.Response.WriteAsync("hello, world");
                     });
                 });
@@ -332,7 +330,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task OnCompletedShouldNotBlockAResponse()
         {
-            var delay = Task.Delay(TimeSpan.FromSeconds(20));
+            var delay = Task.Delay(TestConstants.DefaultTimeout);
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0/")
@@ -2059,6 +2057,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var testContext = new TestServiceContext();
 
+            var onCompletedCalled1 = false;
+            var onCompletedCalled2 = false;
 
             var testLogger = new TestApplicationErrorLogger();
             testContext.Log = new KestrelTrace(testLogger);
@@ -2066,10 +2066,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async httpContext =>
             {
                 var response = httpContext.Response;
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-                response.OnCompleted(async () => throw new Exception());
-                response.OnCompleted(async () => throw new Exception());
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+                response.OnCompleted(_ =>
+                {
+                    onCompletedCalled1 = true;
+                    throw new Exception();
+                }, null);
+                response.OnCompleted(_ =>
+                {
+                    onCompletedCalled2 = true;
+                    throw new Exception();
+                }, null);
 
                 response.Headers["Content-Length"] = new[] { "11" };
 
@@ -2094,6 +2100,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             // All OnCompleted callbacks should be called even if they throw.
             Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+            Assert.True(onCompletedCalled1);
+            Assert.True(onCompletedCalled2);
         }
 
         [Theory]
