@@ -188,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         /// <returns><see cref="HttpMethod"/></returns>
         public static HttpMethod GetKnownMethod(string value)
         {
-            // Called by http/2 and if user code overrides and sets the Method on IHttpRequestFeature
+            // Called by http/2
             if (value == null)
             {
                 throw new ArgumentNullException(nameof(value));
