@@ -46,5 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance.Mocks
         public void StopTimingWrite()
         {
         }
+
+        public bool RequestTimedOut => false;
     }
 }

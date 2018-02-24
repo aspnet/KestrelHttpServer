@@ -109,10 +109,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             _lastAwaitedRead = _connectionReader.ReadAsync(cancellationToken);
+            TryInit(_lastAwaitedRead.IsCompleted);
 
             // Start timing mechanism even for "sync" reads to ensure all data is counted.
             StartTimingRead();
-            TryInit(_lastAwaitedRead.IsCompleted);
 
             return new ValueAwaiter<ReadResult>(this);
         }

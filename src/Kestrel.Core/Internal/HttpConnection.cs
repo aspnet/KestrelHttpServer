@@ -199,6 +199,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             _requestProcessor = _http1Connection = CreateHttp1Connection(transport, application);
             _protocolSelectionState = ProtocolSelectionState.Selected;
+            _adaptedTransport = transport;
         }
 
         private Http1Connection CreateHttp1Connection(IDuplexPipe transport, IDuplexPipe application)
@@ -469,6 +470,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
+        private void SendTimeoutResponse()
+        {
+            RequestTimedOut = true;
+            _adaptedTransport.Input.CancelPendingRead();
+        }
+
         public void SetTimeout(long ticks, TimeoutAction timeoutAction)
         {
             Debug.Assert(_timeoutTimestamp == long.MaxValue, "Concurrent timeouts are not supported");
@@ -592,12 +599,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             ResetTimeout(timeSpan.Ticks, TimeoutAction.AbortConnection);
-        }
-
-        private void SendTimeoutResponse()
-        {
-            RequestTimedOut = true;
-            _adaptedTransport.Input.CancelPendingRead();
         }
 
         private void CloseUninitializedConnection()
