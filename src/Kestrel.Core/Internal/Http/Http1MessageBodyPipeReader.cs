@@ -16,10 +16,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         private readonly PipeReader _connectionReader;
         private readonly Http1MessageBody _messageBody;
+
         private ValueAwaiter<ReadResult> _lastAwaitedRead;
         private ReadResult _lastReadResult;
-        private bool _examinedAll;
+        private Exception _encodingException;
         private bool _consumedAll;
+        private bool _examinedAll;
+
+        private bool _trimmedAll;
+        private SequencePosition _trimConsumed;
+        private SequencePosition _trimExamined;
 
         public Http1MessageBodyPipeReader(PipeReader connectionReader, Http1MessageBody messageBody)
         {
@@ -27,12 +33,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _messageBody = messageBody;
         }
 
-        public bool IsCompleted => _consumedAll || _lastAwaitedRead.IsCompleted;
+        public bool IsCompleted => _examinedAll || _lastAwaitedRead.IsCompleted;
 
         public override void AdvanceTo(SequencePosition consumed)
         {
             if (_consumedAll)
             {
+                return;
+            }
+
+            if (_trimmedAll)
+            {
+                _trimmedAll = false;
+                _connectionReader.AdvanceTo(_trimConsumed, _trimExamined);
                 return;
             }
 
@@ -42,8 +55,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
         {
+            // TODO: If we ever expose this PipeReader directly, we need to fix a deadlock
+            // that can occur when a reader doesn't examine everything and waits for data
+            // in the next chunk of a chunked request.
             if (_consumedAll)
             {
+                return;
+            }
+
+            if (_trimmedAll)
+            {
+                _trimmedAll = false;
+                _connectionReader.AdvanceTo(_trimConsumed, _trimExamined);
                 return;
             }
 
@@ -58,21 +81,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public override void Complete(Exception exception = null)
         {
-            if (exception != null)
-            {
-                _connectionReader.Complete(exception);
-            }
+            // REVIEW: Should we log the exception here?
         }
 
         public ReadResult GetResult()
         {
-            if (_consumedAll)
+            if (_encodingException != null)
             {
-                _lastReadResult = new ReadResult(ReadOnlyBuffer<byte>.Empty, isCancelled: false, isCompleted: true);
+                throw _encodingException;
             }
-            else
+
+            if (!_consumedAll)
             {
-                SetLastReadResult(_lastAwaitedRead.GetResult());
+                _lastReadResult = _lastAwaitedRead.GetResult();
+                TrimLastReadResult();
             }
 
             return _lastReadResult;
@@ -91,18 +113,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public override ValueAwaiter<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
         {
-            _lastAwaitedRead = _connectionReader.ReadAsync(cancellationToken);
+            if (!_consumedAll)
+            {
+                _lastAwaitedRead = _connectionReader.ReadAsync(cancellationToken);
+            }
+
+            if (!_lastAwaitedRead.IsCompleted)
+            {
+                _messageBody.TryProduceContinue();
+            }
+
             return new ValueAwaiter<ReadResult>(this);
         }
 
         public override bool TryRead(out ReadResult result)
         {
-            if (_connectionReader.TryRead(out result))
+            if (_encodingException != null)
             {
-                SetLastReadResult(result);
+                throw _encodingException;
+            }
+
+            if (_consumedAll)
+            {
+                result = _lastReadResult;
                 return true;
             }
 
+            if (_connectionReader.TryRead(out _lastReadResult))
+            {
+                TrimLastReadResult();
+                result = _lastReadResult;
+                return true;
+            }
+
+            result = default(ReadResult);
             return false;
         }
 
@@ -117,6 +161,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 if (_examinedAll)
                 {
+                    _lastReadResult = new ReadResult(ReadOnlyBuffer<byte>.Empty, isCancelled: false, isCompleted: true);
                     _consumedAll = true;
                 }
             }
@@ -128,10 +173,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _messageBody.Advance(consumedBytes);
         }
 
-        private void SetLastReadResult(ReadResult readResult)
+        private void TrimLastReadResult()
         {
-            _lastReadResult = readResult;
-            _messageBody.TrimReadResult(ref _lastReadResult);
+            // The body pipe experiences an empty read when only encoding data is read from the connection pipe.
+            try
+            {
+                _trimmedAll = !_messageBody.TryTrimReadResult(ref _lastReadResult, out _trimConsumed, out _trimExamined);
+            }
+            catch (Exception ex)
+            {
+                _encodingException = ex;
+                _connectionReader.AdvanceTo(_lastReadResult.Buffer.Start);
+                throw;
+            }
+
+            if (_trimmedAll)
+            {
+                _lastReadResult = new ReadResult(ReadOnlyBuffer<byte>.Empty, isCancelled: false, isCompleted: false);
+            }
+
             _examinedAll = _lastReadResult.IsCompleted;
         }
     }

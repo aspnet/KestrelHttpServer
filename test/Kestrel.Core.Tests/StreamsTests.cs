@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
@@ -86,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 throw new NotImplementedException();
             }
 
-            public override void TrimReadResult(ref ReadResult raw)
+            public override bool TryTrimReadResult(ref ReadResult raw, out SequencePosition consumed, out SequencePosition examined)
             {
                 throw new NotImplementedException();
             }

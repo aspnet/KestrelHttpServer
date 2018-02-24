@@ -137,11 +137,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             try
             {
+                var pipeReader = _context.RequestBodyPipeReader ?? _context.RequestBodyPipe.Reader;
+
                 ReadResult result;
                 do
                 {
-                    result = await _context.RequestBodyPipe.Reader.ReadAsync();
-                    _context.RequestBodyPipe.Reader.AdvanceTo(result.Buffer.End);
+                    result = await pipeReader.ReadAsync();
+                    pipeReader.AdvanceTo(result.Buffer.End);
                 } while (!result.IsCompleted);
             }
             finally
@@ -180,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             throw new NotImplementedException();
         }
 
-        public abstract void TrimReadResult(ref ReadResult raw);
+        public abstract bool TryTrimReadResult(ref ReadResult raw, out SequencePosition consumed, out SequencePosition examined);
         public abstract void Advance(long consumedBytes);
 
         private void TryStartTimingReads()
@@ -242,7 +244,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     BadHttpRequestException.Throw(RequestRejectionReason.UpgradeRequestCannotHavePayload);
                 }
 
-                return new ForUpgrade(context);
+                var body = new ForUpgrade(context);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body);
+                return body;
             }
 
             var transferEncoding = headers.HeaderTransferEncoding;
@@ -261,7 +265,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     BadHttpRequestException.Throw(RequestRejectionReason.FinalTransferCodingNotChunked, in transferEncoding);
                 }
 
-                return new ForChunkedEncoding(keepAlive, context);
+                var body = new ForChunkedEncoding(keepAlive, context);
+                context.RequestBodyPipeReader = new Http1MessageBodyPipeReader(context.Input, body);
+                return body;
             }
 
             if (headers.ContentLength.HasValue)
@@ -303,22 +309,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             public override bool IsEmpty => true;
 
+            public override bool TryTrimReadResult(ref ReadResult raw, out SequencePosition consumed, out SequencePosition examined)
+            {
+                consumed = default(SequencePosition);
+                examined = default(SequencePosition);
+                return true;
+            }
+
+            public override void Advance(long consumedBytes)
+            {
+            }
+
             protected override bool Read(ReadOnlyBuffer<byte> readableBuffer, PipeWriter writableBuffer, out SequencePosition consumed, out SequencePosition examined)
             {
                 Copy(readableBuffer, writableBuffer);
                 consumed = readableBuffer.End;
                 examined = readableBuffer.End;
                 return false;
-            }
-
-            public override void Advance(long consumedBytes)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void TrimReadResult(ref ReadResult raw)
-            {
-                throw new NotImplementedException();
             }
         }
 
@@ -335,12 +342,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _inputLength = _contentLength;
             }
 
-            public override void TrimReadResult(ref ReadResult raw)
+            public override bool TryTrimReadResult(ref ReadResult raw, out SequencePosition consumed, out SequencePosition examined)
             {
                 if (_inputLength == 0)
                 {
                     throw new InvalidOperationException("Attempted to read from completed Content-Length request body.");
                 }
+
+                consumed = default(SequencePosition);
+                examined = default(SequencePosition);
 
                 if (raw.Buffer.Length > _inputLength)
                 {
@@ -350,6 +360,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     raw = new ReadResult(raw.Buffer, raw.IsCancelled, true);
                 }
+
+                return true;
             }
 
             public override void Advance(long consumedBytes)
@@ -403,6 +415,101 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 : base(context)
             {
                 RequestKeepAlive = keepAlive;
+            }
+
+            public override bool TryTrimReadResult(ref ReadResult raw, out SequencePosition consumed, out SequencePosition examined)
+            {
+                consumed = default(SequencePosition);
+                examined = default(SequencePosition);
+                var readableBuffer = raw.Buffer;
+
+                while (_mode < Mode.Trailer)
+                {
+                    if (_mode == Mode.Prefix)
+                    {
+                        ParseChunkedPrefix(readableBuffer, out consumed, out examined);
+
+                        if (_mode == Mode.Prefix)
+                        {
+                            return false;
+                        }
+
+                        readableBuffer = readableBuffer.Slice(consumed);
+                    }
+
+                    if (_mode == Mode.Extension)
+                    {
+                        ParseExtension(readableBuffer, out consumed, out examined);
+
+                        if (_mode == Mode.Extension)
+                        {
+                            return false;
+                        }
+
+                        readableBuffer = readableBuffer.Slice(consumed);
+                    }
+
+                    if (_mode == Mode.Data)
+                    {
+                        TrimChunkedData(ref readableBuffer, out consumed, out examined);
+                        raw = new ReadResult(readableBuffer, isCancelled: raw.IsCancelled, isCompleted: raw.IsCompleted);
+                        return true;
+                    }
+
+                    if (_mode == Mode.Suffix)
+                    {
+                        ParseChunkedSuffix(readableBuffer, out consumed, out examined);
+
+                        if (_mode == Mode.Suffix)
+                        {
+                            return false;
+                        }
+
+                        readableBuffer = readableBuffer.Slice(consumed);
+                    }
+                }
+
+                // Chunks finished, parse trailers
+                if (_mode == Mode.Trailer)
+                {
+                    ParseChunkedTrailer(readableBuffer, out consumed, out examined);
+
+                    if (_mode == Mode.Trailer)
+                    {
+                        return false;
+                    }
+
+                    readableBuffer = readableBuffer.Slice(consumed);
+                }
+
+                // _consumedBytes aren't tracked for trailer headers, since headers have seperate limits.
+                if (_mode == Mode.TrailerHeaders)
+                {
+                    if (_context.TakeMessageHeaders(readableBuffer, out consumed, out examined))
+                    {
+                        _mode = Mode.Complete;
+                    }
+                }
+
+                if (_mode != Mode.Complete)
+                {
+                    return false;
+                }
+
+                // readableBuffer.Slice(consumed, consumed) is used over ReadOnlyBuffer<byte>.Empty so AdvanceTo works.
+                raw = new ReadResult(readableBuffer.Slice(consumed, consumed), isCancelled: raw.IsCancelled, isCompleted: true);
+                return true;
+            }
+
+            public override void Advance(long consumedBytes)
+            {
+                _inputLength -= consumedBytes;
+                AddAndCheckConsumedBytes(consumedBytes);
+
+                if (_inputLength == 0)
+                {
+                    _mode = Mode.Suffix;
+                }
             }
 
             protected override bool Read(ReadOnlyBuffer<byte> readableBuffer, PipeWriter writableBuffer, out SequencePosition consumed, out SequencePosition examined)
@@ -622,6 +729,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
             }
 
+            private void TrimChunkedData(ref ReadOnlyBuffer<byte> buffer, out SequencePosition consumed, out SequencePosition examined)
+            {
+                consumed = buffer.Start;
+                examined = consumed;
+
+                if (buffer.Length > _inputLength)
+                {
+                    buffer = buffer.Slice(0, _inputLength);
+                }
+            }
+
             private void ParseChunkedSuffix(ReadOnlyBuffer<byte> buffer, out SequencePosition consumed, out SequencePosition examined)
             {
                 consumed = buffer.Start;
@@ -702,16 +820,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 BadHttpRequestException.Throw(RequestRejectionReason.BadChunkSizeData);
                 return -1; // can't happen, but compiler complains
-            }
-
-            public override void TrimReadResult(ref ReadResult raw)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void Advance(long consumedBytes)
-            {
-                throw new NotImplementedException();
             }
 
             private enum Mode

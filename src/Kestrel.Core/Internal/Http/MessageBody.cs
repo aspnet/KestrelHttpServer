@@ -78,18 +78,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                Console.WriteLine("CopyToAsync pre pipeReader.ReadAsync");
-
                 var result = await pipeReader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
-                Console.WriteLine("CopyToAsync post pipeReader.ReadAsync");
                 try
                 {
                     if (!readableBuffer.IsEmpty)
                     {
-                        Console.WriteLine("!readableBuffer.IsEmpty");
                         foreach (var memory in readableBuffer)
                         {
                             // REVIEW: This *could* be slower if 2 things are true
@@ -105,7 +101,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     }
                     else if (result.IsCompleted)
                     {
-                        Console.WriteLine("result.IsCompleted");
                         return;
                     }
                 }
@@ -127,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public abstract Task StopAsync();
 
-        protected void TryProduceContinue()
+        public void TryProduceContinue()
         {
             if (_send100Continue)
             {

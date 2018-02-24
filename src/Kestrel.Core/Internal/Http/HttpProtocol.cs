@@ -616,7 +616,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // to ensure InitializeStreams has been called.
                 StopStreams();
 
-                if (HasStartedConsumingRequestBody)
+                if (HasStartedConsumingRequestBody && RequestBodyPipeReader == null)
                 {
                     RequestBodyPipe.Reader.Complete();
 
