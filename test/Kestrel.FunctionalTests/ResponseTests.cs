@@ -146,7 +146,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task OnCompleteCalledEvenWhenOnStartingNotCalled()
         {
             var onStartingCalled = false;
-            var onCompletedCalled = false;
             var onCompletedTcs = new TaskCompletionSource<object>();
 
             var hostBuilder = TransportSelector.GetWebHostBuilder()
@@ -159,7 +158,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         context.Response.OnStarting(() => Task.Run(() => onStartingCalled = true));
                         context.Response.OnCompleted(() => Task.Run(() =>
                         {
-                            onCompletedCalled = true;
                             onCompletedTcs.SetResult(null);
                         }));
 
@@ -179,7 +177,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
                     Assert.False(onStartingCalled);
                     await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
-                    Assert.True(onCompletedCalled);
                 }
             }
         }
@@ -362,14 +359,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task InvalidChunkedEncodingInRequestShouldNotBlockOnCompleted()
         {
-            var onCompletedCalled = false;
+            var onCompletedTcs = new TaskCompletionSource<object>();
+
             using (var server = new TestServer(httpContext =>
             {
-                httpContext.Response.OnCompleted(_ =>
+                httpContext.Response.OnCompleted(() => Task.Run(() =>
                 {
-                    onCompletedCalled = true;
-                    return Task.CompletedTask;
-                }, null);
+                    onCompletedTcs.SetResult(null);
+                }));
                 return Task.CompletedTask;
             }))
             {
@@ -389,7 +386,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
                 }
             }
-            Assert.True(onCompletedCalled);
+
+            await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
         }
 
         private static async Task ResponseStatusCodeSetBeforeHttpContextDispose(
