@@ -72,12 +72,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             ServerOptions = ServiceContext.ServerOptions;
             HttpResponseControl = this;
-            RequestBodyPipe = CreateRequestBodyPipe();
         }
 
         public IHttpResponseControl HttpResponseControl { get; set; }
 
-        public Pipe RequestBodyPipe { get; }
         public PipeReader RequestBodyPipeReader { get; set; }
 
         public ServiceContext ServiceContext => _context.ServiceContext;
@@ -617,15 +615,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // to ensure InitializeStreams has been called.
                 StopStreams();
 
-                if (HasStartedConsumingRequestBody && RequestBodyPipeReader == null)
+                if (HasStartedConsumingRequestBody)
                 {
-                    RequestBodyPipe.Reader.Complete();
-
-                    // Wait for MessageBody.PumpAsync() to call RequestBodyPipe.Writer.Complete().
-                    await messageBody.StopAsync();
-
-                    // At this point both the request body pipe reader and writer should be completed.
-                    RequestBodyPipe.Reset();
+                    RequestBodyPipeReader.Complete();
+                    messageBody.Stop();
                 }
 
                 if (badRequestException != null)
@@ -1326,15 +1319,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
         }
-
-        private Pipe CreateRequestBodyPipe()
-            => new Pipe(new PipeOptions
-            (
-                pool: _context.MemoryPool,
-                readerScheduler: ServiceContext.ThreadPool,
-                writerScheduler: PipeScheduler.Inline,
-                pauseWriterThreshold: 1,
-                resumeWriterThreshold: 1
-            ));
     }
 }
