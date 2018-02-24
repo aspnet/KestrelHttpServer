@@ -45,7 +45,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     ThrowHeadersReadOnlyException();
                 }
-                SetValueFast(key, value);
+                if (value.Count == 0)
+                {
+                    RemoveFast(key);
+                }
+                else
+                {
+                    SetValueFast(key, value);
+                }
             }
         }
 

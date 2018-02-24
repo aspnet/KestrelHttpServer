@@ -17,6 +17,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private long _bits = 0;
         private HeaderReferences _headers;
+
+        public bool HasConnection => (_bits & 2L) != 0;
+        public bool HasTransferEncoding => (_bits & 64L) != 0;
+
+        public int HostCount => _headers._Host.Count;
         
         public StringValues HeaderCacheControl
         {
@@ -1602,6 +1607,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override bool AddValueFast(string key, in StringValues value)
         {
+            var isNotNull = value.Count > 0;
             switch (key.Length)
             {
                 case 13:
@@ -1610,8 +1616,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1L) == 0)
                             {
-                                _bits |= 1L;
-                                _headers._CacheControl = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1L;
+                                    _headers._CacheControl = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1620,8 +1629,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 65536L) == 0)
                             {
-                                _bits |= 65536L;
-                                _headers._ContentRange = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 65536L;
+                                    _headers._ContentRange = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1630,8 +1642,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 262144L) == 0)
                             {
-                                _bits |= 262144L;
-                                _headers._LastModified = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 262144L;
+                                    _headers._LastModified = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1640,8 +1655,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8388608L) == 0)
                             {
-                                _bits |= 8388608L;
-                                _headers._Authorization = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8388608L;
+                                    _headers._Authorization = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1650,8 +1668,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1073741824L) == 0)
                             {
-                                _bits |= 1073741824L;
-                                _headers._IfNoneMatch = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1073741824L;
+                                    _headers._IfNoneMatch = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1664,8 +1685,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2L) == 0)
                             {
-                                _bits |= 2L;
-                                _headers._Connection = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2L;
+                                    _headers._Connection = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1674,8 +1698,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8L) == 0)
                             {
-                                _bits |= 8L;
-                                _headers._KeepAlive = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8L;
+                                    _headers._KeepAlive = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1684,8 +1711,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 549755813888L) == 0)
                             {
-                                _bits |= 549755813888L;
-                                _headers._UserAgent = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 549755813888L;
+                                    _headers._UserAgent = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1698,8 +1728,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4L) == 0)
                             {
-                                _bits |= 4L;
-                                _headers._Date = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4L;
+                                    _headers._Date = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1708,8 +1741,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 67108864L) == 0)
                             {
-                                _bits |= 67108864L;
-                                _headers._From = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 67108864L;
+                                    _headers._From = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1718,8 +1754,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 134217728L) == 0)
                             {
-                                _bits |= 134217728L;
-                                _headers._Host = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 134217728L;
+                                    _headers._Host = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1732,8 +1771,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 16L) == 0)
                             {
-                                _bits |= 16L;
-                                _headers._Pragma = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 16L;
+                                    _headers._Pragma = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1742,8 +1784,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 524288L) == 0)
                             {
-                                _bits |= 524288L;
-                                _headers._Accept = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 524288L;
+                                    _headers._Accept = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1752,8 +1797,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 16777216L) == 0)
                             {
-                                _bits |= 16777216L;
-                                _headers._Cookie = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 16777216L;
+                                    _headers._Cookie = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1762,8 +1810,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 33554432L) == 0)
                             {
-                                _bits |= 33554432L;
-                                _headers._Expect = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 33554432L;
+                                    _headers._Expect = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1772,8 +1823,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1099511627776L) == 0)
                             {
-                                _bits |= 1099511627776L;
-                                _headers._Origin = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1099511627776L;
+                                    _headers._Origin = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1786,8 +1840,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 32L) == 0)
                             {
-                                _bits |= 32L;
-                                _headers._Trailer = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 32L;
+                                    _headers._Trailer = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1796,8 +1853,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 128L) == 0)
                             {
-                                _bits |= 128L;
-                                _headers._Upgrade = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 128L;
+                                    _headers._Upgrade = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1806,8 +1866,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 512L) == 0)
                             {
-                                _bits |= 512L;
-                                _headers._Warning = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 512L;
+                                    _headers._Warning = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1816,8 +1879,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 131072L) == 0)
                             {
-                                _bits |= 131072L;
-                                _headers._Expires = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 131072L;
+                                    _headers._Expires = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1826,8 +1892,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 34359738368L) == 0)
                             {
-                                _bits |= 34359738368L;
-                                _headers._Referer = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 34359738368L;
+                                    _headers._Referer = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1840,8 +1909,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 64L) == 0)
                             {
-                                _bits |= 64L;
-                                _headers._TransferEncoding = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 64L;
+                                    _headers._TransferEncoding = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1850,8 +1922,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 536870912L) == 0)
                             {
-                                _bits |= 536870912L;
-                                _headers._IfModifiedSince = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 536870912L;
+                                    _headers._IfModifiedSince = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1864,8 +1939,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 256L) == 0)
                             {
-                                _bits |= 256L;
-                                _headers._Via = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 256L;
+                                    _headers._Via = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1878,8 +1956,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1024L) == 0)
                             {
-                                _bits |= 1024L;
-                                _headers._Allow = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1024L;
+                                    _headers._Allow = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1888,8 +1969,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 68719476736L) == 0)
                             {
-                                _bits |= 68719476736L;
-                                _headers._Range = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 68719476736L;
+                                    _headers._Range = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1902,8 +1986,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2048L) == 0)
                             {
-                                _bits |= 2048L;
-                                _headers._ContentType = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2048L;
+                                    _headers._ContentType = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1912,8 +1999,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8589934592L) == 0)
                             {
-                                _bits |= 8589934592L;
-                                _headers._MaxForwards = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8589934592L;
+                                    _headers._MaxForwards = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1926,8 +2016,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4096L) == 0)
                             {
-                                _bits |= 4096L;
-                                _headers._ContentEncoding = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4096L;
+                                    _headers._ContentEncoding = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1936,8 +2029,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8192L) == 0)
                             {
-                                _bits |= 8192L;
-                                _headers._ContentLanguage = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8192L;
+                                    _headers._ContentLanguage = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1946,8 +2042,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 16384L) == 0)
                             {
-                                _bits |= 16384L;
-                                _headers._ContentLocation = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 16384L;
+                                    _headers._ContentLocation = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1960,8 +2059,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 32768L) == 0)
                             {
-                                _bits |= 32768L;
-                                _headers._ContentMD5 = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 32768L;
+                                    _headers._ContentMD5 = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1974,8 +2076,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1048576L) == 0)
                             {
-                                _bits |= 1048576L;
-                                _headers._AcceptCharset = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1048576L;
+                                    _headers._AcceptCharset = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -1997,8 +2102,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2097152L) == 0)
                             {
-                                _bits |= 2097152L;
-                                _headers._AcceptEncoding = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2097152L;
+                                    _headers._AcceptEncoding = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2007,8 +2115,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4194304L) == 0)
                             {
-                                _bits |= 4194304L;
-                                _headers._AcceptLanguage = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4194304L;
+                                    _headers._AcceptLanguage = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2021,8 +2132,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 268435456L) == 0)
                             {
-                                _bits |= 268435456L;
-                                _headers._IfMatch = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 268435456L;
+                                    _headers._IfMatch = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2031,8 +2145,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2147483648L) == 0)
                             {
-                                _bits |= 2147483648L;
-                                _headers._IfRange = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2147483648L;
+                                    _headers._IfRange = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2045,8 +2162,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4294967296L) == 0)
                             {
-                                _bits |= 4294967296L;
-                                _headers._IfUnmodifiedSince = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4294967296L;
+                                    _headers._IfUnmodifiedSince = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2055,8 +2175,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 17179869184L) == 0)
                             {
-                                _bits |= 17179869184L;
-                                _headers._ProxyAuthorization = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 17179869184L;
+                                    _headers._ProxyAuthorization = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2069,8 +2192,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 137438953472L) == 0)
                             {
-                                _bits |= 137438953472L;
-                                _headers._TE = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 137438953472L;
+                                    _headers._TE = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2083,8 +2209,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 274877906944L) == 0)
                             {
-                                _bits |= 274877906944L;
-                                _headers._Translate = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 274877906944L;
+                                    _headers._Translate = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2097,8 +2226,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2199023255552L) == 0)
                             {
-                                _bits |= 2199023255552L;
-                                _headers._AccessControlRequestMethod = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2199023255552L;
+                                    _headers._AccessControlRequestMethod = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -2111,8 +2243,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4398046511104L) == 0)
                             {
-                                _bits |= 4398046511104L;
-                                _headers._AccessControlRequestHeaders = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4398046511104L;
+                                    _headers._AccessControlRequestHeaders = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -4794,6 +4929,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private long _bits = 0;
         private HeaderReferences _headers;
+
+        public bool HasConnection => (_bits & 2L) != 0;
+        public bool HasDate => (_bits & 4L) != 0;
+        public bool HasTransferEncoding => (_bits & 64L) != 0;
+        public bool HasServer => (_bits & 33554432L) != 0;
+
         
         public StringValues HeaderCacheControl
         {
@@ -6157,6 +6298,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected override bool AddValueFast(string key, in StringValues value)
         {
             ValidateHeaderCharacters(value);
+            var isNotNull = value.Count > 0;
             switch (key.Length)
             {
                 case 13:
@@ -6165,8 +6307,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1L) == 0)
                             {
-                                _bits |= 1L;
-                                _headers._CacheControl = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1L;
+                                    _headers._CacheControl = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6175,8 +6320,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 65536L) == 0)
                             {
-                                _bits |= 65536L;
-                                _headers._ContentRange = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 65536L;
+                                    _headers._ContentRange = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6185,8 +6333,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 262144L) == 0)
                             {
-                                _bits |= 262144L;
-                                _headers._LastModified = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 262144L;
+                                    _headers._LastModified = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6195,8 +6346,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 524288L) == 0)
                             {
-                                _bits |= 524288L;
-                                _headers._AcceptRanges = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 524288L;
+                                    _headers._AcceptRanges = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6209,9 +6363,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2L) == 0)
                             {
-                                _bits |= 2L;
-                                _headers._Connection = value;
-                                _headers._rawConnection = null;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2L;
+                                    _headers._Connection = value;
+                                    _headers._rawConnection = null;
+                                }
                                 return true;
                             }
                             return false;
@@ -6220,8 +6377,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8L) == 0)
                             {
-                                _bits |= 8L;
-                                _headers._KeepAlive = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8L;
+                                    _headers._KeepAlive = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6230,8 +6390,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 67108864L) == 0)
                             {
-                                _bits |= 67108864L;
-                                _headers._SetCookie = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 67108864L;
+                                    _headers._SetCookie = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6244,9 +6407,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4L) == 0)
                             {
-                                _bits |= 4L;
-                                _headers._Date = value;
-                                _headers._rawDate = null;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4L;
+                                    _headers._Date = value;
+                                    _headers._rawDate = null;
+                                }
                                 return true;
                             }
                             return false;
@@ -6255,8 +6421,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2097152L) == 0)
                             {
-                                _bits |= 2097152L;
-                                _headers._ETag = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2097152L;
+                                    _headers._ETag = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6265,8 +6434,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 134217728L) == 0)
                             {
-                                _bits |= 134217728L;
-                                _headers._Vary = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 134217728L;
+                                    _headers._Vary = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6279,8 +6451,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 16L) == 0)
                             {
-                                _bits |= 16L;
-                                _headers._Pragma = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 16L;
+                                    _headers._Pragma = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6289,9 +6464,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 33554432L) == 0)
                             {
-                                _bits |= 33554432L;
-                                _headers._Server = value;
-                                _headers._rawServer = null;
+                                if (isNotNull)
+                                {
+                                    _bits |= 33554432L;
+                                    _headers._Server = value;
+                                    _headers._rawServer = null;
+                                }
                                 return true;
                             }
                             return false;
@@ -6304,8 +6482,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 32L) == 0)
                             {
-                                _bits |= 32L;
-                                _headers._Trailer = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 32L;
+                                    _headers._Trailer = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6314,8 +6495,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 128L) == 0)
                             {
-                                _bits |= 128L;
-                                _headers._Upgrade = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 128L;
+                                    _headers._Upgrade = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6324,8 +6508,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 512L) == 0)
                             {
-                                _bits |= 512L;
-                                _headers._Warning = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 512L;
+                                    _headers._Warning = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6334,8 +6521,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 131072L) == 0)
                             {
-                                _bits |= 131072L;
-                                _headers._Expires = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 131072L;
+                                    _headers._Expires = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6348,9 +6538,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 64L) == 0)
                             {
-                                _bits |= 64L;
-                                _headers._TransferEncoding = value;
-                                _headers._rawTransferEncoding = null;
+                                if (isNotNull)
+                                {
+                                    _bits |= 64L;
+                                    _headers._TransferEncoding = value;
+                                    _headers._rawTransferEncoding = null;
+                                }
                                 return true;
                             }
                             return false;
@@ -6363,8 +6556,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 256L) == 0)
                             {
-                                _bits |= 256L;
-                                _headers._Via = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 256L;
+                                    _headers._Via = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6373,8 +6569,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1048576L) == 0)
                             {
-                                _bits |= 1048576L;
-                                _headers._Age = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1048576L;
+                                    _headers._Age = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6387,8 +6586,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1024L) == 0)
                             {
-                                _bits |= 1024L;
-                                _headers._Allow = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1024L;
+                                    _headers._Allow = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6401,8 +6603,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2048L) == 0)
                             {
-                                _bits |= 2048L;
-                                _headers._ContentType = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2048L;
+                                    _headers._ContentType = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6415,8 +6620,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4096L) == 0)
                             {
-                                _bits |= 4096L;
-                                _headers._ContentEncoding = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4096L;
+                                    _headers._ContentEncoding = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6425,8 +6633,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8192L) == 0)
                             {
-                                _bits |= 8192L;
-                                _headers._ContentLanguage = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8192L;
+                                    _headers._ContentLanguage = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6435,8 +6646,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 16384L) == 0)
                             {
-                                _bits |= 16384L;
-                                _headers._ContentLocation = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 16384L;
+                                    _headers._ContentLocation = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6445,8 +6659,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 268435456L) == 0)
                             {
-                                _bits |= 268435456L;
-                                _headers._WWWAuthenticate = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 268435456L;
+                                    _headers._WWWAuthenticate = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6459,8 +6676,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 32768L) == 0)
                             {
-                                _bits |= 32768L;
-                                _headers._ContentMD5 = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 32768L;
+                                    _headers._ContentMD5 = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6469,8 +6689,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 16777216L) == 0)
                             {
-                                _bits |= 16777216L;
-                                _headers._RetryAfter = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 16777216L;
+                                    _headers._RetryAfter = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6483,8 +6706,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4194304L) == 0)
                             {
-                                _bits |= 4194304L;
-                                _headers._Location = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4194304L;
+                                    _headers._Location = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6497,8 +6723,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8388608L) == 0)
                             {
-                                _bits |= 8388608L;
-                                _headers._ProxyAuthenticate = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8388608L;
+                                    _headers._ProxyAuthenticate = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6511,8 +6740,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 536870912L) == 0)
                             {
-                                _bits |= 536870912L;
-                                _headers._AccessControlAllowCredentials = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 536870912L;
+                                    _headers._AccessControlAllowCredentials = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6525,8 +6757,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 1073741824L) == 0)
                             {
-                                _bits |= 1073741824L;
-                                _headers._AccessControlAllowHeaders = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 1073741824L;
+                                    _headers._AccessControlAllowHeaders = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6535,8 +6770,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 2147483648L) == 0)
                             {
-                                _bits |= 2147483648L;
-                                _headers._AccessControlAllowMethods = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 2147483648L;
+                                    _headers._AccessControlAllowMethods = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6549,8 +6787,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 4294967296L) == 0)
                             {
-                                _bits |= 4294967296L;
-                                _headers._AccessControlAllowOrigin = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 4294967296L;
+                                    _headers._AccessControlAllowOrigin = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6563,8 +6804,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 8589934592L) == 0)
                             {
-                                _bits |= 8589934592L;
-                                _headers._AccessControlExposeHeaders = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 8589934592L;
+                                    _headers._AccessControlExposeHeaders = value;
+                                }
                                 return true;
                             }
                             return false;
@@ -6577,8 +6821,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         {
                             if ((_bits & 17179869184L) == 0)
                             {
-                                _bits |= 17179869184L;
-                                _headers._AccessControlMaxAge = value;
+                                if (isNotNull)
+                                {
+                                    _bits |= 17179869184L;
+                                    _headers._AccessControlMaxAge = value;
+                                }
                                 return true;
                             }
                             return false;
