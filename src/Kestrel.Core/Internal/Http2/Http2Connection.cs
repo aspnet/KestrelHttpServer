@@ -872,5 +872,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         void ITimeoutControl.StopTimingWrite()
         {
         }
+
+        bool ITimeoutControl.RequestTimedOut => false;
     }
 }

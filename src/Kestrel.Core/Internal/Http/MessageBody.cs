@@ -35,13 +35,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected IKestrelTrace Log => _context.ServiceContext.Log;
 
-        public virtual async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            TryInit();
-
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await _context.RequestBodyPipeReader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -63,18 +61,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+                    _context.RequestBodyPipeReader .AdvanceTo(consumed);
                 }
             }
         }
 
-        public virtual async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default)
         {
-            TryInit();
-
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await _context.RequestBodyPipeReader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
 
@@ -102,47 +98,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+                    _context.RequestBodyPipeReader .AdvanceTo(consumed);
                 }
             }
         }
 
         public virtual Task ConsumeAsync()
         {
-            TryInit();
-
-            return OnConsumeAsync();
+            return Task.CompletedTask;
         }
 
-        protected abstract Task OnConsumeAsync();
+        public virtual void Stop()
+        {
+        }
 
-        public abstract Task StopAsync();
-
-        protected void TryProduceContinue()
+        public void TryProduceContinue()
         {
             if (_send100Continue)
             {
                 _context.HttpResponseControl.ProduceContinue();
                 _send100Continue = false;
             }
-        }
-
-        private void TryInit()
-        {
-            if (!_context.HasStartedConsumingRequestBody)
-            {
-                OnReadStarting();
-                _context.HasStartedConsumingRequestBody = true;
-                OnReadStarted();
-            }
-        }
-
-        protected virtual void OnReadStarting()
-        {
-        }
-
-        protected virtual void OnReadStarted()
-        {
         }
 
         private class ForZeroContentLength : MessageBody
@@ -158,12 +134,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default(CancellationToken)) => new ValueTask<int>(0);
 
             public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken)) => Task.CompletedTask;
-
-            public override Task ConsumeAsync() => Task.CompletedTask;
-
-            public override Task StopAsync() => Task.CompletedTask;
-
-            protected override Task OnConsumeAsync() => Task.CompletedTask;
         }
     }
 }

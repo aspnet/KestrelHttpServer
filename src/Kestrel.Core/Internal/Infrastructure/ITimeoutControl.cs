@@ -17,5 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         void StartTimingWrite(long size);
         void StopTimingWrite();
+
+        bool RequestTimedOut { get; }
     }
 }

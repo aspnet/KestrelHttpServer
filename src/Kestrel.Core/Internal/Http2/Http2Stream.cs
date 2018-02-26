@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.IO.Pipelines;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
@@ -15,6 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public partial class Http2Stream : HttpProtocol
     {
         private readonly Http2StreamContext _context;
+        public Pipe RequestBodyPipe { get; }
 
         public Http2Stream(Http2StreamContext context)
             : base(context)
@@ -22,6 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
 
             Output = new Http2OutputProducer(StreamId, _context.FrameWriter);
+            RequestBodyPipe = CreateRequestBodyPipe();
+            RequestBodyPipeReader = RequestBodyPipe.Reader;
         }
 
         public int StreamId => _context.StreamId;
@@ -107,5 +111,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 RequestBodyPipe.Writer.Complete(ex);
             }
         }
+
+        private Pipe CreateRequestBodyPipe()
+            => new Pipe(new PipeOptions
+            (
+                pool: _context.MemoryPool,
+                readerScheduler: ServiceContext.ThreadPool,
+                writerScheduler: PipeScheduler.Inline,
+                pauseWriterThreshold: 1,
+                resumeWriterThreshold: 1
+            ));
     }
 }

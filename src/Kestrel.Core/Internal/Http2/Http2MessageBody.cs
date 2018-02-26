@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
@@ -16,22 +18,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
         }
 
-        protected override void OnReadStarted()
+        public override ValueTask<int> ReadAsync(System.Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            // Produce 100-continue if no request body data for the stream has arrived yet.
-            if (!_context.RequestBodyStarted)
+            TryInit();
+            return base.ReadAsync(buffer, cancellationToken);
+        }
+
+        public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default)
+        {
+            TryInit();
+            return base.CopyToAsync(destination, cancellationToken);
+        }
+
+        private void TryInit()
+        {
+            if (!_context.HasStartedConsumingRequestBody)
             {
-                TryProduceContinue();
+                _context.HasStartedConsumingRequestBody = true;
+
+                // Produce 100-continue if no request body data for the stream has arrived yet.
+                if (!_context.RequestBodyStarted)
+                {
+                    TryProduceContinue();
+                }
             }
         }
 
-        protected override Task OnConsumeAsync() => Task.CompletedTask;
-
-        public override Task StopAsync()
+        public override void Stop()
         {
-            _context.RequestBodyPipe.Reader.Complete();
             _context.RequestBodyPipe.Writer.Complete();
-            return Task.CompletedTask;
+            _context.RequestBodyPipe.Reset();
         }
 
         public static MessageBody For(

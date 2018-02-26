@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
+using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -78,6 +80,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 : base(null)
             {
                 RequestUpgrade = upgradeable;
+            }
+
+            public override void Advance(long consumedBytes)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override bool TryTrimReadResult(ref ReadResult raw, out SequencePosition consumed, out SequencePosition examined)
+            {
+                throw new NotImplementedException();
             }
         }
     }

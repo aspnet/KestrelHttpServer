@@ -61,8 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         internal HttpProtocol Http1Connection => _http1Connection;
         internal IDebugger Debugger { get; set; } = DebuggerWrapper.Singleton;
 
-        // For testing
-        internal bool RequestTimedOut { get; private set; }
+        public bool RequestTimedOut { get; private set; }
 
         public string ConnectionId => _context.ConnectionId;
         public IPEndPoint LocalEndPoint => _context.LocalEndPoint;
@@ -200,6 +199,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             _requestProcessor = _http1Connection = CreateHttp1Connection(transport, application);
             _protocolSelectionState = ProtocolSelectionState.Selected;
+            _adaptedTransport = transport;
         }
 
         private Http1Connection CreateHttp1Connection(IDuplexPipe transport, IDuplexPipe application)
@@ -398,8 +398,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                             // HTTP/2 timeout responses are not yet supported.
                             if (_http1Connection != null)
                             {
-                                RequestTimedOut = true;
-                                _http1Connection.SendTimeoutResponse();
+                                SendTimeoutResponse();
                             }
                             break;
                         case TimeoutAction.AbortConnection:
@@ -440,8 +439,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         if (rate < minRequestBodyDataRate.BytesPerSecond && !Debugger.IsAttached)
                         {
                             Log.RequestBodyMininumDataRateNotSatisfied(_context.ConnectionId, _http1Connection.TraceIdentifier, minRequestBodyDataRate.BytesPerSecond);
-                            RequestTimedOut = true;
-                            _http1Connection.SendTimeoutResponse();
+                            SendTimeoutResponse();
                         }
                     }
 
@@ -470,6 +468,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     Abort(new TimeoutException());
                 }
             }
+        }
+
+        private void SendTimeoutResponse()
+        {
+            RequestTimedOut = true;
+            _adaptedTransport.Input.CancelPendingRead();
         }
 
         public void SetTimeout(long ticks, TimeoutAction timeoutAction)
