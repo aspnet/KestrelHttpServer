@@ -341,6 +341,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 (
                     pool: _memoryPool,
                     readerScheduler: _libuvThread,
+                    writerScheduler: PipeScheduler.Inline,
                     pauseWriterThreshold: maxResponseBufferSize,
                     resumeWriterThreshold: maxResponseBufferSize
                 );
