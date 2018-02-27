@@ -28,12 +28,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         private Task _listenTask;
         private Exception _listenException;
         private volatile bool _unbinding;
+        private SocketTransportOptions _options;
 
         internal SocketTransport(
             IEndPointInformation endPointInformation,
             IConnectionHandler handler,
             IApplicationLifetime applicationLifetime,
-            ISocketsTrace trace)
+            ISocketsTrace trace,
+            SocketTransportOptions options)
         {
             Debug.Assert(endPointInformation != null);
             Debug.Assert(endPointInformation.Type == ListenType.IPEndPoint);
@@ -45,6 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _handler = handler;
             _appLifetime = applicationLifetime;
             _trace = trace;
+            _options = options;
         }
 
         public Task BindAsync()
@@ -130,7 +133,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         var acceptSocket = await _listenSocket.AcceptAsync();
                         acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                        var connection = new SocketConnection(acceptSocket, _memoryPool, _trace);
+                        var connection = new SocketConnection(acceptSocket, _memoryPool, _trace, _options);
                         _ = connection.StartAsync(_handler);
                     }
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)

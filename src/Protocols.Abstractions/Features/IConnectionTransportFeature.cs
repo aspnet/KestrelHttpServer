@@ -15,5 +15,7 @@ namespace Microsoft.AspNetCore.Protocols.Features
         PipeScheduler InputWriterScheduler { get; }
 
         PipeScheduler OutputReaderScheduler { get; }
+
+        PipeScheduler ApplicationScheduler { get; }
     }
 }

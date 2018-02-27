@@ -2,7 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Buffers;
+using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Threading;
+using Microsoft.AspNetCore.Protocols.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
@@ -21,15 +25,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxResponseBufferSize = maxResponseBufferSize;
-            serviceContext.ThreadPool = new LoggingThreadPool(null);
 
-            var mockScheduler = Mock.Of<PipeScheduler>();
-            var outputPipeOptions = ConnectionHandler.GetOutputPipeOptions(serviceContext, new MemoryPool(), readerScheduler: mockScheduler);
+            var mockReaderScheduler = Mock.Of<PipeScheduler>();
+            var mockAppScheduler = Mock.Of<PipeScheduler>();
+
+            var mockConnectionTransportFeatures = new Mock<IConnectionTransportFeature>();
+            mockConnectionTransportFeatures.SetupGet(c => c.OutputReaderScheduler).Returns(mockReaderScheduler);
+            mockConnectionTransportFeatures.SetupGet(c => c.ApplicationScheduler).Returns(mockAppScheduler);
+            mockConnectionTransportFeatures.SetupGet(c => c.MemoryPool).Returns(new MemoryPool());
+
+            var outputPipeOptions = ConnectionHandler.GetOutputPipeOptions(serviceContext, mockConnectionTransportFeatures.Object, mockAppScheduler);
 
             Assert.Equal(expectedMaximumSizeLow, outputPipeOptions.ResumeWriterThreshold);
             Assert.Equal(expectedMaximumSizeHigh, outputPipeOptions.PauseWriterThreshold);
-            Assert.Same(mockScheduler, outputPipeOptions.ReaderScheduler);
-            Assert.Same(serviceContext.ThreadPool, outputPipeOptions.WriterScheduler);
+            Assert.Same(mockReaderScheduler, outputPipeOptions.ReaderScheduler);
+            Assert.Same(mockAppScheduler, outputPipeOptions.WriterScheduler);
         }
 
         [Theory]
@@ -39,15 +49,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxRequestBufferSize = maxRequestBufferSize;
-            serviceContext.ThreadPool = new LoggingThreadPool(null);
 
-            var mockScheduler = Mock.Of<PipeScheduler>();
-            var inputPipeOptions = ConnectionHandler.GetInputPipeOptions(serviceContext, new MemoryPool(), writerScheduler: mockScheduler);
+            var mockWriterScheduler = Mock.Of<PipeScheduler>();
+            var mockAppScheduler = Mock.Of<PipeScheduler>();
+
+            var mockConnectionTransportFeatures = new Mock<IConnectionTransportFeature>();
+            mockConnectionTransportFeatures.SetupGet(c => c.InputWriterScheduler).Returns(mockWriterScheduler);
+            mockConnectionTransportFeatures.SetupGet(c => c.ApplicationScheduler).Returns(mockAppScheduler);
+            mockConnectionTransportFeatures.SetupGet(c => c.MemoryPool).Returns(new MemoryPool());
+
+            var inputPipeOptions = ConnectionHandler.GetInputPipeOptions(serviceContext, mockConnectionTransportFeatures.Object, mockAppScheduler);
 
             Assert.Equal(expectedMaximumSizeLow, inputPipeOptions.ResumeWriterThreshold);
             Assert.Equal(expectedMaximumSizeHigh, inputPipeOptions.PauseWriterThreshold);
-            Assert.Same(serviceContext.ThreadPool, inputPipeOptions.ReaderScheduler);
-            Assert.Same(mockScheduler, inputPipeOptions.WriterScheduler);
+            Assert.Same(mockAppScheduler, inputPipeOptions.ReaderScheduler);
+            Assert.Same(mockWriterScheduler, inputPipeOptions.WriterScheduler);
         }
 
         [Theory]
@@ -58,14 +74,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxRequestBufferSize = maxRequestBufferSize;
 
+            var mockAppScheduler = Mock.Of<PipeScheduler>();
+
             var connectionLifetime = new HttpConnection(new HttpConnectionContext
             {
-                ServiceContext = serviceContext
+                ServiceContext = serviceContext,
+                ApplicationScheduler = mockAppScheduler
             });
 
             Assert.Equal(expectedMaximumSizeLow, connectionLifetime.AdaptedInputPipeOptions.ResumeWriterThreshold);
             Assert.Equal(expectedMaximumSizeHigh, connectionLifetime.AdaptedInputPipeOptions.PauseWriterThreshold);
-            Assert.Same(serviceContext.ThreadPool, connectionLifetime.AdaptedInputPipeOptions.ReaderScheduler);
+            Assert.Same(mockAppScheduler, connectionLifetime.AdaptedInputPipeOptions.ReaderScheduler);
             Assert.Same(PipeScheduler.Inline, connectionLifetime.AdaptedInputPipeOptions.WriterScheduler);
         }
 
@@ -77,9 +96,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var serviceContext = new TestServiceContext();
             serviceContext.ServerOptions.Limits.MaxResponseBufferSize = maxRequestBufferSize;
 
+            var mockAppScheduler = Mock.Of<PipeScheduler>();
+
             var connectionLifetime = new HttpConnection(new HttpConnectionContext
             {
-                ServiceContext = serviceContext
+                ServiceContext = serviceContext,
+                ApplicationScheduler = mockAppScheduler
             });
 
             Assert.Equal(expectedMaximumSizeLow, connectionLifetime.AdaptedOutputPipeOptions.ResumeWriterThreshold);

@@ -422,7 +422,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 Output.Abort(error);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
-                ServiceContext.ThreadPool.UnsafeRun(state => ((HttpProtocol)state).CancelRequestAbortedToken(), this);
+                // This can potentially call inline if the user set that as the scheduling mode
+                _context.ApplicationScheduler.Schedule(state => ((HttpProtocol)state).CancelRequestAbortedToken(), this);
             }
         }
 
@@ -1328,11 +1329,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Log.ApplicationError(ConnectionId, TraceIdentifier, ex);
         }
 
+        // REVIEW/TODO: The request body pipe reader scheduler shouldn't be influenced by the transport
+        // since an app that calls read synchronously will almost certainly deadlock regardless of transport.
+        // I think using the inline scheduler is only OK if the app developer asks for it via KestrelServerOptions.
         private Pipe CreateRequestBodyPipe()
             => new Pipe(new PipeOptions
             (
                 pool: _context.MemoryPool,
-                readerScheduler: ServiceContext.ThreadPool,
+                readerScheduler: _context.ApplicationScheduler,
                 writerScheduler: PipeScheduler.Inline,
                 pauseWriterThreshold: 1,
                 resumeWriterThreshold: 1

@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
+    // Fix SchedulingMode validation in KestrelServer.cs if modified.
     public enum SchedulingMode
     {
         Default,

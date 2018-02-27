@@ -49,6 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 Set<IConnectionIdFeature>(this);
                 Set<IConnectionTransportFeature>(this);
+                ApplicationScheduler = PipeScheduler.ThreadPool;
             }
 
             public MemoryPool MemoryPool { get; } = new MemoryPool();
@@ -59,6 +60,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             public PipeScheduler InputWriterScheduler => PipeScheduler.ThreadPool;
 
             public PipeScheduler OutputReaderScheduler => PipeScheduler.ThreadPool;
+
+            public PipeScheduler ApplicationScheduler { get; set; }
 
             public string ConnectionId { get; set; }
         }
