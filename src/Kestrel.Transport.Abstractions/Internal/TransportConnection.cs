@@ -24,8 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         public virtual MemoryPool MemoryPool { get; }
         public virtual PipeScheduler InputWriterScheduler { get; }
         public virtual PipeScheduler OutputReaderScheduler { get; }
-        // REVIEW: Should we make all properties non-virtual with get and set?
-        public PipeScheduler ApplicationScheduler { get; set; }
+        public virtual PipeScheduler ApplicationScheduler { get; }
 
         public IDuplexPipe Transport { get; set; }
         public IDuplexPipe Application { get; set; }

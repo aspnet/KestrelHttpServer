@@ -422,13 +422,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 Output.Abort(error);
 
                 // Potentially calling user code. CancelRequestAbortedToken logs any exceptions.
-
-                // REVIEW: Should this still QUWI even if the user selects the inline scheduler?
-                // Should we remove the closure allocation? Or maybe allocate the closure once at the start of the connection?
-                // I'm using the ApplicationScheduler for now so we don't have to introduce timeouts in LibuvOutputConsumerTests.
-
-                //ThreadPool.QueueUserWorkItem(state => ((HttpProtocol)state).CancelRequestAbortedToken(), this);
-                _context.ApplicationScheduler.Schedule(CancelRequestAbortedToken);
+                // This can potentially call inline if the user set that as the scheduling mode
+                _context.ApplicationScheduler.Schedule(state => ((HttpProtocol)state).CancelRequestAbortedToken(), this);
             }
         }
 

@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             mockConnectionTransportFeatures.SetupGet(c => c.ApplicationScheduler).Returns(mockAppScheduler);
             mockConnectionTransportFeatures.SetupGet(c => c.MemoryPool).Returns(new MemoryPool());
 
-            var outputPipeOptions = ConnectionHandler.GetOutputPipeOptions(serviceContext, mockConnectionTransportFeatures.Object);
+            var outputPipeOptions = ConnectionHandler.GetOutputPipeOptions(serviceContext, mockConnectionTransportFeatures.Object, mockAppScheduler);
 
             Assert.Equal(expectedMaximumSizeLow, outputPipeOptions.ResumeWriterThreshold);
             Assert.Equal(expectedMaximumSizeHigh, outputPipeOptions.PauseWriterThreshold);
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             mockConnectionTransportFeatures.SetupGet(c => c.ApplicationScheduler).Returns(mockAppScheduler);
             mockConnectionTransportFeatures.SetupGet(c => c.MemoryPool).Returns(new MemoryPool());
 
-            var inputPipeOptions = ConnectionHandler.GetInputPipeOptions(serviceContext, mockConnectionTransportFeatures.Object);
+            var inputPipeOptions = ConnectionHandler.GetInputPipeOptions(serviceContext, mockConnectionTransportFeatures.Object, mockAppScheduler);
 
             Assert.Equal(expectedMaximumSizeLow, inputPipeOptions.ResumeWriterThreshold);
             Assert.Equal(expectedMaximumSizeHigh, inputPipeOptions.PauseWriterThreshold);

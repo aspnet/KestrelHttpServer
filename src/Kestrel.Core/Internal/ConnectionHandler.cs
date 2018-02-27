@@ -51,12 +51,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             // Wrap the application scheduler so exceptions are observed if any scheduled actions throw.
-            transportFeature.ApplicationScheduler = new LoggingPipeSchedulerWrapper(innerScheduler, Log);
+            var applicationScheduler = new LoggingPipeSchedulerWrapper(innerScheduler, Log);
 
             // REVIEW: Unfortunately, we still need to use the service context to create the pipes since the settings
             // for the scheduler and limits are specified here
-            var inputOptions = GetInputPipeOptions(_serviceContext, transportFeature);
-            var outputOptions = GetOutputPipeOptions(_serviceContext, transportFeature);
+            var inputOptions = GetInputPipeOptions(_serviceContext, transportFeature, applicationScheduler);
+            var outputOptions = GetOutputPipeOptions(_serviceContext, transportFeature, applicationScheduler);
 
             var pair = DuplexPipe.CreateConnectionPair(inputOptions, outputOptions);
 
@@ -104,10 +104,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         // Internal for testing
         internal static PipeOptions GetInputPipeOptions(
             ServiceContext serviceContext,
-            IConnectionTransportFeature transportFeature) => new PipeOptions
+            IConnectionTransportFeature transportFeature,
+            PipeScheduler applicationScheduler) => new PipeOptions
         (
             pool: transportFeature.MemoryPool,
-            readerScheduler: transportFeature.ApplicationScheduler,
+            readerScheduler: applicationScheduler,
             writerScheduler: transportFeature.InputWriterScheduler,
             pauseWriterThreshold: serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             resumeWriterThreshold: serviceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
@@ -115,11 +116,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         internal static PipeOptions GetOutputPipeOptions(
             ServiceContext serviceContext,
-            IConnectionTransportFeature transportFeature) => new PipeOptions
+            IConnectionTransportFeature transportFeature,
+            PipeScheduler applicationScheduler) => new PipeOptions
         (
             pool: transportFeature.MemoryPool,
             readerScheduler: transportFeature.OutputReaderScheduler,
-            writerScheduler: transportFeature.ApplicationScheduler,
+            writerScheduler: applicationScheduler,
             pauseWriterThreshold: GetOutputResponseBufferSize(serviceContext),
             resumeWriterThreshold: GetOutputResponseBufferSize(serviceContext)
         );

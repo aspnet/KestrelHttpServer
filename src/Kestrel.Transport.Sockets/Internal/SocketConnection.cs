@@ -7,9 +7,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
-using System.Threading;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
@@ -23,10 +23,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly ISocketsTrace _trace;
         private readonly SocketReceiver _receiver;
         private readonly SocketSender _sender;
+        private readonly SocketTransportOptions _options;
 
         private volatile bool _aborted;
 
-        internal SocketConnection(Socket socket, MemoryPool memoryPool, ISocketsTrace trace)
+        internal SocketConnection(Socket socket, MemoryPool memoryPool, ISocketsTrace trace, SocketTransportOptions options)
         {
             Debug.Assert(socket != null);
             Debug.Assert(memoryPool != null);
@@ -35,10 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             _socket = socket;
             MemoryPool = memoryPool;
             _trace = trace;
-
-            // REVIEW: Ideally we'd use the inline scheduler for the socket transport, but
-            // this doesn't play nicely with the request body reader scheduler selection at the moment.
-            ApplicationScheduler = PipeScheduler.ThreadPool;
+            _options = options;
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
             var remoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
@@ -51,11 +49,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _receiver = new SocketReceiver(_socket);
             _sender = new SocketSender(_socket);
+
+            switch (_options.ApplicationSchedulingMode)
+            {
+                case SchedulingMode.Default:
+                case SchedulingMode.ThreadPool:
+                    ApplicationScheduler = PipeScheduler.ThreadPool;
+                    break;
+                case SchedulingMode.Inline:
+                    ApplicationScheduler = PipeScheduler.Inline;
+                    break;
+                default:
+                    break;
+            }
         }
 
         public override MemoryPool MemoryPool { get; }
         public override PipeScheduler InputWriterScheduler => PipeScheduler.Inline;
         public override PipeScheduler OutputReaderScheduler => PipeScheduler.ThreadPool;
+        public override PipeScheduler ApplicationScheduler { get; }
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
