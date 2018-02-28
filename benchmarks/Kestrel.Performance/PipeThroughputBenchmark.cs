@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
@@ -62,6 +63,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 var result = _pipe.Reader.ReadAsync().GetAwaiter().GetResult();
                 _pipe.Reader.AdvanceTo(result.Buffer.End, result.Buffer.End);
             }
+        }
+
+        [IterationCleanup]
+        public void Cleanup()
+        {
+            _memoryPool.Dispose();
         }
     }
 }
