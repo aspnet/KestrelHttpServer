@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         [GlobalSetup(Target = nameof(Plaintext) + "," + nameof(PlaintextPipelined))]
         public void GlobalSetupPlaintext()
         {
-            var transportFactory = new InMemoryTransportFactory();
+            var transportFactory = new InMemoryTransportFactory(connectionsPerEndPoint: 1);
 
             _host = new WebHostBuilder()
                 // Prevent VS from attaching to hosting startup which could impact results
@@ -53,6 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             _host.Start();
 
+            // Ensure there is a single endpoint and single connection
             _connection = transportFactory.Connections.Values.Single().Single();
         }
 
@@ -85,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             public IReadOnlyDictionary<IEndPointInformation, IReadOnlyList<InMemoryConnection>> Connections => _connections;
 
-            public InMemoryTransportFactory(int connectionsPerEndPoint = 1)
+            public InMemoryTransportFactory(int connectionsPerEndPoint)
             {
                 _connectionsPerEndPoint = connectionsPerEndPoint;
             }
