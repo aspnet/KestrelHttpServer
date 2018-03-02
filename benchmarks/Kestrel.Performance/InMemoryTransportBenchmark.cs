@@ -18,20 +18,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
     public class InMemoryTransportBenchmark
     {
-        // Must use explicit line endings to ensure identical string on all platforms
-        private static readonly byte[] _plaintextRequest = Encoding.UTF8.GetBytes(
-            "GET /plaintext HTTP/1.1\r\n" +
-            "Host: localhost\r\n" +
-            "Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7\r\n" +
-            "Connection: keep-alive\r\n" +
-            "\r\n");
-
         private const int _plaintextExpectedResponseLength = 132;
-
-        private const int PipelineDepth = 16;
-        private static readonly byte[] _plaintextPipelinedRequest =
-            Enumerable.Range(0, PipelineDepth).SelectMany(_ => _plaintextRequest).ToArray();
-        private const int _plaintextPipelinedExpectedResponseLength = _plaintextExpectedResponseLength * PipelineDepth;
+        private const int _plaintextPipelinedExpectedResponseLength = _plaintextExpectedResponseLength * RequestParsingData.Pipelining;
 
         private IWebHost _host;
         private InMemoryConnection _connection;
@@ -66,14 +54,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         [Benchmark]
         public void Plaintext()
         {
-            _connection.SendRequestAsync(_plaintextRequest).Wait();
+            _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerRequest).Wait();
             _connection.GetResponseAsync(_plaintextExpectedResponseLength).Wait();
         }
 
-        [Benchmark(OperationsPerInvoke = PipelineDepth)]
+        [Benchmark(OperationsPerInvoke = RequestParsingData.Pipelining)]
         public void PlaintextPipelined()
         {
-            _connection.SendRequestAsync(_plaintextPipelinedRequest).Wait();
+            _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerPipelinedRequests).Wait();
             _connection.GetResponseAsync(_plaintextPipelinedExpectedResponseLength).Wait();
         }
 
