@@ -45,6 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 // Prevent VS from attaching to hosting startup which could impact results
                 .UseSetting("preventHostingStartup", "true")
                 .UseKestrel()
+                // Bind to a single non-HTTPS endpoint
                 .UseUrls("http://127.0.0.1:5000")
                 .ConfigureServices(services => services.AddSingleton<ITransportFactory>(transportFactory))
                 .Configure(app => app.UseMiddleware<PlaintextMiddleware>())
