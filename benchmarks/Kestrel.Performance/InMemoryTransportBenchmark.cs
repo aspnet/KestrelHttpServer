@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -18,8 +19,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 {
     public class InMemoryTransportBenchmark
     {
-        private const int _plaintextExpectedResponseLength = 132;
-        private const int _plaintextPipelinedExpectedResponseLength = _plaintextExpectedResponseLength * RequestParsingData.Pipelining;
+        private const string _plaintextExpectedResponse =
+            "HTTP/1.1 200 OK\r\n" +
+            "Date: Fri, 02 Mar 2018 18:37:05 GMT\r\n" +
+            "Content-Type: text/plain\r\n" +
+            "Server: Kestrel\r\n" +
+            "Content-Length: 13\r\n" +
+            "\r\n" +
+            "Hello, World!";
+
+        private static readonly string _plaintextPipelinedExpectedResponse =
+            string.Concat(Enumerable.Repeat(_plaintextExpectedResponse, RequestParsingData.Pipelining));
 
         private IWebHost _host;
         private InMemoryConnection _connection;
@@ -43,6 +53,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
             // Ensure there is a single endpoint and single connection
             _connection = transportFactory.Connections.Values.Single().Single();
+
+            ValidateResponse(RequestParsingData.PlaintextTechEmpowerRequest, _plaintextExpectedResponse);
+            ValidateResponse(RequestParsingData.PlaintextTechEmpowerPipelinedRequests, _plaintextPipelinedExpectedResponse);
+        }
+
+        private void ValidateResponse(byte[] request, string expectedResponse)
+        {
+            _connection.SendRequestAsync(request).Wait();
+            var response = Encoding.ASCII.GetString(_connection.GetResponseAsync(expectedResponse.Length).Result);
+
+            // Exclude date header since the value changes on every request
+            var expectedResponseLines = expectedResponse.Split("\r\n").Where(s => !s.StartsWith("Date:"));
+            var responseLines = response.Split("\r\n").Where(s => !s.StartsWith("Date:"));
+
+            if (!Enumerable.SequenceEqual(expectedResponseLines, responseLines))
+            {
+                throw new InvalidOperationException(string.Join(Environment.NewLine,
+                    "Invalid response", "Expected:", expectedResponse, "Actual:", response));
+            }
         }
 
         [GlobalCleanup]
@@ -55,14 +84,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         public async Task Plaintext()
         {
             await _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerRequest);
-            await _connection.GetResponseAsync(_plaintextExpectedResponseLength);
+            await _connection.ReadResponseAsync(_plaintextExpectedResponse.Length);
         }
 
         [Benchmark(OperationsPerInvoke = RequestParsingData.Pipelining)]
         public async Task PlaintextPipelined()
         {
             await _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
-            await _connection.GetResponseAsync(_plaintextPipelinedExpectedResponseLength);
+            await _connection.ReadResponseAsync(_plaintextPipelinedExpectedResponse.Length);
         }
 
         public class InMemoryTransportFactory : ITransportFactory
@@ -132,6 +161,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 return Input.WriteAsync(request);
             }
 
+            // Reads response as efficiently as possible (similar to LibuvTransport), but doesn't return anything
+            public async Task ReadResponseAsync(int length)
+            {
+                while (length > 0)
+                {
+                    var result = await Output.ReadAsync();
+                    var buffer = result.Buffer;
+                    length -= (int)buffer.Length;
+                    Output.AdvanceTo(buffer.End);
+                }
+
+                if (length < 0)
+                {
+                    throw new InvalidOperationException($"Invalid response, length={length}");
+                }
+            }
+
+            // Returns response so it can be validated, but is slower and allocates more than ReadResponseAsync()
             public async Task<byte[]> GetResponseAsync(int length)
             {
                 while (true)
@@ -191,6 +238,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 return response.Body.WriteAsync(_helloWorldPayload, 0, payloadLength);
             }
         }
-
     }
 }
