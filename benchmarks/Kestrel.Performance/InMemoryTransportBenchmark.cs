@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -54,14 +54,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
             // Ensure there is a single endpoint and single connection
             _connection = transportFactory.Connections.Values.Single().Single();
 
-            ValidateResponse(RequestParsingData.PlaintextTechEmpowerRequest, _plaintextExpectedResponse);
-            ValidateResponse(RequestParsingData.PlaintextTechEmpowerPipelinedRequests, _plaintextPipelinedExpectedResponse);
+            ValidateResponseAsync(RequestParsingData.PlaintextTechEmpowerRequest, _plaintextExpectedResponse).Wait();
+            ValidateResponseAsync(RequestParsingData.PlaintextTechEmpowerPipelinedRequests, _plaintextPipelinedExpectedResponse).Wait();
         }
 
-        private void ValidateResponse(byte[] request, string expectedResponse)
+        private async Task ValidateResponseAsync(byte[] request, string expectedResponse)
         {
-            _connection.SendRequestAsync(request).Wait();
-            var response = Encoding.ASCII.GetString(_connection.GetResponseAsync(expectedResponse.Length).Result);
+            await _connection.SendRequestAsync(request);
+            var response = Encoding.ASCII.GetString(await _connection.GetResponseAsync(expectedResponse.Length));
 
             // Exclude date header since the value changes on every request
             var expectedResponseLines = expectedResponse.Split("\r\n").Where(s => !s.StartsWith("Date:"));
@@ -156,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
 
         public class InMemoryConnection : TransportConnection
         {
-            public Task SendRequestAsync(byte[] request)
+            public PipeAwaiter<FlushResult> SendRequestAsync(byte[] request)
             {
                 return Input.WriteAsync(request);
             }
