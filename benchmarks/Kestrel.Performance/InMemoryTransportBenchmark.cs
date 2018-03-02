@@ -52,17 +52,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
         }
 
         [Benchmark]
-        public void Plaintext()
+        public async Task Plaintext()
         {
-            _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerRequest).Wait();
-            _connection.GetResponseAsync(_plaintextExpectedResponseLength).Wait();
+            await _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerRequest);
+            await _connection.GetResponseAsync(_plaintextExpectedResponseLength);
         }
 
         [Benchmark(OperationsPerInvoke = RequestParsingData.Pipelining)]
-        public void PlaintextPipelined()
+        public async Task PlaintextPipelined()
         {
-            _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerPipelinedRequests).Wait();
-            _connection.GetResponseAsync(_plaintextPipelinedExpectedResponseLength).Wait();
+            await _connection.SendRequestAsync(RequestParsingData.PlaintextTechEmpowerPipelinedRequests);
+            await _connection.GetResponseAsync(_plaintextPipelinedExpectedResponseLength);
         }
 
         public class InMemoryTransportFactory : ITransportFactory
