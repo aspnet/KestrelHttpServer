@@ -1960,7 +1960,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Contains(5, _abortedStreamIds);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/aspnet/KestrelHttpServer/issues/2362")]
         public async Task ConnectionResetLoggedWithActiveStreams()
         {
             await InitializeConnectionAsync(_waitForAbortApplication);
@@ -1971,6 +1971,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var result = await _pair.Application.Input.ReadAsync();
             Assert.True(result.IsCompleted);
+
             Assert.Single(_logger.Messages, m => m.Exception is ConnectionResetException);
         }
 
