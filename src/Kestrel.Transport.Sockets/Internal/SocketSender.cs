@@ -3,100 +3,78 @@
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    public class SocketSender
+    public class SocketSender : SocketOperation
     {
-        private readonly Socket _socket;
-        private readonly SocketAsyncEventArgs _eventArgs = new SocketAsyncEventArgs();
-        private readonly SocketAwaitable _awaitable;
+        private static unsafe readonly IOCompletionCallback _completionCallback = new IOCompletionCallback(CompletionCallback);
 
-        private List<ArraySegment<byte>> _bufferList;
+        private readonly PipeScheduler _scheduler;
+        private readonly SocketConnection _socketConnection;
+        private readonly ThreadPoolBoundHandle _threadPoolBoundHandle;
 
-        public SocketSender(Socket socket, PipeScheduler scheduler)
+        private MemoryHandle _memoryHandle;
+        private MultiSegmentSocketSender _multiSegmentSocketSender;
+
+
+        internal SocketSender(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection, ThreadPoolBoundHandle threadPoolBoundHandle)
+            : base(socket, scheduler, socketConnection, threadPoolBoundHandle, _completionCallback)
         {
-            _socket = socket;
-            _awaitable = new SocketAwaitable(scheduler);
-            _eventArgs.UserToken = _awaitable;
-            _eventArgs.Completed += (_, e) => ((SocketAwaitable)e.UserToken).Complete(e.BytesTransferred, e.SocketError);
+            _scheduler = scheduler;
+            _socketConnection = socketConnection;
+            _threadPoolBoundHandle = threadPoolBoundHandle;
         }
 
-        public SocketAwaitable SendAsync(ReadOnlySequence<byte> buffers)
+        public unsafe SocketAwaitable SendAsync(ReadOnlySequence<byte> buffers)
         {
-            if (buffers.IsSingleSegment)
+            if (!buffers.IsSingleSegment)
             {
-                return SendAsync(buffers.First);
+                if (_multiSegmentSocketSender == null)
+                {
+                    _multiSegmentSocketSender = new MultiSegmentSocketSender(_socket, _scheduler, _socketConnection, _threadPoolBoundHandle);
+                }
+
+                return _multiSegmentSocketSender.SendAsync(buffers);
             }
 
-#if NETCOREAPP2_1
-            if (!_eventArgs.MemoryBuffer.Equals(Memory<byte>.Empty))
-#else
-            if (_eventArgs.Buffer != null)
-#endif
+            var overlapped = GetOverlapped();
+
+            _memoryHandle = buffers.First.Retain(pin: true);
+            
+            var wsaBuffer = new WSABuffer
             {
-                _eventArgs.SetBuffer(null, 0, 0);
+                Length = buffers.First.Length,
+                Pointer = (IntPtr)_memoryHandle.Pointer
+            };
+
+            var errno = WSASend(
+                _socket.Handle,
+                &wsaBuffer,
+                1,
+                out var bytesTransferred,
+                SocketFlags.None,
+                overlapped,
+                IntPtr.Zero);
+
+            var awaitable = GetAwaitable(overlapped, errno, bytesTransferred, out var completedInline);
+
+            if (completedInline)
+            {
+                _memoryHandle.Dispose();
             }
 
-            _eventArgs.BufferList = GetBufferList(buffers);
-
-            if (!_socket.SendAsync(_eventArgs))
-            {
-                _awaitable.Complete(_eventArgs.BytesTransferred, _eventArgs.SocketError);
-            }
-
-            return _awaitable;
+            return awaitable;
         }
 
-        private SocketAwaitable SendAsync(ReadOnlyMemory<byte> memory)
+        private static unsafe void CompletionCallback(uint errno, uint bytesTransferred, NativeOverlapped* overlapped)
         {
-            // The BufferList getter is much less expensive then the setter.
-            if (_eventArgs.BufferList != null)
-            {
-                _eventArgs.BufferList = null;
-            }
-
-#if NETCOREAPP2_1
-            _eventArgs.SetBuffer(MemoryMarshal.AsMemory(memory));
-#else
-            var segment = memory.GetArray();
-
-            _eventArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
-#endif
-            if (!_socket.SendAsync(_eventArgs))
-            {
-                _awaitable.Complete(_eventArgs.BytesTransferred, _eventArgs.SocketError);
-            }
-
-            return _awaitable;
-        }
-
-        private List<ArraySegment<byte>> GetBufferList(ReadOnlySequence<byte> buffer)
-        {
-            Debug.Assert(!buffer.IsEmpty);
-            Debug.Assert(!buffer.IsSingleSegment);
-
-            if (_bufferList == null)
-            {
-                _bufferList = new List<ArraySegment<byte>>();
-            }
-            else
-            {
-                // Buffers are pooled, so it's OK to root them until the next multi-buffer write.
-                _bufferList.Clear();
-            }
-
-            foreach (var b in buffer)
-            {
-                _bufferList.Add(b.GetArray());
-            }
-
-            return _bufferList;
+            var socketSender = (SocketSender)ThreadPoolBoundHandle.GetNativeOverlappedState(overlapped);
+            socketSender._memoryHandle.Dispose();
+            socketSender.OperationCompletionCallback(errno, bytesTransferred, overlapped);
         }
     }
 }

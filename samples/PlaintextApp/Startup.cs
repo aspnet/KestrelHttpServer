@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace PlaintextApp
 {
@@ -34,6 +35,12 @@ namespace PlaintextApp
                 .UseKestrel(options =>
                 {
                     options.Listen(IPAddress.Loopback, 5001);
+                })
+                .UseSockets()
+                .ConfigureLogging(loggingBuilder =>
+                {
+                    loggingBuilder.AddConsole();
+                    loggingBuilder.SetMinimumLevel(LogLevel.Trace);
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
