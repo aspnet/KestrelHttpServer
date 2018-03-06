@@ -52,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public override MemoryPool<byte> MemoryPool { get; }
         public override PipeScheduler InputWriterScheduler => PipeScheduler.Inline;
-        public override PipeScheduler OutputReaderScheduler => PipeScheduler.ThreadPool;
+        public override PipeScheduler OutputReaderScheduler => GlobalThreadPoolScheduler.Default;
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
@@ -113,7 +113,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     }
 
                     Input.Advance(bytesReceived);
-
 
                     var flushTask = Input.FlushAsync();
 
@@ -241,6 +240,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return error;
+        }
+
+        // This scheduler runs on the global thread pool queue instead of the local queue
+        // We can delete this when we get a new pipelines build since that's the new default.
+        // In the current version that Kestrel uses, we're using local queues instead of the global one.
+        private class GlobalThreadPoolScheduler : PipeScheduler
+        {
+            public static GlobalThreadPoolScheduler Default = new GlobalThreadPoolScheduler();
+
+            public override void Schedule(Action action)
+            {
+                System.Threading.ThreadPool.QueueUserWorkItem(s =>
+                {
+                    ((Action)s)();
+                },
+                action);
+            }
+
+            public override void Schedule(Action<object> action, object state)
+            {
+                System.Threading.ThreadPool.QueueUserWorkItem(s =>
+                {
+                    var t = (Tuple<Action<object>, object>)s;
+                    t.Item1(t.Item2);
+                },
+                Tuple.Create(action, state));
+            }
         }
     }
 }

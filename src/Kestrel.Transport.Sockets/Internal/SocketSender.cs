@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private readonly Socket _socket;
         private readonly SocketAsyncEventArgs _eventArgs = new SocketAsyncEventArgs();
-        private readonly SocketAwaitable _awaitable = new SocketAwaitable();
+        private readonly SocketAwaitable _awaitable = new SocketAwaitable(runContinuationsAsynchronously: false);
 
         private List<ArraySegment<byte>> _bufferList;
 

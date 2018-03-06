@@ -10,7 +10,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private readonly Socket _socket;
         private readonly SocketAsyncEventArgs _eventArgs = new SocketAsyncEventArgs();
-        private readonly SocketAwaitable _awaitable = new SocketAwaitable();
+
+        // Dispatch read continuations to the thread pool, this allows us to not tie up the IO thread
+        // when running read completions.
+        private readonly SocketAwaitable _awaitable = new SocketAwaitable(runContinuationsAsynchronously: true);
 
         public SocketReceiver(Socket socket)
         {
