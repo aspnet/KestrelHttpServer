@@ -21,6 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly SocketAwaitable _awaitable;
 
         private readonly IOCompletionCallback _completionCallback;
+        private bool _skipCompletionPortOnSuccess;
 
         internal SocketOperation(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection, ThreadPoolBoundHandle threadPoolBoundHandle, IOCompletionCallback completionCallback)
         {
@@ -31,6 +32,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _awaitable = new SocketAwaitable(scheduler);
             _overlapped = new PreAllocatedOverlapped(_completionCallback, state: this, pinData: null);
+
+            try
+            {
+                _skipCompletionPortOnSuccess = SetFileCompletionNotificationModes(_socket.Handle,
+                    FileCompletionNotificationModes.SkipCompletionPortOnSuccess | FileCompletionNotificationModes.SkipSetEventOnHandle);
+            } catch { }
+
         }
 
         protected unsafe NativeOverlapped* GetOverlapped()
@@ -40,18 +48,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         protected unsafe SocketAwaitable GetAwaitable(NativeOverlapped* overlapped, SocketError errno, int bytesTransferred, out bool completedInline)
         {
-            completedInline = false;
+            errno = errno == SocketError.Success ? SocketError.Success : (SocketError)Marshal.GetLastWin32Error();
 
-            if (errno != SocketError.Success)
+            if (errno != SocketError.IOPending && (_skipCompletionPortOnSuccess || errno != SocketError.Success))
             {
-                errno = (SocketError)Marshal.GetLastWin32Error();
-
-                if (errno != SocketError.IOPending && errno != SocketError.Success)
-                {
-                    _threadPoolBoundHandle.FreeNativeOverlapped(overlapped);
-                    _awaitable.Complete(bytesTransferred, errno);
-                    completedInline = true;
-                }
+                _threadPoolBoundHandle.FreeNativeOverlapped(overlapped);
+                _awaitable.Complete(bytesTransferred, errno);
+                completedInline = true;
+            }
+            else
+            {
+                completedInline = false;
             }
 
             return _awaitable;
@@ -135,11 +142,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             bool wait,
             out SocketFlags socketFlags);
 
+        [DllImport("kernel32.dll")]
+        private static unsafe extern bool SetFileCompletionNotificationModes(
+            IntPtr handle,
+            FileCompletionNotificationModes flags);
+
         [StructLayout(LayoutKind.Sequential)]
         protected struct WSABuffer
         {
             public int Length;
             public IntPtr Pointer;
+        }
+
+        [Flags]
+        internal enum FileCompletionNotificationModes : byte
+        {
+            None = 0,
+            SkipCompletionPortOnSuccess = 1,
+            SkipSetEventOnHandle = 2
         }
     }
 }
