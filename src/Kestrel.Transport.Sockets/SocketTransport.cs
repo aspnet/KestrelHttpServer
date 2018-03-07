@@ -131,32 +131,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
-                var nextSchedulerIndex = 0;
-
                 while (true)
                 {
-                    try
+                    for (var schedulerIndex = 0; schedulerIndex < _numSchedulers;  schedulerIndex++)
                     {
-                        var acceptSocket = await _listenSocket.AcceptAsync();
-                        acceptSocket.NoDelay = _endPointInformation.NoDelay;
+                        try
+                        {
+                            var acceptSocket = await _listenSocket.AcceptAsync();
+                            acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                        var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[nextSchedulerIndex], _trace);
-                        _ = connection.StartAsync(_handler);
-                    }
-                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
-                    {
-                        // REVIEW: Should there be a seperate log message for a connection reset this early?
-                        _trace.ConnectionReset(connectionId: "(null)");
-                    }
-                    catch (SocketException ex) when (!_unbinding)
-                    {
-                        _trace.ConnectionError(connectionId: "(null)", ex);
-                    }
-
-                    nextSchedulerIndex++;
-                    if (nextSchedulerIndex == _numSchedulers)
-                    {
-                        nextSchedulerIndex = 0;
+                            var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[schedulerIndex], _trace);
+                            _ = connection.StartAsync(_handler);
+                        }
+                        catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+                        {
+                            // REVIEW: Should there be a seperate log message for a connection reset this early?
+                            _trace.ConnectionReset(connectionId: "(null)");
+                        }
+                        catch (SocketException ex) when (!_unbinding)
+                        {
+                            _trace.ConnectionError(connectionId: "(null)", ex);
+                        }
                     }
                 }
             }
