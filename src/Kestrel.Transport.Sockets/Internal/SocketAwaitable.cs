@@ -13,9 +13,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private static readonly Action _callbackCompleted = () => { };
 
+        private readonly CoalescingScheduler _coalescingScheduler;
+
         private Action _callback;
-        private int _bytesTransfered;
+        private int _bytesTransferred;
         private SocketError _error;
+
+        public SocketAwaitable(CoalescingScheduler coalescingScheduler)
+        {
+            _coalescingScheduler = coalescingScheduler;
+        }
 
         public SocketAwaitable GetAwaiter() => this;
         public bool IsCompleted => ReferenceEquals(_callback, _callbackCompleted);
@@ -31,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 throw new SocketException((int)_error);
             }
 
-            return _bytesTransfered;
+            return _bytesTransferred;
         }
 
         public void OnCompleted(Action continuation)
@@ -51,8 +58,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public void Complete(int bytesTransferred, SocketError socketError)
         {
             _error = socketError;
-            _bytesTransfered = bytesTransferred;
-            Interlocked.Exchange(ref _callback, _callbackCompleted)?.Invoke();
+            _bytesTransferred = bytesTransferred;
+            var continuation = Interlocked.Exchange(ref _callback, _callbackCompleted);
+
+            if (continuation != null)
+            {
+                _coalescingScheduler.Schedule(continuation);
+            }
         }
     }
 }

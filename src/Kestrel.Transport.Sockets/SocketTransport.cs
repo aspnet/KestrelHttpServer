@@ -19,7 +19,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     internal sealed class SocketTransport : ITransport
     {
+        private const int _numSchedulers = 8;
+
         private readonly MemoryPool<byte> _memoryPool = KestrelMemoryPool.Create();
+        private readonly CoalescingScheduler[] _schedulers = new CoalescingScheduler[_numSchedulers];
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
         private readonly IApplicationLifetime _appLifetime;
@@ -45,6 +48,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _handler = handler;
             _appLifetime = applicationLifetime;
             _trace = trace;
+
+            for (var i = 0; i < _numSchedulers; i++)
+            {
+                _schedulers[i] = new CoalescingScheduler();
+            }
         }
 
         public Task BindAsync()
@@ -123,6 +131,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
         {
             try
             {
+                var nextSchedulerIndex = 0;
+
                 while (true)
                 {
                     try
@@ -130,7 +140,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                         var acceptSocket = await _listenSocket.AcceptAsync();
                         acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                        var connection = new SocketConnection(acceptSocket, _memoryPool, _trace);
+                        var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[nextSchedulerIndex], _trace);
                         _ = connection.StartAsync(_handler);
                     }
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
@@ -141,6 +151,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     catch (SocketException ex) when (!_unbinding)
                     {
                         _trace.ConnectionError(connectionId: "(null)", ex);
+                    }
+
+                    nextSchedulerIndex++;
+                    if (nextSchedulerIndex == _numSchedulers)
+                    {
+                        nextSchedulerIndex = 0;
                     }
                 }
             }

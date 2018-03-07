@@ -10,7 +10,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
-using System.Threading;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
@@ -21,13 +20,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private const int MinAllocBufferSize = 2048;
 
         private readonly Socket _socket;
+        private readonly CoalescingScheduler _scheduler;
         private readonly ISocketsTrace _trace;
         private readonly SocketReceiver _receiver;
         private readonly SocketSender _sender;
 
         private volatile bool _aborted;
 
-        internal SocketConnection(Socket socket, MemoryPool<byte> memoryPool, ISocketsTrace trace)
+        internal SocketConnection(Socket socket, MemoryPool<byte> memoryPool, CoalescingScheduler scheduler, ISocketsTrace trace)
         {
             Debug.Assert(socket != null);
             Debug.Assert(memoryPool != null);
@@ -35,6 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _socket = socket;
             MemoryPool = memoryPool;
+            _scheduler = scheduler;
             _trace = trace;
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint;
@@ -46,13 +47,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             RemoteAddress = remoteEndPoint.Address;
             RemotePort = remoteEndPoint.Port;
 
-            _receiver = new SocketReceiver(_socket);
-            _sender = new SocketSender(_socket);
+            var pipeScheduler = new CoalescingPipeScheduler(_scheduler);
+            InputWriterScheduler = pipeScheduler;
+            OutputReaderScheduler = pipeScheduler;
+            _receiver = new SocketReceiver(_socket, _scheduler);
+            _sender = new SocketSender(_socket, _scheduler);
         }
 
         public override MemoryPool<byte> MemoryPool { get; }
-        public override PipeScheduler InputWriterScheduler => PipeScheduler.Inline;
-        public override PipeScheduler OutputReaderScheduler => PipeScheduler.ThreadPool;
+
+        public override PipeScheduler InputWriterScheduler { get; }
+        public override PipeScheduler OutputReaderScheduler { get; }
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
@@ -241,6 +246,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return error;
+        }
+
+
+        private class CoalescingPipeScheduler : PipeScheduler
+        {
+            private readonly CoalescingScheduler _scheduler;
+
+            public CoalescingPipeScheduler(CoalescingScheduler scheduler)
+            {
+                _scheduler = scheduler;
+            }
+
+            public override void Schedule<T>(Action<T> action, T state)
+            {
+                _scheduler.Schedule(() => action(state));
+            }
         }
     }
 }
