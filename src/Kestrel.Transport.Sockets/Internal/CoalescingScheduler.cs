@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly object _workSync = new object();
         private bool _doingWork;
 
-        public void Schedule(Action action)
+        public virtual void Schedule(Action action)
         {
             _actions.Enqueue(action);
             TriggerWork();

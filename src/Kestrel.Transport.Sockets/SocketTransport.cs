@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
@@ -35,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             IEndPointInformation endPointInformation,
             IConnectionHandler handler,
             IApplicationLifetime applicationLifetime,
-            int ioLoopCount,
+            int ioQueueCount,
             ISocketsTrace trace)
         {
             Debug.Assert(endPointInformation != null);
@@ -47,14 +48,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _endPointInformation = endPointInformation;
             _handler = handler;
             _appLifetime = applicationLifetime;
-            _numSchedulers = ioLoopCount;
             _trace = trace;
 
-            _schedulers = new CoalescingScheduler[_numSchedulers];
-
-            for (var i = 0; i < _numSchedulers; i++)
+            if (ioQueueCount > 0)
             {
-                _schedulers[i] = new CoalescingScheduler();
+                _numSchedulers = ioQueueCount;
+                _schedulers = new CoalescingScheduler[_numSchedulers];
+
+                for (var i = 0; i < _numSchedulers; i++)
+                {
+                    _schedulers[i] = new CoalescingScheduler();
+                }
+            }
+            else
+            {
+                _numSchedulers = 1;
+                _schedulers = new CoalescingScheduler[1];
+                _schedulers[0] = new NonCoalescingScheduler();
             }
         }
 
@@ -173,6 +183,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                     // in Stop which should be observable.
                     _appLifetime.StopApplication();
                 }
+            }
+        }
+
+        private class NonCoalescingScheduler : CoalescingScheduler
+        {
+            public override void Schedule(Action action)
+            {
+                System.Threading.ThreadPool.QueueUserWorkItem(c => ((Action)c)(), action);
+            }
+
+            public override void Schedule<T>(Action<T> action, T state)
+            {
+                PipeScheduler.ThreadPool.Schedule<T>(action, state);
             }
         }
 

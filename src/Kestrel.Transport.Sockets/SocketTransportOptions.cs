@@ -8,12 +8,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
     public class SocketTransportOptions
     {
         /// <summary>
-        /// The number of I/O loops used to process requests.
+        /// The number of I/O queues used to process requests. Set to 0 to directly schedule I/O to the ThreadPool.
         /// </summary>
         /// <remarks>
-        /// Defaults to half of <see cref="Environment.ProcessorCount" /> rounded down and clamped between 1 and 16.
+        /// Defaults to <see cref="Environment.ProcessorCount" /> rounded down and clamped between 1 and 16.
         /// </remarks>
-        //public int IOLoopCountCount { get; set; } = ProcessorThreadCount;
-        public int IOLoopCountCount { get; set; } = Math.Min(Environment.ProcessorCount, 16);
+        public int IOQueueCount { get; set; } = Math.Min(Environment.ProcessorCount, 16);
     }
 }
