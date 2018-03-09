@@ -114,7 +114,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                     Input.Advance(bytesReceived);
 
-
                     var flushTask = Input.FlushAsync();
 
                     if (!flushTask.IsCompleted)

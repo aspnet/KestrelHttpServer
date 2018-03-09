@@ -17,8 +17,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private int _bytesTransfered;
         private SocketError _error;
 
+        private readonly bool _runContinuationsAsynchronously;
+
         public SocketAwaitable GetAwaiter() => this;
         public bool IsCompleted => ReferenceEquals(_callback, _callbackCompleted);
+
+        public SocketAwaitable(bool runContinuationsAsynchronously)
+        {
+            _runContinuationsAsynchronously = runContinuationsAsynchronously;
+        }
 
         public int GetResult()
         {
@@ -52,7 +59,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             _error = socketError;
             _bytesTransfered = bytesTransferred;
-            Interlocked.Exchange(ref _callback, _callbackCompleted)?.Invoke();
+            var continuation = Interlocked.Exchange(ref _callback, _callbackCompleted);
+
+            if (continuation != null)
+            {
+                if (_runContinuationsAsynchronously)
+                {
+                    ThreadPool.QueueUserWorkItem(state => ((Action)state)(), continuation);
+                }
+                else
+                {
+                    continuation();
+                }
+            }
         }
     }
 }
