@@ -47,17 +47,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             RemoteAddress = remoteEndPoint.Address;
             RemotePort = remoteEndPoint.Port;
 
-            var pipeScheduler = new CoalescingPipeScheduler(_scheduler);
-            InputWriterScheduler = pipeScheduler;
-            OutputReaderScheduler = pipeScheduler;
             _receiver = new SocketReceiver(_socket, _scheduler);
             _sender = new SocketSender(_socket, _scheduler);
         }
 
         public override MemoryPool<byte> MemoryPool { get; }
 
-        public override PipeScheduler InputWriterScheduler { get; }
-        public override PipeScheduler OutputReaderScheduler { get; }
+        public override PipeScheduler InputWriterScheduler => _scheduler;
+        public override PipeScheduler OutputReaderScheduler => _scheduler;
 
         public async Task StartAsync(IConnectionHandler connectionHandler)
         {
@@ -246,22 +243,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return error;
-        }
-
-
-        private class CoalescingPipeScheduler : PipeScheduler
-        {
-            private readonly CoalescingScheduler _scheduler;
-
-            public CoalescingPipeScheduler(CoalescingScheduler scheduler)
-            {
-                _scheduler = scheduler;
-            }
-
-            public override void Schedule<T>(Action<T> action, T state)
-            {
-                _scheduler.Schedule(() => action(state));
-            }
         }
     }
 }
