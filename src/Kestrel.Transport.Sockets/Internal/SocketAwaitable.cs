@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -13,15 +14,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private static readonly Action _callbackCompleted = () => { };
 
-        private readonly CoalescingScheduler _coalescingScheduler;
+        private readonly PipeScheduler _ioScheduler;
 
         private Action _callback;
         private int _bytesTransferred;
         private SocketError _error;
 
-        public SocketAwaitable(CoalescingScheduler coalescingScheduler)
+        public SocketAwaitable(PipeScheduler ioScheduler)
         {
-            _coalescingScheduler = coalescingScheduler;
+            _ioScheduler = ioScheduler;
         }
 
         public SocketAwaitable GetAwaiter() => this;
@@ -63,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             if (continuation != null)
             {
-                _coalescingScheduler.Schedule(continuation);
+                _ioScheduler.Schedule(c => c(), continuation);
             }
         }
     }

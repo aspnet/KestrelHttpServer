@@ -5,6 +5,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
@@ -18,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         private List<ArraySegment<byte>> _bufferList;
 
-        public SocketSender(Socket socket, CoalescingScheduler scheduler)
+        public SocketSender(Socket socket, PipeScheduler scheduler)
         {
             _socket = socket;
             _awaitable = new SocketAwaitable(scheduler);
