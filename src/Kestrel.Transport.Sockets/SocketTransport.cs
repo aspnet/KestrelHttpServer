@@ -20,6 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     internal sealed class SocketTransport : ITransport
     {
+        private static readonly ThreadPoolScheduler[] ThreadPoolSchedulerArray = new ThreadPoolScheduler[] { new ThreadPoolScheduler() };
+
         private readonly MemoryPool<byte> _memoryPool = KestrelMemoryPool.Create();
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
@@ -62,9 +64,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
             else
             {
-                _numSchedulers = 1;
-                _schedulers = new CoalescingScheduler[1];
-                _schedulers[0] = new NonCoalescingScheduler();
+                _numSchedulers = ThreadPoolSchedulerArray.Length;
+                _schedulers = ThreadPoolSchedulerArray;
             }
         }
 
@@ -186,7 +187,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
         }
 
-        private class NonCoalescingScheduler : CoalescingScheduler
+        private class ThreadPoolScheduler : CoalescingScheduler
         {
             public override void Schedule(Action action)
             {
@@ -195,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 
             public override void Schedule<T>(Action<T> action, T state)
             {
-                PipeScheduler.ThreadPool.Schedule<T>(action, state);
+                PipeScheduler.ThreadPool.Schedule(action, state);
             }
         }
 

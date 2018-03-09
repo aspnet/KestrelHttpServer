@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
         }
 
-        private class Work
+        private struct Work
         {
             public Action<object, object> CallbackAdapter;
             public object Callback;
