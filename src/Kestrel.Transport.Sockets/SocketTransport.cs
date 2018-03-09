@@ -19,13 +19,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     internal sealed class SocketTransport : ITransport
     {
-        private const int _numSchedulers = 8;
-
         private readonly MemoryPool<byte> _memoryPool = KestrelMemoryPool.Create();
-        private readonly CoalescingScheduler[] _schedulers = new CoalescingScheduler[_numSchedulers];
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
         private readonly IApplicationLifetime _appLifetime;
+        private readonly int _numSchedulers;
+        private readonly CoalescingScheduler[] _schedulers;
         private readonly ISocketsTrace _trace;
         private Socket _listenSocket;
         private Task _listenTask;
@@ -36,6 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             IEndPointInformation endPointInformation,
             IConnectionHandler handler,
             IApplicationLifetime applicationLifetime,
+            int ioLoopCount,
             ISocketsTrace trace)
         {
             Debug.Assert(endPointInformation != null);
@@ -47,7 +47,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _endPointInformation = endPointInformation;
             _handler = handler;
             _appLifetime = applicationLifetime;
+            _numSchedulers = ioLoopCount;
             _trace = trace;
+
+            _schedulers = new CoalescingScheduler[_numSchedulers];
 
             for (var i = 0; i < _numSchedulers; i++)
             {
