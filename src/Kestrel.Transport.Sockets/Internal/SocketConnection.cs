@@ -55,8 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _threadPoolBoundHandle = ThreadPoolBoundHandle.BindHandle(new UnownedSocketHandle(socket));
 
-            // On *nix platforms, Sockets already dispatches to the ThreadPool.
-            var awaiterScheduler = IsWindows ? _scheduler : PipeScheduler.Inline;
+            var awaiterScheduler = PipeScheduler.Inline;
 
             _receiver = new SocketReceiver(_socket, awaiterScheduler, this, _threadPoolBoundHandle);
             _sender = new SocketSender(_socket, awaiterScheduler, this, _threadPoolBoundHandle);
