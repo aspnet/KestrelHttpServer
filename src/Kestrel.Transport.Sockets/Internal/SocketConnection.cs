@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     internal sealed class SocketConnection : TransportConnection
     {
         private const int MinAllocBufferSize = 2048;
-        public static bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        public readonly static bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         private readonly Socket _socket;
         private readonly PipeScheduler _scheduler;
@@ -28,6 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly SocketSender _sender;
 
         private volatile bool _aborted;
+
+        private SequencePosition SendEnd;
 
         internal SocketConnection(Socket socket, MemoryPool<byte> memoryPool, PipeScheduler scheduler, ISocketsTrace trace)
         {
@@ -104,41 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             try
             {
-                while (true)
-                {
-                    // Ensure we have some reasonable amount of buffer space
-                    var buffer = Input.GetMemory(MinAllocBufferSize);
-
-                    var bytesReceived = await _receiver.ReceiveAsync(buffer);
-
-                    if (bytesReceived == 0)
-                    {
-                        // FIN
-                        _trace.ConnectionReadFin(ConnectionId);
-                        break;
-                    }
-
-                    Input.Advance(bytesReceived);
-
-
-                    var flushTask = Input.FlushAsync();
-
-                    if (!flushTask.IsCompleted)
-                    {
-                        _trace.ConnectionPause(ConnectionId);
-
-                        await flushTask;
-
-                        _trace.ConnectionResume(ConnectionId);
-                    }
-
-                    var result = flushTask.GetAwaiter().GetResult();
-                    if (result.IsCompleted)
-                    {
-                        // Pipe consumer is shut down, do we stop writing
-                        break;
-                    }
-                }
+                await ProcessReceives();
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
             {
@@ -186,38 +154,58 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
         }
 
+        private async Task ProcessReceives()
+        {
+            while (true)
+            {
+                // Ensure we have some reasonable amount of buffer space
+                var buffer = Input.GetMemory(MinAllocBufferSize);
+
+                var bytesReceived = await _receiver.ReceiveAsync(buffer);
+
+                if (bytesReceived == 0)
+                {
+                    // FIN
+                    _trace.ConnectionReadFin(ConnectionId);
+                    break;
+                }
+
+                Input.Advance(bytesReceived);
+
+
+                var flushTask = Input.FlushAsync();
+
+                if (!flushTask.IsCompleted)
+                {
+                    _trace.ConnectionPause(ConnectionId);
+
+                    await flushTask;
+
+                    _trace.ConnectionResume(ConnectionId);
+                }
+
+                var result = flushTask.GetAwaiter().GetResult();
+                if (result.IsCompleted)
+                {
+                    // Pipe consumer is shut down, do we stop writing
+                    break;
+                }
+            }
+        }
+
         private async Task<Exception> DoSend()
         {
             Exception error = null;
 
             try
             {
-                while (true)
+                try
                 {
-                    // Wait for data to write from the pipe producer
-                    var result = await Output.ReadAsync();
-                    var buffer = result.Buffer;
-
-                    if (result.IsCanceled)
-                    {
-                        break;
-                    }
-
-                    try
-                    {
-                        if (!buffer.IsEmpty)
-                        {
-                            await _sender.SendAsync(buffer);
-                        }
-                        else if (result.IsCompleted)
-                        {
-                            break;
-                        }
-                    }
-                    finally
-                    {
-                        Output.AdvanceTo(buffer.End);
-                    }
+                    await ProcessSends();
+                }
+                finally
+                {
+                    Output.AdvanceTo(SendEnd);
                 }
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
@@ -247,6 +235,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return error;
+        }
+
+        private async Task ProcessSends()
+        {
+            while (true)
+            {
+                // Wait for data to write from the pipe producer
+                var result = await Output.ReadAsync();
+                var buffer = result.Buffer;
+
+                if (result.IsCanceled)
+                {
+                    break;
+                }
+
+                SendEnd = buffer.End;
+
+                if (!buffer.IsEmpty)
+                {
+                    await _sender.SendAsync(buffer);
+                }
+                else if (result.IsCompleted)
+                {
+                    break;
+                }
+
+                Output.AdvanceTo(SendEnd);
+
+            }
         }
     }
 }
