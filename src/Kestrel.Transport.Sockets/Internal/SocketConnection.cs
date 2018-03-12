@@ -240,13 +240,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     break;
                 }
 
+                var end = buffer.End;
+                var isCompleted = result.IsCompleted;
                 if (!buffer.IsEmpty)
                 {
-                    var end = buffer.End;
                     await _sender.SendAsync(buffer);
-                    Output.AdvanceTo(end);
                 }
-                else if (result.IsCompleted)
+
+                Output.AdvanceTo(end);
+
+                if (isCompleted)
                 {
                     break;
                 }
