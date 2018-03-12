@@ -29,8 +29,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         private volatile bool _aborted;
 
-        private SequencePosition SendEnd;
-
         internal SocketConnection(Socket socket, MemoryPool<byte> memoryPool, PipeScheduler scheduler, ISocketsTrace trace)
         {
             Debug.Assert(socket != null);
@@ -172,7 +170,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 Input.Advance(bytesReceived);
 
-
                 var flushTask = Input.FlushAsync();
 
                 if (!flushTask.IsCompleted)
@@ -199,14 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             try
             {
-                try
-                {
-                    await ProcessSends();
-                }
-                finally
-                {
-                    Output.AdvanceTo(SendEnd);
-                }
+                await ProcessSends();
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
             {
@@ -250,19 +240,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     break;
                 }
 
-                SendEnd = buffer.End;
-
                 if (!buffer.IsEmpty)
                 {
+                    var end = buffer.End;
                     await _sender.SendAsync(buffer);
+                    Output.AdvanceTo(end);
                 }
                 else if (result.IsCompleted)
                 {
                     break;
                 }
-
-                Output.AdvanceTo(SendEnd);
-
             }
         }
     }
