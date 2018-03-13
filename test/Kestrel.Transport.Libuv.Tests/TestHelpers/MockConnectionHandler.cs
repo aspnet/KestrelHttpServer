@@ -16,18 +16,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests.TestHelpers
         public Func<MemoryPool<byte>, PipeOptions> InputOptions { get; set; } = pool => new PipeOptions(pool, readerScheduler: PipeScheduler.Inline, writerScheduler: PipeScheduler.Inline, useSynchronizationContext: false);
         public Func<MemoryPool<byte>, PipeOptions> OutputOptions { get; set; } = pool => new PipeOptions(pool, readerScheduler: PipeScheduler.Inline, writerScheduler: PipeScheduler.Inline, useSynchronizationContext: false);
 
-        public void OnConnection(IFeatureCollection features)
+        public void OnConnection(TransportConnection connection)
         {
-            var connectionContext = new DefaultConnectionContext(features);
+            Input = new Pipe(InputOptions(connection.MemoryPool));
+            Output = new Pipe(OutputOptions(connection.MemoryPool));
 
-            var applicationFeature = connectionContext.Features.Get<IApplicationTransportFeature>();
-            var memoryPoolFeature = connectionContext.Features.Get<IMemoryPoolFeature>();
-
-            Input = new Pipe(InputOptions(memoryPoolFeature.MemoryPool));
-            Output = new Pipe(OutputOptions(memoryPoolFeature.MemoryPool));
-
-            connectionContext.Transport = new DuplexPipe(Input.Reader, Output.Writer);
-            applicationFeature.Application = new DuplexPipe(Output.Reader, Input.Writer);
+            connection.Transport = new DuplexPipe(Input.Reader, Output.Writer);
+            connection.Application = new DuplexPipe(Output.Reader, Input.Writer);
         }
 
         public Pipe Input { get; private set; }
