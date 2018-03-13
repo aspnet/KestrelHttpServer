@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // No request line end
                 return false;
             }
-            else if (TryGetNewLine(in buffer, out var found))
+            else if (TryGetNewLine(buffer, out var found))
             {
                 span = buffer.Slice(consumed, found).ToSpan();
                 consumed = found;
