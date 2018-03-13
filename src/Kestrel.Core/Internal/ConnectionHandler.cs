@@ -32,12 +32,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             var connectionContext = new DefaultConnectionContext(features);
 
-            var transportFeature = connectionContext.Features.Get<IConnectionTransportFeature>();
+            var applicationFeature = connectionContext.Features.Get<IApplicationTransportFeature>();
+            var memoryPoolFeature = connectionContext.Features.Get<IMemoryPoolFeature>();
+            var schedulingFeatue = connectionContext.Features.Get<ITransportSchedulerFeature>();
 
             // REVIEW: Unfortunately, we still need to use the service context to create the pipes since the settings
             // for the scheduler and limits are specified here
-            var inputOptions = GetInputPipeOptions(_serviceContext, transportFeature.MemoryPool, transportFeature.InputWriterScheduler);
-            var outputOptions = GetOutputPipeOptions(_serviceContext, transportFeature.MemoryPool, transportFeature.OutputReaderScheduler);
+            var inputOptions = GetInputPipeOptions(_serviceContext, memoryPoolFeature.MemoryPool, schedulingFeatue.InputWriterScheduler);
+            var outputOptions = GetOutputPipeOptions(_serviceContext, memoryPoolFeature.MemoryPool, schedulingFeatue.OutputReaderScheduler);
 
             var pair = DuplexPipe.CreateConnectionPair(inputOptions, outputOptions);
 
@@ -46,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             connectionContext.Transport = pair.Transport;
 
             // This *must* be set before returning from OnConnection
-            transportFeature.Application = pair.Application;
+            applicationFeature.Application = pair.Application;
 
             // REVIEW: This task should be tracked by the server for graceful shutdown
             // Today it's handled specifically for http but not for aribitrary middleware
