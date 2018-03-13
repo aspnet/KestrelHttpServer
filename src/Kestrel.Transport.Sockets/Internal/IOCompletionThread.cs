@@ -11,16 +11,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     public class IOCompletionThread
     {
         private readonly Thread _thread;
+        private readonly IntPtr _completionPort;
 
-        public IOCompletionThread()
+        public IOCompletionThread(IntPtr completionPort)
         {
+            _completionPort = completionPort;
             _thread = new Thread(ThreadStart);
             _thread.IsBackground = true;
             _thread.Name = nameof(SocketConnection);
             _thread.Start(this);
         }
-
-        public IntPtr CompletionPort { get; } = CreateIoCompletionPort((IntPtr)(-1), IntPtr.Zero, 0, 0);
 
         private static void ThreadStart(object parameter)
         {
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 NativeOverlapped* nativeOverlapped;
 
                 var result = GetQueuedCompletionStatus(
-                    CompletionPort,
+                    _completionPort,
                     out bytesTransferred,
                     out _,
                     &nativeOverlapped,
@@ -54,13 +54,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 }
             }
         }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr CreateIoCompletionPort(
-            IntPtr fileHandle,
-            IntPtr existingCompletionPort,
-            uint completionKey,
-            uint numberOfConcurrentThreads);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static unsafe extern bool GetQueuedCompletionStatus(

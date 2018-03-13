@@ -58,9 +58,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             for (var i = 0; i < _numSchedulers; i++)
             {
                 _schedulers[i] = new IOQueue();
-                _completionThreads[i] = new IOCompletionThread();
+                _completionThreads[i] = new IOCompletionThread(CompletionPort);
             }
         }
+
+        public IntPtr CompletionPort { get; } = CreateIoCompletionPort((IntPtr)(-1), IntPtr.Zero, 0, 0);
 
         public Task BindAsync()
         {
@@ -147,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                             var acceptSocket = await _listenSocket.AcceptAsync();
                             acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                            CreateIoCompletionPort(acceptSocket.Handle, _completionThreads[i].CompletionPort, (uint)acceptSocket.Handle, 0);
+                            CreateIoCompletionPort(acceptSocket.Handle, CompletionPort, (uint)acceptSocket.Handle, 0);
 
                             var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[i], _trace);
                             _ = connection.StartAsync(_handler);
