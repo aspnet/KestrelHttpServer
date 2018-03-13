@@ -85,6 +85,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 sendError = await sendTask;
 
                 // Dispose the socket(should noop if already called)
+                _sender.Dispose();
+                _receiver.Dispose();
                 _socket.Dispose();
             }
             catch (Exception ex)

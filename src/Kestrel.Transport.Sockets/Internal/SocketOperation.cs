@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    public class SocketOperation
+    public unsafe class SocketOperation : IDisposable
     {
         protected readonly Socket _socket;
 
@@ -19,15 +19,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly SocketAwaitable _awaitable;
 
         private readonly Action<uint, uint, IntPtr, object> _completionCallback;
+        private readonly NativeOverlapped* _overlapped;
         private bool _skipCompletionPortOnSuccess;
 
-        internal SocketOperation(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection, Action<uint, uint, IntPtr, object> completionCallback)
+        internal unsafe SocketOperation(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection, Action<uint, uint, IntPtr, object> completionCallback)
         {
             _socket = socket;
             _socketConnection = socketConnection;
             _completionCallback = completionCallback;
 
             _awaitable = new SocketAwaitable(scheduler);
+
+            var overlapped = new Overlapped
+            {
+                AsyncResult = new CallbackAsyncResult
+                {
+                    Callback = (errno, nativeOverlappped, state) => ((SocketOperation)state)._completionCallback(0, errno, nativeOverlappped, state),
+                    AsyncState = this
+                }
+            };
+
+            _overlapped = overlapped.UnsafePack(null, null);
 
             try
             {
@@ -38,16 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         protected unsafe NativeOverlapped* GetOverlapped()
         {
-            var overlapped = new Overlapped
-            {
-                AsyncResult = new CallbackAsyncResult
-                {
-                    Callback = (errno, nativeOverlappped, state) => ((SocketOperation)state)._completionCallback(0, errno, nativeOverlappped, state),
-                    AsyncState = this
-                }
-            };
-
-            return overlapped.UnsafePack(null, null);
+            return _overlapped;
         }
 
         protected unsafe SocketAwaitable GetAwaitable(NativeOverlapped* overlapped, SocketError errno, int bytesTransferred, out bool completedInline)
@@ -56,7 +59,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             if (errno != SocketError.IOPending && (_skipCompletionPortOnSuccess || errno != SocketError.Success))
             {
-                Overlapped.Free(overlapped);
                 _awaitable.Complete(bytesTransferred, errno);
                 completedInline = true;
             }
@@ -70,10 +72,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         protected unsafe void OperationCompletionCallback(uint errno, uint bytesTransferred, IntPtr overlapped)
         {
-            var overlappedPtr = (NativeOverlapped*)overlapped;
-            var socketError = GetSocketError(overlappedPtr, errno);
+            var socketError = GetSocketError((NativeOverlapped*)overlapped, errno);
 
-            Overlapped.Free(overlappedPtr);
             _awaitable.Complete((int)bytesTransferred, socketError);
         }
 
@@ -117,6 +117,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return socketError;
+        }
+
+        public virtual void Dispose()
+        {
+            Overlapped.Free(_overlapped);
         }
 
         [DllImport("ws2_32", SetLastError = true)]

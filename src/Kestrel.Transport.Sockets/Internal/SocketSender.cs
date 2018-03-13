@@ -65,6 +65,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             return awaitable;
         }
 
+        public override void Dispose()
+        {
+            _multiSegmentSocketSender?.Dispose();
+            base.Dispose();
+        }
+
         private static void CompletionCallback(uint errno, uint bytesTransferred, IntPtr overlapped, object state)
         {
             var socketSender = (SocketSender)state;
