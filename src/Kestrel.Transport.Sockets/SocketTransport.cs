@@ -20,14 +20,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
 {
     internal sealed class SocketTransport : ITransport
     {
-        private static readonly PipeScheduler[] ThreadPoolSchedulerArray = new PipeScheduler[] { PipeScheduler.ThreadPool };
-
         private readonly MemoryPool<byte> _memoryPool = KestrelMemoryPool.Create();
         private readonly IEndPointInformation _endPointInformation;
         private readonly IConnectionHandler _handler;
         private readonly IApplicationLifetime _appLifetime;
         private readonly int _numSchedulers;
         private readonly PipeScheduler[] _schedulers;
+        private readonly IOCompletionThread[] _completionThreads;
         private readonly ISocketsTrace _trace;
         private Socket _listenSocket;
         private Task _listenTask;
@@ -52,20 +51,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             _appLifetime = applicationLifetime;
             _trace = trace;
 
-            if (ioQueueCount > 0)
-            {
-                _numSchedulers = ioQueueCount;
-                _schedulers = new IOQueue[_numSchedulers];
+            _numSchedulers = ioQueueCount;
+            _schedulers = new IOQueue[_numSchedulers];
+            _completionThreads = new IOCompletionThread[_numSchedulers];
 
-                for (var i = 0; i < _numSchedulers; i++)
-                {
-                    _schedulers[i] = new IOQueue();
-                }
-            }
-            else
+            for (var i = 0; i < _numSchedulers; i++)
             {
-                _numSchedulers = ThreadPoolSchedulerArray.Length;
-                _schedulers = ThreadPoolSchedulerArray;
+                _schedulers[i] = new IOQueue();
+                _completionThreads[i] = new IOCompletionThread();
             }
         }
 
@@ -147,14 +140,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             {
                 while (true)
                 {
-                    for (var schedulerIndex = 0; schedulerIndex < _numSchedulers;  schedulerIndex++)
+                    for (var i = 0; i < _numSchedulers; i++)
                     {
                         try
                         {
                             var acceptSocket = await _listenSocket.AcceptAsync();
                             acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
-                            var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[schedulerIndex], _trace);
+                            CreateIoCompletionPort(acceptSocket.Handle, _completionThreads[i].CompletionPort, (uint)acceptSocket.Handle, 0);
+
+                            var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[i], _trace);
                             _ = connection.StartAsync(_handler);
                         }
                         catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
@@ -218,5 +213,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                 _trace.LogInformation("Setting SO_REUSEADDR failed with errno '{errno}'.", Marshal.GetLastWin32Error());
             }
         }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr CreateIoCompletionPort(
+            IntPtr fileHandle,
+            IntPtr existingCompletionPort,
+            uint completionKey,
+            uint numberOfConcurrentThreads);
     }
 }

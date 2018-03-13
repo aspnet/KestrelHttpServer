@@ -9,7 +9,6 @@ using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
@@ -25,8 +24,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly Socket _socket;
         private readonly PipeScheduler _scheduler;
         private readonly ISocketsTrace _trace;
-
-        private readonly ThreadPoolBoundHandle _threadPoolBoundHandle;
 
         private readonly SocketReceiver _receiver;
         private readonly SocketSender _sender;
@@ -53,12 +50,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             RemoteAddress = remoteEndPoint.Address;
             RemotePort = remoteEndPoint.Port;
 
-            _threadPoolBoundHandle = ThreadPoolBoundHandle.BindHandle(new UnownedSocketHandle(socket));
-
-            var awaiterScheduler = PipeScheduler.Inline;
-
-            _receiver = new SocketReceiver(_socket, awaiterScheduler, this, _threadPoolBoundHandle);
-            _sender = new SocketSender(_socket, awaiterScheduler, this, _threadPoolBoundHandle);
+            _receiver = new SocketReceiver(_socket, PipeScheduler.Inline, this);
+            _sender = new SocketSender(_socket, PipeScheduler.Inline, this);
         }
 
         public override MemoryPool<byte> MemoryPool { get; }
@@ -254,21 +247,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return error;
-        }
-
-        private class UnownedSocketHandle : SafeHandle
-        {
-            public UnownedSocketHandle(Socket socket)
-                : base(socket.Handle, ownsHandle: false)
-            {
-            }
-
-            public override bool IsInvalid => handle == IntPtr.Zero;
-
-            protected override bool ReleaseHandle()
-            {
-                return true;
-            }
         }
     }
 }

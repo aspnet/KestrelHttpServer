@@ -5,17 +5,15 @@ using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
     public class SocketReceiver : SocketOperation
     {
-        private static unsafe readonly IOCompletionCallback _completionCallback = new IOCompletionCallback(CompletionCallback);
         private MemoryHandle _memoryHandle;
 
-        internal SocketReceiver(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection, ThreadPoolBoundHandle threadPoolBoundHandle)
-            : base(socket, scheduler, socketConnection, threadPoolBoundHandle, _completionCallback)
+        internal SocketReceiver(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection)
+            : base(socket, scheduler, socketConnection, CompletionCallback)
         {
         }
 
@@ -52,9 +50,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             return awaitable;
         }
 
-        private static unsafe void CompletionCallback(uint errno, uint bytesTransferred, NativeOverlapped* overlapped)
+        private static void CompletionCallback(uint errno, uint bytesTransferred, IntPtr overlapped, object state)
         {
-            var socketReceiver = (SocketReceiver)ThreadPoolBoundHandle.GetNativeOverlappedState(overlapped);
+            var socketReceiver = (SocketReceiver)state;
             socketReceiver._memoryHandle.Dispose();
             socketReceiver.OperationCompletionCallback(errno, bytesTransferred, overlapped);
         }

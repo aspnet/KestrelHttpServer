@@ -6,18 +6,15 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
     public class MultiSegmentSocketSender : SocketOperation
     {
-        private static unsafe readonly IOCompletionCallback _completionCallback = new IOCompletionCallback(CompletionCallback);
-
         private readonly List<MemoryHandle> _memoryHandleList = new List<MemoryHandle>();
 
-        internal MultiSegmentSocketSender(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection, ThreadPoolBoundHandle threadPoolBoundHandle)
-            : base(socket, scheduler, socketConnection, threadPoolBoundHandle, _completionCallback)
+        internal MultiSegmentSocketSender(Socket socket, PipeScheduler scheduler, SocketConnection socketConnection)
+            : base(socket, scheduler, socketConnection, CompletionCallback)
         {
         }
 
@@ -69,9 +66,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             _memoryHandleList.Clear();
         }
 
-        private static unsafe void CompletionCallback(uint errno, uint bytesTransferred, NativeOverlapped* overlapped)
+        private static void CompletionCallback(uint errno, uint bytesTransferred, IntPtr overlapped, object state)
         {
-            var socketSender = (MultiSegmentSocketSender)ThreadPoolBoundHandle.GetNativeOverlappedState(overlapped);
+            var socketSender = (MultiSegmentSocketSender)state;
             socketSender.DisposeHandles();
             socketSender.OperationCompletionCallback(errno, bytesTransferred, overlapped);
         }
