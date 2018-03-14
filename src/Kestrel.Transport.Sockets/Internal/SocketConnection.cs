@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     internal sealed class SocketConnection : TransportConnection
     {
         private const int MinAllocBufferSize = 2048;
+        internal const int WouldBlock = -1;
 
         private readonly Socket _socket;
         private readonly ISocketsTrace _trace;
@@ -110,6 +111,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                         // FIN
                         _trace.ConnectionReadFin(ConnectionId);
                         break;
+                    }
+                    else if (bytesReceived == WouldBlock)
+                    {
+                        // WouldBlock
+                        continue;
                     }
 
                     Input.Advance(bytesReceived);

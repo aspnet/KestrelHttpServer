@@ -26,12 +26,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _callback = null;
 
-            if (_error != SocketError.Success)
+            if (_error == SocketError.Success)
+            {
+                return _bytesTransfered;
+            }
+            else if (_error == SocketError.WouldBlock)
+            {
+                return SocketConnection.WouldBlock;
+            }
+            else
             {
                 throw new SocketException((int)_error);
             }
-
-            return _bytesTransfered;
         }
 
         public void OnCompleted(Action continuation)
