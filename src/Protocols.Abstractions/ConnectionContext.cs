@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Protocols
 
         public abstract IFeatureCollection Features { get; }
 
-        public abstract IDictionary<object, object> Metadata { get; set; }
+        public abstract IDictionary<object, object> Items { get; set; }
 
         public abstract IDuplexPipe Transport { get; set; }
     }

@@ -20,8 +20,8 @@ namespace Microsoft.AspNetCore.Protocols
         private IConnectionTransportFeature ConnectionTransportFeature =>
             _features.Fetch(ref _features.Cache.ConnectionTransport, _ => null);
 
-        private IConnectionMetadataFeature ConnectionMetadataFeature =>
-            _features.Fetch(ref _features.Cache.ConnectionMetadata, _ => null);
+        private IConnectionItemsFeature ConnectionItemsFeature =>
+            _features.Fetch(ref _features.Cache.ConnectionItems, _ => null);
 
         public override string ConnectionId
         {
@@ -37,10 +37,10 @@ namespace Microsoft.AspNetCore.Protocols
             set => ConnectionTransportFeature.Transport = value;
         }
 
-        public override IDictionary<object, object> Metadata
+        public override IDictionary<object, object> Items
         {
-            get => ConnectionMetadataFeature.Metadata;
-            set => ConnectionMetadataFeature.Metadata = value;
+            get => ConnectionItemsFeature.Items;
+            set => ConnectionItemsFeature.Items = value;
         }
 
         struct FeatureInterfaces
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Protocols
 
             public IConnectionTransportFeature ConnectionTransport;
 
-            public IConnectionMetadataFeature ConnectionMetadata;
+            public IConnectionItemsFeature ConnectionItems;
         }
     }
 }

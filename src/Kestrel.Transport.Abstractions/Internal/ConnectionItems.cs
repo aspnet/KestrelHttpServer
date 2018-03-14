@@ -7,14 +7,14 @@ using System.Collections.Generic;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
-    internal class ConnectionMetadata : IDictionary<object, object>
+    internal class ConnectionItems : IDictionary<object, object>
     {
-        public ConnectionMetadata()
+        public ConnectionItems()
             : this(new Dictionary<object, object>())
         {
         }
 
-        public ConnectionMetadata(IDictionary<object, object> items)
+        public ConnectionItems(IDictionary<object, object> items)
         {
             Items = items;
         }
