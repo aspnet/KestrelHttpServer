@@ -20,7 +20,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private const int MinAllocBufferSize = 2048;
         public readonly static bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        internal const int WouldBlock = -1;
 
         private readonly Socket _socket;
         private readonly PipeScheduler _scheduler;
@@ -157,6 +156,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             while (true)
             {
+                // Wait for data before allocating a buffer.
+                await _receiver.WaitForDataAsync();
+
                 // Ensure we have some reasonable amount of buffer space
                 var buffer = Input.GetMemory(MinAllocBufferSize);
 
@@ -167,11 +169,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     // FIN
                     _trace.ConnectionReadFin(ConnectionId);
                     break;
-                }
-                else if (bytesReceived == WouldBlock)
-                {
-                    // WouldBlock
-                    continue;
                 }
 
                 Input.Advance(bytesReceived);

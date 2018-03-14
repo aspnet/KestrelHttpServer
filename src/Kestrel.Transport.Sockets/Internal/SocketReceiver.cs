@@ -12,49 +12,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         private readonly Socket _socket;
         private readonly SocketAsyncEventArgs _eventArgs = new SocketAsyncEventArgs();
         private readonly SocketAwaitable _awaitable;
-        private Memory<byte> _buffer;
 
         public SocketReceiver(Socket socket, PipeScheduler scheduler)
         {
             _socket = socket;
             _awaitable = new SocketAwaitable(scheduler);
+            _eventArgs.UserToken = _awaitable;
+            _eventArgs.Completed += (_, e) => ((SocketAwaitable)e.UserToken).Complete(e.BytesTransferred, e.SocketError);
+        }
+
+        public SocketAwaitable WaitForDataAsync()
+        {
             _eventArgs.SetBuffer(Array.Empty<byte>(), 0, 0);
-            _eventArgs.UserToken = this;
-            _eventArgs.Completed += (_, e) => ((SocketReceiver)e.UserToken).OnReadable();
+
+            if (!_socket.ReceiveAsync(_eventArgs))
+            {
+                _awaitable.Complete(_eventArgs.BytesTransferred, _eventArgs.SocketError);
+            }
+
+            return _awaitable;
         }
 
         public SocketAwaitable ReceiveAsync(Memory<byte> buffer)
         {
-            _buffer = buffer;
+#if NETCOREAPP2_1
+            _eventArgs.SetBuffer(buffer);
+#else
+            var segment = buffer.GetArray();
+
+            _eventArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+#endif
             if (!_socket.ReceiveAsync(_eventArgs))
             {
-                OnReadable();
+                _awaitable.Complete(_eventArgs.BytesTransferred, _eventArgs.SocketError);
             }
-            return _awaitable;
-        }
 
-        private void OnReadable()
-        {
-            SocketError errorCode = _eventArgs.SocketError;
-            int bytesTransferred = 0;
-            if (errorCode == SocketError.Success)
-            {
-                try
-                {
-#if NETCOREAPP2_1
-                    bytesTransferred = _socket.Receive(_buffer.Span, SocketFlags.None, out errorCode);
-#else
-                    var segment = _buffer.GetArray();
-                    bytesTransferred = _socket.Receive(segment.Array, segment.Offset, segment.Count, SocketFlags.None, out errorCode);
-#endif
-                }
-                catch (ObjectDisposedException)
-                {
-                    errorCode = SocketError.ConnectionAborted;
-                }
-            }
-            _buffer = null;
-            _awaitable.Complete(bytesTransferred, errorCode);
+            return _awaitable;
         }
     }
 }
