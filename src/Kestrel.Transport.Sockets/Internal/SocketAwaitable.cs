@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -13,9 +14,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private static readonly Action _callbackCompleted = () => { };
 
+        private readonly PipeScheduler _ioScheduler;
+
         private Action _callback;
-        private int _bytesTransfered;
+        private int _bytesTransferred;
         private SocketError _error;
+
+        public SocketAwaitable(PipeScheduler ioScheduler)
+        {
+            _ioScheduler = ioScheduler;
+        }
 
         public SocketAwaitable GetAwaiter() => this;
         public bool IsCompleted => ReferenceEquals(_callback, _callbackCompleted);
@@ -28,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             if (_error == SocketError.Success)
             {
-                return _bytesTransfered;
+                return _bytesTransferred;
             }
             else if (_error == SocketError.WouldBlock)
             {
@@ -57,8 +65,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public void Complete(int bytesTransferred, SocketError socketError)
         {
             _error = socketError;
-            _bytesTransfered = bytesTransferred;
-            Interlocked.Exchange(ref _callback, _callbackCompleted)?.Invoke();
+            _bytesTransferred = bytesTransferred;
+            var continuation = Interlocked.Exchange(ref _callback, _callbackCompleted);
+
+            if (continuation != null)
+            {
+                _ioScheduler.Schedule(c => c(), continuation);
+            }
         }
     }
 }

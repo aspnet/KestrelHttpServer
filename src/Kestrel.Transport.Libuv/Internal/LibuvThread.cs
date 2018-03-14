@@ -48,8 +48,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _log = transport.Log;
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
+
             _thread = new Thread(ThreadStart);
+#if !INNER_LOOP
             _thread.Name = nameof(LibuvThread);
+#endif
+
 #if !DEBUG
             // Mark the thread as being as unimportant to keeping the process alive.
             // Don't do this for debug builds, so we know if the thread isn't terminating.
@@ -132,7 +136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             _closeError?.Throw();
         }
 
-#if DEBUG
+#if DEBUG && !INNER_LOOP
         private void CheckUvReqLeaks()
         {
             GC.Collect();
@@ -173,10 +177,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public void Post<T>(Action<T> callback, T state)
         {
+            // Handle is closed to don't bother scheduling anything
+            if (_post.IsClosed)
+            {
+                return;
+            }
+
             var work = new Work
             {
                 CallbackAdapter = CallbackAdapter<T>.PostCallbackAdapter,
                 Callback = callback,
+                // TODO: This boxes
                 State = state
             };
 
@@ -184,7 +195,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 _workAdding.Enqueue(work);
             }
-            _post.Send();
+
+            try
+            {
+                _post.Send();
+            }
+            catch (ObjectDisposedException)
+            {
+                // There's an inherent race here where we're in the middle of shutdown
+            }
         }
 
         private void Post(Action<LibuvThread> callback)
@@ -194,6 +213,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         public Task PostAsync<T>(Action<T> callback, T state)
         {
+            // Handle is closed to don't bother scheduling anything
+            if (_post.IsClosed)
+            {
+                return Task.CompletedTask;
+            }
+
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var work = new Work
             {
@@ -207,7 +232,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             {
                 _workAdding.Enqueue(work);
             }
-            _post.Send();
+
+            try
+            {
+                _post.Send();
+            }
+            catch (ObjectDisposedException)
+            {
+                // There's an inherent race here where we're in the middle of shutdown
+            }
             return tcs.Task;
         }
 
@@ -301,7 +334,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 WriteReqPool.Dispose();
                 _threadTcs.SetResult(null);
 
-#if DEBUG
+#if DEBUG && !INNER_LOOP
                 // Check for handle leaks after disposing everything
                 CheckUvReqLeaks();
 #endif
@@ -391,12 +424,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             return await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false) == task;
         }
 
-        public override void Schedule(Action action)
-        {
-            Post(state => state(), action);
-        }
-
-        public override void Schedule(Action<object> action, object state)
+        public override void Schedule<T>(Action<T> action, T state)
         {
             Post(action, state);
         }

@@ -74,10 +74,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         internal PipeOptions AdaptedInputPipeOptions => new PipeOptions
         (
             pool: MemoryPool,
-            readerScheduler: _context.ServiceContext.ThreadPool,
+            readerScheduler: _context.ServiceContext.Scheduler,
             writerScheduler: PipeScheduler.Inline,
             pauseWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
-            resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0
+            resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
+            useSynchronizationContext: false
         );
 
         internal PipeOptions AdaptedOutputPipeOptions => new PipeOptions
@@ -86,7 +87,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             readerScheduler: PipeScheduler.Inline,
             writerScheduler: PipeScheduler.Inline,
             pauseWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0,
-            resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0
+            resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0,
+            useSynchronizationContext: false
         );
 
         private IKestrelTrace Log => _context.ServiceContext.Log;
