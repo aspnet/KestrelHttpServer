@@ -428,9 +428,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public static void ValidateHostHeader(string hostText)
         {
-            // The spec allows empty values
-            if (string.IsNullOrEmpty(hostText))
+            // This is a string.IsNullOrEmpty test, but arranged to elmininate the
+            // bounds check from accessing the firstChar of the string
+            if (hostText is null || 0u >= (uint)hostText.Length)
             {
+                // The spec allows empty values
                 return;
             }
 
@@ -453,9 +455,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 var i = 0;
                 for (; i < hostText.Length; i++)
                 {
-                    var ch = hostText[i];
+                    var ch = (int)hostText[i];
                     // Bounds check and elimiate second bounds check
-                    if ((uint)ch > (uint)hostCharValidity.Length || !hostCharValidity[ch])
+                    if ((uint)ch >= (uint)hostCharValidity.Length || !hostCharValidity[ch])
                     {
                         break;
                     }
@@ -502,24 +504,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         private static void ValidateHostPort(string hostText, int offset)
         {
-            if (offset == hostText.Length)
+            // Skip bounds check for accessing the [offset] element
+            if ((uint)offset >= (uint)hostText.Length)
             {
                 return;
             }
 
-            if (hostText[offset] != ':' || hostText.Length == offset + 1)
+            var firstChar = hostText[offset];
+            offset++;
+            if (firstChar != ':' || (uint)offset >= (uint)hostText.Length)
             {
                 // Must have at least one number after the colon if present.
                 BadHttpRequestException.Throw(RequestRejectionReason.InvalidHostHeader, hostText);
             }
 
-            for (var i = offset + 1; i < hostText.Length; i++)
+            // This do+if check rather than for loop is to elimitate the bounds check, since
+            // the Jit doesn't currently pick up on it when starting at a variable offset
+            do
             {
-                if (!IsNumeric(hostText[i]))
+                // Elminate bounds check for array access
+                if ((uint)offset >= (uint)hostText.Length)
+                {
+                    // Length reached, end of loop
+                    break;
+                }
+
+                var ch = hostText[offset];
+                offset++;
+                if (!IsNumeric(ch))
                 {
                     BadHttpRequestException.Throw(RequestRejectionReason.InvalidHostHeader, hostText);
                 }
-            }
+            } while (true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
