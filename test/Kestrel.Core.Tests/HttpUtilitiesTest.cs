@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void ValidHostHeadersParsed(string host)
         {
             HttpUtilities.ValidateHostHeader(host);
-            Assert.True(true);
+            // Shouldn't throw
         }
 
         public static TheoryData<string> HostHeaderInvalidData

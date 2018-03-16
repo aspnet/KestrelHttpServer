@@ -470,6 +470,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     BadHttpRequestException.Throw(RequestRejectionReason.MalformedRequestInvalidHeaders);
                 }
+                throw;
             }
             finally
             {
