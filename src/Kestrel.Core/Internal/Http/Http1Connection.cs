@@ -361,9 +361,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             // request message that contains more than one Host header field or a
             // Host header field with an invalid field-value.
 
-            var host = HttpRequestHeaders.HeaderHost;
-            var hostCount = host.Count;
-            var hostText = host.ToString();
+            var hostCount = HttpRequestHeaders.HostCount;
+            var hostText = HttpRequestHeaders.HeaderHost.ToString();
             if (hostCount <= 0)
             {
                 if (_httpVersion == Http.HttpVersion.Http10)
