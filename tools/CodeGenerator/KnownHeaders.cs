@@ -433,7 +433,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected override bool AddValueFast(string key, in StringValues value)
         {{{(loop.ClassName == "HttpResponseHeaders" ? @"
             ValidateHeaderCharacters(value);" : "")}
-            var isNotNull = value.Count > 0;
             switch (key.Length)
             {{{Each(loop.HeadersByLength, byLength => $@"
                 case {byLength.Key}:
@@ -448,12 +447,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             return false;" : $@"
                             if ({header.TestNotBit()})
                             {{
-                                if (isNotNull)
-                                {{
-                                    {header.SetBit()};
-                                    _headers._{header.Identifier} = value;{(header.EnhancedSetter == false ? "" : $@"
-                                    _headers._raw{header.Identifier} = null;")}
-                                }}
+                                {header.SetBit()};
+                                _headers._{header.Identifier} = value;{(header.EnhancedSetter == false ? "" : $@"
+                                _headers._raw{header.Identifier} = null;")}
                                 return true;
                             }}
                             return false;")}
