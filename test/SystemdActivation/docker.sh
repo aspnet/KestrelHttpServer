@@ -3,7 +3,7 @@
 set -e
 
 scriptDir=$(dirname "${BASH_SOURCE[0]}")
-PATH="$HOME/.dotnet/:$PATH"
+PATH="$DOTNET_HOME:$PATH"
 dotnet publish -f netcoreapp2.0 ./samples/SystemdTestApp/
 cp -R ./samples/SystemdTestApp/bin/Debug/netcoreapp2.0/publish/ $scriptDir
 cp -R ~/.dotnet/ $scriptDir
