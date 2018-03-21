@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.AspNetCore.Protocols.Features
+namespace Microsoft.AspNetCore.Connections.Features
 {
     public interface IConnectionHeartbeatFeature
     {

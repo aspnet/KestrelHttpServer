@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.AspNetCore.Protocols.Features
+namespace Microsoft.AspNetCore.Connections.Features
 {
     public interface IConnectionItemsFeature
     {

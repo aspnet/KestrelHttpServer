@@ -4,7 +4,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Protocols
+namespace Microsoft.AspNetCore.Connections
 {
     public static class ConnectionBuilderExtensions
     {
