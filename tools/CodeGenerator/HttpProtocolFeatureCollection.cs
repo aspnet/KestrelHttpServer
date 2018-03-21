@@ -86,6 +86,13 @@ namespace CodeGenerator
                 "IHttpBodyControlFeature",
             };
 
+            var maybeOnConnectionFeatures = new[]
+            {
+                "IHttpConnectionFeature",
+                "IConnectionIdFeature",
+                "IConnectionTransportFeature",
+            };
+
             return $@"// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
@@ -118,7 +125,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 object feature = null;{Each(allFeatures, feature => $@"
                 {(feature.Index != 0 ? "else " : "")}if (key == {feature.Name}Type)
                 {{
-                    feature = _current{feature.Name};
+                    {(maybeOnConnectionFeatures.Contains(feature.Name) ? "feature =" : "return" )} _current{feature.Name};
                 }}")}
                 else if (MaybeExtra != null)
                 {{
@@ -161,7 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             TFeature feature = default;{Each(allFeatures, feature => $@"
             {(feature.Index != 0 ? "else " : "")}if (typeof(TFeature) == typeof({feature.Name}))
             {{
-                feature = (TFeature)_current{feature.Name};
+                {(maybeOnConnectionFeatures.Contains(feature.Name) ? "feature =" : "return")} (TFeature)_current{feature.Name};
             }}")}
             else if (MaybeExtra != null)
             {{
