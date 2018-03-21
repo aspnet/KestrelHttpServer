@@ -60,12 +60,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public override PipeScheduler InputWriterScheduler => _scheduler;
         public override PipeScheduler OutputReaderScheduler => _scheduler;
 
-        public async Task StartAsync(IConnectionHandler connectionHandler)
+        public async Task StartAsync(IConnectionDispatcher connectionDispatcher)
         {
             Exception sendError = null;
             try
             {
-                connectionHandler.OnConnection(this);
+                connectionDispatcher.OnConnection(this);
 
                 // Spawn send and receive logic
                 Task receiveTask = DoReceive();

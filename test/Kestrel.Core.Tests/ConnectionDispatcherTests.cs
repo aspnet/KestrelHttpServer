@@ -14,18 +14,18 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
-    public class ConnectionHandlerTests
+    public class ConnectionDispatcherTests
     {
         [Fact]
         public void OnConnectionCreatesLogScopeWithConnectionId()
         {
             var serviceContext = new TestServiceContext();
             var tcs = new TaskCompletionSource<object>();
-            var handler = new ConnectionHandler(serviceContext, _ => tcs.Task);
+            var dispatcher = new ConnectionDispatcher(serviceContext, _ => tcs.Task);
 
             var connection = new TestConnection();
 
-            handler.OnConnection(connection);
+            dispatcher.OnConnection(connection);
 
             // The scope should be created
             var scopeObjects = ((TestKestrelTrace)serviceContext.Log)

@@ -48,14 +48,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         public LibuvOutputConsumer OutputConsumer { get; set; }
 
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
-        private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
+        private IConnectionDispatcher ConnectionDispatcher => ListenerContext.TransportContext.ConnectionDispatcher;
         private LibuvThread Thread => ListenerContext.Thread;
 
         public async Task Start()
         {
             try
             {
-                ConnectionHandler.OnConnection(this);
+                ConnectionDispatcher.OnConnection(this);
 
                 OutputConsumer = new LibuvOutputConsumer(Output, Thread, _socket, ConnectionId, Log);
 

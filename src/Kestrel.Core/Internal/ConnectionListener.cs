@@ -15,12 +15,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
-    public class ConnectionHandler : IConnectionHandler
+    public class ConnectionDispatcher : IConnectionDispatcher
     {
         private readonly ServiceContext _serviceContext;
         private readonly ConnectionDelegate _connectionDelegate;
 
-        public ConnectionHandler(ServiceContext serviceContext, ConnectionDelegate connectionDelegate)
+        public ConnectionDispatcher(ServiceContext serviceContext, ConnectionDelegate connectionDelegate)
         {
             _serviceContext = serviceContext;
             _connectionDelegate = connectionDelegate;
@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 }
                 catch (Exception ex)
                 {
-                    Log.LogCritical(0, ex, $"{nameof(ConnectionHandler)}.{nameof(Execute)}() {connectionContext.ConnectionId}");
+                    Log.LogCritical(0, ex, $"{nameof(ConnectionDispatcher)}.{nameof(Execute)}() {connectionContext.ConnectionId}");
                 }
 
                 Log.ConnectionStop(connectionContext.ConnectionId);
