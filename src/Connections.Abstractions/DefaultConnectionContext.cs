@@ -19,8 +19,7 @@ namespace Microsoft.AspNetCore.Connections
                                             IConnectionTransportFeature,
                                             IApplicationTransportFeature,
                                             IConnectionUserFeature,
-                                            IConnectionHeartbeatFeature,
-                                            ITransferFormatFeature
+                                            IConnectionHeartbeatFeature
     {
         private object _heartbeatLock = new object();
         private List<(Action<object> handler, object state)> _heartbeatHandlers;
@@ -40,10 +39,6 @@ namespace Microsoft.AspNetCore.Connections
         {
             ConnectionId = id;
 
-            // The default behavior is that both formats are supported.
-            SupportedFormats = TransferFormat.Binary | TransferFormat.Text;
-            ActiveFormat = TransferFormat.Text;
-
             // PERF: This type could just implement IFeatureCollection
             Features = new FeatureCollection();
             Features.Set<IConnectionUserFeature>(this);
@@ -52,7 +47,6 @@ namespace Microsoft.AspNetCore.Connections
             Features.Set<IConnectionTransportFeature>(this);
             Features.Set<IApplicationTransportFeature>(this);
             Features.Set<IConnectionHeartbeatFeature>(this);
-            Features.Set<ITransferFormatFeature>(this);
         }
 
         public DefaultConnectionContext(string id, IDuplexPipe transport, IDuplexPipe application)
@@ -73,10 +67,6 @@ namespace Microsoft.AspNetCore.Connections
         public IDuplexPipe Application { get; set; }
 
         public override IDuplexPipe Transport { get; set; }
-
-        public TransferFormat SupportedFormats { get; set; }
-
-        public TransferFormat ActiveFormat { get; set; }
 
         public void OnHeartbeat(Action<object> action, object state)
         {
