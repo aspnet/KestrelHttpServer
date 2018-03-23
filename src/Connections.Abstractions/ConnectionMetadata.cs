@@ -3,18 +3,19 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
+namespace Microsoft.AspNetCore.Connections
 {
-    internal class ConnectionItems : IDictionary<object, object>
+    public class ConnectionMetadata : IDictionary<object, object>
     {
-        public ConnectionItems()
-            : this(new Dictionary<object, object>())
+        public ConnectionMetadata()
+            : this(new ConcurrentDictionary<object, object>())
         {
         }
 
-        public ConnectionItems(IDictionary<object, object> items)
+        public ConnectionMetadata(IDictionary<object, object> items)
         {
             Items = items;
         }
