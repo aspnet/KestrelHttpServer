@@ -13,19 +13,20 @@ using Microsoft.AspNetCore.Connections.Features;
 
 namespace Microsoft.AspNetCore.Connections
 {
-    public class DefaultConnection : IConnectionIdFeature,
-                                     IConnectionItemsFeature,
-                                     IConnectionTransportFeature,
-                                     IApplicationTransportFeature,
-                                     IConnectionUserFeature,
-                                     IConnectionHeartbeatFeature,
-                                     ITransferFormatFeature
+    public class DefaultConnectionContext : ConnectionContext,
+                                            IConnectionIdFeature,
+                                            IConnectionItemsFeature,
+                                            IConnectionTransportFeature,
+                                            IApplicationTransportFeature,
+                                            IConnectionUserFeature,
+                                            IConnectionHeartbeatFeature,
+                                            ITransferFormatFeature
     {
         private object _heartbeatLock = new object();
         private List<(Action<object> handler, object state)> _heartbeatHandlers;
 
 
-        public DefaultConnection() :
+        public DefaultConnectionContext() :
             this(Guid.NewGuid().ToString())
         {
         }
@@ -35,7 +36,7 @@ namespace Microsoft.AspNetCore.Connections
         /// The caller is expected to set the <see cref="Transport"/> and <see cref="Application"/> pipes manually.
         /// </summary>
         /// <param name="id"></param>
-        public DefaultConnection(string id)
+        public DefaultConnectionContext(string id)
         {
             ConnectionId = id;
 
@@ -54,24 +55,24 @@ namespace Microsoft.AspNetCore.Connections
             Features.Set<ITransferFormatFeature>(this);
         }
 
-        public DefaultConnection(string id, IDuplexPipe transport, IDuplexPipe application)
+        public DefaultConnectionContext(string id, IDuplexPipe transport, IDuplexPipe application)
             : this(id)
         {
             Transport = transport;
             Application = application;
         }
 
-        public string ConnectionId { get; set; }
+        public override string ConnectionId { get; set; }
 
-        public IFeatureCollection Features { get; }
+        public override IFeatureCollection Features { get; }
 
         public ClaimsPrincipal User { get; set; }
 
-        public IDictionary<object, object> Items { get; set; } = new ConnectionMetadata();
+        public override IDictionary<object, object> Items { get; set; } = new ConnectionMetadata();
 
         public IDuplexPipe Application { get; set; }
 
-        public IDuplexPipe Transport { get; set; }
+        public override IDuplexPipe Transport { get; set; }
 
         public TransferFormat SupportedFormats { get; set; }
 
