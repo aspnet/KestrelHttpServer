@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             get
             {
                 // Lazily allocate connection metadata
-                return _items ?? (_items = new ConnectionMetadata());
+                return _items ?? (_items = new ConnectionItems());
             }
             set
             {

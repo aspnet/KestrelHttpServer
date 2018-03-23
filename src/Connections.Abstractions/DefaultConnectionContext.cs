@@ -62,7 +62,7 @@ namespace Microsoft.AspNetCore.Connections
 
         public ClaimsPrincipal User { get; set; }
 
-        public override IDictionary<object, object> Items { get; set; } = new ConnectionMetadata();
+        public override IDictionary<object, object> Items { get; set; } = new ConnectionItems();
 
         public IDuplexPipe Application { get; set; }
 

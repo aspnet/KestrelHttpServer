@@ -8,14 +8,14 @@ using System.Collections.Generic;
 
 namespace Microsoft.AspNetCore.Connections
 {
-    public class ConnectionMetadata : IDictionary<object, object>
+    public class ConnectionItems : IDictionary<object, object>
     {
-        public ConnectionMetadata()
+        public ConnectionItems()
             : this(new ConcurrentDictionary<object, object>())
         {
         }
 
-        public ConnectionMetadata(IDictionary<object, object> items)
+        public ConnectionItems(IDictionary<object, object> items)
         {
             Items = items;
         }
