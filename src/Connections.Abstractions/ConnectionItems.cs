@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Connections
     public class ConnectionItems : IDictionary<object, object>
     {
         public ConnectionItems()
-            : this(new ConcurrentDictionary<object, object>())
+            : this(new Dictionary<object, object>())
         {
         }
 

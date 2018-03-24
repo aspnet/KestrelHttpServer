@@ -18,13 +18,8 @@ namespace Microsoft.AspNetCore.Connections
                                             IConnectionItemsFeature,
                                             IConnectionTransportFeature,
                                             IApplicationTransportFeature,
-                                            IConnectionUserFeature,
-                                            IConnectionHeartbeatFeature
+                                            IConnectionUserFeature
     {
-        private object _heartbeatLock = new object();
-        private List<(Action<object> handler, object state)> _heartbeatHandlers;
-
-
         public DefaultConnectionContext() :
             this(Guid.NewGuid().ToString())
         {
@@ -39,14 +34,12 @@ namespace Microsoft.AspNetCore.Connections
         {
             ConnectionId = id;
 
-            // PERF: This type could just implement IFeatureCollection
             Features = new FeatureCollection();
             Features.Set<IConnectionUserFeature>(this);
             Features.Set<IConnectionItemsFeature>(this);
             Features.Set<IConnectionIdFeature>(this);
             Features.Set<IConnectionTransportFeature>(this);
             Features.Set<IApplicationTransportFeature>(this);
-            Features.Set<IConnectionHeartbeatFeature>(this);
         }
 
         public DefaultConnectionContext(string id, IDuplexPipe transport, IDuplexPipe application)
@@ -67,33 +60,5 @@ namespace Microsoft.AspNetCore.Connections
         public IDuplexPipe Application { get; set; }
 
         public override IDuplexPipe Transport { get; set; }
-
-        public void OnHeartbeat(Action<object> action, object state)
-        {
-            lock (_heartbeatLock)
-            {
-                if (_heartbeatHandlers == null)
-                {
-                    _heartbeatHandlers = new List<(Action<object> handler, object state)>();
-                }
-                _heartbeatHandlers.Add((action, state));
-            }
-        }
-
-        public void TickHeartbeat()
-        {
-            lock (_heartbeatLock)
-            {
-                if (_heartbeatHandlers == null)
-                {
-                    return;
-                }
-
-                foreach (var (handler, state) in _heartbeatHandlers)
-                {
-                    handler(state);
-                }
-            }
-        }
     }
 }
