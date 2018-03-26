@@ -35,5 +35,10 @@ namespace Microsoft.AspNetCore.Testing
             }
             return sb.ToString();
         }
+
+        public static string ShortenTestName(this string s)
+        {
+            return s.Substring(0, Math.Min(s.Length, 100));
+        }
     }
 }
