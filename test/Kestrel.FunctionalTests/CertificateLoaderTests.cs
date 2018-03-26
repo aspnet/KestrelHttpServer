@@ -5,30 +5,35 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class CertificateLoaderTests
+    public class CertificateLoaderTests : LoggedTest
     {
-        private readonly ITestOutputHelper _output;
-
-        public CertificateLoaderTests(ITestOutputHelper output)
+        public CertificateLoaderTests(ITestOutputHelper output) : base(output)
         {
-            _output = output;
         }
 
         [Theory]
         [InlineData("no_extensions.pfx")]
         public void IsCertificateAllowedForServerAuth_AllowWithNoExtensions(string testCertName)
         {
-            var certPath = TestResources.GetCertPath(testCertName);
-            _output.WriteLine("Loading " + certPath);
-            var cert = new X509Certificate2(certPath, "testPassword");
-            Assert.Empty(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var logger = loggerFactory.CreateLogger(nameof(CertificateLoaderTests));
 
-            Assert.True(CertificateLoader.IsCertificateAllowedForServerAuth(cert));
+                var certPath = TestResources.GetCertPath(testCertName);
+                logger.Log(LogLevel.Information, "Loading " + certPath);
+                var cert = new X509Certificate2(certPath, "testPassword");
+                Assert.Empty(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
+
+                Assert.True(CertificateLoader.IsCertificateAllowedForServerAuth(cert));
+            }
         }
 
         [Theory]
@@ -36,14 +41,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("eku.multiple_usages.pfx")]
         public void IsCertificateAllowedForServerAuth_ValidatesEnhancedKeyUsageOnCertificate(string testCertName)
         {
-            var certPath = TestResources.GetCertPath(testCertName);
-            _output.WriteLine("Loading " + certPath);
-            var cert = new X509Certificate2(certPath, "testPassword");
-            Assert.NotEmpty(cert.Extensions);
-            var eku = Assert.Single(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
-            Assert.NotEmpty(eku.EnhancedKeyUsages);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(IsCertificateAllowedForServerAuth_ValidatesEnhancedKeyUsageOnCertificate)}_{testCertName}"))
+            {
+                var logger = loggerFactory.CreateLogger(nameof(CertificateLoaderTests));
 
-            Assert.True(CertificateLoader.IsCertificateAllowedForServerAuth(cert));
+                var certPath = TestResources.GetCertPath(testCertName);
+                logger.Log(LogLevel.Information, "Loading " + certPath);
+                var cert = new X509Certificate2(certPath, "testPassword");
+                Assert.NotEmpty(cert.Extensions);
+                var eku = Assert.Single(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
+                Assert.NotEmpty(eku.EnhancedKeyUsages);
+
+                Assert.True(CertificateLoader.IsCertificateAllowedForServerAuth(cert));
+            }
         }
 
         [Theory]
@@ -51,14 +61,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("eku.client.pfx")]
         public void IsCertificateAllowedForServerAuth_RejectsCertificatesMissingServerEku(string testCertName)
         {
-            var certPath = TestResources.GetCertPath(testCertName);
-            _output.WriteLine("Loading " + certPath);
-            var cert = new X509Certificate2(certPath, "testPassword");
-            Assert.NotEmpty(cert.Extensions);
-            var eku = Assert.Single(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
-            Assert.NotEmpty(eku.EnhancedKeyUsages);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(IsCertificateAllowedForServerAuth_RejectsCertificatesMissingServerEku)}_{testCertName}"))
+            {
+                var logger = loggerFactory.CreateLogger(nameof(CertificateLoaderTests));
+                var certPath = TestResources.GetCertPath(testCertName);
+                logger.Log(LogLevel.Information, "Loading " + certPath);
+                var cert = new X509Certificate2(certPath, "testPassword");
+                Assert.NotEmpty(cert.Extensions);
+                var eku = Assert.Single(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
+                Assert.NotEmpty(eku.EnhancedKeyUsages);
 
-            Assert.False(CertificateLoader.IsCertificateAllowedForServerAuth(cert));
+                Assert.False(CertificateLoader.IsCertificateAllowedForServerAuth(cert));
+            }
         }
     }
 }
