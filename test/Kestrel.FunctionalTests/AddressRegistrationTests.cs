@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,23 +19,26 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.AspNetCore.Testing.xunit;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class AddressRegistrationTests
+    public class AddressRegistrationTests : LoggedTest
     {
         private const int MaxRetries = 10;
 
         private readonly Action<ILoggingBuilder> _configureLoggingDelegate;
 
-        public AddressRegistrationTests(ITestOutputHelper output)
+        public AddressRegistrationTests(ITestOutputHelper output) : base(output)
         {
             _configureLoggingDelegate = builder => builder.AddXunit(output);
         }
@@ -51,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(AddressRegistrationDataIPv4))]
         public async Task RegisterAddresses_IPv4_Success(string addressInput, string testUrl)
         {
-            await RegisterAddresses_Success(addressInput, testUrl);
+            await RegisterAddresses_Success(addressInput, testUrl, testName: $"{nameof(RegisterAddresses_IPv4_Success)}_{addressInput}_{testUrl}");
         }
 
         [ConditionalTheory]
@@ -59,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [PortSupportedCondition(5000)]
         public async Task RegisterAddresses_IPv4Port5000Default_Success(string addressInput, string testUrl)
         {
-            await RegisterAddresses_Success(addressInput, testUrl, 5000);
+            await RegisterAddresses_Success(addressInput, testUrl, 5000, testName: $"{nameof(RegisterAddresses_IPv4Port5000Default_Success)}_{addressInput}_{testUrl}");
         }
 
         [ConditionalTheory]
@@ -67,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [PortSupportedCondition(80)]
         public async Task RegisterAddresses_IPv4Port80_Success(string addressInput, string testUrl)
         {
-            await RegisterAddresses_Success(addressInput, testUrl, 80);
+            await RegisterAddresses_Success(addressInput, testUrl, 80, testName: $"{nameof(RegisterAddresses_IPv4Port80_Success)}_{addressInput}_{testUrl}");
         }
 
         [Fact]
@@ -100,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [IPv6SupportedCondition]
         public async Task RegisterIPEndPoint_DynamicPort_Success(IPEndPoint endPoint, string testUrl)
         {
-            await RegisterIPEndPoint_Success(endPoint, testUrl);
+            await RegisterIPEndPoint_Success(endPoint, testUrl, testName: $"{nameof(RegisterIPEndPoint_DynamicPort_Success)}_{endPoint}_{testUrl}");
         }
 
         [ConditionalTheory]
@@ -109,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [PortSupportedCondition(443)]
         public async Task RegisterIPEndPoint_Port443_Success(IPEndPoint endpoint, string testUrl)
         {
-            await RegisterIPEndPoint_Success(endpoint, testUrl, 443);
+            await RegisterIPEndPoint_Success(endpoint, testUrl, 443, testName: $"{nameof(RegisterIPEndPoint_Port443_Success)}_{endpoint}_{testUrl}");
         }
 
         [ConditionalTheory]
@@ -117,7 +121,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [IPv6SupportedCondition]
         public async Task RegisterAddresses_IPv6_Success(string addressInput, string[] testUrls)
         {
-            await RegisterAddresses_Success(addressInput, testUrls);
+            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6_Success)}_{addressInput}_{testUrls}");
         }
 
         [ConditionalTheory]
@@ -126,7 +130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [PortSupportedCondition(5000)]
         public async Task RegisterAddresses_IPv6Port5000Default_Success(string addressInput, string[] testUrls)
         {
-            await RegisterAddresses_Success(addressInput, testUrls);
+            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6Port5000Default_Success)}_{addressInput}_{testUrls}");
         }
 
         [ConditionalTheory]
@@ -135,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [PortSupportedCondition(80)]
         public async Task RegisterAddresses_IPv6Port80_Success(string addressInput, string[] testUrls)
         {
-            await RegisterAddresses_Success(addressInput, testUrls);
+            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6Port80_Success)}_{addressInput}_{testUrls}");
         }
 
         [ConditionalTheory]
@@ -144,7 +148,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [IPv6ScopeIdPresentCondition]
         public async Task RegisterAddresses_IPv6ScopeId_Success(string addressInput, string testUrl)
         {
-            await RegisterAddresses_Success(addressInput, testUrl);
+            await RegisterAddresses_Success(addressInput, testUrl, testName: $"{nameof(RegisterAddresses_IPv6ScopeId_Success)}_{addressInput}_{testUrl}");
         }
 
         [ConditionalFact]
@@ -161,66 +165,74 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             await RegisterAddresses_StaticPort_Success("http://localhost", new[] { "http://localhost", "http://127.0.0.1", "http://[::1]" });
         }
 
-        private async Task RegisterAddresses_Success(string addressInput, string[] testUrls, int testPort = 0)
+        private async Task RegisterAddresses_Success(string addressInput, string[] testUrls, int testPort = 0, [CallerMemberName] string testName = "")
         {
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel()
-                .ConfigureLogging(_configureLoggingDelegate)
-                .UseUrls(addressInput)
-                .Configure(ConfigureEchoAddress);
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, testName.RemoveIllegalFileChars()))
             {
-                host.Start();
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel()
+                    .ConfigureLogging(_configureLoggingDelegate)
+                    .UseUrls(addressInput)
+                    .Configure(ConfigureEchoAddress)
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory));
 
-                foreach (var testUrl in testUrls.Select(testUrl => $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}"))
+                using (var host = hostBuilder.Build())
                 {
-                    var response = await HttpClientSlim.GetStringAsync(testUrl, validateCertificate: false);
+                    host.Start();
 
-                    // Compare the response with Uri.ToString(), rather than testUrl directly.
-                    // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
-                    Assert.Equal(new Uri(testUrl).ToString(), response);
+                    foreach (var testUrl in testUrls.Select(testUrl => $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}"))
+                    {
+                        var response = await HttpClientSlim.GetStringAsync(testUrl, validateCertificate: false);
+
+                        // Compare the response with Uri.ToString(), rather than testUrl directly.
+                        // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
+                        Assert.Equal(new Uri(testUrl).ToString(), response);
+                    }
                 }
             }
         }
 
-        private Task RegisterAddresses_Success(string addressInput, string testUrl, int testPort = 0)
-            => RegisterAddresses_Success(addressInput, new[] { testUrl }, testPort);
+        private Task RegisterAddresses_Success(string addressInput, string testUrl, int testPort = 0, [CallerMemberName] string testName = "")
+            => RegisterAddresses_Success(addressInput, new[] { testUrl }, testPort, testName);
 
-        private Task RegisterAddresses_StaticPort_Success(string addressInput, string[] testUrls) =>
-            RunTestWithStaticPort(port => RegisterAddresses_Success($"{addressInput}:{port}", testUrls, port));
+        private Task RegisterAddresses_StaticPort_Success(string addressInput, string[] testUrls, [CallerMemberName] string testName = "") =>
+            RunTestWithStaticPort(port => RegisterAddresses_Success($"{addressInput}:{port}", testUrls, port, testName));
 
         [Fact]
         public async Task RegisterHttpAddress_UpradedToHttpsByConfigureEndpointDefaults()
         {
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(serverOptions =>
-                {
-                    serverOptions.ConfigureEndpointDefaults(listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.GetTestCertificate());
-                    });
-                })
-                .ConfigureLogging(_configureLoggingDelegate)
-                .UseUrls("http://127.0.0.1:0")
-                .Configure(app =>
-                {
-                    var serverAddresses = app.ServerFeatures.Get<IServerAddressesFeature>();
-                    app.Run(context =>
-                    {
-                        Assert.Single(serverAddresses.Addresses);
-                        return context.Response.WriteAsync(serverAddresses.Addresses.First());
-                    });
-                });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(serverOptions =>
+                    {
+                        serverOptions.ConfigureEndpointDefaults(listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.GetTestCertificate());
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(_configureLoggingDelegate)
+                    .UseUrls("http://127.0.0.1:0")
+                    .Configure(app =>
+                    {
+                        var serverAddresses = app.ServerFeatures.Get<IServerAddressesFeature>();
+                        app.Run(context =>
+                        {
+                            Assert.Single(serverAddresses.Addresses);
+                            return context.Response.WriteAsync(serverAddresses.Addresses.First());
+                        });
+                    });
 
-                var expectedUrl = $"https://127.0.0.1:{host.GetPort()}";
-                var response = await HttpClientSlim.GetStringAsync(expectedUrl, validateCertificate: false);
+                using (var host = hostBuilder.Build())
+                {
+                    host.Start();
 
-                Assert.Equal(expectedUrl, response);
+                    var expectedUrl = $"https://127.0.0.1:{host.GetPort()}";
+                    var response = await HttpClientSlim.GetStringAsync(expectedUrl, validateCertificate: false);
+
+                    Assert.Equal(expectedUrl, response);
+                }
             }
         }
 
@@ -255,44 +267,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private Task RegisterAddresses_StaticPort_Success(string addressInput, string testUrl)
-            => RegisterAddresses_StaticPort_Success(addressInput, new[] { testUrl });
+        private Task RegisterAddresses_StaticPort_Success(string addressInput, string testUrl, [CallerMemberName] string testName = "")
+            => RegisterAddresses_StaticPort_Success(addressInput, new[] { testUrl }, testName: testName);
 
-        private async Task RegisterIPEndPoint_Success(IPEndPoint endPoint, string testUrl, int testPort = 0)
+        private async Task RegisterIPEndPoint_Success(IPEndPoint endPoint, string testUrl, int testPort = 0, [CallerMemberName] string testName = "")
         {
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .ConfigureLogging(_configureLoggingDelegate)
-                .UseKestrel(options =>
-                {
-                    options.Listen(endPoint, listenOptions =>
-                    {
-                        if (testUrl.StartsWith("https"))
-                        {
-                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                        }
-                    });
-                })
-                .Configure(ConfigureEchoAddress);
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, testName.RemoveIllegalFileChars()))
             {
-                host.Start();
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(_configureLoggingDelegate)
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(endPoint, listenOptions =>
+                        {
+                            if (testUrl.StartsWith("https"))
+                            {
+                                listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                            }
+                        });
+                    })
+                    .Configure(ConfigureEchoAddress);
 
-                var testUrlWithPort = $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}";
+                using (var host = hostBuilder.Build())
+                {
+                    host.Start();
 
-                var options = ((IOptions<KestrelServerOptions>)host.Services.GetService(typeof(IOptions<KestrelServerOptions>))).Value;
-                Assert.Single(options.ListenOptions);
+                    var testUrlWithPort = $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}";
 
-                var response = await HttpClientSlim.GetStringAsync(testUrlWithPort, validateCertificate: false);
+                    var options = ((IOptions<KestrelServerOptions>)host.Services.GetService(typeof(IOptions<KestrelServerOptions>))).Value;
+                    Assert.Single(options.ListenOptions);
 
-                // Compare the response with Uri.ToString(), rather than testUrl directly.
-                // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
-                Assert.Equal(new Uri(testUrlWithPort).ToString(), response);
+                    var response = await HttpClientSlim.GetStringAsync(testUrlWithPort, validateCertificate: false);
+
+                    // Compare the response with Uri.ToString(), rather than testUrl directly.
+                    // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
+                    Assert.Equal(new Uri(testUrlWithPort).ToString(), response);
+                }
             }
         }
 
-        private Task RegisterIPEndPoint_StaticPort_Success(IPAddress address, string testUrl)
-            => RunTestWithStaticPort(port => RegisterIPEndPoint_Success(new IPEndPoint(address, port), testUrl, port));
+        private Task RegisterIPEndPoint_StaticPort_Success(IPAddress address, string testUrl, [CallerMemberName] string testName = "")
+            => RunTestWithStaticPort(port => RegisterIPEndPoint_Success(new IPEndPoint(address, port), testUrl, port, testName));
 
         [ConditionalFact]
         public async Task ListenAnyIP_IPv4_Success()
@@ -315,27 +331,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             await ListenAnyIP_Success(new[] { $"http://{hostName}" });
         }
 
-        private async Task ListenAnyIP_Success(string[] testUrls, int testPort = 0)
+        private async Task ListenAnyIP_Success(string[] testUrls, int testPort = 0, [CallerMemberName] string testName = "")
         {
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.ListenAnyIP(testPort);
-                })
-                .ConfigureLogging(_configureLoggingDelegate)
-                .Configure(ConfigureEchoAddress);
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, testName.RemoveIllegalFileChars()))
             {
-                host.Start();
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.ListenAnyIP(testPort);
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(_configureLoggingDelegate)
+                    .Configure(ConfigureEchoAddress);
 
-                foreach (var testUrl in testUrls.Select(testUrl => $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}"))
+                using (var host = hostBuilder.Build())
                 {
-                    var response = await HttpClientSlim.GetStringAsync(testUrl, validateCertificate: false);
+                    host.Start();
 
-                    // Compare the response with Uri.ToString(), rather than testUrl directly.
-                    // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
-                    Assert.Equal(new Uri(testUrl).ToString(), response);
+                    foreach (var testUrl in testUrls.Select(testUrl => $"{testUrl}:{(testPort == 0 ? host.GetPort() : testPort)}"))
+                    {
+                        var response = await HttpClientSlim.GetStringAsync(testUrl, validateCertificate: false);
+
+                        // Compare the response with Uri.ToString(), rather than testUrl directly.
+                        // Required to handle IPv6 addresses with zone index, like "fe80::3%1"
+                        Assert.Equal(new Uri(testUrl).ToString(), response);
+                    }
                 }
             }
         }
