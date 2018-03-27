@@ -10,6 +10,6 @@ namespace Microsoft.AspNetCore.Testing
     {
         public const int EOF = -4095;
         public static TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
-        public static LogLevel DefaultFunctionalTestLogLevel = LogLevel.Information;
+        public static LogLevel DefaultFunctionalTestLogLevel = LogLevel.Debug;
     }
 }

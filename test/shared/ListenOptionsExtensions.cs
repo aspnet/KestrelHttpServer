@@ -12,10 +12,12 @@ namespace Microsoft.AspNetCore.Testing
         {
             var sb = new StringBuilder();
             sb.Append(options.GetDisplayName());
+            sb.Append(';');
 
             foreach (var connectionAdapter in options.ConnectionAdapters)
             {
                 sb.Append(connectionAdapter.GetType().Name);
+                sb.Append(';');
             }
 
             return  sb.ToString();

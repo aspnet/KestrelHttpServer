@@ -11,7 +11,15 @@ namespace Microsoft.AspNetCore.Testing
 {
     public static class StringExtensions
     {
-        private static IEnumerable<char> InvalidFileChars = Path.GetInvalidPathChars().Union(Path.GetInvalidFileNameChars());
+        private static IEnumerable<char> InvalidFileChars =
+            Path.GetInvalidPathChars()
+            .Union(Path.GetInvalidFileNameChars())
+            .Union(new char[] {
+                ' ', // space
+                '\\', // back slash
+                '/', // forward slash
+                '\x7F', // delete
+            });
 
         public static string EscapeNonPrintable(this string s)
         {
