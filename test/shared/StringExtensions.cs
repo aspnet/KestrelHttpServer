@@ -48,5 +48,23 @@ namespace Microsoft.AspNetCore.Testing
         {
             return s.Substring(0, Math.Min(s.Length, 120));
         }
+
+        public static string GetFileFriendlyString(this string s)
+        {
+            if (s == null)
+            {
+                return "null";
+            }
+            if (s == string.Empty)
+            {
+                return "empty";
+            }
+            return s;
+        }
+
+        public static string GetFileFriendlyString(this string[] s)
+        {
+            return s.Aggregate((a, b) => a.GetFileFriendlyString() + ";" + b.GetFileFriendlyString());
+        }
     }
 }

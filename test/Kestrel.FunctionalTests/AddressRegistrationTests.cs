@@ -63,7 +63,7 @@ namespace FunctionalTests
         [PortSupportedCondition(5000)]
         public async Task RegisterAddresses_IPv4Port5000Default_Success(string addressInput, string testUrl)
         {
-            await RegisterAddresses_Success(addressInput, testUrl, 5000, testName: $"{nameof(RegisterAddresses_IPv4Port5000Default_Success)}_{addressInput}_{testUrl}");
+            await RegisterAddresses_Success(addressInput, testUrl, 5000, testName: $"{nameof(RegisterAddresses_IPv4Port5000Default_Success)}_{addressInput.GetFileFriendlyString()}_{testUrl}");
         }
 
         [ConditionalTheory]
@@ -121,7 +121,7 @@ namespace FunctionalTests
         [IPv6SupportedCondition]
         public async Task RegisterAddresses_IPv6_Success(string addressInput, string[] testUrls)
         {
-            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6_Success)}_{addressInput}_{testUrls}");
+            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6_Success)}_{addressInput}_{testUrls.GetFileFriendlyString()}");
         }
 
         [ConditionalTheory]
@@ -130,7 +130,7 @@ namespace FunctionalTests
         [PortSupportedCondition(5000)]
         public async Task RegisterAddresses_IPv6Port5000Default_Success(string addressInput, string[] testUrls)
         {
-            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6Port5000Default_Success)}_{addressInput}_{testUrls}");
+            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6Port5000Default_Success)}_{addressInput.GetFileFriendlyString()}_{testUrls.GetFileFriendlyString()}");
         }
 
         [ConditionalTheory]
@@ -139,7 +139,7 @@ namespace FunctionalTests
         [PortSupportedCondition(80)]
         public async Task RegisterAddresses_IPv6Port80_Success(string addressInput, string[] testUrls)
         {
-            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6Port80_Success)}_{addressInput}_{testUrls}");
+            await RegisterAddresses_Success(addressInput, testUrls, testName: $"{nameof(RegisterAddresses_IPv6Port80_Success)}_{addressInput}_{testUrls.GetFileFriendlyString()}");
         }
 
         [ConditionalTheory]
@@ -944,8 +944,11 @@ namespace FunctionalTests
 
                 foreach (var ip in ipv4Addresses)
                 {
-                    dataset.Add(new IPEndPoint(ip, 0), $"http://{ip}");
-                    dataset.Add(new IPEndPoint(ip, 0), $"https://{ip}");
+                    if (!dataset.Any(d => IPEndPoint.Equals(((IPEndPoint)d[0]).Address, ip)))
+                    {
+                        dataset.Add(new IPEndPoint(ip, 0), $"http://{ip}");
+                        dataset.Add(new IPEndPoint(ip, 0), $"https://{ip}");
+                    }
                 }
 
                 var ipv6Addresses = GetIPAddresses()
@@ -955,7 +958,10 @@ namespace FunctionalTests
 
                 foreach (var ip in ipv6Addresses)
                 {
-                    dataset.Add(new IPEndPoint(ip, 0), $"http://[{ip}]");
+                    if (!dataset.Any(d => IPEndPoint.Equals(((IPEndPoint)d[0]).Address, ip)))
+                    {
+                        dataset.Add(new IPEndPoint(ip, 0), $"http://[{ip}]");
+                    }
                 }
 
                 return dataset;
