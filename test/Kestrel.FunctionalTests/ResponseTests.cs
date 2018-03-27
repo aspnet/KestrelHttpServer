@@ -54,50 +54,54 @@ namespace FunctionalTests
         [Fact]
         public async Task LargeDownload()
         {
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel()
-                .UseUrls("http://127.0.0.1:0/")
-                .Configure(app =>
-                {
-                    app.Run(async context =>
-                    {
-                        var bytes = new byte[1024];
-                        for (int i = 0; i < bytes.Length; i++)
-                        {
-                            bytes[i] = (byte)i;
-                        }
-
-                        context.Response.ContentLength = bytes.Length * 1024;
-
-                        for (int i = 0; i < 1024; i++)
-                        {
-                            await context.Response.Body.WriteAsync(bytes, 0, bytes.Length);
-                        }
-                    });
-                });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
-
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    response.EnsureSuccessStatusCode();
-                    var responseBody = await response.Content.ReadAsStreamAsync();
-
-                    // Read the full response body
-                    var total = 0;
-                    var bytes = new byte[1024];
-                    var count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
-                    while (count > 0)
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel()
+                    .UseUrls("http://127.0.0.1:0/")
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .Configure(app =>
                     {
-                        for (int i = 0; i < count; i++)
+                        app.Run(async context =>
                         {
-                            Assert.Equal(total % 256, bytes[i]);
-                            total++;
+                            var bytes = new byte[1024];
+                            for (int i = 0; i < bytes.Length; i++)
+                            {
+                                bytes[i] = (byte)i;
+                            }
+
+                            context.Response.ContentLength = bytes.Length * 1024;
+
+                            for (int i = 0; i < 1024; i++)
+                            {
+                                await context.Response.Body.WriteAsync(bytes, 0, bytes.Length);
+                            }
+                        });
+                    });
+
+                using (var host = hostBuilder.Build())
+                {
+                    host.Start();
+
+                    using (var client = new HttpClient())
+                    {
+                        var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                        response.EnsureSuccessStatusCode();
+                        var responseBody = await response.Content.ReadAsStreamAsync();
+
+                        // Read the full response body
+                        var total = 0;
+                        var bytes = new byte[1024];
+                        var count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
+                        while (count > 0)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                Assert.Equal(total % 256, bytes[i]);
+                                total++;
+                            }
+                            count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
                         }
-                        count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
                     }
                 }
             }
@@ -146,38 +150,42 @@ namespace FunctionalTests
         [Fact]
         public async Task OnCompleteCalledEvenWhenOnStartingNotCalled()
         {
-            var onStartingCalled = false;
-            var onCompletedTcs = new TaskCompletionSource<object>();
-
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel()
-                .UseUrls("http://127.0.0.1:0/")
-                .Configure(app =>
-                {
-                    app.Run(context =>
-                    {
-                        context.Response.OnStarting(() => Task.Run(() => onStartingCalled = true));
-                        context.Response.OnCompleted(() => Task.Run(() =>
-                        {
-                            onCompletedTcs.SetResult(null);
-                        }));
-
-                        // Prevent OnStarting call (see HttpProtocol.ProcessRequestsAsync()).
-                        throw new Exception();
-                    });
-                });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var onStartingCalled = false;
+                var onCompletedTcs = new TaskCompletionSource<object>();
 
-                using (var client = new HttpClient())
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel()
+                    .UseUrls("http://127.0.0.1:0/")
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .Configure(app =>
+                    {
+                        app.Run(context =>
+                        {
+                            context.Response.OnStarting(() => Task.Run(() => onStartingCalled = true));
+                            context.Response.OnCompleted(() => Task.Run(() =>
+                            {
+                                onCompletedTcs.SetResult(null);
+                            }));
+
+                            // Prevent OnStarting call (see HttpProtocol.ProcessRequestsAsync()).
+                            throw new Exception();
+                        });
+                    });
+
+                using (var host = hostBuilder.Build())
                 {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                    host.Start();
 
-                    Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-                    Assert.False(onStartingCalled);
-                    await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                    using (var client = new HttpClient())
+                    {
+                        var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+
+                        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+                        Assert.False(onStartingCalled);
+                        await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                    }
                 }
             }
         }
@@ -185,32 +193,36 @@ namespace FunctionalTests
         [Fact]
         public async Task OnStartingThrowsWhenSetAfterResponseHasAlreadyStarted()
         {
-            InvalidOperationException ex = null;
-
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel()
-                .UseUrls("http://127.0.0.1:0/")
-                .Configure(app =>
-                {
-                    app.Run(async context =>
-                    {
-                        await context.Response.WriteAsync("hello, world");
-                        await context.Response.Body.FlushAsync();
-                        ex = Assert.Throws<InvalidOperationException>(() => context.Response.OnStarting(_ => Task.CompletedTask, null));
-                    });
-                });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                InvalidOperationException ex = null;
 
-                using (var client = new HttpClient())
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel()
+                    .UseUrls("http://127.0.0.1:0/")
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .Configure(app =>
+                    {
+                        app.Run(async context =>
+                        {
+                            await context.Response.WriteAsync("hello, world");
+                            await context.Response.Body.FlushAsync();
+                            ex = Assert.Throws<InvalidOperationException>(() => context.Response.OnStarting(_ => Task.CompletedTask, null));
+                        });
+                    });
+
+                using (var host = hostBuilder.Build())
                 {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                    host.Start();
 
-                    // Despite the error, the response had already started
-                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                    Assert.NotNull(ex);
+                    using (var client = new HttpClient())
+                    {
+                        var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+
+                        // Despite the error, the response had already started
+                        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                        Assert.NotNull(ex);
+                    }
                 }
             }
         }
@@ -218,109 +230,137 @@ namespace FunctionalTests
         [Fact]
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeAppException()
         {
-            return ResponseStatusCodeSetBeforeHttpContextDispose(
-                context =>
-                {
-                    throw new Exception();
-                },
-                expectedClientStatusCode: HttpStatusCode.InternalServerError,
-                expectedServerStatusCode: HttpStatusCode.InternalServerError);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                return ResponseStatusCodeSetBeforeHttpContextDispose(
+                    loggerFactory,
+                    context =>
+                    {
+                        throw new Exception();
+                    },
+                    expectedClientStatusCode: HttpStatusCode.InternalServerError,
+                    expectedServerStatusCode: HttpStatusCode.InternalServerError);
+            }
         }
 
         [Fact]
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeRequestAborted()
         {
-            return ResponseStatusCodeSetBeforeHttpContextDispose(
-                context =>
-                {
-                    context.Abort();
-                    return Task.CompletedTask;
-                },
-                expectedClientStatusCode: null,
-                expectedServerStatusCode: 0);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                return ResponseStatusCodeSetBeforeHttpContextDispose(
+                    loggerFactory,
+                    context =>
+                    {
+                        context.Abort();
+                        return Task.CompletedTask;
+                    },
+                    expectedClientStatusCode: null,
+                    expectedServerStatusCode: 0);
+            }
         }
 
         [Fact]
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeRequestAbortedAppException()
         {
-            return ResponseStatusCodeSetBeforeHttpContextDispose(
-                context =>
-                {
-                    context.Abort();
-                    throw new Exception();
-                },
-                expectedClientStatusCode: null,
-                expectedServerStatusCode: 0);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                return ResponseStatusCodeSetBeforeHttpContextDispose(
+                    loggerFactory,
+                    context =>
+                    {
+                        context.Abort();
+                        throw new Exception();
+                    },
+                    expectedClientStatusCode: null,
+                    expectedServerStatusCode: 0);
+            }
         }
 
         [Fact]
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformed()
         {
-            return ResponseStatusCodeSetBeforeHttpContextDispose(
-                context =>
-                {
-                    return Task.CompletedTask;
-                },
-                expectedClientStatusCode: HttpStatusCode.OK,
-                expectedServerStatusCode: HttpStatusCode.OK,
-                sendMalformedRequest: true);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                return ResponseStatusCodeSetBeforeHttpContextDispose(
+                    loggerFactory,
+                    context =>
+                    {
+                        return Task.CompletedTask;
+                    },
+                    expectedClientStatusCode: HttpStatusCode.OK,
+                    expectedServerStatusCode: HttpStatusCode.OK,
+                    sendMalformedRequest: true);
+            }
         }
 
         [Fact]
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformedRead()
         {
-            return ResponseStatusCodeSetBeforeHttpContextDispose(
-                async context =>
-                {
-                    await context.Request.Body.ReadAsync(new byte[1], 0, 1);
-                },
-                expectedClientStatusCode: null,
-                expectedServerStatusCode: HttpStatusCode.BadRequest,
-                sendMalformedRequest: true);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                return ResponseStatusCodeSetBeforeHttpContextDispose(
+                    loggerFactory,
+                    async context =>
+                    {
+                        await context.Request.Body.ReadAsync(new byte[1], 0, 1);
+                    },
+                    expectedClientStatusCode: null,
+                    expectedServerStatusCode: HttpStatusCode.BadRequest,
+                    sendMalformedRequest: true);
+            }
         }
 
         [Fact]
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformedReadIgnored()
         {
-            return ResponseStatusCodeSetBeforeHttpContextDispose(
-                async context =>
-                {
-                    try
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                return ResponseStatusCodeSetBeforeHttpContextDispose(
+                    loggerFactory,
+                    async context =>
                     {
-                        await context.Request.Body.ReadAsync(new byte[1], 0, 1);
-                    }
-                    catch (BadHttpRequestException)
-                    {
-                    }
-                },
-                expectedClientStatusCode: HttpStatusCode.OK,
-                expectedServerStatusCode: HttpStatusCode.OK,
-                sendMalformedRequest: true);
+                        try
+                        {
+                            await context.Request.Body.ReadAsync(new byte[1], 0, 1);
+                        }
+                        catch (BadHttpRequestException)
+                        {
+                        }
+                    },
+                    expectedClientStatusCode: HttpStatusCode.OK,
+                    expectedServerStatusCode: HttpStatusCode.OK,
+                    sendMalformedRequest: true);
+            }
         }
 
         [Fact]
         public async Task OnCompletedExceptionShouldNotPreventAResponse()
         {
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel()
-                .UseUrls("http://127.0.0.1:0/")
-                .Configure(app =>
-                {
-                    app.Run(async context =>
-                    {
-                        context.Response.OnCompleted(_ => throw new Exception(), null);
-                        await context.Response.WriteAsync("hello, world");
-                    });
-                });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel()
+                    .UseUrls("http://127.0.0.1:0/")
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .Configure(app =>
+                    {
+                        app.Run(async context =>
+                        {
+                            context.Response.OnCompleted(_ => throw new Exception(), null);
+                            await context.Response.WriteAsync("hello, world");
+                        });
+                    });
 
-                using (var client = new HttpClient())
+                using (var host = hostBuilder.Build())
                 {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    host.Start();
+
+                    using (var client = new HttpClient())
+                    {
+                        var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    }
                 }
             }
         }
@@ -328,31 +368,35 @@ namespace FunctionalTests
         [Fact]
         public async Task OnCompletedShouldNotBlockAResponse()
         {
-            var delay = Task.Delay(TestConstants.DefaultTimeout);
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel()
-                .UseUrls("http://127.0.0.1:0/")
-                .Configure(app =>
-                {
-                    app.Run(async context =>
-                    {
-                        context.Response.OnCompleted(async () =>
-                        {
-                            await delay;
-                        });
-                        await context.Response.WriteAsync("hello, world");
-                    });
-                });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var delay = Task.Delay(TestConstants.DefaultTimeout);
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel()
+                    .UseUrls("http://127.0.0.1:0/")
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .Configure(app =>
+                    {
+                        app.Run(async context =>
+                        {
+                            context.Response.OnCompleted(async () =>
+                            {
+                                await delay;
+                            });
+                            await context.Response.WriteAsync("hello, world");
+                        });
+                    });
 
-                using (var client = new HttpClient())
+                using (var host = hostBuilder.Build())
                 {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                    Assert.False(delay.IsCompleted);
+                    host.Start();
+
+                    using (var client = new HttpClient())
+                    {
+                        var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                        Assert.False(delay.IsCompleted);
+                    }
                 }
             }
         }
@@ -360,38 +404,42 @@ namespace FunctionalTests
         [Fact]
         public async Task InvalidChunkedEncodingInRequestShouldNotBlockOnCompleted()
         {
-            var onCompletedTcs = new TaskCompletionSource<object>();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var onCompletedTcs = new TaskCompletionSource<object>();
 
-            using (var server = new TestServer(httpContext =>
-            {
-                httpContext.Response.OnCompleted(() => Task.Run(() =>
+                using (var server = new TestServer(httpContext =>
                 {
-                    onCompletedTcs.SetResult(null);
-                }));
-                return Task.CompletedTask;
-            }))
-            {
-                using (var connection = server.CreateConnection())
+                    httpContext.Response.OnCompleted(() => Task.Run(() =>
+                    {
+                        onCompletedTcs.SetResult(null);
+                    }));
+                    return Task.CompletedTask;
+                }, new TestServiceContext() { LoggerFactory = loggerFactory }))
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "gg");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "gg");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
-            }
 
-            await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+            }
         }
 
         private static async Task ResponseStatusCodeSetBeforeHttpContextDispose(
+            ILoggerFactory loggerFactory,
             RequestDelegate handler,
             HttpStatusCode? expectedClientStatusCode,
             HttpStatusCode expectedServerStatusCode,
@@ -411,7 +459,7 @@ namespace FunctionalTests
             var sink = new TestSink();
             var logger = new TestLogger("TestLogger", sink, enabled: true);
 
-            using (var server = new TestServer(handler, new TestServiceContext() { Log = new KestrelTrace(logger) },
+            using (var server = new TestServer(handler, new TestServiceContext() { LoggerFactory = loggerFactory, Log = new KestrelTrace(logger) },
                 new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
                 services => services.AddSingleton(mockHttpContextFactory.Object)))
             {
@@ -485,47 +533,51 @@ namespace FunctionalTests
         [Fact]
         public async Task NoErrorResponseSentWhenAppSwallowsBadRequestException()
         {
-            BadHttpRequestException readException = null;
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                BadHttpRequestException readException = null;
+                var sink = new TestSink();
+                var logger = new TestLogger("TestLogger", sink, enabled: true);
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                readException = await Assert.ThrowsAsync<BadHttpRequestException>(
-                    async () => await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1));
-            }, new TestServiceContext() { Log = new KestrelTrace(logger) }))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "POST / HTTP/1.1",
-                        "Host:",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "gg");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    readException = await Assert.ThrowsAsync<BadHttpRequestException>(
+                        async () => await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1));
+                }, new TestServiceContext() { LoggerFactory = loggerFactory, Log = new KestrelTrace(logger) }))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "POST / HTTP/1.1",
+                            "Host:",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "gg");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
+
+                Assert.NotNull(readException);
+
+                Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+                    && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
             }
-
-            Assert.NotNull(readException);
-
-            Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
-                && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
         }
 
         [Fact]
         public async Task TransferEncodingChunkedSetOnUnknownLengthHttp11Response()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 await httpContext.Response.WriteAsync("hello, ");
                 await httpContext.Response.WriteAsync("world");
-            }))
+            }, new TestServiceContext() { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -556,11 +608,12 @@ namespace FunctionalTests
         [InlineData(StatusCodes.Status304NotModified)]
         public async Task TransferEncodingChunkedNotSetOnNonBodyResponse(int statusCode)
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(TransferEncodingChunkedNotSetOnNonBodyResponse)}_{statusCode}"))
             using (var server = new TestServer(httpContext =>
             {
                 httpContext.Response.StatusCode = statusCode;
                 return Task.CompletedTask;
-            }))
+            }, new TestServiceContext() { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -581,10 +634,11 @@ namespace FunctionalTests
         [Fact]
         public async Task TransferEncodingNotSetOnHeadResponse()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 return Task.CompletedTask;
-            }))
+            }, new TestServiceContext() { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -613,11 +667,12 @@ namespace FunctionalTests
                 .Setup(trace => trace.ConnectionHeadResponseBodyWrite(It.IsAny<string>(), response.Length))
                 .Callback<string, long>((connectionId, count) => logTcs.SetResult(null));
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 await httpContext.Response.WriteAsync(response);
                 await httpContext.Response.Body.FlushAsync();
-            }, new TestServiceContext { Log = mockKestrelTrace.Object }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory, Log = mockKestrelTrace.Object }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -646,298 +701,321 @@ namespace FunctionalTests
         [Fact]
         public async Task ThrowsAndClosesConnectionWhenAppWritesMoreThanContentLengthWrite()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                Log = new TestKestrelTrace(testLogger),
-                ServerOptions = { AllowSynchronousIO = true }
-            };
-
-            using (var server = new TestServer(httpContext =>
-            {
-                httpContext.Response.ContentLength = 11;
-                httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello,"), 0, 6);
-                httpContext.Response.Body.Write(Encoding.ASCII.GetBytes(" world"), 0, 6);
-                return Task.CompletedTask;
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.Receive(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "",
-                        "hello,");
+                    LoggerFactory = loggerFactory,
+                    Log = new TestKestrelTrace(testLogger),
+                    ServerOptions = { AllowSynchronousIO = true }
+                };
 
-                    await connection.WaitForConnectionClose().TimeoutAfter(TestConstants.DefaultTimeout);
+                using (var server = new TestServer(httpContext =>
+                {
+                    httpContext.Response.ContentLength = 11;
+                    httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello,"), 0, 6);
+                    httpContext.Response.Body.Write(Encoding.ASCII.GetBytes(" world"), 0, 6);
+                    return Task.CompletedTask;
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.Receive(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "",
+                            "hello,");
+
+                        await connection.WaitForConnectionClose().TimeoutAfter(TestConstants.DefaultTimeout);
+                    }
                 }
+
+                var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
+
+                Assert.Equal(
+                    $"Response Content-Length mismatch: too many bytes written (12 of 11).",
+                    logMessage.Exception.Message);
+
             }
-
-            var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
-
-            Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 11).",
-                logMessage.Exception.Message);
-
         }
 
         [Fact]
         public async Task ThrowsAndClosesConnectionWhenAppWritesMoreThanContentLengthWriteAsync()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory, Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                httpContext.Response.ContentLength = 11;
-                await httpContext.Response.WriteAsync("hello,");
-                await httpContext.Response.WriteAsync(" world");
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "",
-                        "hello,");
+                    httpContext.Response.ContentLength = 11;
+                    await httpContext.Response.WriteAsync("hello,");
+                    await httpContext.Response.WriteAsync(" world");
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "",
+                            "hello,");
+                    }
                 }
-            }
 
-            var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
-            Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 11).",
-                logMessage.Exception.Message);
+                var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
+                Assert.Equal(
+                    $"Response Content-Length mismatch: too many bytes written (12 of 11).",
+                    logMessage.Exception.Message);
+            }
         }
 
         [Fact]
         public async Task InternalServerErrorAndConnectionClosedOnWriteWithMoreThanContentLengthAndResponseNotStarted()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                Log = new TestKestrelTrace(testLogger),
-                ServerOptions = { AllowSynchronousIO = true }
-            };
-
-            using (var server = new TestServer(httpContext =>
-            {
-                var response = Encoding.ASCII.GetBytes("hello, world");
-                httpContext.Response.ContentLength = 5;
-                httpContext.Response.Body.Write(response, 0, response.Length);
-                return Task.CompletedTask;
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        $"HTTP/1.1 500 Internal Server Error",
-                        "Connection: close",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
-                }
-            }
+                    LoggerFactory = loggerFactory,
+                    Log = new TestKestrelTrace(testLogger),
+                    ServerOptions = { AllowSynchronousIO = true }
+                };
 
-            var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
-            Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 5).",
-                logMessage.Exception.Message);
+                using (var server = new TestServer(httpContext =>
+                {
+                    var response = Encoding.ASCII.GetBytes("hello, world");
+                    httpContext.Response.ContentLength = 5;
+                    httpContext.Response.Body.Write(response, 0, response.Length);
+                    return Task.CompletedTask;
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            $"HTTP/1.1 500 Internal Server Error",
+                            "Connection: close",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
+                }
+
+                var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
+                Assert.Equal(
+                    $"Response Content-Length mismatch: too many bytes written (12 of 5).",
+                    logMessage.Exception.Message);
+            }
         }
 
         [Fact]
         public async Task InternalServerErrorAndConnectionClosedOnWriteAsyncWithMoreThanContentLengthAndResponseNotStarted()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory, Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(httpContext =>
-            {
-                var response = Encoding.ASCII.GetBytes("hello, world");
-                httpContext.Response.ContentLength = 5;
-                return httpContext.Response.Body.WriteAsync(response, 0, response.Length);
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        $"HTTP/1.1 500 Internal Server Error",
-                        "Connection: close",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    var response = Encoding.ASCII.GetBytes("hello, world");
+                    httpContext.Response.ContentLength = 5;
+                    return httpContext.Response.Body.WriteAsync(response, 0, response.Length);
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            $"HTTP/1.1 500 Internal Server Error",
+                            "Connection: close",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
-            }
 
-            var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
-            Assert.Equal(
-                $"Response Content-Length mismatch: too many bytes written (12 of 5).",
-                logMessage.Exception.Message);
+                var logMessage = Assert.Single(testLogger.Messages, message => message.LogLevel == LogLevel.Error);
+                Assert.Equal(
+                    $"Response Content-Length mismatch: too many bytes written (12 of 5).",
+                    logMessage.Exception.Message);
+            }
         }
 
         [Fact]
         public async Task WhenAppWritesLessThanContentLengthErrorLogged()
         {
-            var logTcs = new TaskCompletionSource<object>();
-            var mockTrace = new Mock<IKestrelTrace>();
-            mockTrace
-                .Setup(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()))
-                .Callback<string, string, Exception>((connectionId, requestId, ex) =>
-                {
-                    logTcs.SetResult(null);
-                });
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                httpContext.Response.ContentLength = 13;
-                await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { Log = mockTrace.Object }))
-            {
-                using (var connection = server.CreateConnection())
+                var logTcs = new TaskCompletionSource<object>();
+                var mockTrace = new Mock<IKestrelTrace>();
+                mockTrace
+                    .Setup(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()))
+                    .Callback<string, string, Exception>((connectionId, requestId, ex) =>
+                    {
+                        logTcs.SetResult(null);
+                    });
+
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
+                    httpContext.Response.ContentLength = 13;
+                    await httpContext.Response.WriteAsync("hello, world");
+                }, new TestServiceContext { LoggerFactory = loggerFactory, Log = mockTrace.Object }))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
 
-                    // Don't use ReceiveEnd here, otherwise the FIN might
-                    // abort the request before the server checks the
-                    // response content length, in which case the check
-                    // will be skipped.
-                    await connection.Receive(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 13",
-                        "",
-                        "hello, world");
+                        // Don't use ReceiveEnd here, otherwise the FIN might
+                        // abort the request before the server checks the
+                        // response content length, in which case the check
+                        // will be skipped.
+                        await connection.Receive(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 13",
+                            "",
+                            "hello, world");
 
-                    // Wait for error message to be logged.
-                    await logTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                        // Wait for error message to be logged.
+                        await logTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
 
-                    // The server should close the connection in this situation.
-                    await connection.WaitForConnectionClose().TimeoutAfter(TestConstants.DefaultTimeout);
+                        // The server should close the connection in this situation.
+                        await connection.WaitForConnectionClose().TimeoutAfter(TestConstants.DefaultTimeout);
+                    }
                 }
-            }
 
-            mockTrace.Verify(trace =>
-                trace.ApplicationError(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.Is<InvalidOperationException>(ex =>
-                        ex.Message.Equals($"Response Content-Length mismatch: too few bytes written (12 of 13).", StringComparison.Ordinal))));
+                mockTrace.Verify(trace =>
+                    trace.ApplicationError(
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.Is<InvalidOperationException>(ex =>
+                            ex.Message.Equals($"Response Content-Length mismatch: too few bytes written (12 of 13).", StringComparison.Ordinal))));
+            }
         }
 
         [Fact]
         public async Task WhenAppWritesLessThanContentLengthButRequestIsAbortedErrorNotLogged()
         {
-            var requestAborted = new SemaphoreSlim(0);
-            var mockTrace = new Mock<IKestrelTrace>();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                httpContext.RequestAborted.Register(() =>
-                {
-                    requestAborted.Release(2);
-                });
+                var requestAborted = new SemaphoreSlim(0);
+                var mockTrace = new Mock<IKestrelTrace>();
 
-                httpContext.Response.ContentLength = 12;
-                await httpContext.Response.WriteAsync("hello,");
-
-                // Wait until the request is aborted so we know HttpProtocol will skip the response content length check.
-                Assert.True(await requestAborted.WaitAsync(TestConstants.DefaultTimeout));
-            }, new TestServiceContext { Log = mockTrace.Object }))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.Receive(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 12",
-                        "",
-                        "hello,");
+                    httpContext.RequestAborted.Register(() =>
+                    {
+                        requestAborted.Release(2);
+                    });
+
+                    httpContext.Response.ContentLength = 12;
+                    await httpContext.Response.WriteAsync("hello,");
+
+                    // Wait until the request is aborted so we know HttpProtocol will skip the response content length check.
+                    Assert.True(await requestAborted.WaitAsync(TestConstants.DefaultTimeout));
+                }, new TestServiceContext { LoggerFactory = loggerFactory, Log = mockTrace.Object }))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.Receive(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 12",
+                            "",
+                            "hello,");
+                    }
+
+                    // Verify the request was really aborted. A timeout in
+                    // the app would cause a server error and skip the content length
+                    // check altogether, making the test pass for the wrong reason.
+                    // Await before disposing the server to prevent races between the
+                    // abort triggered by the connection RST and the abort called when
+                    // disposing the server.
+                    Assert.True(await requestAborted.WaitAsync(TestConstants.DefaultTimeout));
                 }
 
-                // Verify the request was really aborted. A timeout in
-                // the app would cause a server error and skip the content length
-                // check altogether, making the test pass for the wrong reason.
-                // Await before disposing the server to prevent races between the
-                // abort triggered by the connection RST and the abort called when
-                // disposing the server.
-                Assert.True(await requestAborted.WaitAsync(TestConstants.DefaultTimeout));
+                // With the server disposed we know all connections were drained and all messages were logged.
+                mockTrace.Verify(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()), Times.Never);
             }
-
-            // With the server disposed we know all connections were drained and all messages were logged.
-            mockTrace.Verify(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()), Times.Never);
         }
 
         [Fact]
         public async Task WhenAppSetsContentLengthButDoesNotWriteBody500ResponseSentAndConnectionDoesNotClose()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory, Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(httpContext =>
-            {
-                httpContext.Response.ContentLength = 5;
-                return Task.CompletedTask;
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.Receive(
-                        "HTTP/1.1 500 Internal Server Error",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "HTTP/1.1 500 Internal Server Error",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    httpContext.Response.ContentLength = 5;
+                    return Task.CompletedTask;
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.Receive(
+                            "HTTP/1.1 500 Internal Server Error",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "HTTP/1.1 500 Internal Server Error",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
-            }
 
-            var error = testLogger.Messages.Where(message => message.LogLevel == LogLevel.Error);
-            Assert.Equal(2, error.Count());
-            Assert.All(error, message => message.Equals("Response Content-Length mismatch: too few bytes written (0 of 5)."));
+                var error = testLogger.Messages.Where(message => message.LogLevel == LogLevel.Error);
+                Assert.Equal(2, error.Count());
+                Assert.All(error, message => message.Equals("Response Content-Length mismatch: too few bytes written (0 of 5)."));
+            }
         }
 
         [Theory]
@@ -945,36 +1023,39 @@ namespace FunctionalTests
         [InlineData(true)]
         public async Task WhenAppSetsContentLengthToZeroAndDoesNotWriteNoErrorIsThrown(bool flushResponse)
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(WhenAppSetsContentLengthToZeroAndDoesNotWriteNoErrorIsThrown)}_{flushResponse}"))
             {
-                httpContext.Response.ContentLength = 0;
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory, Log = new TestKestrelTrace(testLogger) };
 
-                if (flushResponse)
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await httpContext.Response.Body.FlushAsync();
-                }
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                    httpContext.Response.ContentLength = 0;
+
+                    if (flushResponse)
+                    {
+                        await httpContext.Response.Body.FlushAsync();
+                    }
+                }, serviceContext))
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.Receive(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.Receive(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
+
+                Assert.Equal(0, testLogger.ApplicationErrorsLogged);
             }
-
-            Assert.Equal(0, testLogger.ApplicationErrorsLogged);
         }
 
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -984,34 +1065,37 @@ namespace FunctionalTests
         [Fact]
         public async Task WhenAppSetsTransferEncodingAndContentLengthWritingLessIsNotAnError()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory, Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                httpContext.Response.Headers["Transfer-Encoding"] = "chunked";
-                httpContext.Response.ContentLength = 13;
-                await httpContext.Response.WriteAsync("hello, world");
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.Receive(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 13",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "hello, world");
+                    httpContext.Response.Headers["Transfer-Encoding"] = "chunked";
+                    httpContext.Response.ContentLength = 13;
+                    await httpContext.Response.WriteAsync("hello, world");
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.Receive(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 13",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "hello, world");
+                    }
                 }
-            }
 
-            Assert.Equal(0, testLogger.ApplicationErrorsLogged);
+                Assert.Equal(0, testLogger.ApplicationErrorsLogged);
+            }
         }
 
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -1021,44 +1105,48 @@ namespace FunctionalTests
         [Fact]
         public async Task WhenAppSetsTransferEncodingAndContentLengthWritingMoreIsNotAnError()
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var serviceContext = new TestServiceContext { Log = new TestKestrelTrace(testLogger) };
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var testLogger = new TestApplicationErrorLogger();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory, Log = new TestKestrelTrace(testLogger) };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                httpContext.Response.Headers["Transfer-Encoding"] = "chunked";
-                httpContext.Response.ContentLength = 11;
-                await httpContext.Response.WriteAsync("hello, world");
-            }, serviceContext))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.Receive(
-                        $"HTTP/1.1 200 OK",
-                        $"Date: {server.Context.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "hello, world");
+                    httpContext.Response.Headers["Transfer-Encoding"] = "chunked";
+                    httpContext.Response.ContentLength = 11;
+                    await httpContext.Response.WriteAsync("hello, world");
+                }, serviceContext))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.Receive(
+                            $"HTTP/1.1 200 OK",
+                            $"Date: {server.Context.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "hello, world");
+                    }
                 }
-            }
 
-            Assert.Equal(0, testLogger.ApplicationErrorsLogged);
+                Assert.Equal(0, testLogger.ApplicationErrorsLogged);
+            }
         }
 
         [Fact]
         public async Task HeadResponseCanContainContentLengthHeader()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 httpContext.Response.ContentLength = 42;
                 return Task.CompletedTask;
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1082,12 +1170,13 @@ namespace FunctionalTests
         {
             var flushed = new SemaphoreSlim(0, 1);
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.ContentLength = 12;
                 await httpContext.Response.WriteAsync("hello, world");
                 await flushed.WaitAsync();
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1112,15 +1201,15 @@ namespace FunctionalTests
         public async Task HeadResponseBodyNotWrittenWithSyncWrite()
         {
             var flushed = new SemaphoreSlim(0, 1);
-            var serviceContext = new TestServiceContext { ServerOptions = { AllowSynchronousIO = true } };
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 httpContext.Response.ContentLength = 12;
                 httpContext.Response.Body.Write(Encoding.ASCII.GetBytes("hello, world"), 0, 12);
                 flushed.Wait();
                 return Task.CompletedTask;
-            }, serviceContext))
+            }, new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { AllowSynchronousIO = true } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1146,13 +1235,14 @@ namespace FunctionalTests
         {
             var flushed = new SemaphoreSlim(0, 1);
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.ContentLength = 12;
                 await httpContext.Response.WriteAsync("");
                 flushed.Wait();
                 await httpContext.Response.WriteAsync("hello, world");
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1182,6 +1272,7 @@ namespace FunctionalTests
             var requestStarted = new ManualResetEventSlim();
             var tcs = new TaskCompletionSource<object>();
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 try
@@ -1196,7 +1287,7 @@ namespace FunctionalTests
                 {
                     tcs.TrySetException(ex);
                 }
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1223,6 +1314,7 @@ namespace FunctionalTests
             var expectedResponse = string.Empty;
             var responseWritten = new SemaphoreSlim(0);
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 try
@@ -1237,7 +1329,7 @@ namespace FunctionalTests
                     await httpContext.Response.WriteAsync(ex.Message);
                     responseWritten.Release();
                 }
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1263,11 +1355,12 @@ namespace FunctionalTests
         [InlineData("chunked, gzip")]
         public async Task ConnectionClosedWhenChunkedIsNotFinalTransferCoding(string responseTransferEncoding)
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ConnectionClosedWhenChunkedIsNotFinalTransferCoding)}_{responseTransferEncoding}"))
             using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
                 await httpContext.Response.WriteAsync("hello, world");
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1308,12 +1401,13 @@ namespace FunctionalTests
         [InlineData("chunked, gzip")]
         public async Task ConnectionClosedWhenChunkedIsNotFinalTransferCodingEvenIfConnectionKeepAliveSetInResponse(string responseTransferEncoding)
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ConnectionClosedWhenChunkedIsNotFinalTransferCodingEvenIfConnectionKeepAliveSetInResponse)}_{responseTransferEncoding}"))
             using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.Headers["Connection"] = "keep-alive";
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
                 await httpContext.Response.WriteAsync("hello, world");
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1354,13 +1448,14 @@ namespace FunctionalTests
         [InlineData("gzip, chunked")]
         public async Task ConnectionKeptAliveWhenChunkedIsFinalTransferCoding(string responseTransferEncoding)
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ConnectionClosedWhenChunkedIsNotFinalTransferCodingEvenIfConnectionKeepAliveSetInResponse)}_{responseTransferEncoding}"))
             using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
 
                 // App would have to chunk manually, but here we don't care
                 await httpContext.Response.WriteAsync("hello, world");
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1395,8 +1490,7 @@ namespace FunctionalTests
         [Fact]
         public async Task FirstWriteVerifiedAfterOnStarting()
         {
-            var serviceContext = new TestServiceContext { ServerOptions = { AllowSynchronousIO = true } };
-
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 httpContext.Response.OnStarting(() =>
@@ -1412,7 +1506,7 @@ namespace FunctionalTests
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 httpContext.Response.Body.Write(response, 0, response.Length);
                 return Task.CompletedTask;
-            }, serviceContext))
+            }, new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { AllowSynchronousIO = true } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1438,8 +1532,7 @@ namespace FunctionalTests
         [Fact]
         public async Task SubsequentWriteVerifiedAfterOnStarting()
         {
-            var serviceContext = new TestServiceContext { ServerOptions = { AllowSynchronousIO = true } };
-
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 httpContext.Response.OnStarting(() =>
@@ -1456,7 +1549,7 @@ namespace FunctionalTests
                 httpContext.Response.Body.Write(response, 0, response.Length / 2);
                 httpContext.Response.Body.Write(response, response.Length / 2, response.Length - response.Length / 2);
                 return Task.CompletedTask;
-            }, serviceContext))
+            }, new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { AllowSynchronousIO = true } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1484,6 +1577,7 @@ namespace FunctionalTests
         [Fact]
         public async Task FirstWriteAsyncVerifiedAfterOnStarting()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 httpContext.Response.OnStarting(() =>
@@ -1498,7 +1592,7 @@ namespace FunctionalTests
 
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 return httpContext.Response.Body.WriteAsync(response, 0, response.Length);
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1524,6 +1618,7 @@ namespace FunctionalTests
         [Fact]
         public async Task SubsequentWriteAsyncVerifiedAfterOnStarting()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 httpContext.Response.OnStarting(() =>
@@ -1539,7 +1634,7 @@ namespace FunctionalTests
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 await httpContext.Response.Body.WriteAsync(response, 0, response.Length / 2);
                 await httpContext.Response.Body.WriteAsync(response, response.Length / 2, response.Length - response.Length / 2);
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1567,10 +1662,11 @@ namespace FunctionalTests
         [Fact]
         public async Task WhenResponseAlreadyStartedResponseEndedBeforeConsumingRequestBody()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 await httpContext.Response.WriteAsync("hello, world");
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1607,8 +1703,9 @@ namespace FunctionalTests
             var sink = new TestSink();
             var logger = new TestLogger("TestLogger", sink, enabled: true);
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext => Task.CompletedTask,
-                new TestServiceContext() { Log = new KestrelTrace(logger) }))
+                new TestServiceContext() { LoggerFactory = loggerFactory, Log = new KestrelTrace(logger) }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1641,10 +1738,11 @@ namespace FunctionalTests
             var sink = new TestSink();
             var logger = new TestLogger("TestLogger", sink, enabled: true);
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 return httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
-            }, new TestServiceContext() { Log = new KestrelTrace(logger) }))
+            }, new TestServiceContext() { LoggerFactory = loggerFactory, Log = new KestrelTrace(logger) }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1693,11 +1791,12 @@ namespace FunctionalTests
         [Fact]
         public async Task Sending100ContinueAndResponseSendsChunkTerminatorBeforeConsumingRequestBody()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async httpContext =>
             {
                 await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
                 await httpContext.Response.WriteAsync("hello, world");
-            }))
+            }, new TestServiceContext() { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1741,23 +1840,26 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http11ResponseSentToHttp10Request(ListenOptions listenOptions)
         {
-            var serviceContext = new TestServiceContext();
-
-            using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(Http11ResponseSentToHttp10Request)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                using (var connection = server.CreateConnection())
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory };
+
+                using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
                 {
-                    await connection.Send(
-                        "POST / HTTP/1.0",
-                        "Content-Length: 11",
-                        "",
-                        "Hello World");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {serviceContext.DateHeaderValue}",
-                        "",
-                        "Hello World");
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "POST / HTTP/1.0",
+                            "Content-Length: 11",
+                            "",
+                            "Hello World");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {serviceContext.DateHeaderValue}",
+                            "",
+                            "Hello World");
+                    }
                 }
             }
         }
@@ -1766,31 +1868,34 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthSetAutomaticallyAfterNoWrites(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ZeroContentLengthSetAutomaticallyAfterNoWrites)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                using (var connection = server.CreateConnection())
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
+
+                using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "GET / HTTP/1.0",
-                        "Connection: keep-alive",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "HTTP/1.1 200 OK",
-                        "Connection: keep-alive",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "GET / HTTP/1.0",
+                            "Connection: keep-alive",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "HTTP/1.1 200 OK",
+                            "Connection: keep-alive",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -1799,43 +1904,46 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthSetAutomaticallyForNonKeepAliveRequests(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ZeroContentLengthSetAutomaticallyForNonKeepAliveRequests)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TestConstants.DefaultTimeout));
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "Connection: close",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
-                }
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.0",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    Assert.Equal(0, await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TestConstants.DefaultTimeout));
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "Connection: close",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
+
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.0",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -1844,22 +1952,25 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthNotSetAutomaticallyForHeadRequests(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ZeroContentLengthNotSetAutomaticallyForHeadRequests)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                using (var connection = server.CreateConnection())
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
+
+                using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
                 {
-                    await connection.Send(
-                        "HEAD / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "");
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "HEAD / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -1868,55 +1979,58 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var request = httpContext.Request;
-                var response = httpContext.Response;
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                using (var reader = new StreamReader(request.Body, Encoding.ASCII))
+                using (var server = new TestServer(async httpContext =>
                 {
-                    var statusString = await reader.ReadLineAsync();
-                    response.StatusCode = int.Parse(statusString);
-                }
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                    var request = httpContext.Request;
+                    var response = httpContext.Response;
+
+                    using (var reader = new StreamReader(request.Body, Encoding.ASCII))
+                    {
+                        var statusString = await reader.ReadLineAsync();
+                        response.StatusCode = int.Parse(statusString);
+                    }
+                }, testContext, listenOptions))
                 {
-                    await connection.Send(
-                        "POST / HTTP/1.1",
-                        "Host:",
-                        "Content-Length: 3",
-                        "",
-                        "204POST / HTTP/1.1",
-                        "Host:",
-                        "Content-Length: 3",
-                        "",
-                        "205POST / HTTP/1.1",
-                        "Host:",
-                        "Content-Length: 3",
-                        "",
-                        "304POST / HTTP/1.1",
-                        "Host:",
-                        "Content-Length: 3",
-                        "",
-                        "200");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 204 No Content",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "HTTP/1.1 205 Reset Content",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "HTTP/1.1 304 Not Modified",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "POST / HTTP/1.1",
+                            "Host:",
+                            "Content-Length: 3",
+                            "",
+                            "204POST / HTTP/1.1",
+                            "Host:",
+                            "Content-Length: 3",
+                            "",
+                            "205POST / HTTP/1.1",
+                            "Host:",
+                            "Content-Length: 3",
+                            "",
+                            "304POST / HTTP/1.1",
+                            "Host:",
+                            "Content-Length: 3",
+                            "",
+                            "200");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 204 No Content",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "HTTP/1.1 205 Reset Content",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "HTTP/1.1 304 Not Modified",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -1925,45 +2039,48 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionClosedAfter101Response(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ConnectionClosedAfter101Response)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var request = httpContext.Request;
-                var stream = await httpContext.Features.Get<IHttpUpgradeFeature>().UpgradeAsync();
-                var response = Encoding.ASCII.GetBytes("hello, world");
-                await stream.WriteAsync(response, 0, response.Length);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "Connection: Upgrade",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 101 Switching Protocols",
-                        "Connection: Upgrade",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "hello, world");
-                }
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.0",
-                        "Connection: keep-alive, Upgrade",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 101 Switching Protocols",
-                        "Connection: Upgrade",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "hello, world");
+                    var request = httpContext.Request;
+                    var stream = await httpContext.Features.Get<IHttpUpgradeFeature>().UpgradeAsync();
+                    var response = Encoding.ASCII.GetBytes("hello, world");
+                    await stream.WriteAsync(response, 0, response.Length);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "Connection: Upgrade",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 101 Switching Protocols",
+                            "Connection: Upgrade",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "hello, world");
+                    }
+
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.0",
+                            "Connection: keep-alive, Upgrade",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 101 Switching Protocols",
+                            "Connection: Upgrade",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "hello, world");
+                    }
                 }
             }
         }
@@ -1972,316 +2089,334 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingResultsIn500Response(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            bool onStartingCalled = false;
-
-            var testLogger = new TestApplicationErrorLogger();
-            testContext.Log = new KestrelTrace(testLogger);
-
-            using (var server = new TestServer(httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ThrowingResultsIn500Response)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var response = httpContext.Response;
-                response.OnStarting(_ =>
-                {
-                    onStartingCalled = true;
-                    return Task.CompletedTask;
-                }, null);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                // Anything added to the ResponseHeaders dictionary is ignored
-                response.Headers["Content-Length"] = "11";
-                throw new Exception();
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                bool onStartingCalled = false;
+
+                var testLogger = new TestApplicationErrorLogger();
+                testContext.Log = new KestrelTrace(testLogger);
+
+                using (var server = new TestServer(httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "Connection: close",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 500 Internal Server Error",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "HTTP/1.1 500 Internal Server Error",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    response.OnStarting(_ =>
+                    {
+                        onStartingCalled = true;
+                        return Task.CompletedTask;
+                    }, null);
+
+                    // Anything added to the ResponseHeaders dictionary is ignored
+                    response.Headers["Content-Length"] = "11";
+                    throw new Exception();
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "Connection: close",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 500 Internal Server Error",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "HTTP/1.1 500 Internal Server Error",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
-            }
 
-            Assert.False(onStartingCalled);
-            Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+                Assert.False(onStartingCalled);
+                Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingInOnStartingResultsInFailedWritesAnd500Response(ListenOptions listenOptions)
         {
-            var callback1Called = false;
-            var callback2CallCount = 0;
-
-            var testContext = new TestServiceContext();
-            var testLogger = new TestApplicationErrorLogger();
-            testContext.Log = new KestrelTrace(testLogger);
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ThrowingInOnStartingResultsInFailedWritesAnd500Response)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var onStartingException = new Exception();
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
+                var callback1Called = false;
+                var callback2CallCount = 0;
 
-                var response = httpContext.Response;
-                response.OnStarting(_ =>
-                {
-                    callback1Called = true;
-                    throw onStartingException;
-                }, null);
-                response.OnStarting(_ =>
-                {
-                    callback2CallCount++;
-                    throw onStartingException;
-                }, null);
+                var testLogger = new TestApplicationErrorLogger();
+                testContext.Log = new KestrelTrace(testLogger);
 
-                var writeException = await Assert.ThrowsAsync<ObjectDisposedException>(async () => await response.Body.FlushAsync());
-                Assert.Same(onStartingException, writeException.InnerException);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 500 Internal Server Error",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "HTTP/1.1 500 Internal Server Error",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    var onStartingException = new Exception();
+
+                    var response = httpContext.Response;
+                    response.OnStarting(_ =>
+                    {
+                        callback1Called = true;
+                        throw onStartingException;
+                    }, null);
+                    response.OnStarting(_ =>
+                    {
+                        callback2CallCount++;
+                        throw onStartingException;
+                    }, null);
+
+                    var writeException = await Assert.ThrowsAsync<ObjectDisposedException>(async () => await response.Body.FlushAsync());
+                    Assert.Same(onStartingException, writeException.InnerException);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 500 Internal Server Error",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "HTTP/1.1 500 Internal Server Error",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
-            }
 
-            // The first registered OnStarting callback should have been called,
-            // since they are called LIFO order and the other one failed.
-            Assert.False(callback1Called);
-            Assert.Equal(2, callback2CallCount);
-            Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+                // The first registered OnStarting callback should have been called,
+                // since they are called LIFO order and the other one failed.
+                Assert.False(callback1Called);
+                Assert.Equal(2, callback2CallCount);
+                Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingInOnCompletedIsLogged(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            var onCompletedCalled1 = false;
-            var onCompletedCalled2 = false;
-
-            var testLogger = new TestApplicationErrorLogger();
-            testContext.Log = new KestrelTrace(testLogger);
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ThrowingInOnCompletedIsLogged)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var response = httpContext.Response;
-                response.OnCompleted(_ =>
-                {
-                    onCompletedCalled1 = true;
-                    throw new Exception();
-                }, null);
-                response.OnCompleted(_ =>
-                {
-                    onCompletedCalled2 = true;
-                    throw new Exception();
-                }, null);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                response.Headers["Content-Length"] = new[] { "11" };
+                var onCompletedCalled1 = false;
+                var onCompletedCalled2 = false;
 
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                var testLogger = new TestApplicationErrorLogger();
+                testContext.Log = new KestrelTrace(testLogger);
+
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "",
-                        "Hello World");
+                    var response = httpContext.Response;
+                    response.OnCompleted(_ =>
+                    {
+                        onCompletedCalled1 = true;
+                        throw new Exception();
+                    }, null);
+                    response.OnCompleted(_ =>
+                    {
+                        onCompletedCalled2 = true;
+                        throw new Exception();
+                    }, null);
+
+                    response.Headers["Content-Length"] = new[] { "11" };
+
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "",
+                            "Hello World");
+                    }
                 }
-            }
 
-            // All OnCompleted callbacks should be called even if they throw.
-            Assert.Equal(2, testLogger.ApplicationErrorsLogged);
-            Assert.True(onCompletedCalled1);
-            Assert.True(onCompletedCalled2);
+                // All OnCompleted callbacks should be called even if they throw.
+                Assert.Equal(2, testLogger.ApplicationErrorsLogged);
+                Assert.True(onCompletedCalled1);
+                Assert.True(onCompletedCalled2);
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingAfterWritingKillsConnection(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            bool onStartingCalled = false;
-
-            var testLogger = new TestApplicationErrorLogger();
-            testContext.Log = new KestrelTrace(testLogger);
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ThrowingAfterWritingKillsConnection)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var response = httpContext.Response;
-                response.OnStarting(_ =>
-                {
-                    onStartingCalled = true;
-                    return Task.FromResult<object>(null);
-                }, null);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                response.Headers["Content-Length"] = new[] { "11" };
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-                throw new Exception();
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                bool onStartingCalled = false;
+
+                var testLogger = new TestApplicationErrorLogger();
+                testContext.Log = new KestrelTrace(testLogger);
+
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "",
-                        "Hello World");
+                    var response = httpContext.Response;
+                    response.OnStarting(_ =>
+                    {
+                        onStartingCalled = true;
+                        return Task.FromResult<object>(null);
+                    }, null);
+
+                    response.Headers["Content-Length"] = new[] { "11" };
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+                    throw new Exception();
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "",
+                            "Hello World");
+                    }
                 }
-            }
 
-            Assert.True(onStartingCalled);
-            Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+                Assert.True(onStartingCalled);
+                Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingAfterPartialWriteKillsConnection(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            bool onStartingCalled = false;
-
-            var testLogger = new TestApplicationErrorLogger();
-            testContext.Log = new KestrelTrace(testLogger);
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ThrowingAfterPartialWriteKillsConnection)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var response = httpContext.Response;
-                response.OnStarting(_ =>
-                {
-                    onStartingCalled = true;
-                    return Task.FromResult<object>(null);
-                }, null);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                response.Headers["Content-Length"] = new[] { "11" };
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello"), 0, 5);
-                throw new Exception();
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                bool onStartingCalled = false;
+
+                var testLogger = new TestApplicationErrorLogger();
+                testContext.Log = new KestrelTrace(testLogger);
+
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "",
-                        "Hello");
+                    var response = httpContext.Response;
+                    response.OnStarting(_ =>
+                    {
+                        onStartingCalled = true;
+                        return Task.FromResult<object>(null);
+                    }, null);
+
+                    response.Headers["Content-Length"] = new[] { "11" };
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello"), 0, 5);
+                    throw new Exception();
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "",
+                            "Hello");
+                    }
                 }
-            }
 
-            Assert.True(onStartingCalled);
-            Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+                Assert.True(onStartingCalled);
+                Assert.Equal(1, testLogger.ApplicationErrorsLogged);
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowsOnWriteWithRequestAbortedTokenAfterRequestIsAborted(ListenOptions listenOptions)
         {
-            // This should match _maxBytesPreCompleted in SocketOutput
-            var maxBytesPreCompleted = 65536;
-
-            // Ensure string is long enough to disable write-behind buffering
-            var largeString = new string('a', maxBytesPreCompleted + 1);
-
-            var writeTcs = new TaskCompletionSource<object>();
-            var requestAbortedWh = new ManualResetEventSlim();
-            var requestStartWh = new ManualResetEventSlim();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ThrowsOnWriteWithRequestAbortedTokenAfterRequestIsAborted)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                requestStartWh.Set();
+                // This should match _maxBytesPreCompleted in SocketOutput
+                var maxBytesPreCompleted = 65536;
 
-                var response = httpContext.Response;
-                var request = httpContext.Request;
-                var lifetime = httpContext.Features.Get<IHttpRequestLifetimeFeature>();
+                // Ensure string is long enough to disable write-behind buffering
+                var largeString = new string('a', maxBytesPreCompleted + 1);
 
-                lifetime.RequestAborted.Register(() => requestAbortedWh.Set());
-                Assert.True(requestAbortedWh.Wait(TestConstants.DefaultTimeout));
+                var writeTcs = new TaskCompletionSource<object>();
+                var requestAbortedWh = new ManualResetEventSlim();
+                var requestStartWh = new ManualResetEventSlim();
 
-                try
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await response.WriteAsync(largeString, lifetime.RequestAborted);
-                }
-                catch (Exception ex)
+                    requestStartWh.Set();
+
+                    var response = httpContext.Response;
+                    var request = httpContext.Request;
+                    var lifetime = httpContext.Features.Get<IHttpRequestLifetimeFeature>();
+
+                    lifetime.RequestAborted.Register(() => requestAbortedWh.Set());
+                    Assert.True(requestAbortedWh.Wait(TestConstants.DefaultTimeout));
+
+                    try
+                    {
+                        await response.WriteAsync(largeString, lifetime.RequestAborted);
+                    }
+                    catch (Exception ex)
+                    {
+                        writeTcs.SetException(ex);
+                        throw;
+                    }
+
+                    writeTcs.SetException(new Exception("This shouldn't be reached."));
+                }, new TestServiceContext { LoggerFactory = loggerFactory }, listenOptions))
                 {
-                    writeTcs.SetException(ex);
-                    throw;
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "POST / HTTP/1.1",
+                            "Host:",
+                            "Content-Length: 0",
+                            "",
+                            "");
+
+                        Assert.True(requestStartWh.Wait(TestConstants.DefaultTimeout));
+                    }
+
+                    // Write failed - can throw TaskCanceledException or OperationCanceledException,
+                    // dependending on how far the canceled write goes.
+                    await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TestConstants.DefaultTimeout);
+
+                    // RequestAborted tripped
+                    Assert.True(requestAbortedWh.Wait(TestConstants.DefaultTimeout));
                 }
-
-                writeTcs.SetException(new Exception("This shouldn't be reached."));
-            }, new TestServiceContext(), listenOptions))
-            {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.Send(
-                        "POST / HTTP/1.1",
-                        "Host:",
-                        "Content-Length: 0",
-                        "",
-                        "");
-
-                    Assert.True(requestStartWh.Wait(TestConstants.DefaultTimeout));
-                }
-
-                // Write failed - can throw TaskCanceledException or OperationCanceledException,
-                // dependending on how far the canceled write goes.
-                await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await writeTcs.Task).TimeoutAfter(TestConstants.DefaultTimeout);
-
-                // RequestAborted tripped
-                Assert.True(requestAbortedWh.Wait(TestConstants.DefaultTimeout));
             }
         }
 
@@ -2289,57 +2424,63 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task NoErrorsLoggedWhenServerEndsConnectionBeforeClient(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            var testLogger = new TestApplicationErrorLogger();
-            testContext.Log = new KestrelTrace(testLogger);
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(NoErrorsLoggedWhenServerEndsConnectionBeforeClient)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var response = httpContext.Response;
-                response.Headers["Content-Length"] = new[] { "11" };
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
+
+                var testLogger = new TestApplicationErrorLogger();
+                testContext.Log = new KestrelTrace(testLogger);
+
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.0",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 11",
-                        "",
-                        "Hello World");
+                    var response = httpContext.Response;
+                    response.Headers["Content-Length"] = new[] { "11" };
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.0",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 11",
+                            "",
+                            "Hello World");
+                    }
                 }
-            }
 
-            Assert.Equal(0, testLogger.TotalErrorsLogged);
+                Assert.Equal(0, testLogger.TotalErrorsLogged);
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task NoResponseSentWhenConnectionIsClosedByServerBeforeClientFinishesSendingRequest(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(NoResponseSentWhenConnectionIsClosedByServerBeforeClientFinishesSendingRequest)}_{listenOptions.GetListenOptionsDetails()}"))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(httpContext =>
-            {
-                httpContext.Abort();
-                return Task.CompletedTask;
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(httpContext =>
                 {
-                    await connection.Send(
-                        "POST / HTTP/1.0",
-                        "Content-Length: 1",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd();
+                    httpContext.Abort();
+                    return Task.CompletedTask;
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "POST / HTTP/1.0",
+                            "Content-Length: 1",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd();
+                    }
                 }
             }
         }
@@ -2348,49 +2489,52 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ResponseHeadersAreResetOnEachRequest(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            IHeaderDictionary originalResponseHeaders = null;
-            var firstRequest = true;
-
-            using (var server = new TestServer(httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ResponseHeadersAreResetOnEachRequest)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                var responseFeature = httpContext.Features.Get<IHttpResponseFeature>();
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                if (firstRequest)
-                {
-                    originalResponseHeaders = responseFeature.Headers;
-                    responseFeature.Headers = new HttpResponseHeaders();
-                    firstRequest = false;
-                }
-                else
-                {
-                    Assert.Same(originalResponseHeaders, responseFeature.Headers);
-                }
+                IHeaderDictionary originalResponseHeaders = null;
+                var firstRequest = true;
 
-                return Task.CompletedTask;
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Content-Length: 0",
-                        "",
-                        "");
+                    var responseFeature = httpContext.Features.Get<IHttpResponseFeature>();
+
+                    if (firstRequest)
+                    {
+                        originalResponseHeaders = responseFeature.Headers;
+                        responseFeature.Headers = new HttpResponseHeaders();
+                        firstRequest = false;
+                    }
+                    else
+                    {
+                        Assert.Same(originalResponseHeaders, responseFeature.Headers);
+                    }
+
+                    return Task.CompletedTask;
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Content-Length: 0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -2399,104 +2543,109 @@ namespace FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task OnStartingCallbacksAreCalledInLastInFirstOutOrder(ListenOptions listenOptions)
         {
-            const string response = "hello, world";
-
-            var testContext = new TestServiceContext();
-
-            var callOrder = new Stack<int>();
-            var onStartingTcs = new TaskCompletionSource<object>();
-
-            using (var server = new TestServer(async context =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(OnStartingCallbacksAreCalledInLastInFirstOutOrder)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                context.Response.OnStarting(_ =>
-                {
-                    callOrder.Push(1);
-                    onStartingTcs.SetResult(null);
-                    return Task.CompletedTask;
-                }, null);
-                context.Response.OnStarting(_ =>
-                {
-                    callOrder.Push(2);
-                    return Task.CompletedTask;
-                }, null);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
+                const string response = "hello, world";
 
-                context.Response.ContentLength = response.Length;
-                await context.Response.WriteAsync(response);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        $"Content-Length: {response.Length}",
-                        "",
-                        "hello, world");
 
-                    // Wait for all callbacks to be called.
-                    await onStartingTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                var callOrder = new Stack<int>();
+                var onStartingTcs = new TaskCompletionSource<object>();
+
+                using (var server = new TestServer(async context =>
+                {
+                    context.Response.OnStarting(_ =>
+                    {
+                        callOrder.Push(1);
+                        onStartingTcs.SetResult(null);
+                        return Task.CompletedTask;
+                    }, null);
+                    context.Response.OnStarting(_ =>
+                    {
+                        callOrder.Push(2);
+                        return Task.CompletedTask;
+                    }, null);
+
+                    context.Response.ContentLength = response.Length;
+                    await context.Response.WriteAsync(response);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            $"Content-Length: {response.Length}",
+                            "",
+                            "hello, world");
+
+                        // Wait for all callbacks to be called.
+                        await onStartingTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                    }
                 }
-            }
 
-            Assert.Equal(1, callOrder.Pop());
-            Assert.Equal(2, callOrder.Pop());
+                Assert.Equal(1, callOrder.Pop());
+                Assert.Equal(2, callOrder.Pop());
+            }
         }
 
         [Theory]
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task OnCompletedCallbacksAreCalledInLastInFirstOutOrder(ListenOptions listenOptions)
         {
-            const string response = "hello, world";
-
-            var testContext = new TestServiceContext();
-
-            var callOrder = new Stack<int>();
-            var onCompletedTcs = new TaskCompletionSource<object>();
-
-            using (var server = new TestServer(async context =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(OnCompletedCallbacksAreCalledInLastInFirstOutOrder)}_{listenOptions.GetListenOptionsDetails()}"))
             {
-                context.Response.OnCompleted(_ =>
-                {
-                    callOrder.Push(1);
-                    onCompletedTcs.SetResult(null);
-                    return Task.CompletedTask;
-                }, null);
-                context.Response.OnCompleted(_ =>
-                {
-                    callOrder.Push(2);
-                    return Task.CompletedTask;
-                }, null);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
+                const string response = "hello, world";
 
-                context.Response.ContentLength = response.Length;
-                await context.Response.WriteAsync(response);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        $"Content-Length: {response.Length}",
-                        "",
-                        "hello, world");
+                var callOrder = new Stack<int>();
+                var onCompletedTcs = new TaskCompletionSource<object>();
 
-                    // Wait for all callbacks to be called.
-                    await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                using (var server = new TestServer(async context =>
+                {
+                    context.Response.OnCompleted(_ =>
+                    {
+                        callOrder.Push(1);
+                        onCompletedTcs.SetResult(null);
+                        return Task.CompletedTask;
+                    }, null);
+                    context.Response.OnCompleted(_ =>
+                    {
+                        callOrder.Push(2);
+                        return Task.CompletedTask;
+                    }, null);
+
+                    context.Response.ContentLength = response.Length;
+                    await context.Response.WriteAsync(response);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            $"Content-Length: {response.Length}",
+                            "",
+                            "hello, world");
+
+                        // Wait for all callbacks to be called.
+                        await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                    }
                 }
-            }
 
-            Assert.Equal(1, callOrder.Pop());
-            Assert.Equal(2, callOrder.Pop());
+                Assert.Equal(1, callOrder.Pop());
+                Assert.Equal(2, callOrder.Pop());
+            }
         }
 
 
@@ -2505,6 +2654,7 @@ namespace FunctionalTests
         {
             var firstRequest = true;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
@@ -2527,7 +2677,7 @@ namespace FunctionalTests
 
                     await context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello2"), 0, 6);
                 }
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -2553,11 +2703,7 @@ namespace FunctionalTests
         [Fact]
         public async Task SynchronousWritesCanBeDisallowedGlobally()
         {
-            var testContext = new TestServiceContext
-            {
-                ServerOptions = { AllowSynchronousIO = false }
-            };
-
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(context =>
             {
                 var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
@@ -2570,7 +2716,7 @@ namespace FunctionalTests
                 Assert.Equal(CoreStrings.SynchronousWritesDisallowed, ioEx.Message);
 
                 return context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello!"), 0, 6);
-            }, testContext))
+            }, new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { AllowSynchronousIO = false } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -2592,7 +2738,7 @@ namespace FunctionalTests
         [Fact]
         public void ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
-            using (StartLog(out var loggerFactory, "ConnClosedWhenRespDoesNotSatisfyMin"))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, "ConnClosedWhenRespDoesNotSatisfyMin"))
             {
                 var logger = loggerFactory.CreateLogger($"{ typeof(ResponseTests).FullName}.{ nameof(ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate)}");
                 var chunkSize = 64 * 1024;
@@ -2686,74 +2832,78 @@ namespace FunctionalTests
         [Fact]
         public async Task HttpsConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
-            const int chunkSize = 64 * 1024;
-            const int chunks = 128;
-
-            var certificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
-
-            var messageLogged = new ManualResetEventSlim();
-            var aborted = new ManualResetEventSlim();
-
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
-            mockKestrelTrace
-                .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback(() => messageLogged.Set());
-
-            var testContext = new TestServiceContext
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                Log = mockKestrelTrace.Object,
-                SystemClock = new SystemClock(),
-                ServerOptions =
+                const int chunkSize = 64 * 1024;
+                const int chunks = 128;
+
+                var certificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
+
+                var messageLogged = new ManualResetEventSlim();
+                var aborted = new ManualResetEventSlim();
+
+                var mockKestrelTrace = new Mock<IKestrelTrace>();
+                mockKestrelTrace
+                    .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
+                    .Callback(() => messageLogged.Set());
+
+                var testContext = new TestServiceContext
                 {
-                    Limits =
+                    LoggerFactory = loggerFactory,
+                    Log = mockKestrelTrace.Object,
+                    SystemClock = new SystemClock(),
+                    ServerOptions =
                     {
-                        MinResponseDataRate = new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.FromSeconds(2))
-                    }
-                }
-            };
-
-            var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
-            {
-                ConnectionAdapters =
-                {
-                    new HttpsConnectionAdapter(new HttpsConnectionAdapterOptions { ServerCertificate = certificate })
-                }
-            };
-
-            using (var server = new TestServer(async context =>
-            {
-                context.RequestAborted.Register(() =>
-                {
-                    aborted.Set();
-                });
-
-                context.Response.ContentLength = chunks * chunkSize;
-
-                for (var i = 0; i < chunks; i++)
-                {
-                    await context.Response.WriteAsync(new string('a', chunkSize), context.RequestAborted);
-                }
-            }, testContext, listenOptions))
-            {
-                using (var client = new TcpClient())
-                {
-                    await client.ConnectAsync(IPAddress.Loopback, server.Port);
-
-                    using (var sslStream = new SslStream(client.GetStream(), false, (sender, cert, chain, errors) => true, null))
-                    {
-                        await sslStream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
-
-                        var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
-                        await sslStream.WriteAsync(request, 0, request.Length);
-
-                        Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
-
-                        using (var reader = new StreamReader(sslStream, encoding: Encoding.ASCII, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: false))
+                        Limits =
                         {
-                            await reader.ReadToEndAsync().TimeoutAfter(TestConstants.DefaultTimeout);
+                            MinResponseDataRate = new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.FromSeconds(2))
                         }
+                    }
+                };
 
-                        Assert.True(messageLogged.Wait(TestConstants.DefaultTimeout));
+                var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
+                {
+                    ConnectionAdapters =
+                    {
+                        new HttpsConnectionAdapter(new HttpsConnectionAdapterOptions { ServerCertificate = certificate })
+                    }
+                };
+
+                using (var server = new TestServer(async context =>
+                {
+                    context.RequestAborted.Register(() =>
+                    {
+                        aborted.Set();
+                    });
+
+                    context.Response.ContentLength = chunks * chunkSize;
+
+                    for (var i = 0; i < chunks; i++)
+                    {
+                        await context.Response.WriteAsync(new string('a', chunkSize), context.RequestAborted);
+                    }
+                }, testContext, listenOptions))
+                {
+                    using (var client = new TcpClient())
+                    {
+                        await client.ConnectAsync(IPAddress.Loopback, server.Port);
+
+                        using (var sslStream = new SslStream(client.GetStream(), false, (sender, cert, chain, errors) => true, null))
+                        {
+                            await sslStream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
+
+                            var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
+                            await sslStream.WriteAsync(request, 0, request.Length);
+
+                            Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
+
+                            using (var reader = new StreamReader(sslStream, encoding: Encoding.ASCII, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: false))
+                            {
+                                await reader.ReadToEndAsync().TimeoutAfter(TestConstants.DefaultTimeout);
+                            }
+
+                            Assert.True(messageLogged.Wait(TestConstants.DefaultTimeout));
+                        }
                     }
                 }
             }
@@ -2762,6 +2912,7 @@ namespace FunctionalTests
         [Fact]
         public async Task NonZeroContentLengthFor304StatusCodeIsAllowed()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(httpContext =>
             {
                 var response = httpContext.Response;
@@ -2769,7 +2920,7 @@ namespace FunctionalTests
                 response.ContentLength = 42;
 
                 return Task.CompletedTask;
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
