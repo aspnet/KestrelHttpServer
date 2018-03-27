@@ -7,18 +7,21 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class LoggingConnectionAdapterTests
+    public class LoggingConnectionAdapterTests : LoggedTest
     {
         private readonly ITestOutputHelper _output;
 
-        public LoggingConnectionAdapterTests(ITestOutputHelper output)
+        public LoggingConnectionAdapterTests(ITestOutputHelper output) : base(output)
         {
             _output = output;
         }
@@ -26,39 +29,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task LoggingConnectionAdapterCanBeAddedBeforeAndAfterHttpsAdapter()
         {
-            var host = TransportSelector.GetWebHostBuilder()
-                .ConfigureLogging(builder =>
-                {
-                    builder.SetMinimumLevel(LogLevel.Trace);
-                    builder.AddXunit(_output);
-                })
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var host = TransportSelector.GetWebHostBuilder()
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder =>
                     {
-                        listenOptions.UseConnectionLogging();
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                        listenOptions.UseConnectionLogging();
-                    });
-                })
-            .Configure(app =>
-            {
-                app.Run(context =>
+                        builder.SetMinimumLevel(LogLevel.Trace);
+                        builder.AddXunit(_output);
+                    })
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseConnectionLogging();
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                            listenOptions.UseConnectionLogging();
+                        });
+                    })
+                    .Configure(app =>
+                    {
+                        app.Run(context =>
+                        {
+                            context.Response.ContentLength = 12;
+                            return context.Response.WriteAsync("Hello World!");
+                        });
+                    })
+                    .Build();
+
+                using (host)
                 {
-                    context.Response.ContentLength = 12;
-                    return context.Response.WriteAsync("Hello World!");
-                });
-            })
-            .Build();
+                    await host.StartAsync();
 
-            using (host)
-            {
-                await host.StartAsync();
+                    var response = await HttpClientSlim.GetStringAsync($"https://localhost:{host.GetPort()}/", validateCertificate: false)
+                                                    .TimeoutAfter(TimeSpan.FromSeconds(10));
 
-                var response = await HttpClientSlim.GetStringAsync($"https://localhost:{host.GetPort()}/", validateCertificate: false)
-                                                   .TimeoutAfter(TimeSpan.FromSeconds(10));
-
-                Assert.Equal("Hello World!", response);
+                    Assert.Equal("Hello World!", response);
+                }
             }
         }
     }
