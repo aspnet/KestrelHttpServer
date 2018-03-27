@@ -34,7 +34,7 @@ namespace FunctionalTests
         [InlineData("DELETE /a%20b%20c/d%20e?f=ghi HTTP/1.1\r\nHost:\r\n\r\n", 1027)]
         public async Task ServerAcceptsRequestLineWithinLimit(string request, int limit)
         {
-            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestLineWithinLimit)}_{limit}_{request}"))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestLineWithinLimit)}_{limit}_{request}".RemoveIllegalFileChars()))
             using (var server = CreateServer(limit, loggerFactory))
             {
                 using (var connection = new TestConnection(server.Port))
@@ -61,7 +61,7 @@ namespace FunctionalTests
         [InlineData("DELETE /a%20b%20c/d%20e?f=ghi HTTP/1.1\r\n")]
         public async Task ServerRejectsRequestLineExceedingLimit(string requestLine)
         {
-            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestLineWithinLimit)}_{requestLine}"))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestLineWithinLimit)}_{requestLine}".RemoveIllegalFileChars()))
             using (var server = CreateServer(requestLine.Length - 1, loggerFactory))
             {
                 using (var connection = new TestConnection(server.Port))
