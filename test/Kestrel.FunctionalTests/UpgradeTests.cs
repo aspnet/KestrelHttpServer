@@ -7,26 +7,26 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Server.Kestrel.Tests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class UpgradeTests
+    public class UpgradeTests : LoggedTest
     {
-        private readonly ITestOutputHelper _output;
-
-        public UpgradeTests(ITestOutputHelper output)
+        public UpgradeTests(ITestOutputHelper output) : base(output)
         {
-            _output = output;
         }
 
         [Fact]
         public async Task ResponseThrowsAfterUpgrade()
         {
             var upgrade = new TaskCompletionSource<bool>();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpUpgradeFeature>();
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
 
                 upgrade.TrySetResult(true);
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -66,6 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             const string recv = "Custom protocol recv";
 
             var upgrade = new TaskCompletionSource<bool>();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 try
@@ -93,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     upgrade.SetException(ex);
                     throw;
                 }
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -117,6 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task UpgradeCannotBeCalledMultipleTimes()
         {
             var upgradeTcs = new TaskCompletionSource<object>();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpUpgradeFeature>();
@@ -136,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     await Task.Delay(100);
                 }
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             using (var connection = server.CreateConnection())
             {
                 await connection.SendEmptyGetWithUpgrade();
@@ -155,7 +157,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RejectsRequestWithContentLengthAndUpgrade()
         {
-            using (var server = new TestServer(context => Task.CompletedTask))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = loggerFactory }))
             using (var connection = server.CreateConnection())
             {
                 await connection.Send("POST / HTTP/1.1",
@@ -178,7 +181,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task AcceptsRequestWithNoContentLengthAndUpgrade()
         {
-            using (var server = new TestServer(context => Task.CompletedTask))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -202,7 +206,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RejectsRequestWithChunkedEncodingAndUpgrade()
         {
-            using (var server = new TestServer(context => Task.CompletedTask))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = loggerFactory }))
             using (var connection = server.CreateConnection())
             {
                 await connection.Send("POST / HTTP/1.1",
@@ -225,6 +230,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ThrowsWhenUpgradingNonUpgradableRequest()
         {
             var upgradeTcs = new TaskCompletionSource<bool>();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
              {
                  var feature = context.Features.Get<IHttpUpgradeFeature>();
@@ -241,7 +247,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                  {
                      upgradeTcs.TrySetResult(false);
                  }
-             }))
+             }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -257,52 +263,55 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RejectsUpgradeWhenLimitReached()
         {
-            const int limit = 10;
-            var upgradeTcs = new TaskCompletionSource<object>();
-            var serviceContext = new TestServiceContext();
-            serviceContext.ConnectionManager = new HttpConnectionManager(serviceContext.Log, ResourceCounter.Quota(limit));
-
-            using (var server = new TestServer(async context =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                var feature = context.Features.Get<IHttpUpgradeFeature>();
-                if (feature.IsUpgradableRequest)
+                const int limit = 10;
+                var upgradeTcs = new TaskCompletionSource<object>();
+                var serviceContext = new TestServiceContext { LoggerFactory = loggerFactory };
+                serviceContext.ConnectionManager = new HttpConnectionManager(serviceContext.Log, ResourceCounter.Quota(limit));
+
+                using (var server = new TestServer(async context =>
                 {
-                    try
+                    var feature = context.Features.Get<IHttpUpgradeFeature>();
+                    if (feature.IsUpgradableRequest)
                     {
-                        var stream = await feature.UpgradeAsync();
-                        while (!context.RequestAborted.IsCancellationRequested)
+                        try
                         {
-                            await Task.Delay(100);
+                            var stream = await feature.UpgradeAsync();
+                            while (!context.RequestAborted.IsCancellationRequested)
+                            {
+                                await Task.Delay(100);
+                            }
+                        }
+                        catch (InvalidOperationException ex)
+                        {
+                            upgradeTcs.TrySetException(ex);
                         }
                     }
-                    catch (InvalidOperationException ex)
-                    {
-                        upgradeTcs.TrySetException(ex);
-                    }
-                }
-            }, serviceContext))
-            {
-                using (var disposables = new DisposableStack<TestConnection>())
+                }, serviceContext))
                 {
-                    for (var i = 0; i < limit; i++)
+                    using (var disposables = new DisposableStack<TestConnection>())
                     {
-                        var connection = server.CreateConnection();
-                        disposables.Push(connection);
+                        for (var i = 0; i < limit; i++)
+                        {
+                            var connection = server.CreateConnection();
+                            disposables.Push(connection);
 
-                        await connection.SendEmptyGetWithUpgradeAndKeepAlive();
-                        await connection.Receive("HTTP/1.1 101");
-                    }
+                            await connection.SendEmptyGetWithUpgradeAndKeepAlive();
+                            await connection.Receive("HTTP/1.1 101");
+                        }
 
-                    using (var connection = server.CreateConnection())
-                    {
-                        await connection.SendEmptyGetWithUpgradeAndKeepAlive();
-                        await connection.Receive("HTTP/1.1 200");
+                        using (var connection = server.CreateConnection())
+                        {
+                            await connection.SendEmptyGetWithUpgradeAndKeepAlive();
+                            await connection.Receive("HTTP/1.1 200");
+                        }
                     }
                 }
-            }
 
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await upgradeTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(60)));
-            Assert.Equal(CoreStrings.UpgradedConnectionLimitReached, exception.Message);
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await upgradeTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(60)));
+                Assert.Equal(CoreStrings.UpgradedConnectionLimitReached, exception.Message);
+            }
         }
     }
 }

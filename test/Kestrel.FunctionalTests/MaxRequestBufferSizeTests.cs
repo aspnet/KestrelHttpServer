@@ -12,14 +12,17 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class MaxRequestBufferSizeTests
+    public class MaxRequestBufferSizeTests : LoggedTest
     {
         private const int _dataLength = 20 * 1024 * 1024;
 
@@ -32,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private readonly Action<ILoggingBuilder> _configureLoggingDelegate;
 
-        public MaxRequestBufferSizeTests(ITestOutputHelper output)
+        public MaxRequestBufferSizeTests(ITestOutputHelper output) : base(output)
         {
             _configureLoggingDelegate = builder => builder.AddXunit(output);
         }
@@ -101,7 +104,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var clientFinishedSendingRequestBody = new TaskCompletionSource<object>();
             var lastBytesWritten = DateTime.MaxValue;
 
-            using (var host = StartWebHost(maxRequestBufferSize, data, connectionAdapter, startReadingRequestBody, clientFinishedSendingRequestBody))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(LargeUpload)}_{maxRequestBufferSize}_{connectionAdapter}_{expectPause}"))
+            using (var host = StartWebHost(maxRequestBufferSize, data, connectionAdapter, loggerFactory, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
                 var port = host.GetPort();
                 using (var socket = CreateSocket(port))
@@ -193,7 +197,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var clientFinishedSendingRequestBody = new TaskCompletionSource<object>();
             var lastBytesWritten = DateTime.MaxValue;
 
-            using (var host = StartWebHost(16 * 1024, data, false, startReadingRequestBody, clientFinishedSendingRequestBody))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            using (var host = StartWebHost(16 * 1024, data, false, loggerFactory, startReadingRequestBody, clientFinishedSendingRequestBody))
             {
                 var port = host.GetPort();
                 using (var socket = CreateSocket(port))
@@ -255,10 +260,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private IWebHost StartWebHost(long? maxRequestBufferSize,
             byte[] expectedBody,
             bool useConnectionAdapter,
+            ILoggerFactory loggerFactory,
             TaskCompletionSource<object> startReadingRequestBody,
             TaskCompletionSource<object> clientFinishedSendingRequestBody)
         {
             var host = TransportSelector.GetWebHostBuilder()
+                .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
                 .ConfigureLogging(_configureLoggingDelegate)
                 .UseKestrel(options =>
                 {

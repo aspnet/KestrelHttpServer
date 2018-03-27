@@ -5,13 +5,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class RequestHeaderLimitsTests
+    public class RequestHeaderLimitsTests : LoggedTest
     {
+        public RequestHeaderLimitsTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         [Theory]
         [InlineData(0, 1)]
         [InlineData(0, 1337)]
@@ -25,7 +33,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var headers = MakeHeaders(headerCount);
 
-            using (var server = CreateServer(maxRequestHeadersTotalSize: headers.Length + extraLimit))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestWithHeaderTotalSizeWithinLimit)}_{headerCount}_{extraLimit}"))
+            using (var server = CreateServer(loggerFactory, maxRequestHeadersTotalSize: headers.Length + extraLimit))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -57,7 +66,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var headers = MakeHeaders(headerCount);
 
-            using (var server = CreateServer(maxRequestHeaderCount: maxHeaderCount))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestWithHeaderCountWithinLimit)}_{headerCount}_{maxHeaderCount}"))
+            using (var server = CreateServer(loggerFactory, maxRequestHeaderCount: maxHeaderCount))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -83,7 +93,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var headers = MakeHeaders(headerCount);
 
-            using (var server = CreateServer(maxRequestHeadersTotalSize: headers.Length - 1))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerRejectsRequestWithHeaderTotalSizeOverLimit)}_{headerCount}"))
+            using (var server = CreateServer(loggerFactory, maxRequestHeadersTotalSize: headers.Length - 1))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -107,7 +118,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var headers = MakeHeaders(headerCount);
 
-            using (var server = CreateServer(maxRequestHeaderCount: maxHeaderCount))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerRejectsRequestWithHeaderCountOverLimit)}_{headerCount}_{maxHeaderCount}"))
+            using (var server = CreateServer(loggerFactory, maxRequestHeaderCount: maxHeaderCount))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -134,7 +146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Select(i => $"Header-{i}: value{i}\r\n")));
         }
 
-        private TestServer CreateServer(int? maxRequestHeaderCount = null, int? maxRequestHeadersTotalSize = null)
+        private TestServer CreateServer(ILoggerFactory loggerFactory, int? maxRequestHeaderCount = null, int? maxRequestHeadersTotalSize = null)
         {
             var options = new KestrelServerOptions { AddServerHeader = false };
 
@@ -150,6 +162,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext
             {
+                LoggerFactory = loggerFactory,
                 ServerOptions = options
             });
         }

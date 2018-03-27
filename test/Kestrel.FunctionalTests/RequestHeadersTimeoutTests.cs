@@ -6,21 +6,30 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class RequestHeadersTimeoutTests
+    public class RequestHeadersTimeoutTests : LoggedTest
     {
         private static readonly TimeSpan RequestHeadersTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan LongDelay = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan ShortDelay = TimeSpan.FromSeconds(LongDelay.TotalSeconds / 10);
 
+        public RequestHeadersTimeoutTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         [Fact]
         public async Task TestRequestHeadersTimeout()
         {
-            using (var server = CreateServer())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            using (var server = CreateServer(loggerFactory))
             {
                 var tasks = new[]
                 {
@@ -89,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private TestServer CreateServer()
+        private TestServer CreateServer(ILoggerFactory loggerFactory)
         {
             return new TestServer(async httpContext =>
             {
@@ -98,6 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             },
             new TestServiceContext
             {
+                LoggerFactory = loggerFactory,
                 // Use real SystemClock so timeouts trigger.
                 SystemClock = new SystemClock(),
                 ServerOptions =

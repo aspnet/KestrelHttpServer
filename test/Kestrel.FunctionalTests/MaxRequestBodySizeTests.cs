@@ -7,13 +7,20 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class MaxRequestBodySizeTests
+    public class MaxRequestBodySizeTests : LoggedTest
     {
+        public MaxRequestBodySizeTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         [Fact]
         public async Task RejectsRequestWithContentLengthHeaderExceedingGlobalLimit()
         {
@@ -21,6 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var globalMaxRequestBodySize = 0x100000000;
             BadHttpRequestException requestRejectedEx = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var buffer = new byte[1];
@@ -28,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
                 throw requestRejectedEx;
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -61,6 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var perRequestMaxRequestBodySize = 0x100000000;
             BadHttpRequestException requestRejectedEx = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
@@ -74,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
                 throw requestRejectedEx;
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -101,6 +110,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task DoesNotRejectRequestWithContentLengthHeaderExceedingGlobalLimitIfLimitDisabledPerRequest()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
@@ -118,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 context.Response.ContentLength = 1;
                 await context.Response.Body.WriteAsync(buffer, 0, 1);
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -141,8 +151,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task DoesNotRejectBodylessGetRequestWithZeroMaxRequestBodySize()
         {
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(context => context.Request.Body.CopyToAsync(Stream.Null),
-                new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+                new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -178,6 +189,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var payload = new string('A', payloadSize);
             InvalidOperationException invalidOpEx = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var buffer = new byte[1];
@@ -190,7 +202,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 invalidOpEx = Assert.Throws<InvalidOperationException>(() =>
                     feature.MaxRequestBodySize = perRequestMaxRequestBodySize);
                 throw invalidOpEx;
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -218,6 +230,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             InvalidOperationException invalidOpEx = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var upgradeFeature = context.Features.Get<IHttpUpgradeFeature>();
@@ -230,7 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 invalidOpEx = Assert.Throws<InvalidOperationException>(() =>
                     feature.MaxRequestBodySize = 0x10);
                 throw invalidOpEx;
-            }))
+            }, new TestServiceContext { LoggerFactory = loggerFactory }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -258,6 +271,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             BadHttpRequestException requestRejectedEx1 = null;
             BadHttpRequestException requestRejectedEx2 = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var buffer = new byte[1];
@@ -267,7 +281,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
                 throw requestRejectedEx2;
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -300,6 +314,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var globalMaxRequestBodySize = chunkedPayload.Length - 1;
             BadHttpRequestException requestRejectedEx = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var buffer = new byte[11];
@@ -314,7 +329,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 throw requestRejectedEx;
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -345,6 +360,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var trailingHeaders = "Trailing-Header: trailing-value\r\n\r\n";
             var globalMaxRequestBodySize = chunkedPayload.Length;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var offset = 0;
@@ -360,7 +376,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 Assert.Equal("Hello World", Encoding.ASCII.GetString(buffer));
                 Assert.Equal("trailing-value", context.Request.Headers["Trailing-Header"].ToString());
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -388,6 +404,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var firstRequest = true;
             BadHttpRequestException requestRejectedEx = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
@@ -419,7 +436,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     throw requestRejectedEx;
                 }
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = globalMaxRequestBodySize } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -457,6 +474,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             BadHttpRequestException requestRejectedEx1 = null;
             BadHttpRequestException requestRejectedEx2 = null;
 
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             using (var server = new TestServer(async context =>
             {
                 var buffer = new byte[1];
@@ -466,7 +484,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     async () => await context.Request.Body.ReadAsync(buffer, 0, 1));
                 throw requestRejectedEx2;
             },
-            new TestServiceContext { ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
+            new TestServiceContext { LoggerFactory = loggerFactory, ServerOptions = { Limits = { MaxRequestBodySize = 0 } } }))
             {
                 using (var connection = server.CreateConnection())
                 {
