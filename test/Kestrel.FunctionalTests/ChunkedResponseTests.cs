@@ -8,13 +8,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class ChunkedResponseTests
+    public class ChunkedResponseTests : LoggedTest
     {
+        public ChunkedResponseTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
             new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
@@ -28,34 +35,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ResponsesAreChunkedAutomatically(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ResponsesAreChunkedAutomatically)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                var response = httpContext.Response;
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host:",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "6",
-                        "Hello ",
-                        "6",
-                        "World!",
-                        "0",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host:",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "6",
+                            "Hello ",
+                            "6",
+                            "World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -64,27 +74,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ResponsesAreNotChunkedAutomaticallyForHttp10Requests(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ResponsesAreNotChunkedAutomaticallyForHttp10Requests)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                await httpContext.Response.WriteAsync("Hello ");
-                await httpContext.Response.WriteAsync("World!");
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.0",
-                        "Connection: keep-alive",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "",
-                        "Hello World!");
+                    await httpContext.Response.WriteAsync("Hello ");
+                    await httpContext.Response.WriteAsync("World!");
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.0",
+                            "Connection: keep-alive",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "",
+                            "Hello World!");
+                    }
                 }
             }
         }
@@ -93,35 +106,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ResponsesAreChunkedAutomaticallyForHttp11NonKeepAliveRequests(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ResponsesAreChunkedAutomaticallyForHttp11NonKeepAliveRequests)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                await httpContext.Response.WriteAsync("Hello ");
-                await httpContext.Response.WriteAsync("World!");
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "Connection: close",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "6",
-                        "Hello ",
-                        "6",
-                        "World!",
-                        "0",
-                        "",
-                        "");
+                    await httpContext.Response.WriteAsync("Hello ");
+                    await httpContext.Response.WriteAsync("World!");
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "Connection: close",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "6",
+                            "Hello ",
+                            "6",
+                            "World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -130,35 +146,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task SettingConnectionCloseHeaderInAppDoesNotDisableChunking(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(SettingConnectionCloseHeaderInAppDoesNotDisableChunking)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                httpContext.Response.Headers["Connection"] = "close";
-                await httpContext.Response.WriteAsync("Hello ");
-                await httpContext.Response.WriteAsync("World!");
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        "Connection: close",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "6",
-                        "Hello ",
-                        "6",
-                        "World!",
-                        "0",
-                        "",
-                        "");
+                    httpContext.Response.Headers["Connection"] = "close";
+                    await httpContext.Response.WriteAsync("Hello ");
+                    await httpContext.Response.WriteAsync("World!");
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            "Connection: close",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "6",
+                            "Hello ",
+                            "6",
+                            "World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -167,35 +186,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroLengthWritesAreIgnored(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ZeroLengthWritesAreIgnored)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                var response = httpContext.Response;
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
-                await response.Body.WriteAsync(new byte[0], 0, 0);
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "6",
-                        "Hello ",
-                        "6",
-                        "World!",
-                        "0",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
+                    await response.Body.WriteAsync(new byte[0], 0, 0);
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "6",
+                            "Hello ",
+                            "6",
+                            "World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -204,43 +226,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroLengthWritesFlushHeaders(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            var flushed = new SemaphoreSlim(0, 1);
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ZeroLengthWritesFlushHeaders)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
             {
-                var response = httpContext.Response;
-                await response.WriteAsync("");
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                await flushed.WaitAsync();
+                var flushed = new SemaphoreSlim(0, 1);
 
-                await response.WriteAsync("Hello World!");
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    await response.WriteAsync("");
 
-                    await connection.Receive(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "");
+                    await flushed.WaitAsync();
 
-                    flushed.Release();
+                    await response.WriteAsync("Hello World!");
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
 
-                    await connection.ReceiveEnd(
-                        "c",
-                        "Hello World!",
-                        "0",
-                        "",
-                        "");
+                        await connection.Receive(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "");
+
+                        flushed.Release();
+
+                        await connection.ReceiveEnd(
+                            "c",
+                            "Hello World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -249,29 +274,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task EmptyResponseBodyHandledCorrectlyWithZeroLengthWrite(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(EmptyResponseBodyHandledCorrectlyWithZeroLengthWrite)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                var response = httpContext.Response;
-                await response.Body.WriteAsync(new byte[0], 0, 0);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "0",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    await response.Body.WriteAsync(new byte[0], 0, 0);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -280,32 +308,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionClosedIfExceptionThrownAfterWrite(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ConnectionClosedIfExceptionThrownAfterWrite)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                var response = httpContext.Response;
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World!"), 0, 12);
-                throw new Exception();
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    // SendEnd is not called, so it isn't the client closing the connection.
-                    // client closing the connection.
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "c",
-                        "Hello World!",
-                        "");
+                    var response = httpContext.Response;
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World!"), 0, 12);
+                    throw new Exception();
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        // SendEnd is not called, so it isn't the client closing the connection.
+                        // client closing the connection.
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "c",
+                            "Hello World!",
+                            "");
+                    }
                 }
             }
         }
@@ -314,31 +345,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionClosedIfExceptionThrownAfterZeroLengthWrite(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ConnectionClosedIfExceptionThrownAfterZeroLengthWrite)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
+            {
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-            using (var server = new TestServer(async httpContext =>
-            {
-                var response = httpContext.Response;
-                await response.Body.WriteAsync(new byte[0], 0, 0);
-                throw new Exception();
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    // SendEnd is not called, so it isn't the client closing the connection.
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    await response.Body.WriteAsync(new byte[0], 0, 0);
+                    throw new Exception();
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        // SendEnd is not called, so it isn't the client closing the connection.
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
 
-                    // Headers are sent before connection is closed, but chunked body terminator isn't sent
-                    await connection.ReceiveForcedEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "");
+                        // Headers are sent before connection is closed, but chunked body terminator isn't sent
+                        await connection.ReceiveForcedEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -347,45 +381,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task WritesAreFlushedPriorToResponseCompletion(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            var flushWh = new ManualResetEventSlim();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(WritesAreFlushedPriorToResponseCompletion)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
             {
-                var response = httpContext.Response;
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                // Don't complete response until client has received the first chunk.
-                flushWh.Wait();
+                var flushWh = new ManualResetEventSlim();
 
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
-                    await connection.Receive(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "6",
-                        "Hello ",
-                        "");
+                    var response = httpContext.Response;
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
 
-                    flushWh.Set();
+                    // Don't complete response until client has received the first chunk.
+                    flushWh.Wait();
 
-                    await connection.ReceiveEnd(
-                        "6",
-                        "World!",
-                        "0",
-                        "",
-                        "");
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
+                        await connection.Receive(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "6",
+                            "Hello ",
+                            "");
+
+                        flushWh.Set();
+
+                        await connection.ReceiveEnd(
+                            "6",
+                            "World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
@@ -394,37 +431,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ChunksCanBeWrittenManually(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext();
-
-            using (var server = new TestServer(async httpContext =>
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ChunksCanBeWrittenManually)}_{listenOptions.GetListenOptionsDetails()}".RemoveIllegalFileChars()))
             {
-                var response = httpContext.Response;
-                response.Headers["Transfer-Encoding"] = "chunked";
+                var testContext = new TestServiceContext { LoggerFactory = loggerFactory };
 
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("6\r\nHello \r\n"), 0, 11);
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("6\r\nWorld!\r\n"), 0, 11);
-                await response.Body.WriteAsync(Encoding.ASCII.GetBytes("0\r\n\r\n"), 0, 5);
-            }, testContext, listenOptions))
-            {
-                using (var connection = server.CreateConnection())
+                using (var server = new TestServer(async httpContext =>
                 {
-                    await connection.Send(
-                        "GET / HTTP/1.1",
-                        "Host: ",
-                        "",
-                        "");
-                    await connection.ReceiveEnd(
-                        "HTTP/1.1 200 OK",
-                        $"Date: {testContext.DateHeaderValue}",
-                        "Transfer-Encoding: chunked",
-                        "",
-                        "6",
-                        "Hello ",
-                        "6",
-                        "World!",
-                        "0",
-                        "",
-                        "");
+                    var response = httpContext.Response;
+                    response.Headers["Transfer-Encoding"] = "chunked";
+
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("6\r\nHello \r\n"), 0, 11);
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("6\r\nWorld!\r\n"), 0, 11);
+                    await response.Body.WriteAsync(Encoding.ASCII.GetBytes("0\r\n\r\n"), 0, 5);
+                }, testContext, listenOptions))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.Send(
+                            "GET / HTTP/1.1",
+                            "Host: ",
+                            "",
+                            "");
+                        await connection.ReceiveEnd(
+                            "HTTP/1.1 200 OK",
+                            $"Date: {testContext.DateHeaderValue}",
+                            "Transfer-Encoding: chunked",
+                            "",
+                            "6",
+                            "Hello ",
+                            "6",
+                            "World!",
+                            "0",
+                            "",
+                            "");
+                    }
                 }
             }
         }
