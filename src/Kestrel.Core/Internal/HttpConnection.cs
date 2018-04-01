@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
@@ -79,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             pauseWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxRequestBufferSize ?? 0,
             useSynchronizationContext: false,
-            minimumSegmentSize: 4096
+            minimumSegmentSize: KestrelMemoryPool.MinimumSegmentSize
         );
 
         internal PipeOptions AdaptedOutputPipeOptions => new PipeOptions
@@ -90,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             pauseWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0,
             resumeWriterThreshold: _context.ServiceContext.ServerOptions.Limits.MaxResponseBufferSize ?? 0,
             useSynchronizationContext: false,
-            minimumSegmentSize: 4096
+            minimumSegmentSize: KestrelMemoryPool.MinimumSegmentSize
         );
 
         private IKestrelTrace Log => _context.ServiceContext.Log;
