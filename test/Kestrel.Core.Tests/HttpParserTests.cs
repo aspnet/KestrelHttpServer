@@ -386,6 +386,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(buffer.End, examined);
         }
 
+        [Fact]
+        public void ParseHeadersWithGratuitouslySplitBuffers()
+        {
+            var parser = CreateParser(_nullTrace);
+            var buffer = ReadOnlySequenceFactory.CreateSegments(
+                Encoding.ASCII.GetBytes("Host:\r\nConnecti"),
+                Encoding.ASCII.GetBytes("on"),
+                Encoding.ASCII.GetBytes(":"),
+                Encoding.ASCII.GetBytes(" "),
+                Encoding.ASCII.GetBytes("k"),
+                Encoding.ASCII.GetBytes("e"),
+                Encoding.ASCII.GetBytes("e"),
+                Encoding.ASCII.GetBytes("p"),
+                Encoding.ASCII.GetBytes("-"),
+                Encoding.ASCII.GetBytes("a"),
+                Encoding.ASCII.GetBytes("l"),
+                Encoding.ASCII.GetBytes("i"),
+                Encoding.ASCII.GetBytes("v"),
+                Encoding.ASCII.GetBytes("e"),
+                Encoding.ASCII.GetBytes("\r"),
+                Encoding.ASCII.GetBytes("\n\r"),
+                Encoding.ASCII.GetBytes("\n"));
+
+            var requestHandler = new RequestHandler();
+            var result = parser.ParseHeaders(requestHandler, buffer, out var consumed, out var examined, out _);
+
+            Assert.True(result);
+        }
+
         private void VerifyHeader(
             string headerName,
             string rawHeaderValue,
