@@ -27,8 +27,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             string expectedMethod,
             string expectedRawTarget,
             string expectedRawPath,
-// This warns that theory methods should use all of their parameters,
-// but this method is using a shared data collection with Http1ConnectionTests.TakeStartLineSetsHttpProtocolProperties and others.
+            // This warns that theory methods should use all of their parameters,
+            // but this method is using a shared data collection with Http1ConnectionTests.TakeStartLineSetsHttpProtocolProperties and others.
 #pragma warning disable xUnit1026
             string expectedDecodedPath,
             string expectedQueryString,
@@ -390,24 +390,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void ParseHeadersWithGratuitouslySplitBuffers()
         {
             var parser = CreateParser(_nullTrace);
-            var buffer = ReadOnlySequenceFactory.CreateSegments(
-                Encoding.ASCII.GetBytes("Host:\r\nConnecti"),
-                Encoding.ASCII.GetBytes("on"),
-                Encoding.ASCII.GetBytes(":"),
-                Encoding.ASCII.GetBytes(" "),
-                Encoding.ASCII.GetBytes("k"),
-                Encoding.ASCII.GetBytes("e"),
-                Encoding.ASCII.GetBytes("e"),
-                Encoding.ASCII.GetBytes("p"),
-                Encoding.ASCII.GetBytes("-"),
-                Encoding.ASCII.GetBytes("a"),
-                Encoding.ASCII.GetBytes("l"),
-                Encoding.ASCII.GetBytes("i"),
-                Encoding.ASCII.GetBytes("v"),
-                Encoding.ASCII.GetBytes("e"),
-                Encoding.ASCII.GetBytes("\r"),
-                Encoding.ASCII.GetBytes("\n\r"),
-                Encoding.ASCII.GetBytes("\n"));
+            var buffer = BytePerSegmentTestSequenceFactory.Instance.CreateWithContent("Host:\r\nConnection: keep-alive\r\n\r\n");
 
             var requestHandler = new RequestHandler();
             var result = parser.ParseHeaders(requestHandler, buffer, out var consumed, out var examined, out _);
@@ -419,19 +402,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         public void ParseHeadersWithGratuitouslySplitBuffers2()
         {
             var parser = CreateParser(_nullTrace);
-            var buffer = ReadOnlySequenceFactory.CreateSegments(
-                Encoding.ASCII.GetBytes("A: B"),
-                Encoding.ASCII.GetBytes("\r"),
-                Encoding.ASCII.GetBytes("\n"),
-                Encoding.ASCII.GetBytes("B"),
-                Encoding.ASCII.GetBytes(":"),
-                Encoding.ASCII.GetBytes(" "),
-                Encoding.ASCII.GetBytes("C"),
-                Encoding.ASCII.GetBytes("\r"),
-                Encoding.ASCII.GetBytes("\n"),
-                Encoding.ASCII.GetBytes("\r"),
-                Encoding.ASCII.GetBytes("\n")
-                );
+            var buffer = BytePerSegmentTestSequenceFactory.Instance.CreateWithContent("A:B\r\nB: C\r\n\r\n");
 
             var requestHandler = new RequestHandler();
             var result = parser.ParseHeaders(requestHandler, buffer, out var consumed, out var examined, out _);
@@ -520,6 +491,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 RawPath = path.GetAsciiStringNonNullCharacters();
                 Query = query.GetAsciiStringNonNullCharacters();
                 PathEncoded = pathEncoded;
+            }
+        }
+
+        // Doesn't put empty blocks inbetween every byte
+        internal class BytePerSegmentTestSequenceFactory : ReadOnlySequenceFactory
+        {
+            public static ReadOnlySequenceFactory Instance { get; } = new HttpParserTests.BytePerSegmentTestSequenceFactory();
+
+            public override ReadOnlySequence<byte> CreateOfSize(int size)
+            {
+                return CreateWithContent(new byte[size]);
+            }
+
+            public override ReadOnlySequence<byte> CreateWithContent(byte[] data)
+            {
+                var segments = new List<byte[]>();
+
+                foreach (var b in data)
+                {
+                    segments.Add(new[] { b });
+                }
+
+                return CreateSegments(segments.ToArray());
             }
         }
     }
