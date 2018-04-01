@@ -1340,7 +1340,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 writerScheduler: PipeScheduler.Inline,
                 pauseWriterThreshold: 1,
                 resumeWriterThreshold: 1,
-                useSynchronizationContext: false
+                useSynchronizationContext: false,
+                minimumSegmentSize: 4096
             ));
     }
 }
