@@ -421,65 +421,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             select new[] { stream[0], request[0], request[1] };
 
         [Theory]
-        [MemberData(nameof(RequestData))]
-        public async Task CopyToAsyncDoesNotCopyBlocks(HttpRequestHeaders headers, string[] data)
-        {
-            var writeCount = 0;
-            var writeTcs = new TaskCompletionSource<byte[]>();
-            var mockDestination = new Mock<Stream>() { CallBase = true };
-
-            mockDestination
-                .Setup(m => m.WriteAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), CancellationToken.None))
-                .Callback((byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-                {
-                    writeTcs.SetResult(buffer);
-                    writeCount++;
-                })
-                .Returns(Task.CompletedTask);
-
-            using (var input = new TestInput())
-            {
-                var body = Http1MessageBody.For(HttpVersion.Http11, headers, input.Http1Connection);
-
-                var copyToAsyncTask = body.CopyToAsync(mockDestination.Object);
-
-                // The block returned by IncomingStart always has at least 2048 available bytes,
-                // so no need to bounds check in this test.
-                var bytes = Encoding.ASCII.GetBytes(data[0]);
-                var buffer = input.Application.Output.GetMemory(2028);
-                ArraySegment<byte> block;
-                Assert.True(MemoryMarshal.TryGetArray(buffer, out block));
-                Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
-                input.Application.Output.Advance(bytes.Length);
-                await input.Application.Output.FlushAsync();
-
-                // Verify the block passed to WriteAsync is the same one incoming data was written into.
-                Assert.Same(block.Array, await writeTcs.Task);
-
-                writeTcs = new TaskCompletionSource<byte[]>();
-                bytes = Encoding.ASCII.GetBytes(data[1]);
-                buffer = input.Application.Output.GetMemory(2048);
-                Assert.True(MemoryMarshal.TryGetArray(buffer, out block));
-                Buffer.BlockCopy(bytes, 0, block.Array, block.Offset, bytes.Length);
-                input.Application.Output.Advance(bytes.Length);
-                await input.Application.Output.FlushAsync();
-
-                Assert.Same(block.Array, await writeTcs.Task);
-
-                if (headers.HeaderConnection == "close")
-                {
-                    input.Application.Output.Complete();
-                }
-
-                await copyToAsyncTask;
-
-                Assert.Equal(2, writeCount);
-
-                await body.StopAsync();
-            }
-        }
-
-        [Theory]
         [InlineData("keep-alive, upgrade")]
         [InlineData("Keep-Alive, Upgrade")]
         [InlineData("upgrade, keep-alive")]
