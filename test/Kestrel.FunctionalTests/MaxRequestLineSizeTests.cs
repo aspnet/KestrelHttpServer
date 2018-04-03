@@ -4,13 +4,21 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class MaxRequestLineSizeTests
+    public class MaxRequestLineSizeTests : LoggedTest
     {
+        public MaxRequestLineSizeTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         [Theory]
         [InlineData("GET / HTTP/1.1\r\nHost:\r\n\r\n", 16)]
         [InlineData("GET / HTTP/1.1\r\nHost:\r\n\r\n", 17)]
@@ -26,7 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("DELETE /a%20b%20c/d%20e?f=ghi HTTP/1.1\r\nHost:\r\n\r\n", 1027)]
         public async Task ServerAcceptsRequestLineWithinLimit(string request, int limit)
         {
-            using (var server = CreateServer(limit))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestLineWithinLimit)}_{limit}_{request}".RemoveIllegalFileChars()))
+            using (var server = CreateServer(limit, loggerFactory))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -52,7 +61,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("DELETE /a%20b%20c/d%20e?f=ghi HTTP/1.1\r\n")]
         public async Task ServerRejectsRequestLineExceedingLimit(string requestLine)
         {
-            using (var server = CreateServer(requestLine.Length - 1))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, $"{nameof(ServerAcceptsRequestLineWithinLimit)}_{requestLine}".RemoveIllegalFileChars()))
+            using (var server = CreateServer(requestLine.Length - 1, loggerFactory))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -68,10 +78,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private TestServer CreateServer(int maxRequestLineSize)
+        private TestServer CreateServer(int maxRequestLineSize, ILoggerFactory loggerFactory)
         {
             return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext
             {
+                LoggerFactory = loggerFactory,
                 ServerOptions = new KestrelServerOptions
                 {
                     AddServerHeader = false,

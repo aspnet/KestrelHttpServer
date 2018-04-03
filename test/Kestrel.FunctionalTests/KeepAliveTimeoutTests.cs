@@ -8,16 +8,24 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class KeepAliveTimeoutTests
+    public class KeepAliveTimeoutTests : LoggedTest
     {
         private static readonly TimeSpan _keepAliveTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan _longDelay = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan _shortDelay = TimeSpan.FromSeconds(_longDelay.TotalSeconds / 10);
+
+        public KeepAliveTimeoutTests(ITestOutputHelper output) : base(output)
+        {
+        }
 
         [Fact]
         public Task TestKeepAliveTimeout()
@@ -33,7 +41,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var longRunningCancellationTokenSource = new CancellationTokenSource();
                 var upgradeCancellationTokenSource = new CancellationTokenSource();
 
-                using (var server = CreateServer(longRunningCancellationTokenSource.Token, upgradeCancellationTokenSource.Token))
+                using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+                using (var server = CreateServer(longRunningCancellationTokenSource.Token, upgradeCancellationTokenSource.Token, loggerFactory))
                 {
                     var tasks = new[]
                     {
@@ -183,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private TestServer CreateServer(CancellationToken longRunningCt, CancellationToken upgradeCt)
+        private TestServer CreateServer(CancellationToken longRunningCt, CancellationToken upgradeCt, ILoggerFactory loggerFactory)
         {
             return new TestServer(httpContext => App(httpContext, longRunningCt, upgradeCt), new TestServiceContext
             {
@@ -197,7 +206,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         KeepAliveTimeout = _keepAliveTimeout,
                         MinRequestBodyDataRate = null
                     }
-                }
+                },
+                LoggerFactory = loggerFactory
             });
         }
 

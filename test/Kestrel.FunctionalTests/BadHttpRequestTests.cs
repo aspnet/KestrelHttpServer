@@ -3,20 +3,27 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class BadHttpRequestTests
+    public class BadHttpRequestTests : LoggedTest
     {
+        public BadHttpRequestTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         [Theory]
         [MemberData(nameof(InvalidRequestLineData))]
         public Task TestInvalidRequestLines(string request, string expectedExceptionMessage)
@@ -24,7 +31,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 request,
                 "400 Bad Request",
-                expectedExceptionMessage);
+                expectedExceptionMessage,
+                testName: $"{nameof(TestInvalidRequestLines)}_{request}_{expectedExceptionMessage}");
         }
 
         [Theory]
@@ -34,7 +42,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"GET / {httpVersion}\r\n",
                 "505 HTTP Version Not Supported",
-                CoreStrings.FormatBadRequest_UnrecognizedHTTPVersion(httpVersion));
+                CoreStrings.FormatBadRequest_UnrecognizedHTTPVersion(httpVersion),
+                testName: $"{nameof(TestInvalidRequestLinesWithUnrecognizedVersion)}_{httpVersion}");
         }
 
         [Theory]
@@ -44,7 +53,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"GET / HTTP/1.1\r\n{rawHeaders}",
                 "400 Bad Request",
-                expectedExceptionMessage);
+                expectedExceptionMessage,
+                testName: $"{nameof(TestInvalidHeaders)}_{rawHeaders}_{expectedExceptionMessage}".ShortenTestName());
         }
 
         [Theory]
@@ -57,7 +67,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"GET / HTTP/1.1\r\n{header}\r\n\r\n",
                 "400 Bad Request",
-                expectedExceptionMessage);
+                expectedExceptionMessage,
+                testName: $"{nameof(BadRequestWhenHeaderNameContainsNonASCIIOrNullCharacters)}_{header}_{expectedExceptionMessage}".RemoveIllegalFileChars());
         }
 
         [Theory]
@@ -68,7 +79,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"{method} / HTTP/1.1\r\nHost:\r\n\r\n",
                 "411 Length Required",
-                CoreStrings.FormatBadRequest_LengthRequired(method));
+                CoreStrings.FormatBadRequest_LengthRequired(method),
+                testName: $"{nameof(BadRequestIfMethodRequiresLengthButNoContentLengthOrTransferEncodingInRequest)}_{method}");
         }
 
         [Theory]
@@ -79,7 +91,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"{method} / HTTP/1.0\r\n\r\n",
                 "400 Bad Request",
-                CoreStrings.FormatBadRequest_LengthRequiredHttp10(method));
+                CoreStrings.FormatBadRequest_LengthRequiredHttp10(method),
+                testName: $"{nameof(BadRequestIfMethodRequiresLengthButNoContentLengthInHttp10Request)}_{method}");
         }
 
         [Theory]
@@ -90,7 +103,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"POST / HTTP/1.1\r\nHost:\r\nContent-Length: {contentLength}\r\n\r\n",
                 "400 Bad Request",
-                CoreStrings.FormatBadRequest_InvalidContentLength_Detail(contentLength));
+                CoreStrings.FormatBadRequest_InvalidContentLength_Detail(contentLength),
+                testName: $"{nameof(BadRequestIfContentLengthInvalid)}_{contentLength}");
         }
 
         [Theory]
@@ -102,7 +116,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 $"{request} HTTP/1.1\r\n",
                 "405 Method Not Allowed",
                 CoreStrings.BadRequest_MethodNotAllowed,
-                $"Allow: {allowedMethod}");
+                $"Allow: {allowedMethod}",
+                testName: $"{nameof(BadRequestIfContentLengthInvalid)}_{request}_{allowedMethod}");
         }
 
         [Fact]
@@ -129,7 +144,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestBadRequest(
                 $"{requestTarget} HTTP/1.1\r\nHost: {host}\r\n\r\n",
                 "400 Bad Request",
-                CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()));
+                CoreStrings.FormatBadRequest_InvalidHostHeader_Detail(host.Trim()),
+                testName: $"{nameof(BadRequestIfHostHeaderDoesNotMatchRequestTarget)}_{requestTarget}_{host}");
         }
 
         [Fact]
@@ -153,32 +169,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task BadRequestLogsAreNotHigherThanInformation()
         {
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            {
+                var sink = new TestSink();
+                var logger = new TestLogger("TestLogger", sink, enabled: true);
 
-            using (var server = new TestServer(async context =>
-            {
-                await context.Request.Body.ReadAsync(new byte[1], 0, 1);
-            }, new TestServiceContext { Log = new KestrelTrace(logger) }))
-            {
-                using (var connection = new TestConnection(server.Port))
+                using (var server = new TestServer(async context =>
                 {
-                    await connection.SendAll(
-                        "GET ? HTTP/1.1",
-                        "",
-                        "");
-                    await ReceiveBadRequestResponse(connection, "400 Bad Request", server.Context.DateHeaderValue);
+                    await context.Request.Body.ReadAsync(new byte[1], 0, 1);
+                }, new TestServiceContext { Log = new KestrelTrace(logger), LoggerFactory = loggerFactory}))
+                {
+                    using (var connection = new TestConnection(server.Port))
+                    {
+                        await connection.SendAll(
+                            "GET ? HTTP/1.1",
+                            "",
+                            "");
+                        await ReceiveBadRequestResponse(connection, "400 Bad Request", server.Context.DateHeaderValue);
+                    }
                 }
-            }
 
-            Assert.All(sink.Writes, w => Assert.InRange(w.LogLevel, LogLevel.Trace, LogLevel.Information));
-            Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information);
+                Assert.All(sink.Writes, w => Assert.InRange(w.LogLevel, LogLevel.Trace, LogLevel.Information));
+                Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information);
+            }
         }
 
         [Fact]
         public async Task TestRequestSplitting()
         {
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = Mock.Of<IKestrelTrace>() }))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = Mock.Of<IKestrelTrace>(), LoggerFactory = loggerFactory }))
             {
                 using (var client = server.CreateConnection())
                 {
@@ -191,28 +211,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private async Task TestBadRequest(string request, string expectedResponseStatusCode, string expectedExceptionMessage, string expectedAllowHeader = null)
+        private async Task TestBadRequest(string request, string expectedResponseStatusCode, string expectedExceptionMessage, string expectedAllowHeader = null, [CallerMemberName] string testName = "")
         {
-            BadHttpRequestException loggedException = null;
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
-            mockKestrelTrace
-                .Setup(trace => trace.IsEnabled(LogLevel.Information))
-                .Returns(true);
-            mockKestrelTrace
-                .Setup(trace => trace.ConnectionBadRequest(It.IsAny<string>(), It.IsAny<BadHttpRequestException>()))
-                .Callback<string, BadHttpRequestException>((connectionId, exception) => loggedException = exception);
-
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = mockKestrelTrace.Object }))
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, testName.RemoveIllegalFileChars()))
             {
-                using (var connection = server.CreateConnection())
-                {
-                    await connection.SendAll(request);
-                    await ReceiveBadRequestResponse(connection, expectedResponseStatusCode, server.Context.DateHeaderValue, expectedAllowHeader);
-                }
-            }
+                BadHttpRequestException loggedException = null;
+                var mockKestrelTrace = new Mock<IKestrelTrace>();
+                mockKestrelTrace
+                    .Setup(trace => trace.IsEnabled(LogLevel.Information))
+                    .Returns(true);
+                mockKestrelTrace
+                    .Setup(trace => trace.ConnectionBadRequest(It.IsAny<string>(), It.IsAny<BadHttpRequestException>()))
+                    .Callback<string, BadHttpRequestException>((connectionId, exception) => loggedException = exception);
 
-            mockKestrelTrace.Verify(trace => trace.ConnectionBadRequest(It.IsAny<string>(), It.IsAny<BadHttpRequestException>()));
-            Assert.Equal(expectedExceptionMessage, loggedException.Message);
+                using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = mockKestrelTrace.Object, LoggerFactory = loggerFactory }))
+                {
+                    using (var connection = server.CreateConnection())
+                    {
+                        await connection.SendAll(request);
+                        await ReceiveBadRequestResponse(connection, expectedResponseStatusCode, server.Context.DateHeaderValue, expectedAllowHeader);
+                    }
+                }
+
+                mockKestrelTrace.Verify(trace => trace.ConnectionBadRequest(It.IsAny<string>(), It.IsAny<BadHttpRequestException>()));
+                Assert.Equal(expectedExceptionMessage, loggedException.Message);
+            }
         }
 
         private async Task ReceiveBadRequestResponse(TestConnection connection, string expectedResponseStatusCode, string expectedDateHeaderValue, string expectedAllowHeader = null)

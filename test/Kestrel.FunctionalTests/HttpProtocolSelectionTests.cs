@@ -3,21 +3,30 @@
 
 using System;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class HttpProtocolSelectionTests
+    public class HttpProtocolSelectionTests : LoggedTest
     {
+        public HttpProtocolSelectionTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         [Fact]
         public Task Server_NoProtocols_Error()
         {
@@ -43,62 +52,71 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestSuccess(HttpProtocols.Http2, Encoding.ASCII.GetString(Http2Connection.ClientPreface), "\x00\x00\x00\x04\x00\x00\x00\x00\x00");
         }
 
-        private async Task TestSuccess(HttpProtocols serverProtocols, string request, string expectedResponse)
+        private async Task TestSuccess(HttpProtocols serverProtocols, string request, string expectedResponse, [CallerMemberName] string testName = "")
         {
-            var builder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(IPAddress.Loopback, 0, listenOptions =>
-                    {
-                        listenOptions._isHttp2Supported = true;
-                        listenOptions.Protocols = serverProtocols;
-                    });
-                })
-                .Configure(app => app.Run(context => Task.CompletedTask));
-
-            using (var host = builder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, testName))
             {
-                host.Start();
+                var builder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(IPAddress.Loopback, 0, listenOptions =>
+                        {
+                            listenOptions._isHttp2Supported = true;
+                            listenOptions.Protocols = serverProtocols;
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .Configure(app => app.Run(context => Task.CompletedTask));
 
-                using (var connection = new TestConnection(host.GetPort()))
+                using (var host = builder.Build())
                 {
-                    await connection.Send(request);
-                    await connection.Receive(expectedResponse);
+                    host.Start();
+
+                    using (var connection = new TestConnection(host.GetPort()))
+                    {
+                        await connection.Send(request);
+                        await connection.Receive(expectedResponse);
+                    }
                 }
             }
         }
 
-        private async Task TestError<TException>(HttpProtocols serverProtocols, string expectedErrorMessage)
+        private async Task TestError<TException>(HttpProtocols serverProtocols, string expectedErrorMessage, [CallerMemberName] string testName = "")
             where TException : Exception
         {
-            var logger = new TestApplicationErrorLogger();
-            var loggerProvider = new Mock<ILoggerProvider>();
-            loggerProvider
-                .Setup(provider => provider.CreateLogger(It.IsAny<string>()))
-                .Returns(logger);
-
-            var builder = TransportSelector.GetWebHostBuilder()
-                .ConfigureLogging(loggingBuilder => loggingBuilder.AddProvider(loggerProvider.Object))
-                .UseKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
-                {
-                    listenOptions._isHttp2Supported = true;
-                    listenOptions.Protocols = serverProtocols;
-                }))
-                .Configure(app => app.Run(context => Task.CompletedTask));
-
-            using (var host = builder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel, testName))
             {
-                host.Start();
+                var logger = new TestApplicationErrorLogger();
+                var loggerProvider = new Mock<ILoggerProvider>();
+                loggerProvider
+                    .Setup(provider => provider.CreateLogger(It.IsAny<string>()))
+                    .Returns(logger);
+                loggerFactory.AddProvider(loggerProvider.Object);
 
-                using (var connection = new TestConnection(host.GetPort()))
+                var builder = TransportSelector.GetWebHostBuilder()
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(loggingBuilder => loggingBuilder.AddProvider(loggerProvider.Object))
+                    .UseKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
+                    {
+                        listenOptions._isHttp2Supported = true;
+                        listenOptions.Protocols = serverProtocols;
+                    }))
+                    .Configure(app => app.Run(context => Task.CompletedTask));
+
+                using (var host = builder.Build())
                 {
-                    await connection.WaitForConnectionClose().TimeoutAfter(TestConstants.DefaultTimeout);
-                }
-            }
+                    host.Start();
 
-            Assert.Single(logger.Messages, message => message.LogLevel == LogLevel.Error
-                && message.EventId.Id == 0
-                && message.Message == expectedErrorMessage);
+                    using (var connection = new TestConnection(host.GetPort()))
+                    {
+                        await connection.WaitForConnectionClose().TimeoutAfter(TestConstants.DefaultTimeout);
+                    }
+                }
+
+                Assert.Single(logger.Messages, message => message.LogLevel == LogLevel.Error
+                    && message.EventId.Id == 0
+                    && message.Message == expectedErrorMessage);
+            }
         }
     }
 }

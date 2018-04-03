@@ -14,18 +14,25 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions.Internal;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace FunctionalTests
 {
-    public class HttpsTests
+    public class HttpsTests : LoggedTest
     {
+        public HttpsTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         private KestrelServerOptions CreateServerOptions()
         {
             var serverOptions = new KestrelServerOptions();
@@ -84,234 +91,264 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task EmptyRequestLoggedAsInformation()
         {
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => { });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
 
-                using (await HttpClientSlim.GetSocket(new Uri($"http://127.0.0.1:{host.GetPort()}/")))
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => { });
+
+                using (var host = hostBuilder.Build())
                 {
-                    // Close socket immediately
+                    host.Start();
+
+                    using (await HttpClientSlim.GetSocket(new Uri($"http://127.0.0.1:{host.GetPort()}/")))
+                    {
+                        // Close socket immediately
+                    }
+
+                    await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
                 }
 
-                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
+                Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
+                Assert.True(loggerProvider.ErrorLogger.TotalErrorsLogged == 0,
+                    userMessage: string.Join(Environment.NewLine, loggerProvider.ErrorLogger.ErrorMessages));
             }
-
-            Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
-            Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
-            Assert.True(loggerProvider.ErrorLogger.TotalErrorsLogged == 0,
-                userMessage: string.Join(Environment.NewLine, loggerProvider.ErrorLogger.ErrorMessages));
         }
 
         [Fact]
         public async Task ClientHandshakeFailureLoggedAsInformation()
         {
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => { });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
 
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket))
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => { });
+
+                using (var host = hostBuilder.Build())
                 {
-                    // Send null bytes and close socket
-                    await stream.WriteAsync(new byte[10], 0, 10);
+                    host.Start();
+
+                    using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
+                    using (var stream = new NetworkStream(socket))
+                    {
+                        // Send null bytes and close socket
+                        await stream.WriteAsync(new byte[10], 0, 10);
+                    }
+
+                    await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
                 }
 
-                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
+                Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
+                Assert.True(loggerProvider.ErrorLogger.TotalErrorsLogged == 0,
+                    userMessage: string.Join(Environment.NewLine, loggerProvider.ErrorLogger.ErrorMessages));
             }
-
-            Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
-            Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
-            Assert.True(loggerProvider.ErrorLogger.TotalErrorsLogged == 0,
-                userMessage: string.Join(Environment.NewLine, loggerProvider.ErrorLogger.ErrorMessages));
         }
 
         // Regression test for https://github.com/aspnet/KestrelHttpServer/issues/1103#issuecomment-246971172
         [Fact]
         public async Task DoesNotThrowObjectDisposedExceptionOnConnectionAbort()
         {
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(async httpContext =>
-                {
-                    var ct = httpContext.RequestAborted;
-                    while (!ct.IsCancellationRequested)
-                    {
-                        try
-                        {
-                            await httpContext.Response.WriteAsync($"hello, world", ct);
-                            await Task.Delay(1000, ct);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            // Don't regard connection abort as an error
-                        }
-                    }
-                }));
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => app.Run(async httpContext =>
+                    {
+                        var ct = httpContext.RequestAborted;
+                        while (!ct.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                await httpContext.Response.WriteAsync($"hello, world", ct);
+                                await Task.Delay(1000, ct);
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                // Don't regard connection abort as an error
+                            }
+                        }
+                    }));
 
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var host = hostBuilder.Build())
                 {
-                    await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
-                        enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
-                        checkCertificateRevocation: false);
+                    host.Start();
 
-                    var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
-                    await sslStream.WriteAsync(request, 0, request.Length);
-                    await sslStream.ReadAsync(new byte[32], 0, 32);
+                    using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
+                    using (var stream = new NetworkStream(socket, ownsSocket: false))
+                    using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                    {
+                        await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
+                            enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
+                            checkCertificateRevocation: false);
+
+                        var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
+                        await sslStream.WriteAsync(request, 0, request.Length);
+                        await sslStream.ReadAsync(new byte[32], 0, 32);
+                    }
                 }
-            }
 
-            Assert.False(loggerProvider.ErrorLogger.ObjectDisposedExceptionLogged);
+                Assert.False(loggerProvider.ErrorLogger.ObjectDisposedExceptionLogged);
+            }
         }
 
         [Fact]
         public async Task DoesNotThrowObjectDisposedExceptionFromWriteAsyncAfterConnectionIsAborted()
         {
-            var tcs = new TaskCompletionSource<object>();
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(async httpContext =>
-                {
-                    httpContext.Abort();
-                    try
-                    {
-                        await httpContext.Response.WriteAsync($"hello, world");
-                        tcs.SetResult(null);
-                    }
-                    catch (Exception ex)
-                    {
-                        tcs.SetException(ex);
-                    }
-                }));
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var tcs = new TaskCompletionSource<object>();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => app.Run(async httpContext =>
+                    {
+                        httpContext.Abort();
+                        try
+                        {
+                            await httpContext.Response.WriteAsync($"hello, world");
+                            tcs.SetResult(null);
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.SetException(ex);
+                        }
+                    }));
 
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var host = hostBuilder.Build())
                 {
-                    await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
-                        enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
-                        checkCertificateRevocation: false);
+                    host.Start();
 
-                    var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
-                    await sslStream.WriteAsync(request, 0, request.Length);
-                    await sslStream.ReadAsync(new byte[32], 0, 32);
+                    using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
+                    using (var stream = new NetworkStream(socket, ownsSocket: false))
+                    using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                    {
+                        await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
+                            enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
+                            checkCertificateRevocation: false);
+
+                        var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
+                        await sslStream.WriteAsync(request, 0, request.Length);
+                        await sslStream.ReadAsync(new byte[32], 0, 32);
+                    }
                 }
-            }
 
-            await tcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                await tcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+            }
         }
 
         // Regression test for https://github.com/aspnet/KestrelHttpServer/issues/1693
         [Fact]
         public async Task DoesNotThrowObjectDisposedExceptionOnEmptyConnection()
         {
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(httpContext => Task.CompletedTask));
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => app.Run(httpContext => Task.CompletedTask));
 
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var host = hostBuilder.Build())
                 {
-                    await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
-                        enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
-                        checkCertificateRevocation: false);
-                }
-            }
+                    host.Start();
 
-            Assert.False(loggerProvider.ErrorLogger.ObjectDisposedExceptionLogged);
+                    using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
+                    using (var stream = new NetworkStream(socket, ownsSocket: false))
+                    using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                    {
+                        await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
+                            enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
+                            checkCertificateRevocation: false);
+                    }
+                }
+
+                Assert.False(loggerProvider.ErrorLogger.ObjectDisposedExceptionLogged);
+            }
         }
 
         // Regression test for https://github.com/aspnet/KestrelHttpServer/pull/1197
         [Fact]
         public void ConnectionFilterDoesNotLeakBlock()
         {
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => { });
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
 
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => { });
+
+                using (var host = hostBuilder.Build())
                 {
-                    socket.Connect(new IPEndPoint(IPAddress.Loopback, host.GetPort()));
+                    host.Start();
 
-                    // Close socket immediately
-                    socket.LingerState = new LingerOption(true, 0);
+                    using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                    {
+                        socket.Connect(new IPEndPoint(IPAddress.Loopback, host.GetPort()));
+
+                        // Close socket immediately
+                        socket.LingerState = new LingerOption(true, 0);
+                    }
                 }
             }
         }
@@ -319,37 +356,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task HandshakeTimesOutAndIsLoggedAsInformation()
         {
-            var loggerProvider = new HandshakeErrorLoggerProvider();
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(o =>
-                        {
-                            o.ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
-                            o.HandshakeTimeout = TimeSpan.FromSeconds(1);
-                        });
-                    });
-                })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(httpContext => Task.CompletedTask));
-
-            using (var host = hostBuilder.Build())
+            using (StartLog(out var loggerFactory, TestConstants.DefaultFunctionalTestLogLevel))
             {
-                host.Start();
+                var loggerProvider = new HandshakeErrorLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
 
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
+                var hostBuilder = TransportSelector.GetWebHostBuilder()
+                    .UseKestrel(options =>
+                    {
+                        options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                        {
+                            listenOptions.UseHttps(o =>
+                            {
+                                o.ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
+                                o.HandshakeTimeout = TimeSpan.FromSeconds(1);
+                            });
+                        });
+                    })
+                    .ConfigureServices(collection => collection.AddSingleton(loggerFactory))
+                    .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                    .Configure(app => app.Run(httpContext => Task.CompletedTask));
+
+                using (var host = hostBuilder.Build())
                 {
-                    // No data should be sent and the connection should be closed in well under 30 seconds.
-                    Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TestConstants.DefaultTimeout));
-                }
-            }
+                    host.Start();
 
-            await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
-            Assert.Equal(2, loggerProvider.FilterLogger.LastEventId);
-            Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
+                    using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
+                    using (var stream = new NetworkStream(socket, ownsSocket: false))
+                    {
+                        // No data should be sent and the connection should be closed in well under 30 seconds.
+                        Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TestConstants.DefaultTimeout));
+                    }
+                }
+
+                await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
+                Assert.Equal(2, loggerProvider.FilterLogger.LastEventId);
+                Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
+            }
         }
 
         private class HandshakeErrorLoggerProvider : ILoggerProvider
