@@ -4,7 +4,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -51,13 +51,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Tests
         }
 
         [Fact]
-        public void LibuvIsTheDefaultTransport()
+        public void SocketTransportIsTheDefault()
         {
             var hostBuilder = new WebHostBuilder()
                 .UseKestrel()
                 .Configure(app => { });
 
-            Assert.IsType<LibuvTransportFactory>(hostBuilder.Build().Services.GetService<ITransportFactory>());
+            Assert.IsType<SocketTransportFactory>(hostBuilder.Build().Services.GetService<ITransportFactory>());
         }
 
         [Fact]

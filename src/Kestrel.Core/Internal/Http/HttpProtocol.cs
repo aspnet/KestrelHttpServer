@@ -13,11 +13,12 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Protocols;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
@@ -335,11 +336,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _statusCode = StatusCodes.Status200OK;
             _reasonPhrase = null;
 
-            RemoteIpAddress = RemoteEndPoint?.Address;
-            RemotePort = RemoteEndPoint?.Port ?? 0;
+            var remoteEndPoint = RemoteEndPoint;
+            RemoteIpAddress = remoteEndPoint?.Address;
+            RemotePort = remoteEndPoint?.Port ?? 0;
 
-            LocalIpAddress = LocalEndPoint?.Address;
-            LocalPort = LocalEndPoint?.Port ?? 0;
+            var localEndPoint = LocalEndPoint;
+            LocalIpAddress = localEndPoint?.Address;
+            LocalPort = localEndPoint?.Port ?? 0;
+
             ConnectionIdFeature = ConnectionId;
 
             HttpRequestHeaders.Reset();
@@ -1337,7 +1341,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 writerScheduler: PipeScheduler.Inline,
                 pauseWriterThreshold: 1,
                 resumeWriterThreshold: 1,
-                useSynchronizationContext: false
+                useSynchronizationContext: false,
+                minimumSegmentSize: KestrelMemoryPool.MinimumSegmentSize
             ));
     }
 }

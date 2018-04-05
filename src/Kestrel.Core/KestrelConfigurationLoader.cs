@@ -225,6 +225,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     // Specified
                     httpsOptions.ServerCertificate = LoadCertificate(endpoint.Certificate, endpoint.Name)
                         ?? httpsOptions.ServerCertificate;
+
+                    // Fallback
+                    Options.ApplyDefaultCert(httpsOptions);
                 }
 
                 if (EndpointConfigurations.TryGetValue(endpoint.Name, out var configureEndpoint))
@@ -236,7 +239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 // EndpointDefaults or configureEndpoint may have added an https adapter.
                 if (https && !listenOptions.ConnectionAdapters.Any(f => f.IsHttps))
                 {
-                    if (httpsOptions.ServerCertificate == null)
+                    if (httpsOptions.ServerCertificate == null && httpsOptions.ServerCertificateSelector == null)
                     {
                         throw new InvalidOperationException(CoreStrings.NoCertSpecifiedNoDevelopmentCertificateFound);
                     }

@@ -7,7 +7,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Protocols;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
 using Microsoft.Extensions.Logging;
@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
     public partial class LibuvConnection : LibuvConnectionContext
     {
-        private const int MinAllocBufferSize = 2048;
+        private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
 
         private static readonly Action<UvStreamHandle, int, object> _readCallback =
             (handle, status, state) => ReadCallback(handle, status, state);
@@ -48,14 +48,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         public LibuvOutputConsumer OutputConsumer { get; set; }
 
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
-        private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
+        private IConnectionDispatcher ConnectionDispatcher => ListenerContext.TransportContext.ConnectionDispatcher;
         private LibuvThread Thread => ListenerContext.Thread;
 
         public async Task Start()
         {
             try
             {
-                ConnectionHandler.OnConnection(this);
+                ConnectionDispatcher.OnConnection(this);
 
                 OutputConsumer = new LibuvOutputConsumer(Output, Thread, _socket, ConnectionId, Log);
 
@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private unsafe LibuvFunctions.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
             var currentWritableBuffer = Input.GetMemory(MinAllocBufferSize);
-            _bufferHandle = currentWritableBuffer.Retain(true);
+            _bufferHandle = currentWritableBuffer.Pin();
 
             return handle.Libuv.buf_init((IntPtr)_bufferHandle.Pointer, currentWritableBuffer.Length);
         }
@@ -118,6 +118,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private void OnRead(UvStreamHandle handle, int status)
         {
+            // Cleanup state from last OnAlloc. This is safe even if OnAlloc wasn't called.
+            _bufferHandle.Dispose();
             if (status == 0)
             {
                 // EAGAIN/EWOULDBLOCK so just return the buffer.
@@ -168,9 +170,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 // Complete after aborting the connection
                 Input.Complete(error);
             }
-
-            // Cleanup state from last OnAlloc. This is safe even if OnAlloc wasn't called.
-            _bufferHandle.Dispose();
         }
 
         private async Task ApplyBackpressureAsync(ValueTask<FlushResult> flushTask)

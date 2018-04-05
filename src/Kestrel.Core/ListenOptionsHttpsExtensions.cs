@@ -178,8 +178,9 @@ namespace Microsoft.AspNetCore.Hosting
             var options = new HttpsConnectionAdapterOptions();
             listenOptions.KestrelServerOptions.ApplyHttpsDefaults(options);
             configureOptions(options);
+            listenOptions.KestrelServerOptions.ApplyDefaultCert(options);
 
-            if (options.ServerCertificate == null)
+            if (options.ServerCertificate == null && options.ServerCertificateSelector == null)
             {
                 throw new InvalidOperationException(CoreStrings.NoCertSpecifiedNoDevelopmentCertificateFound);
             }
@@ -191,8 +192,9 @@ namespace Microsoft.AspNetCore.Hosting
         {
             var options = new HttpsConnectionAdapterOptions();
             listenOptions.KestrelServerOptions.ApplyHttpsDefaults(options);
+            listenOptions.KestrelServerOptions.ApplyDefaultCert(options);
 
-            if (options.ServerCertificate == null)
+            if (options.ServerCertificate == null && options.ServerCertificateSelector == null)
             {
                 return false;
             }

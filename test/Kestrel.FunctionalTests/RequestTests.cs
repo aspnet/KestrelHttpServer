@@ -18,7 +18,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Protocols;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -145,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             return TestRemoteIPAddress("127.0.0.1", "127.0.0.1", "127.0.0.1");
         }
 
-        [ConditionalFact]
+        [ConditionalFact(Skip="https://github.com/aspnet/KestrelHttpServer/issues/2406")]
         [IPv6SupportedCondition]
         public Task RemoteIPv6Address()
         {

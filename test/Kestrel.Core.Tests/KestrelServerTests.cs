@@ -61,11 +61,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 Assert.Contains(server.Options.ListenOptions[0].ConnectionAdapters, adapter => adapter.IsHttps);
             }
         }
- 
+
         [Fact]
         public void KestrelServerThrowsUsefulExceptionIfDefaultHttpsProviderNotAdded()
         {
-            using (var server = CreateServer(CreateServerOptions(), throwOnCriticalErrors: false))
+            var options = CreateServerOptions();
+            options.IsDevCertLoaded = true; // Prevent the system default from being loaded
+            using (var server = CreateServer(options, throwOnCriticalErrors: false))
             {
                 server.Features.Get<IServerAddressesFeature>().Addresses.Add("https://127.0.0.1:0");
 
@@ -73,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 Assert.Equal(CoreStrings.NoCertSpecifiedNoDevelopmentCertificateFound, ex.Message);
             }
         }
- 
+
         [Fact]
         public void KestrelServerDoesNotThrowIfNoDefaultHttpsProviderButNoHttpUrls()
         {
@@ -84,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 StartDummyApplication(server);
             }
         }
- 
+
         [Fact]
         public void KestrelServerDoesNotThrowIfNoDefaultHttpsProviderButManualListenOptions()
         {
@@ -241,7 +243,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var mockTransportFactory = new Mock<ITransportFactory>();
             mockTransportFactory
-                .Setup(transportFactory => transportFactory.Create(It.IsAny<IEndPointInformation>(), It.IsAny<IConnectionHandler>()))
+                .Setup(transportFactory => transportFactory.Create(It.IsAny<IEndPointInformation>(), It.IsAny<IConnectionDispatcher>()))
                 .Returns(mockTransport.Object);
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -298,7 +300,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var mockTransportFactory = new Mock<ITransportFactory>();
             mockTransportFactory
-                .Setup(transportFactory => transportFactory.Create(It.IsAny<IEndPointInformation>(), It.IsAny<IConnectionHandler>()))
+                .Setup(transportFactory => transportFactory.Create(It.IsAny<IEndPointInformation>(), It.IsAny<IConnectionDispatcher>()))
                 .Returns(mockTransport.Object);
 
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -342,7 +344,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         private class MockTransportFactory : ITransportFactory
         {
-            public ITransport Create(IEndPointInformation endPointInformation, IConnectionHandler handler)
+            public ITransport Create(IEndPointInformation endPointInformation, IConnectionDispatcher handler)
             {
                 return Mock.Of<ITransport>();
             }

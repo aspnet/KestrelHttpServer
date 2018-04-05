@@ -8,7 +8,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Protocols.Abstractions;
+using Microsoft.AspNetCore.Connections.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -428,7 +428,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     readableBuffer = readableBuffer.Slice(consumed);
                 }
 
-                // _consumedBytes aren't tracked for trailer headers, since headers have seperate limits.
+                // _consumedBytes aren't tracked for trailer headers, since headers have separate limits.
                 if (_mode == Mode.TrailerHeaders)
                 {
                     if (_context.TakeMessageHeaders(readableBuffer, out consumed, out examined))
