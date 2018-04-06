@@ -20,6 +20,7 @@
     <MicrosoftExtensionsBuffersSourcesPackageVersion>2.1.0-preview3-32110</MicrosoftExtensionsBuffersSourcesPackageVersion>
     <MicrosoftExtensionsBuffersTestingSourcesPackageVersion>2.1.0-preview3-32110</MicrosoftExtensionsBuffersTestingSourcesPackageVersion>
     <MicrosoftExtensionsConfigurationBinderPackageVersion>2.1.0-preview3-32110</MicrosoftExtensionsConfigurationBinderPackageVersion>
+    <MicrosoftExtensionsConfigurationCommandLinePackageVersion>2.1.0-preview3-32037</MicrosoftExtensionsConfigurationCommandLinePackageVersion>
     <MicrosoftExtensionsConfigurationJsonPackageVersion>2.1.0-preview3-32110</MicrosoftExtensionsConfigurationJsonPackageVersion>
     <MicrosoftExtensionsDependencyInjectionPackageVersion>2.1.0-preview3-32110</MicrosoftExtensionsDependencyInjectionPackageVersion>
     <MicrosoftExtensionsLoggingAbstractionsPackageVersion>2.1.0-preview3-32110</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
