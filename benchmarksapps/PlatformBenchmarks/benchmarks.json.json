@@ -6,7 +6,7 @@
     "Source": {
       "Repository": "https://github.com/aspnet/KestrelHttpServer.git",
       "BranchOrCommit": "dev",
-      "Project": "benchmarks/PlatformBenchmarks/PlatformBenchmarks.csproj"
+      "Project": "benchmarksapps/PlatformBenchmarks/PlatformBenchmarks.csproj"
     }
   },
   "JsonPlatform": {
