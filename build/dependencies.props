@@ -1,23 +1,23 @@
 ﻿<Project>
   <PropertyGroup>
     <BenchmarkDotNetPackageVersion>0.10.3</BenchmarkDotNetPackageVersion>
-    <InternalAspNetCoreSdkPackageVersion>2.0.3-rtm-10001</InternalAspNetCoreSdkPackageVersion>
+    <InternalAspNetCoreSdkPackageVersion>2.0.7-rtm-10027</InternalAspNetCoreSdkPackageVersion>
     <LibuvPackageVersion>1.10.0</LibuvPackageVersion>
-    <MicrosoftAspNetCoreHostingAbstractionsPackageVersion>2.0.1</MicrosoftAspNetCoreHostingAbstractionsPackageVersion>
-    <MicrosoftAspNetCoreHostingPackageVersion>2.0.1</MicrosoftAspNetCoreHostingPackageVersion>
-    <MicrosoftAspNetCoreHttpAbstractionsPackageVersion>2.0.1</MicrosoftAspNetCoreHttpAbstractionsPackageVersion>
-    <MicrosoftAspNetCoreHttpFeaturesPackageVersion>2.0.1</MicrosoftAspNetCoreHttpFeaturesPackageVersion>
-    <MicrosoftAspNetCoreHttpPackageVersion>2.0.1</MicrosoftAspNetCoreHttpPackageVersion>
+    <MicrosoftAspNetCoreHostingAbstractionsPackageVersion>2.0.2</MicrosoftAspNetCoreHostingAbstractionsPackageVersion>
+    <MicrosoftAspNetCoreHostingPackageVersion>2.0.2</MicrosoftAspNetCoreHostingPackageVersion>
+    <MicrosoftAspNetCoreHttpAbstractionsPackageVersion>2.0.2</MicrosoftAspNetCoreHttpAbstractionsPackageVersion>
+    <MicrosoftAspNetCoreHttpFeaturesPackageVersion>2.0.2</MicrosoftAspNetCoreHttpFeaturesPackageVersion>
+    <MicrosoftAspNetCoreHttpPackageVersion>2.0.2</MicrosoftAspNetCoreHttpPackageVersion>
     <MicrosoftAspNetCoreTestingPackageVersion>2.0.0</MicrosoftAspNetCoreTestingPackageVersion>
-    <MicrosoftAspNetCoreWebUtilitiesPackageVersion>2.0.1</MicrosoftAspNetCoreWebUtilitiesPackageVersion>
-    <MicrosoftExtensionsLoggingAbstractionsPackageVersion>2.0.0</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
-    <MicrosoftExtensionsLoggingConsolePackageVersion>2.0.0</MicrosoftExtensionsLoggingConsolePackageVersion>
-    <MicrosoftExtensionsLoggingPackageVersion>2.0.0</MicrosoftExtensionsLoggingPackageVersion>
+    <MicrosoftAspNetCoreWebUtilitiesPackageVersion>2.0.2</MicrosoftAspNetCoreWebUtilitiesPackageVersion>
+    <MicrosoftExtensionsLoggingAbstractionsPackageVersion>2.0.1</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
+    <MicrosoftExtensionsLoggingConsolePackageVersion>2.0.1</MicrosoftExtensionsLoggingConsolePackageVersion>
+    <MicrosoftExtensionsLoggingPackageVersion>2.0.1</MicrosoftExtensionsLoggingPackageVersion>
     <MicrosoftExtensionsLoggingTestingPackageVersion>2.0.0</MicrosoftExtensionsLoggingTestingPackageVersion>
-    <MicrosoftExtensionsOptionsPackageVersion>2.0.0</MicrosoftExtensionsOptionsPackageVersion>
-    <MicrosoftNetHttpHeadersPackageVersion>2.0.1</MicrosoftNetHttpHeadersPackageVersion>
-    <MicrosoftNETCoreApp20PackageVersion>2.0.5</MicrosoftNETCoreApp20PackageVersion>
-    <MicrosoftNETTestSdkPackageVersion>15.3.0</MicrosoftNETTestSdkPackageVersion>
+    <MicrosoftExtensionsOptionsPackageVersion>2.0.1</MicrosoftExtensionsOptionsPackageVersion>
+    <MicrosoftNetHttpHeadersPackageVersion>2.0.2</MicrosoftNetHttpHeadersPackageVersion>
+    <MicrosoftNETCoreApp20PackageVersion>2.0.6</MicrosoftNETCoreApp20PackageVersion>
+    <MicrosoftNETTestSdkPackageVersion>15.6.2</MicrosoftNETTestSdkPackageVersion>
     <NETStandardLibrary20PackageVersion>2.0.1</NETStandardLibrary20PackageVersion>
     <MoqPackageVersion>4.7.49</MoqPackageVersion>
     <NewtonsoftJsonRuntimePackageVersion>10.0.1</NewtonsoftJsonRuntimePackageVersion>
