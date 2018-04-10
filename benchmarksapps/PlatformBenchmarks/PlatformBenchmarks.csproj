@@ -7,20 +7,21 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RuntimeFrameworkVersion>$(MicrosoftNETCoreApp21PackageVersion)</RuntimeFrameworkVersion>
   </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="Utf8Json" Version="$(Utf8JsonPackageVersion)" />
   </ItemGroup>
   
+  <!-- These references are used when running locally -->
   <ItemGroup Condition="'$(BenchmarksTargetFramework)' == ''">
     <ProjectReference Include="..\..\src\Kestrel\Kestrel.csproj" />
     <ProjectReference Include="..\..\src\Kestrel.Transport.Libuv\Kestrel.Transport.Libuv.csproj" />
-  </ItemGroup>
 
-  <ItemGroup Condition="'$(BenchmarksTargetFramework)' == ''">
     <PackageReference Include="Microsoft.Extensions.Buffers.Sources" PrivateAssets="All" Version="$(MicrosoftAspNetCoreBenchmarkRunnerSourcesPackageVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="$(MicrosoftExtensionsConfigurationCommandLinePackageVersion)" />
   </ItemGroup>
-  
+
+  <!-- These references are used when running on the Benchmarks Server -->
   <ItemGroup Condition="'$(BenchmarksTargetFramework)' != ''">
     <PackageReference Include="Microsoft.AspNetCore.All" Version="$(MicrosoftAspNetCoreAllPackageVersion)" />
   </ItemGroup>
