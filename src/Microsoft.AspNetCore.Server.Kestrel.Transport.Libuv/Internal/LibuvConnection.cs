@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public class LibuvConnection : LibuvConnectionContext
+    public class LibuvConnection : LibuvConnectionContext, IConnectionInformationExtended
     {
         private const int MinAllocBufferSize = 2048;
 
@@ -47,6 +47,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private ILibuvTrace Log => ListenerContext.TransportContext.Log;
         private IConnectionHandler ConnectionHandler => ListenerContext.TransportContext.ConnectionHandler;
         private LibuvThread Thread => ListenerContext.Thread;
+
+        public long TotalBytesWritten => Output.BytesWritten;
 
         public async Task Start()
         {
@@ -214,6 +216,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 _connectionContext.Abort(error);
                 Input.Complete(error);
             }
+        }
+
+        public void Abort(Exception ex)
+        {
+            Thread.Post(c => c._socket.Dispose(), this);
         }
     }
 }

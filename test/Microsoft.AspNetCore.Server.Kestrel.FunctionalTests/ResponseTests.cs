@@ -30,7 +30,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
-using Xunit.Sdk;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
@@ -2446,15 +2445,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
-            var chunkSize = 64 * 1024;
-            var chunks = 128;
+            // Smaller chunks allow for quicker response rate timeouts.
+            var chunkSize = 1024;
+            var chunks = 8192;
 
-            var messageLogged = new ManualResetEventSlim();
+            var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>();
+            var connectionStopMessageLogged = new TaskCompletionSource<object>();
+            var aborted = new TaskCompletionSource<object>();
 
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
                 .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback(() => messageLogged.Set());
+                .Callback(() => responseRateTimeoutMessageLogged.SetResult(null));
+            mockKestrelTrace
+                .Setup(trace => trace.ConnectionStop(It.IsAny<string>()))
+                .Callback(() => connectionStopMessageLogged.SetResult(null));
 
             var testContext = new TestServiceContext
             {
@@ -2464,18 +2469,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     Limits =
                     {
-                        MinResponseDataRate = new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.FromSeconds(2))
+                        MinResponseDataRate = new MinDataRate(bytesPerSecond: 1024, gracePeriod: TimeSpan.FromSeconds(2))
                     }
                 }
             };
-
-            var aborted = new ManualResetEventSlim();
 
             using (var server = new TestServer(async context =>
             {
                 context.RequestAborted.Register(() =>
                 {
-                    aborted.Set();
+                    aborted.SetResult(null);
                 });
 
                 context.Response.ContentLength = chunks * chunkSize;
@@ -2494,8 +2497,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
 
-                    Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
-
                     await connection.Receive(
                         "HTTP/1.1 200 OK",
                         "");
@@ -2505,10 +2506,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "");
 
-                    await Assert.ThrowsAsync<EqualException>(async () => await connection.ReceiveForcedEnd(
-                        new string('a', chunks * chunkSize)));
-
-                    Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
+                    await aborted.Task.TimeoutAfter(TimeSpan.FromSeconds(60));
+                    await responseRateTimeoutMessageLogged.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await connectionStopMessageLogged.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                    await AssertStreamAborted(connection.Reader.BaseStream, chunkSize * chunks);
                 }
             }
         }
@@ -2516,18 +2517,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task HttpsConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
-            const int chunkSize = 64 * 1024;
-            const int chunks = 128;
+            const int chunkSize = 1024;
+            const int chunks = 8192;
 
             var certificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
 
-            var messageLogged = new ManualResetEventSlim();
-            var aborted = new ManualResetEventSlim();
+            var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>();
+            var connectionStopMessageLogged = new TaskCompletionSource<object>();
+            var aborted = new TaskCompletionSource<object>();
 
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
                 .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback(() => messageLogged.Set());
+                .Callback(() => responseRateTimeoutMessageLogged.SetResult(null));
+            mockKestrelTrace
+                .Setup(trace => trace.ConnectionStop(It.IsAny<string>()))
+                .Callback(() => connectionStopMessageLogged.SetResult(null));
 
             var testContext = new TestServiceContext
             {
@@ -2537,7 +2542,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     Limits =
                     {
-                        MinResponseDataRate = new MinDataRate(bytesPerSecond: double.MaxValue, gracePeriod: TimeSpan.FromSeconds(2))
+                        MinResponseDataRate = new MinDataRate(bytesPerSecond: 1024, gracePeriod: TimeSpan.FromSeconds(2))
                     }
                 }
             };
@@ -2554,7 +2559,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 context.RequestAborted.Register(() =>
                 {
-                    aborted.Set();
+                    aborted.SetResult(null);
                 });
 
                 context.Response.ContentLength = chunks * chunkSize;
@@ -2569,24 +2574,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     await client.ConnectAsync(IPAddress.Loopback, server.Port);
 
-                    using (var sslStream = new SslStream(client.GetStream(), false, (sender, cert, chain, errors) => true, null))
+                    using (var sslStream = new SslStream(client.GetStream(), true, (sender, cert, chain, errors) => true, null))
                     {
                         await sslStream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
 
                         var request = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost:\r\n\r\n");
                         await sslStream.WriteAsync(request, 0, request.Length);
 
-                        Assert.True(aborted.Wait(TimeSpan.FromSeconds(60)));
-
-                        using (var reader = new StreamReader(sslStream, encoding: Encoding.ASCII, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: false))
-                        {
-                            await reader.ReadToEndAsync().TimeoutAfter(TimeSpan.FromSeconds(30));
-                        }
-
-                        Assert.True(messageLogged.Wait(TimeSpan.FromSeconds(10)));
+                        await aborted.Task.TimeoutAfter(TimeSpan.FromSeconds(60));
+                        await responseRateTimeoutMessageLogged.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                        await connectionStopMessageLogged.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                        await AssertStreamAborted(sslStream, chunkSize * chunks);
                     }
                 }
             }
+        }
+
+        private async Task AssertStreamAborted(Stream stream, int totalBytes)
+        {
+            var buffer = new byte[4096];
+            var bytesReceived = 0;
+
+            while (bytesReceived < totalBytes)
+            {
+                try
+                {
+                    var bytes = await stream.ReadAsync(buffer, 0, buffer.Length).TimeoutAfter(TimeSpan.FromSeconds(10));
+
+                    if (bytes == 0)
+                    {
+                        break;
+                    }
+
+                    bytesReceived += bytes;
+                }
+                catch (IOException)
+                {
+                    break;
+                }
+            }
+
+            Assert.True(bytesReceived < totalBytes, $"{nameof(AssertStreamAborted)} read complete stream successfully.");
         }
 
         public static TheoryData<string, StringValues, string> NullHeaderData

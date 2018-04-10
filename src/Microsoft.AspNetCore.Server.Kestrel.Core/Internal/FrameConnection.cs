@@ -30,12 +30,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private TimeoutAction _timeoutAction;
 
         private object _readTimingLock = new object();
+        private bool _inputTimedOut;
         private bool _readTimingEnabled;
         private bool _readTimingPauseRequested;
         private long _readTimingElapsedTicks;
         private long _readTimingBytesRead;
 
         private object _writeTimingLock = new object();
+        private bool _outputTimedOut;
         private int _writeTimingWrites;
         private long _writeTimingTimeoutTimestamp;
 
@@ -50,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         internal Frame Frame => _frame;
         internal IDebugger Debugger { get; set; } = DebuggerWrapper.Singleton;
 
-        public bool TimedOut { get; private set; }
+        public bool TimedOut => _inputTimedOut || _outputTimedOut;
 
         public string ConnectionId => _context.ConnectionId;
         public IPipeWriter Input => _context.Input.Writer;
@@ -209,7 +211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             Debug.Assert(_frame != null, $"{nameof(_frame)} is null");
 
-            TimedOut = true;
+            _inputTimedOut = true;
             _frame.Stop();
         }
 
@@ -340,7 +342,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         private void CheckForWriteDataRateTimeout(long timestamp)
         {
-            if (TimedOut)
+            // Even if there's already been an input timeout, we need to keep checking for output timeouts
+            // since we might still need to abort the connection.
+            if (_outputTimedOut)
             {
                 return;
             }
@@ -349,7 +353,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 if (_writeTimingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
-                    TimedOut = true;
+                    _outputTimedOut = true;
                     Log.ResponseMininumDataRateNotSatisfied(_frame.ConnectionIdFeature, _frame.TraceIdentifier);
                     Abort(new TimeoutException());
                 }

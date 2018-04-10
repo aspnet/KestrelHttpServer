@@ -24,5 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public KestrelServerOptions ServerOptions { get; set; }
 
         internal bool UseRelaxedHostHeaderValidation { get; set; }
+
+        internal bool UseLegacyTransportInterface { get; set; }
     }
 }

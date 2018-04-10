@@ -20,6 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     public class KestrelServer : IServer
     {
         private const string UseRelaxedHostHeaderValidationSwitch = "Switch.Microsoft.AspNetCore.Server.Kestrel.UseRelaxedHostHeaderValidation";
+        private const string UseLegacyTransportInterfaceSwitch = "Switch.Microsoft.AspNetCore.Server.Kestrel.UseLegacyTransportInterface";
 
         private readonly List<ITransport> _transports = new List<ITransport>();
         private readonly Heartbeat _heartbeat;
@@ -94,6 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             }
 
             AppContext.TryGetSwitch(UseRelaxedHostHeaderValidationSwitch, out var useRelaxedHostHeaderValidation);
+            AppContext.TryGetSwitch(UseLegacyTransportInterfaceSwitch, out var useLegacyTransportInterface);
 
             return new ServiceContext
             {
@@ -105,6 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 ConnectionManager = connectionManager,
                 ServerOptions = serverOptions,
                 UseRelaxedHostHeaderValidation = useRelaxedHostHeaderValidation,
+                UseLegacyTransportInterface = useLegacyTransportInterface,
             };
         }
 

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
@@ -15,6 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly string _connectionId;
         private readonly ILibuvTrace _log;
         private readonly IPipeReader _pipe;
+        private long _bytesWritten;
 
         public LibuvOutputConsumer(
             IPipeReader pipe,
@@ -31,6 +33,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
             _pipe.OnWriterCompleted(OnWriterCompleted, this);
         }
+
+        public long BytesWritten => Interlocked.Read(ref _bytesWritten);
 
         public async Task WriteOutputAsync()
         {
@@ -72,6 +76,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                             }
 
                             var writeResult = await writeReq.WriteAsync(_socket, buffer);
+
+                            // This is not interlocked because there could be a concurrent writer.
+                            // Instead it's to prevent read tearing on 32-bit systems.
+                            Interlocked.Add(ref _bytesWritten, buffer.Length);
 
                             LogWriteInfo(writeResult.Status, writeResult.Error);
 

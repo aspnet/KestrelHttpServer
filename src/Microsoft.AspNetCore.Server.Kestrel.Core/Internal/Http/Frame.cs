@@ -128,7 +128,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _keepAliveTicks = ServerOptions.Limits.KeepAliveTimeout.Ticks;
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
-            Output = new OutputProducer(frameContext.Output, frameContext.ConnectionId, frameContext.ServiceContext.Log, TimeoutControl);
+            IConnectionInformationExtended transportConnection = null;
+
+            if (!ServiceContext.UseLegacyTransportInterface)
+            {
+                transportConnection = ConnectionInformation as IConnectionInformationExtended;
+            }
+
+            Output = new OutputProducer(
+                frameContext.Output,
+                frameContext.ConnectionId,
+                frameContext.ServiceContext.Log,
+                TimeoutControl,
+                transportConnection);
+
             RequestBodyPipe = CreateRequestBodyPipe();
         }
 

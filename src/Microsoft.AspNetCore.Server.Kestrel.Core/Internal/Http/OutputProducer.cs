@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.System.IO.Pipelines;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
@@ -16,11 +17,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly string _connectionId;
         private readonly ITimeoutControl _timeoutControl;
         private readonly IKestrelTrace _log;
+        private readonly IConnectionInformationExtended _transportConnection;
 
         // This locks access to to all of the below fields
         private readonly object _contextLock = new object();
 
         private bool _completed = false;
+        private bool _aborted;
+        private long _bytesWritten;
 
         private readonly IPipe _pipe;
 
@@ -31,15 +35,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly object _flushLock = new object();
         private Action _flushCompleted;
 
+        public OutputProducer(IPipe pipe, string connectionId, IKestrelTrace log, ITimeoutControl timeoutControl)
+            : this(pipe, connectionId, log, timeoutControl, null)
+        {
+        }
+
         public OutputProducer(
             IPipe pipe,
             string connectionId,
             IKestrelTrace log,
-            ITimeoutControl timeoutControl)
+            ITimeoutControl timeoutControl,
+            IConnectionInformationExtended connection)
         {
             _pipe = pipe;
             _connectionId = connectionId;
             _timeoutControl = timeoutControl;
+            _transportConnection = connection;
             _log = log;
             _flushCompleted = OnFlushCompleted;
         }
@@ -70,6 +81,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 var buffer = _pipe.Writer.Alloc(1);
                 callback(buffer, state);
+
+                _bytesWritten += buffer.BytesWritten;
                 buffer.Commit();
             }
         }
@@ -86,23 +99,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _log.ConnectionDisconnect(_connectionId);
                 _completed = true;
                 _pipe.Writer.Complete();
+
+                if (_transportConnection != null)
+                {
+                    var unflushedBytes = _bytesWritten - _transportConnection.TotalBytesWritten;
+
+                    if (unflushedBytes > 0)
+                    {
+                        // unflushedBytes should never be over 64KB in the default configuration.
+                        _timeoutControl.StartTimingWrite((int)Math.Min(unflushedBytes, int.MaxValue));
+                        _pipe.Writer.OnReaderCompleted((ex, state) => ((ITimeoutControl)state).StopTimingWrite(), _timeoutControl);
+                    }
+                }
             }
         }
 
         public void Abort(Exception error)
         {
+            // Abort can be called after Dispose if there's a flush timeout.
+            // It's important to still call _transportConnection.Abort() in this case.
             lock (_contextLock)
             {
-                if (_completed)
+                if (_aborted)
                 {
                     return;
                 }
 
-                _log.ConnectionDisconnect(_connectionId);
-                _completed = true;
+                if (!_completed)
+                {
+                    _log.ConnectionDisconnect(_connectionId);
+                    _completed = true;
 
-                _pipe.Reader.CancelPendingRead();
-                _pipe.Writer.Complete(error);
+                    _pipe.Reader.CancelPendingRead();
+                    _pipe.Writer.Complete(error);
+                }
+
+                _aborted = true;
+                _transportConnection?.Abort(error);
             }
         }
 
@@ -136,6 +169,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         ChunkWriter.WriteEndChunkBytes(ref writer);
                     }
                 }
+
+                _bytesWritten += writableBuffer.BytesWritten;
 
                 writableBuffer.Commit();
             }
