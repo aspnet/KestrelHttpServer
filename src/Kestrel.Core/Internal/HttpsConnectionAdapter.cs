@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
                     selector = (sender, name) =>
                     {
                         context.Features.Set(sslStream);
-                        var cert = _serverCertificateSelector(context.Features, name);
+                        var cert = _serverCertificateSelector(context.ConnectionContext, name);
                         if (cert != null)
                         {
                             EnsureCertificateIsAllowedForServerAuth(cert);
