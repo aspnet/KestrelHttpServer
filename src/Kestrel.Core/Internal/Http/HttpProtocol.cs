@@ -576,21 +576,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         // HttpContext.Response.StatusCode is correctly set when
                         // IHttpContextFactory.Dispose(HttpContext) is called.
                         await ProduceEnd();
-
-                        // ForZeroContentLength does not complete the reader nor the writer
-                        if (!messageBody.IsEmpty)
-                        {
-                            try
-                            {
-                                // Finish reading the request body in case the app did not.
-                                await messageBody.ConsumeAsync();
-                            }
-                            catch (BadHttpRequestException ex)
-                            {
-                                // Capture BadHttpRequestException for further processing
-                                badRequestException = ex;
-                            }
-                        }
                     }
                     else if (!HasResponseStarted)
                     {
@@ -618,6 +603,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // StopStreams should be called before the end of the "if (!_requestProcessingStopping)" block
                 // to ensure InitializeStreams has been called.
                 StopStreams();
+
+                // ForZeroContentLength does not complete the reader nor the writer
+                if (_requestAborted == 0 && badRequestException == null && !messageBody.IsEmpty)
+                {
+                    await messageBody.ConsumeAsync();
+                }
 
                 if (HasStartedConsumingRequestBody)
                 {
