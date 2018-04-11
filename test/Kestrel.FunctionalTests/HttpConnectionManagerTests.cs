@@ -45,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     var tcs = new TaskCompletionSource<object>();
                     return tcs.Task;
                 },
-                new TestServiceContext(new LoggerFactory(), mockTrace.Object)))
+                new TestServiceContext(LoggerFactory, mockTrace.Object)))
             {
                 using (var connection = server.CreateConnection())
                 {
