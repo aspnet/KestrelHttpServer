@@ -5,7 +5,6 @@
     <OutputType>Exe</OutputType>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <MicrosoftAspNetCoreAllPackageVersion Condition="'$(BenchmarksAspNetCoreVersion)' != ''">$(BenchmarksAspNetCoreVersion)</MicrosoftAspNetCoreAllPackageVersion>
   </PropertyGroup>
   
   <ItemGroup>
@@ -24,5 +23,6 @@
   <!-- These references are used when running on the Benchmarks Server -->
   <ItemGroup Condition="'$(BenchmarksTargetFramework)' != ''">
     <PackageReference Include="Microsoft.AspNetCore.All" Version="$(MicrosoftAspNetCoreAllPackageVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Buffers.Sources" Version="$(MicrosoftAspNetCoreAllPackageVersion)" />
   </ItemGroup>
 </Project>
