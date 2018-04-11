@@ -214,7 +214,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }, listenOptions))
+            }, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 var response = string.Join("\r\n", new string[] {
                     "HTTP/1.1 200 OK",

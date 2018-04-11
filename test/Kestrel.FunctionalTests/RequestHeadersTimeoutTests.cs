@@ -97,9 +97,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
                 await httpContext.Response.WriteAsync("hello, world");
             },
-            new TestServiceContext
+            new TestServiceContext(LoggerFactory)
             {
-                LoggerFactory = LoggerFactory,
                 // Use real SystemClock so timeouts trigger.
                 SystemClock = new SystemClock(),
                 ServerOptions =

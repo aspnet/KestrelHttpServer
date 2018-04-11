@@ -13,9 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task TestDefaultHeaders()
         {
-            var testContext = new TestServiceContext()
+            var testContext = new TestServiceContext(LoggerFactory)
             {
-                LoggerFactory = LoggerFactory,
                 ServerOptions = { AddServerHeader = true }
             };
 

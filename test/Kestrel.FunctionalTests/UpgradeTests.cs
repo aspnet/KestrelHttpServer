@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
 
                 upgrade.TrySetResult(true);
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     upgrade.SetException(ex);
                     throw;
                 }
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -129,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     await Task.Delay(100);
                 }
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             using (var connection = server.CreateConnection())
             {
                 await connection.SendEmptyGetWithUpgrade();
@@ -148,7 +148,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RejectsRequestWithContentLengthAndUpgrade()
         {
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory)))
             using (var connection = server.CreateConnection())
             {
                 await connection.Send("POST / HTTP/1.1",
@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task AcceptsRequestWithNoContentLengthAndUpgrade()
         {
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -195,7 +195,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RejectsRequestWithChunkedEncodingAndUpgrade()
         {
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory)))
             using (var connection = server.CreateConnection())
             {
                 await connection.Send("POST / HTTP/1.1",
@@ -234,7 +234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                  {
                      upgradeTcs.TrySetResult(false);
                  }
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {

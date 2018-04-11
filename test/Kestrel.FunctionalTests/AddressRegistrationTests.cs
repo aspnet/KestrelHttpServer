@@ -444,8 +444,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
 
                 Assert.Single(TestSink.Writes, log => log.LogLevel == LogLevel.Debug &&
-                    (string.Equals(CoreStrings.FormatBindingToDefaultAddresses(Constants.DefaultServerAddress, Constants.DefaultServerHttpsAddress), log.Formatter(log.State, log.Exception), StringComparison.Ordinal)
-                        || string.Equals(CoreStrings.FormatBindingToDefaultAddress(Constants.DefaultServerAddress), log.Formatter(log.State, log.Exception), StringComparison.Ordinal)));
+                    (string.Equals(CoreStrings.FormatBindingToDefaultAddresses(Constants.DefaultServerAddress, Constants.DefaultServerHttpsAddress), log.Message, StringComparison.Ordinal)
+                        || string.Equals(CoreStrings.FormatBindingToDefaultAddress(Constants.DefaultServerAddress), log.Message, StringComparison.Ordinal)));
 
                 foreach (var address in addresses)
                 {
@@ -535,7 +535,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 Assert.Single(TestSink.Writes, log => log.LogLevel == LogLevel.Information &&
                     string.Equals(CoreStrings.FormatOverridingWithPreferHostingUrls(nameof(IServerAddressesFeature.PreferHostingUrls), useUrlsAddress),
-                    log.Formatter(log.State, log.Exception), StringComparison.Ordinal));
+                    log.Message, StringComparison.Ordinal));
 
                 Assert.Equal(new Uri(useUrlsAddressWithPort).ToString(), await HttpClientSlim.GetStringAsync(useUrlsAddressWithPort));
             }
@@ -575,7 +575,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 Assert.Single(TestSink.Writes, log => log.LogLevel == LogLevel.Warning &&
                     string.Equals(CoreStrings.FormatOverridingWithKestrelOptions(useUrlsAddress, "UseKestrel()"),
-                    log.Formatter(log.State, log.Exception), StringComparison.Ordinal));
+                    log.Message, StringComparison.Ordinal));
 
                 Assert.Equal(new Uri(endPointAddress).ToString(), await HttpClientSlim.GetStringAsync(endPointAddress, validateCertificate: false));
             }
@@ -774,7 +774,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
 
                     var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .ConfigureServices(AddTestLogging)
+                        .ConfigureServices(AddTestLogging)
                         .ConfigureLogging(ConfigureLogging)
                         .UseKestrel()
                         .UseUrls($"http://localhost:{port}")

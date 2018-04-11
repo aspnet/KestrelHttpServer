@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(App, new TestServiceContext(), listenOptions))
+            using (var server = new TestServer(App, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 var result = await HttpClientSlim.PostAsync($"https://localhost:{server.Port}/",
                     new FormUrlEncodedContent(new[] {
@@ -70,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
 
 
-            using (var server = new TestServer(App, new TestServiceContext(), listenOptions))
+            using (var server = new TestServer(App, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 await Assert.ThrowsAnyAsync<Exception>(
                     () => HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/"));
@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.NotNull(tlsFeature);
                     Assert.Null(tlsFeature.ClientCertificate);
                     return context.Response.WriteAsync("hello world");
-                }, new TestServiceContext(), listenOptions))
+                }, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
                 Assert.Equal("hello world", result);
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(), listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -163,7 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     })
                 }
             };
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(), listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -182,7 +182,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task UsesProvidedServerCertificateSelectorEachTime()
         {
             var selectorCalled = 0;
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -208,7 +207,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     })
                 }
             };
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -237,7 +236,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task UsesProvidedServerCertificateSelectorValidatesEkus()
         {
             var selectorCalled = 0;
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -252,7 +250,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     })
                 }
             };
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -271,7 +269,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task UsesProvidedServerCertificateSelectorOverridesServerCertificate()
         {
             var selectorCalled = 0;
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -294,7 +291,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     })
                 }
             };
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -313,7 +310,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task UsesProvidedServerCertificateSelectorFailsIfYouReturnNull()
         {
             var selectorCalled = 0;
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -328,7 +324,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     })
                 }
             };
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -346,7 +342,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task CertificatePassedToHttpContext()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -367,8 +362,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.NotNull(tlsFeature.ClientCertificate);
                     Assert.NotNull(context.Connection.ClientCertificate);
                     return context.Response.WriteAsync("hello world");
-                },
-                serviceContext, listenOptions))
+                }, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -392,9 +386,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     new HttpsConnectionAdapter(new HttpsConnectionAdapterOptions { ServerCertificate = _x509Certificate2 })
                 }
             };
-            var serviceContext = new TestServiceContext();
 
-            using (var server = new TestServer(context => context.Response.WriteAsync(context.Request.Scheme), serviceContext, listenOptions))
+            using (var server = new TestServer(context => context.Response.WriteAsync(context.Request.Scheme), new TestServiceContext(LoggerFactory), listenOptions))
             {
                 var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
                 Assert.Equal("https", result);
@@ -404,7 +397,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task DoesNotSupportTls10()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -418,7 +410,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(context => context.Response.WriteAsync("hello world"), serviceContext, listenOptions))
+            using (var server = new TestServer(context => context.Response.WriteAsync("hello world"), new TestServiceContext(LoggerFactory), listenOptions))
             {
                 // SslStream is used to ensure the certificate is actually passed to the server
                 // HttpClient might not send the certificate because it is invalid or it doesn't match any
@@ -438,7 +430,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ClientCertificateValidationGetsCalledWithNotNullParameters(ClientCertificateMode mode)
         {
             var clientCertificateValidationCalled = false;
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -458,7 +449,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -475,7 +466,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData(ClientCertificateMode.RequireCertificate)]
         public async Task ValidationFailureRejectsConnection(ClientCertificateMode mode)
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -489,7 +479,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -505,7 +495,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData(ClientCertificateMode.RequireCertificate)]
         public async Task RejectsConnectionOnSslPolicyErrorsWhenNoValidation(ClientCertificateMode mode)
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -518,7 +507,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -532,7 +521,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task CertificatePassedToHttpContextIsNotDisposed()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -556,7 +544,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 return context.Response.WriteAsync("hello world");
             };
 
-            using (var server = new TestServer(app, serviceContext, listenOptions))
+            using (var server = new TestServer(app, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 // SslStream is used to ensure the certificate is actually passed to the server
                 // HttpClient might not send the certificate because it is invalid or it doesn't match any

@@ -377,7 +377,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     onCompletedTcs.SetResult(null);
                 }));
                 return Task.CompletedTask;
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -495,14 +495,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task NoErrorResponseSentWhenAppSwallowsBadRequestException()
         {
             BadHttpRequestException readException = null;
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
 
             using (var server = new TestServer(async httpContext =>
             {
                 readException = await Assert.ThrowsAsync<BadHttpRequestException>(
                     async () => await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1));
-            }, new TestServiceContext() { LoggerFactory = LoggerFactory, Log = new KestrelTrace(logger) }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -523,7 +521,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             Assert.NotNull(readException);
 
-            Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+            Assert.Contains(TestSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                 && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
         }
 
@@ -534,7 +532,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 await httpContext.Response.WriteAsync("hello, ");
                 await httpContext.Response.WriteAsync("world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -569,7 +567,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.StatusCode = statusCode;
                 return Task.CompletedTask;
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -593,7 +591,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(httpContext =>
             {
                 return Task.CompletedTask;
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -626,7 +624,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 await httpContext.Response.WriteAsync(response);
                 await httpContext.Response.Body.FlushAsync();
-            }, new TestServiceContext { LoggerFactory = LoggerFactory, Log = mockKestrelTrace.Object }))
+            }, new TestServiceContext(LoggerFactory, mockKestrelTrace.Object)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -818,7 +816,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.ContentLength = 13;
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory, Log = mockTrace.Object }))
+            }, new TestServiceContext(LoggerFactory, mockTrace.Object)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -873,7 +871,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // Wait until the request is aborted so we know HttpProtocol will skip the response content length check.
                 Assert.True(await requestAborted.WaitAsync(TestConstants.DefaultTimeout));
-            }, new TestServiceContext { LoggerFactory = LoggerFactory, Log = mockTrace.Object }))
+            }, new TestServiceContext(LoggerFactory, mockTrace.Object)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -939,7 +937,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var error = TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error);
             Assert.Equal(2, error.Count());
-            Assert.All(error, message => message.Formatter(message.State, message.Exception).Equals("Response Content-Length mismatch: too few bytes written (0 of 5)."));
+            Assert.All(error, message => message.Message.Equals("Response Content-Length mismatch: too few bytes written (0 of 5)."));
         }
 
         [Theory]
@@ -1057,7 +1055,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.ContentLength = 42;
                 return Task.CompletedTask;
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1086,7 +1084,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.ContentLength = 12;
                 await httpContext.Response.WriteAsync("hello, world");
                 await flushed.WaitAsync();
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1111,7 +1109,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task HeadResponseBodyNotWrittenWithSyncWrite()
         {
             var flushed = new SemaphoreSlim(0, 1);
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory, ServerOptions = { AllowSynchronousIO = true } };
+            var serviceContext = new TestServiceContext(LoggerFactory) { ServerOptions = { AllowSynchronousIO = true } };
 
             using (var server = new TestServer(httpContext =>
             {
@@ -1151,7 +1149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await httpContext.Response.WriteAsync("");
                 flushed.Wait();
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1195,7 +1193,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     tcs.TrySetException(ex);
                 }
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1236,7 +1234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     await httpContext.Response.WriteAsync(ex.Message);
                     responseWritten.Release();
                 }
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1266,7 +1264,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1312,7 +1310,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 httpContext.Response.Headers["Connection"] = "keep-alive";
                 httpContext.Response.Headers["Transfer-Encoding"] = responseTransferEncoding;
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1359,7 +1357,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // App would have to chunk manually, but here we don't care
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1394,7 +1392,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task FirstWriteVerifiedAfterOnStarting()
         {
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory, ServerOptions = { AllowSynchronousIO = true } };
+            var serviceContext = new TestServiceContext(LoggerFactory) { ServerOptions = { AllowSynchronousIO = true } };
 
             using (var server = new TestServer(httpContext =>
             {
@@ -1437,7 +1435,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task SubsequentWriteVerifiedAfterOnStarting()
         {
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory, ServerOptions = { AllowSynchronousIO = true } };
+            var serviceContext = new TestServiceContext(LoggerFactory) { ServerOptions = { AllowSynchronousIO = true } };
 
             using (var server = new TestServer(httpContext =>
             {
@@ -1497,7 +1495,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 return httpContext.Response.Body.WriteAsync(response, 0, response.Length);
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1538,7 +1536,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // If OnStarting is not run before verifying writes, an error response will be sent.
                 await httpContext.Response.Body.WriteAsync(response, 0, response.Length / 2);
                 await httpContext.Response.Body.WriteAsync(response, response.Length / 2, response.Length - response.Length / 2);
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1569,7 +1567,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async httpContext =>
             {
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1603,11 +1601,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task WhenResponseNotStartedResponseEndedBeforeConsumingRequestBody()
         {
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
-
             using (var server = new TestServer(httpContext => Task.CompletedTask,
-                new TestServiceContext() { LoggerFactory = LoggerFactory, Log = new KestrelTrace(logger) }))
+                new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1630,20 +1625,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+            Assert.Contains(TestSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                 && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
         }
 
         [Fact]
         public async Task Sending100ContinueDoesNotStartResponse()
         {
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
-
             using (var server = new TestServer(httpContext =>
             {
                 return httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
-            }, new TestServiceContext() { LoggerFactory = LoggerFactory, Log = new KestrelTrace(logger) }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1685,7 +1677,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+            Assert.Contains(TestSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                 && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
         }
 
@@ -1696,7 +1688,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 await httpContext.Request.Body.ReadAsync(new byte[1], 0, 1);
                 await httpContext.Response.WriteAsync("hello, world");
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -1765,7 +1757,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthSetAutomaticallyAfterNoWrites(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
             {
@@ -1798,7 +1790,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthSetAutomaticallyForNonKeepAliveRequests(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -1843,7 +1835,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthNotSetAutomaticallyForHeadRequests(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EmptyApp, testContext, listenOptions))
             {
@@ -1867,7 +1859,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -1924,7 +1916,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionClosedAfter101Response(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -1971,7 +1963,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingResultsIn500Response(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             bool onStartingCalled = false;
 
@@ -2025,7 +2017,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var callback1Called = false;
             var callback2CallCount = 0;
 
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -2081,7 +2073,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingInOnCompletedIsLogged(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             var onCompletedCalled1 = false;
             var onCompletedCalled2 = false;
@@ -2131,7 +2123,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingAfterWritingKillsConnection(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             bool onStartingCalled = false;
 
@@ -2173,7 +2165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ThrowingAfterPartialWriteKillsConnection(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             bool onStartingCalled = false;
 
@@ -2247,7 +2239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
 
                 writeTcs.SetException(new Exception("This shouldn't be reached."));
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }, listenOptions))
+            }, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -2274,7 +2266,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task NoErrorsLoggedWhenServerEndsConnectionBeforeClient(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -2306,7 +2298,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task NoResponseSentWhenConnectionIsClosedByServerBeforeClientFinishesSendingRequest(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(httpContext =>
             {
@@ -2330,7 +2322,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ResponseHeadersAreResetOnEachRequest(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             IHeaderDictionary originalResponseHeaders = null;
             var firstRequest = true;
@@ -2383,7 +2375,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             const string response = "hello, world";
 
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             var callOrder = new Stack<int>();
             var onStartingTcs = new TaskCompletionSource<object>();
@@ -2435,7 +2427,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             const string response = "hello, world";
 
-            var testContext = new TestServiceContext(LoggerFactory);
+            var testContext= new TestServiceContext(LoggerFactory);
 
             var callOrder = new Stack<int>();
             var onCompletedTcs = new TaskCompletionSource<object>();
@@ -2509,7 +2501,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     await context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello2"), 0, 6);
                 }
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -2535,9 +2527,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task SynchronousWritesCanBeDisallowedGlobally()
         {
-            var testContext = new TestServiceContext
+            var testContext = new TestServiceContext(LoggerFactory)
             {
-                LoggerFactory = LoggerFactory,
                 ServerOptions = { AllowSynchronousIO = false }
             };
 
@@ -2682,10 +2673,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback(() => messageLogged.Set());
 
-            var testContext = new TestServiceContext
+            var testContext = new TestServiceContext(LoggerFactory, mockKestrelTrace.Object)
             {
-                LoggerFactory = LoggerFactory,
-                Log = mockKestrelTrace.Object,
                 SystemClock = new SystemClock(),
                 ServerOptions =
                 {
@@ -2753,7 +2742,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 response.ContentLength = 42;
 
                 return Task.CompletedTask;
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = server.CreateConnection())
                 {

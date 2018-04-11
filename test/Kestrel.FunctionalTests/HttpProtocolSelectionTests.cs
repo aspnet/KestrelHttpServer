@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error
                 && message.EventId.Id == 0
-                && message.Formatter(message.State, message.Exception) == expectedErrorMessage);
+                && message.Message == expectedErrorMessage);
         }
     }
 }

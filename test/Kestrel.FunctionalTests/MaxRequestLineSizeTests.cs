@@ -71,9 +71,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private TestServer CreateServer(int maxRequestLineSize)
         {
-            return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext
+            return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext(LoggerFactory)
             {
-                LoggerFactory = LoggerFactory,
                 ServerOptions = new KestrelServerOptions
                 {
                     AddServerHeader = false,
