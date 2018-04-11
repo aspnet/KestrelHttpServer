@@ -5,7 +5,7 @@
     <OutputType>Exe</OutputType>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <RuntimeFrameworkVersion>$(MicrosoftNETCoreApp21PackageVersion)</RuntimeFrameworkVersion>
+    <MicrosoftAspNetCoreAllPackageVersion Condition="'$(BenchmarksAspNetCoreVersion)' != ''">$(BenchmarksAspNetCoreVersion)</MicrosoftAspNetCoreAllPackageVersion>
   </PropertyGroup>
   
   <ItemGroup>
