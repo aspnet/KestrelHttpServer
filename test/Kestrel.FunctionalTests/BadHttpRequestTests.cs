@@ -153,13 +153,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task BadRequestLogsAreNotHigherThanInformation()
         {
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
-
             using (var server = new TestServer(async context =>
             {
                 await context.Request.Body.ReadAsync(new byte[1], 0, 1);
-            }, new TestServiceContext(LoggerFactory, new KestrelTrace(logger))))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -171,8 +168,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.All(sink.Writes, w => Assert.InRange(w.LogLevel, LogLevel.Trace, LogLevel.Information));
-            Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information);
+            Assert.All(TestSink.Writes, w => Assert.InRange(w.LogLevel, LogLevel.Trace, LogLevel.Information));
+            Assert.Contains(TestSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information);
         }
 
         [Fact]

@@ -219,6 +219,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeAppException()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
+                TestSink,
                 LoggerFactory,
                 context =>
                 {
@@ -232,6 +233,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeRequestAborted()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
+                TestSink,
                 LoggerFactory,
                 context =>
                 {
@@ -246,6 +248,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposeRequestAbortedAppException()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
+                TestSink,
                 LoggerFactory,
                 context =>
                 {
@@ -260,6 +263,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformed()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
+                TestSink,
                 LoggerFactory,
                 context =>
                 {
@@ -274,6 +278,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformedRead()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
+                TestSink,
                 LoggerFactory,
                 async context =>
                 {
@@ -288,6 +293,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public Task ResponseStatusCodeSetBeforeHttpContextDisposedRequestMalformedReadIgnored()
         {
             return ResponseStatusCodeSetBeforeHttpContextDispose(
+                TestSink,
                 LoggerFactory,
                 async context =>
                 {
@@ -400,6 +406,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         private static async Task ResponseStatusCodeSetBeforeHttpContextDispose(
+            ITestSink testSink,
             ILoggerFactory loggerFactory,
             RequestDelegate handler,
             HttpStatusCode? expectedClientStatusCode,
@@ -417,10 +424,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     disposedTcs.TrySetResult(c.Response.StatusCode);
                 });
 
-            var sink = new TestSink();
-            var logger = new TestLogger("TestLogger", sink, enabled: true);
-
-            using (var server = new TestServer(handler, new TestServiceContext() { LoggerFactory = loggerFactory, Log = new KestrelTrace(logger) },
+            using (var server = new TestServer(handler, new TestServiceContext(loggerFactory),
                 new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
                 services => services.AddSingleton(mockHttpContextFactory.Object)))
             {
@@ -480,12 +484,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             if (sendMalformedRequest)
             {
-                Assert.Contains(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+                Assert.Contains(testSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                     && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
             }
             else
             {
-                Assert.DoesNotContain(sink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+                Assert.DoesNotContain(testSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                     && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
             }
         }
