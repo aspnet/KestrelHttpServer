@@ -252,7 +252,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             const int limit = 10;
             var upgradeTcs = new TaskCompletionSource<object>();
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
             serviceContext.ConnectionManager = new HttpConnectionManager(serviceContext.Log, ResourceCounter.Quota(limit));
 
             using (var server = new TestServer(async context =>

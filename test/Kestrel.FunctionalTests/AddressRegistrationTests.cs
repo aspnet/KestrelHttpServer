@@ -420,10 +420,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private async Task RegisterDefaultServerAddresses_Success(IEnumerable<string> addresses, bool mockHttps = false)
         {
-            var testLogger = new TestApplicationErrorLogger();
-            var testLoggerProvider = new KestrelTestLoggerProvider(testLogger);
-            LoggerFactory.AddProvider(testLoggerProvider);
-
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .ConfigureServices(AddTestLogging)
                 .ConfigureLogging(ConfigureLogging)
@@ -434,9 +430,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         options.DefaultCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
                     }
                 })
-                .ConfigureLogging(builder => builder
-                    .AddProvider(testLoggerProvider)
-                    .SetMinimumLevel(LogLevel.Debug))
                 .Configure(ConfigureEchoAddress);
 
             using (var host = hostBuilder.Build())
@@ -450,9 +443,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.Contains(5001, host.GetPorts());
                 }
 
-                Assert.Single(testLogger.Messages, log => log.LogLevel == LogLevel.Debug &&
-                    (string.Equals(CoreStrings.FormatBindingToDefaultAddresses(Constants.DefaultServerAddress, Constants.DefaultServerHttpsAddress), log.Message, StringComparison.Ordinal)
-                        || string.Equals(CoreStrings.FormatBindingToDefaultAddress(Constants.DefaultServerAddress), log.Message, StringComparison.Ordinal)));
+                Assert.Single(TestSink.Writes, log => log.LogLevel == LogLevel.Debug &&
+                    (string.Equals(CoreStrings.FormatBindingToDefaultAddresses(Constants.DefaultServerAddress, Constants.DefaultServerHttpsAddress), log.Formatter(log.State, log.Exception), StringComparison.Ordinal)
+                        || string.Equals(CoreStrings.FormatBindingToDefaultAddress(Constants.DefaultServerAddress), log.Formatter(log.State, log.Exception), StringComparison.Ordinal)));
 
                 foreach (var address in addresses)
                 {
@@ -514,10 +507,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task OverrideDirectConfigurationWithIServerAddressesFeature_Succeeds()
         {
             var useUrlsAddress = $"http://127.0.0.1:0";
-            var testLogger = new TestApplicationErrorLogger();
-            var testLoggerProvider = new KestrelTestLoggerProvider(testLogger);
-            LoggerFactory.AddProvider(testLoggerProvider);
-
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel(options =>
                 {
@@ -528,8 +517,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 })
                .UseUrls(useUrlsAddress)
                .PreferHostingUrls(true)
-                .ConfigureServices(AddTestLogging)
-               .ConfigureLogging(builder => builder.AddProvider(testLoggerProvider))
+               .ConfigureServices(AddTestLogging)
                .Configure(ConfigureEchoAddress);
 
             using (var host = hostBuilder.Build())
@@ -545,9 +533,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var useUrlsAddressWithPort = $"http://127.0.0.1:{port}";
                 Assert.Equal(serverAddresses.First(), useUrlsAddressWithPort);
 
-                Assert.Single(testLogger.Messages, log => log.LogLevel == LogLevel.Information &&
+                Assert.Single(TestSink.Writes, log => log.LogLevel == LogLevel.Information &&
                     string.Equals(CoreStrings.FormatOverridingWithPreferHostingUrls(nameof(IServerAddressesFeature.PreferHostingUrls), useUrlsAddress),
-                    log.Message, StringComparison.Ordinal));
+                    log.Formatter(log.State, log.Exception), StringComparison.Ordinal));
 
                 Assert.Equal(new Uri(useUrlsAddressWithPort).ToString(), await HttpClientSlim.GetStringAsync(useUrlsAddressWithPort));
             }
@@ -557,9 +545,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task DoesNotOverrideDirectConfigurationWithIServerAddressesFeature_IfPreferHostingUrlsFalse()
         {
             var useUrlsAddress = $"http://127.0.0.1:0";
-            var testLogger = new TestApplicationErrorLogger();
-            var testLoggerProvider = new KestrelTestLoggerProvider(testLogger);
-            LoggerFactory.AddProvider(testLoggerProvider);
 
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .ConfigureServices(AddTestLogging)
@@ -573,7 +558,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 })
                 .UseUrls($"http://127.0.0.1:0")
                 .PreferHostingUrls(false)
-                .ConfigureLogging(builder => builder.AddProvider(testLoggerProvider))
                 .Configure(ConfigureEchoAddress);
 
             using (var host = hostBuilder.Build())
@@ -589,9 +573,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var endPointAddress = $"https://127.0.0.1:{port}";
                 Assert.Equal(serverAddresses.First(), endPointAddress);
 
-                Assert.Single(testLogger.Messages, log => log.LogLevel == LogLevel.Warning &&
+                Assert.Single(TestSink.Writes, log => log.LogLevel == LogLevel.Warning &&
                     string.Equals(CoreStrings.FormatOverridingWithKestrelOptions(useUrlsAddress, "UseKestrel()"),
-                    log.Message, StringComparison.Ordinal));
+                    log.Formatter(log.State, log.Exception), StringComparison.Ordinal));
 
                 Assert.Equal(new Uri(endPointAddress).ToString(), await HttpClientSlim.GetStringAsync(endPointAddress, validateCertificate: false));
             }

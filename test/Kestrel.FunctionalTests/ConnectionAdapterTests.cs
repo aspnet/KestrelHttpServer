@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { adapter }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             var sendString = "POST / HTTP/1.0\r\nContent-Length: 12\r\n\r\nHello World?";
 
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { new AsyncConnectionAdapter() }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
             {
@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { new AsyncConnectionAdapter() }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
             {
@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { new ThrowingConnectionAdapter() }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
             {
@@ -128,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { new AsyncConnectionAdapter() }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             var stopTask = Task.CompletedTask;
             using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
@@ -150,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { new ThrowingConnectionAdapter() }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoApp, serviceContext, listenOptions))
             {
@@ -182,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 ConnectionAdapters = { new PassThroughConnectionAdapter() }
             };
 
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async context =>
             {

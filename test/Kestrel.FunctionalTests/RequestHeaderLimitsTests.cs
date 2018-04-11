@@ -149,9 +149,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 options.Limits.MaxRequestHeadersTotalSize = maxRequestHeadersTotalSize.Value;
             }
 
-            return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext
+            return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext(LoggerFactory)
             {
-                LoggerFactory = LoggerFactory,
                 ServerOptions = options
             });
         }

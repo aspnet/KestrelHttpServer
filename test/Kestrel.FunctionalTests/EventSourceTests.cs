@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 connectionId = context.Features.Get<IHttpConnectionFeature>().ConnectionId;
                 requestId = context.TraceIdentifier;
                 return Task.CompletedTask;
-            }, new TestServiceContext { LoggerFactory = LoggerFactory }))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 port = server.Port;
                 using (var connection = server.CreateConnection())

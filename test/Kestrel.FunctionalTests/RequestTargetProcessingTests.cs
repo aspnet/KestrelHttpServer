@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RequestPathIsNotNormalized()
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext = new TestServiceContext(LoggerFactory);
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
 
             using (var server = new TestServer(async context =>
@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("/base/hello%20world?foo=1&bar=2")]
         public async Task RequestFeatureContainsRawTarget(string requestTarget)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async context =>
             {
@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData(HttpMethod.Connect, "host")]
         public async Task NonPathRequestTargetSetInRawTarget(HttpMethod method, string requestTarget)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async context =>
             {

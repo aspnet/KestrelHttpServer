@@ -706,7 +706,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http11KeptAliveByDefault(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
             {
@@ -741,7 +741,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http10NotKeptAliveByDefault(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoApp, testContext, listenOptions))
             {
@@ -781,7 +781,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http10KeepAlive(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
             {
@@ -816,7 +816,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http10KeepAliveNotHonoredIfResponseContentLengthNotSet(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoApp, testContext, listenOptions))
             {
@@ -856,7 +856,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http10KeepAliveHonoredIfResponseContentLengthSet(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
             {
@@ -913,7 +913,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Expect100ContinueHonored(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(TestApp.EchoAppChunked, testContext, listenOptions))
             {
@@ -946,7 +946,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ZeroContentLengthAssumedOnNonKeepAliveRequestsWithoutContentLengthOrTransferEncodingHeader(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -996,7 +996,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ConnectionClosesWhenFinReceivedBeforeRequestCompletes(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
             // FIN callbacks are scheduled so run inline to make this test more reliable
             testContext.Scheduler = PipeScheduler.Inline;
 
@@ -1026,7 +1026,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task RequestsCanBeAbortedMidRead(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             var readTcs = new TaskCompletionSource<object>();
             var registrationTcs = new TaskCompletionSource<int>();
@@ -1106,7 +1106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task RequestHeadersAreResetOnEachRequest(ListenOptions listenOptions)
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             IHeaderDictionary originalRequestHeaders = null;
             var firstRequest = true;
@@ -1159,7 +1159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             const string message = "Hello World";
 
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async context =>
             {
@@ -1197,7 +1197,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task HeadersAndStreamsAreReusedAcrossRequests()
         {
-            var testContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var testContext= new TestServiceContext(LoggerFactory);
             var streamCount = 0;
             var requestHeadersCount = 0;
             var responseHeadersCount = 0;

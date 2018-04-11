@@ -191,14 +191,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private TestServer CreateServerWithMaxConnections(RequestDelegate app, long max)
         {
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
             serviceContext.ServerOptions.Limits.MaxConcurrentConnections = max;
             return new TestServer(app, serviceContext);
         }
 
         private TestServer CreateServerWithMaxConnections(RequestDelegate app, ResourceCounter concurrentConnectionCounter)
         {
-            var serviceContext = new TestServiceContext { LoggerFactory = LoggerFactory };
+            var serviceContext = new TestServiceContext(LoggerFactory);
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
             listenOptions.Use(next =>
             {

@@ -21,7 +21,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging.Testing;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
@@ -35,7 +34,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task CanReadAndWriteWithHttpsConnectionAdapter()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -44,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(App, serviceContext, listenOptions))
+            using (var server = new TestServer(App, new TestServiceContext(), listenOptions))
             {
                 var result = await HttpClientSlim.PostAsync($"https://localhost:{server.Port}/",
                     new FormUrlEncodedContent(new[] {
@@ -59,7 +57,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task RequireCertificateFailsWhenNoCertificate()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -73,7 +70,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
 
 
-            using (var server = new TestServer(App, serviceContext, listenOptions))
+            using (var server = new TestServer(App, new TestServiceContext(), listenOptions))
             {
                 await Assert.ThrowsAnyAsync<Exception>(
                     () => HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/"));
@@ -83,7 +80,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task AllowCertificateContinuesWhenNoCertificate()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -102,8 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Assert.NotNull(tlsFeature);
                     Assert.Null(tlsFeature.ClientCertificate);
                     return context.Response.WriteAsync("hello world");
-                },
-                serviceContext, listenOptions))
+                }, new TestServiceContext(), listenOptions))
             {
                 var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
                 Assert.Equal("hello world", result);
@@ -121,7 +116,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task UsesProvidedServerCertificate()
         {
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -130,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             };
 
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
@@ -148,7 +142,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task UsesProvidedServerCertificateSelector()
         {
             var selectorCalled = 0;
-            var serviceContext = new TestServiceContext();
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
                 ConnectionAdapters =
@@ -170,7 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     })
                 }
             };
-            using (var server = new TestServer(context => Task.CompletedTask, serviceContext, listenOptions))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(), listenOptions))
             {
                 using (var client = new TcpClient())
                 {
