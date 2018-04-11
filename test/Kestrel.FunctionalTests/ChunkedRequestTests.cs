@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http10TransferEncoding(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(App, testContext, listenOptions))
             {
@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task Http10KeepAliveTransferEncoding(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(AppChunked, testContext, listenOptions))
             {
@@ -130,7 +130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task RequestBodyIsConsumedAutomaticallyIfAppDoesntConsumeItFully(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -275,7 +275,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             const string headerLine = "Header: value";
             const string trailingHeaderLine = "Trailing-Header: trailing-value";
 
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
             testContext.ServerOptions.Limits.MaxRequestHeadersTotalSize =
                 transferEncodingHeaderLine.Length + 2 +
                 headerLine.Length + 2 +
@@ -320,7 +320,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             const string headerLine = "Header: value";
             const string trailingHeaderLine = "Trailing-Header: trailing-value";
 
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
             testContext.ServerOptions.Limits.MaxRequestHeaderCount = 2;
 
             using (var server = new TestServer(async context =>
@@ -358,7 +358,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ExtensionsAreIgnored(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
             var requestCount = 10;
             var requestsReceived = 0;
 
@@ -445,7 +445,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task InvalidLengthResultsIn400(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
             using (var server = new TestServer(async httpContext =>
             {
                 var response = httpContext.Response;
@@ -489,7 +489,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task InvalidSizedDataResultsIn400(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
             using (var server = new TestServer(async httpContext =>
             {
                 var response = httpContext.Response;
@@ -535,7 +535,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [MemberData(nameof(ConnectionAdapterData))]
         public async Task ChunkedNotFinalTransferCodingResultsIn400(ListenOptions listenOptions)
         {
-            var testContext= new TestServiceContext(LoggerFactory);
+            var testContext = new TestServiceContext(LoggerFactory);
             using (var server = new TestServer(httpContext =>
             {
                 return Task.CompletedTask;
