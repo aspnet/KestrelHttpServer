@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class BadHttpRequestTests
+    public class BadHttpRequestTests : LoggedTest
     {
         [Theory]
         [MemberData(nameof(InvalidRequestLineData))]
@@ -159,7 +159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(async context =>
             {
                 await context.Request.Body.ReadAsync(new byte[1], 0, 1);
-            }, new TestServiceContext { Log = new KestrelTrace(logger) }))
+            }, new TestServiceContext { LoggerFactory = LoggerFactory, Log = new KestrelTrace(logger) }))
             {
                 using (var connection = new TestConnection(server.Port))
                 {
@@ -178,7 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task TestRequestSplitting()
         {
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = Mock.Of<IKestrelTrace>() }))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = LoggerFactory, Log = Mock.Of<IKestrelTrace>() }))
             {
                 using (var client = server.CreateConnection())
                 {
@@ -202,7 +202,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(trace => trace.ConnectionBadRequest(It.IsAny<string>(), It.IsAny<BadHttpRequestException>()))
                 .Callback<string, BadHttpRequestException>((connectionId, exception) => loggedException = exception);
 
-            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { Log = mockKestrelTrace.Object }))
+            using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext { LoggerFactory = LoggerFactory, Log = mockKestrelTrace.Object }))
             {
                 using (var connection = server.CreateConnection())
                 {

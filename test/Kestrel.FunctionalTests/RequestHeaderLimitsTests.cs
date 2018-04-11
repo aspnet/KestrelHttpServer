@@ -6,11 +6,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class RequestHeaderLimitsTests
+    public class RequestHeaderLimitsTests : LoggedTest
     {
         [Theory]
         [InlineData(0, 1)]
@@ -150,6 +151,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             return new TestServer(async httpContext => await httpContext.Response.WriteAsync("hello, world"), new TestServiceContext
             {
+                LoggerFactory = LoggerFactory,
                 ServerOptions = options
             });
         }

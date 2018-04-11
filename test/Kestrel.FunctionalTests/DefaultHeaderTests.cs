@@ -3,17 +3,19 @@
 
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class DefaultHeaderTests
+    public class DefaultHeaderTests : LoggedTest
     {
         [Fact]
         public async Task TestDefaultHeaders()
         {
             var testContext = new TestServiceContext()
             {
+                LoggerFactory = LoggerFactory,
                 ServerOptions = { AddServerHeader = true }
             };
 

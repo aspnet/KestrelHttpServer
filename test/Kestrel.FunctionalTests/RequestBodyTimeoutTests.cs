@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class RequestBodyTimeoutTests
+    public class RequestBodyTimeoutTests : LoggedTest
     {
         [Fact]
         public async Task RequestTimesOutWhenRequestBodyNotReceivedAtSpecifiedMinimumRate()
@@ -26,6 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
             {
+                LoggerFactory = LoggerFactory,
                 SystemClock = systemClock,
                 DateHeaderValueManager = new DateHeaderValueManager(systemClock)
             };
@@ -76,6 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var systemClock = new SystemClock();
             var serviceContext = new TestServiceContext
             {
+                LoggerFactory = LoggerFactory,
                 SystemClock = systemClock,
                 DateHeaderValueManager = new DateHeaderValueManager(systemClock),
                 Log = new KestrelTrace(logger)
@@ -126,6 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var systemClock = new MockSystemClock();
             var serviceContext = new TestServiceContext
             {
+                LoggerFactory = LoggerFactory,
                 SystemClock = systemClock,
                 DateHeaderValueManager = new DateHeaderValueManager(systemClock)
             };

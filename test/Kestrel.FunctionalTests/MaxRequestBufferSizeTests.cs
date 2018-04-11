@@ -14,12 +14,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class MaxRequestBufferSizeTests
+    public class MaxRequestBufferSizeTests : LoggedTest
     {
         private const int _dataLength = 20 * 1024 * 1024;
 
@@ -30,12 +30,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             "\r\n"
         };
 
-        private readonly Action<ILoggingBuilder> _configureLoggingDelegate;
-
-        public MaxRequestBufferSizeTests(ITestOutputHelper output)
-        {
-            _configureLoggingDelegate = builder => builder.AddXunit(output);
-        }
+        private void ConfigureLogging(ILoggingBuilder builder)
+            => builder.AddXunit(TestOutputHelper);
 
         public static IEnumerable<object[]> LargeUploadData
         {
@@ -259,7 +255,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             TaskCompletionSource<object> clientFinishedSendingRequestBody)
         {
             var host = TransportSelector.GetWebHostBuilder()
-                .ConfigureLogging(_configureLoggingDelegate)
+                .ConfigureServices(AddTestLogging)
+                .ConfigureLogging(ConfigureLogging)
                 .UseKestrel(options =>
                 {
                     options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>

@@ -19,21 +19,16 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class HttpsConnectionAdapterTests
+    public class HttpsConnectionAdapterTests : LoggedTest
     {
         private static X509Certificate2 _x509Certificate2 = TestResources.GetTestCertificate();
         private static X509Certificate2 _x509Certificate2NoExt = TestResources.GetTestCertificate("no_extensions.pfx");
-        private readonly ITestOutputHelper _output;
-
-        public HttpsConnectionAdapterTests(ITestOutputHelper output)
-        {
-            _output = output;
-        }
 
         // https://github.com/aspnet/KestrelHttpServer/issues/240
         // This test currently fails on mono because of an issue with SslStream.
@@ -587,7 +582,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public void AcceptsCertificateWithoutExtensions(string testCertName)
         {
             var certPath = TestResources.GetCertPath(testCertName);
-            _output.WriteLine("Loading " + certPath);
+            TestOutputHelper.WriteLine("Loading " + certPath);
             var cert = new X509Certificate2(certPath, "testPassword");
             Assert.Empty(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
 
@@ -603,7 +598,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public void ValidatesEnhancedKeyUsageOnCertificate(string testCertName)
         {
             var certPath = TestResources.GetCertPath(testCertName);
-            _output.WriteLine("Loading " + certPath);
+            TestOutputHelper.WriteLine("Loading " + certPath);
             var cert = new X509Certificate2(certPath, "testPassword");
             Assert.NotEmpty(cert.Extensions);
             var eku = Assert.Single(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
@@ -621,7 +616,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public void ThrowsForCertificatesMissingServerEku(string testCertName)
         {
             var certPath = TestResources.GetCertPath(testCertName);
-            _output.WriteLine("Loading " + certPath);
+            TestOutputHelper.WriteLine("Loading " + certPath);
             var cert = new X509Certificate2(certPath, "testPassword");
             Assert.NotEmpty(cert.Extensions);
             var eku = Assert.Single(cert.Extensions.OfType<X509EnhancedKeyUsageExtension>());
