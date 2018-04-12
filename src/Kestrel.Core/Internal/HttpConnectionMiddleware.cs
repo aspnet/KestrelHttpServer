@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
@@ -41,6 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             var httpConnectionContext = new HttpConnectionContext
             {
                 ConnectionId = connectionContext.ConnectionId,
+                ConnectionContext = connectionContext,
                 HttpConnectionId = httpConnectionId,
                 Protocols = _protocols,
                 ServiceContext = _serviceContext,
@@ -69,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             var connection = new HttpConnection(httpConnectionContext);
 
             var processingTask = connection.StartRequestProcessing(_application);
-            
+
             connectionContext.Transport.Input.OnWriterCompleted((error, state) =>
             {
                 ((HttpConnection)state).Abort(error);
