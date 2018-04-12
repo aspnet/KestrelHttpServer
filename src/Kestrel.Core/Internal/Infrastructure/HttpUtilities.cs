@@ -497,7 +497,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             var firstChar = hostText[offset];
             offset++;
-            if (firstChar != ':' || offset == hostText.Length)
+            if (firstChar != ':' || (uint)offset >= (uint)hostText.Length)
             {
                 // Must have at least one number after the colon if present.
                 BadHttpRequestException.Throw(RequestRejectionReason.InvalidHostHeader, hostText);
