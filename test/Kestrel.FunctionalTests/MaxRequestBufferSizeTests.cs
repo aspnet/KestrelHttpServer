@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Testing;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 
@@ -29,9 +28,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             $"Content-Length: {_dataLength}\r\n",
             "\r\n"
         };
-
-        private void ConfigureLogging(ILoggingBuilder builder)
-            => builder.AddXunit(TestOutputHelper);
 
         public static IEnumerable<object[]> LargeUploadData
         {
@@ -256,7 +252,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var host = TransportSelector.GetWebHostBuilder()
                 .ConfigureServices(AddTestLogging)
-                .ConfigureLogging(ConfigureLogging)
                 .UseKestrel(options =>
                 {
                     options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>

@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class HttpProtocolSelectionTests : LoggedTest
+    public class HttpProtocolSelectionTests : TestApplicationErrorLoggerLoggedTest
     {
         [Fact]
         public Task Server_NoProtocols_Error()
@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error
+            Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error
                 && message.EventId.Id == 0
                 && message.Message == expectedErrorMessage);
         }

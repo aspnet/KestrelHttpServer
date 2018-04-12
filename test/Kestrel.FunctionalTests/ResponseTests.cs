@@ -36,7 +36,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
-    public class ResponseTests : LoggedTest
+    public class ResponseTests : TestApplicationErrorLoggerLoggedTest
     {
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
@@ -688,7 +688,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var logMessage = Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error);
+            var logMessage = Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error);
 
             Assert.Equal(
                 $"Response Content-Length mismatch: too many bytes written (12 of 11).",
@@ -724,7 +724,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var logMessage = Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error);
+            var logMessage = Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error);
             Assert.Equal(
                 $"Response Content-Length mismatch: too many bytes written (12 of 11).",
                 logMessage.Exception.Message);
@@ -763,7 +763,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var logMessage = Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error);
+            var logMessage = Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error);
             Assert.Equal(
                 $"Response Content-Length mismatch: too many bytes written (12 of 5).",
                 logMessage.Exception.Message);
@@ -798,7 +798,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var logMessage = Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error);
+            var logMessage = Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error);
             Assert.Equal(
                 $"Response Content-Length mismatch: too many bytes written (12 of 5).",
                 logMessage.Exception.Message);
@@ -939,7 +939,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var error = TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error);
+            var error = TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error);
             Assert.Equal(2, error.Count());
             Assert.All(error, message => message.Message.Equals("Response Content-Length mismatch: too few bytes written (0 of 5)."));
         }
@@ -977,7 +977,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Empty(TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error));
+            Assert.Empty(TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error));
         }
 
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -1013,7 +1013,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Empty(TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error));
+            Assert.Empty(TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error));
         }
 
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -1049,7 +1049,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Empty(TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error));
+            Assert.Empty(TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error));
         }
 
         [Fact]
@@ -1629,7 +1629,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Contains(TestSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+            Assert.Contains(TestApplicationErrorLogger.Messages, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                 && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
         }
 
@@ -1681,7 +1681,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Contains(TestSink.Writes, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
+            Assert.Contains(TestApplicationErrorLogger.Messages, w => w.EventId.Id == 17 && w.LogLevel == LogLevel.Information && w.Exception is BadHttpRequestException
                 && ((BadHttpRequestException)w.Exception).StatusCode == StatusCodes.Status400BadRequest);
         }
 
@@ -2011,7 +2011,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
 
             Assert.False(onStartingCalled);
-            Assert.Equal(2, TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error).Count());
+            Assert.Equal(2, TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error).Count());
         }
 
         [Theory]
@@ -2070,7 +2070,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             // since they are called LIFO order and the other one failed.
             Assert.False(callback1Called);
             Assert.Equal(2, callback2CallCount);
-            Assert.Equal(2, TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error).Count());
+            Assert.Equal(2, TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error).Count());
         }
 
         [Theory]
@@ -2118,7 +2118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
 
             // All OnCompleted callbacks should be called even if they throw.
-            Assert.Equal(2, TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error).Count());
+            Assert.Equal(2, TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error).Count());
             Assert.True(onCompletedCalled1);
             Assert.True(onCompletedCalled2);
         }
@@ -2162,7 +2162,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
 
             Assert.True(onStartingCalled);
-            Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error);
+            Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error);
         }
 
         [Theory]
@@ -2204,7 +2204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
 
             Assert.True(onStartingCalled);
-            Assert.Single(TestSink.Writes, message => message.LogLevel == LogLevel.Error);
+            Assert.Single(TestApplicationErrorLogger.Messages, message => message.LogLevel == LogLevel.Error);
         }
 
         [Theory]
@@ -2295,7 +2295,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            Assert.Empty(TestSink.Writes.Where(message => message.LogLevel == LogLevel.Error));
+            Assert.Empty(TestApplicationErrorLogger.Messages.Where(message => message.LogLevel == LogLevel.Error));
         }
 
         [Theory]

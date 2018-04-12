@@ -277,6 +277,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(logger => logger.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()))
                 .Callback<LogLevel, EventId, object, Exception, Func<object, Exception, string>>((logLevel, eventId, state, exception, formatter) =>
                 {
+                    Logger.Log(logLevel, eventId, state, exception, formatter);
                     if (eventId.Id == _connectionStartedEventId)
                     {
                         connectionStarted.Release();
@@ -295,7 +296,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-                .Returns(Mock.Of<ILogger>());
+                .Returns(Logger);
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel",
                                                                "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
@@ -337,6 +338,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(logger => logger.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()))
                 .Callback<LogLevel, EventId, object, Exception, Func<object, Exception, string>>((logLevel, eventId, state, exception, formatter) =>
                 {
+                    Logger.Log(logLevel, eventId, state, exception, formatter);
                     if (eventId.Id == _connectionResetEventId)
                     {
                         connectionReset.Release();
@@ -351,7 +353,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-                .Returns(Mock.Of<ILogger>());
+                .Returns(Logger);
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel",
                                                                "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
@@ -407,6 +409,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 .Setup(logger => logger.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()))
                 .Callback<LogLevel, EventId, object, Exception, Func<object, Exception, string>>((logLevel, eventId, state, exception, formatter) =>
                 {
+                    Logger.Log(logLevel, eventId, state, exception, formatter);
                     var log = $"Log {logLevel}[{eventId}]: {formatter(state, exception)} {exception}";
                     TestOutputHelper.WriteLine(log);
 
@@ -424,7 +427,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger(It.IsAny<string>()))
-                .Returns(Mock.Of<ILogger>());
+                .Returns(Logger);
             mockLoggerFactory
                 .Setup(factory => factory.CreateLogger(It.IsIn("Microsoft.AspNetCore.Server.Kestrel",
                                                                "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
