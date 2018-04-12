@@ -428,9 +428,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public static void ValidateHostHeader(string hostText)
         {
-            // This is a string.IsNullOrEmpty test, but arranged to elmininate the
-            // bounds check from accessing the firstChar of the string
-            if (hostText is null || 0u >= (uint)hostText.Length)
+            if (string.IsNullOrEmpty(hostText))
             {
                 // The spec allows empty values
                 return;
@@ -452,21 +450,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
                 // Enregister array
                 var hostCharValidity = HostCharValidity;
-                var i = 0;
-                for (; i < hostText.Length; i++)
+                for (var i = 0; i < hostText.Length; i++)
                 {
-                    var ch = (int)hostText[i];
-                    // Bounds check and elimiate second bounds check
-                    if ((uint)ch >= (uint)hostCharValidity.Length || !hostCharValidity[ch])
+                    if (!hostCharValidity[hostText[i]])
                     {
-                        break;
+                        // Tail call
+                        ValidateHostPort(hostText, i); 
+                        return;
                     }
-                }
-
-                if (i < hostText.Length)
-                {
-                    // Tail call
-                    ValidateHostPort(hostText, i); 
                 }
             }
         }
@@ -484,12 +475,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                     {
                         BadHttpRequestException.Throw(RequestRejectionReason.InvalidHostHeader, hostText);
                     }
-                    else
+                    else if (i + 1 < hostText.Length)
                     {
                         // Tail call
                         ValidateHostPort(hostText, i + 1);
-                        return;
                     }
+                    return;
                 }
 
                 if (!IsHex(ch) && ch != ':' && ch != '.')
@@ -504,38 +495,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         private static void ValidateHostPort(string hostText, int offset)
         {
-            // Skip bounds check for accessing the [offset] element
-            if ((uint)offset >= (uint)hostText.Length)
-            {
-                return;
-            }
-
             var firstChar = hostText[offset];
             offset++;
-            if (firstChar != ':' || (uint)offset >= (uint)hostText.Length)
+            if (firstChar != ':' || offset == hostText.Length)
             {
                 // Must have at least one number after the colon if present.
                 BadHttpRequestException.Throw(RequestRejectionReason.InvalidHostHeader, hostText);
             }
 
-            // This do+if check rather than for loop is to elimitate the bounds check, since
-            // the Jit doesn't currently pick up on it when starting at a variable offset
-            do
+            for (var i = offset; i < hostText.Length; i++)
             {
-                // Elminate bounds check for array access
-                if ((uint)offset >= (uint)hostText.Length)
-                {
-                    // Length reached, end of loop
-                    break;
-                }
-
-                var ch = hostText[offset];
-                offset++;
-                if (!IsNumeric(ch))
+                if (!IsNumeric(hostText[i]))
                 {
                     BadHttpRequestException.Throw(RequestRejectionReason.InvalidHostHeader, hostText);
                 }
-            } while (true);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
