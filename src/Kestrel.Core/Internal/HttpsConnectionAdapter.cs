@@ -72,6 +72,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
         private async Task<IAdaptedConnection> InnerOnConnectionAsync(ConnectionAdapterContext context)
         {
+            var timeoutFeature = context.Features.Get<IConnectionTimeoutFeature>();
+            timeoutFeature.SetTimeout(_options.HandshakeTimeout);
+
+            var prefix = new byte[1]; // TODO: Consider buffering the size of an expected TLS frame.
+            var read = 0;
+            try
+            {
+                // Wait for data to become available.
+                read = await context.ConnectionStream.ReadAsync(prefix, 0, prefix.Length);
+            }
+            catch (Exception)
+            {
+            }
+
+            if (read == 0)
+            {
+                _logger?.LogDebug(3, "New connection closed without sending data.");
+                timeoutFeature.CancelTimeout();
+                context.ConnectionStream.Dispose();
+                return _closedAdaptedConnection;
+            }
+
+            var innerStream = new PrefixedStream(context.ConnectionStream, new ArraySegment<byte>(prefix, 0, read));
+
             SslStream sslStream;
             bool certificateRequired;
             var feature = new TlsConnectionFeature();
@@ -79,12 +103,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
             if (_options.ClientCertificateMode == ClientCertificateMode.NoCertificate)
             {
-                sslStream = new SslStream(context.ConnectionStream);
+                sslStream = new SslStream(innerStream);
                 certificateRequired = false;
             }
             else
             {
-                sslStream = new SslStream(context.ConnectionStream,
+                sslStream = new SslStream(innerStream,
                     leaveInnerStreamOpen: false,
                     userCertificateValidationCallback: (sender, certificate, chain, sslPolicyErrors) =>
                     {
@@ -120,9 +144,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
                 certificateRequired = true;
             }
-
-            var timeoutFeature = context.Features.Get<IConnectionTimeoutFeature>();
-            timeoutFeature.SetTimeout(_options.HandshakeTimeout);
 
             try
             {
@@ -252,6 +273,85 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
 
             public void Dispose()
             {
+            }
+        }
+
+        private class PrefixedStream : Stream
+        {
+            private readonly Stream _innerStream;
+            private Memory<byte> _prefix;
+
+            public PrefixedStream(Stream innerStream, Memory<byte> prefix)
+            {
+                _innerStream = innerStream;
+                _prefix = prefix;
+            }
+
+            public override bool CanRead => _innerStream.CanRead;
+            public override bool CanSeek => _innerStream.CanSeek;
+            public override bool CanWrite => _innerStream.CanWrite;
+            public override long Length => _innerStream.Length;
+            public override long Position { get => _innerStream.Position; set => _innerStream.Position = value; }
+
+            public override void SetLength(long value) => _innerStream.SetLength(value);
+            public override long Seek(long offset, SeekOrigin origin) => _innerStream.Seek(offset, origin);
+
+            public override void Flush() => _innerStream.Flush();
+            public override Task FlushAsync(CancellationToken cancellationToken) => _innerStream.FlushAsync(cancellationToken);
+
+            public override void Write(byte[] buffer, int offset, int count) => _innerStream.Write(buffer, offset, count);
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+                _innerStream.WriteAsync(buffer, offset, count, cancellationToken);
+
+            public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+                => _innerStream.BeginWrite(buffer, offset, count, callback, state);
+
+            public override void EndWrite(IAsyncResult asyncResult) => _innerStream.EndWrite(asyncResult);
+
+            protected override void Dispose(bool disposing) => _innerStream.Dispose();
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                if (!_prefix.IsEmpty)
+                {
+                    // Validates args
+                    var destination = new Span<byte>(buffer, offset, count);
+                    return ReadPrefix(destination);
+                }
+
+                return _innerStream.Read(buffer, offset, count);
+            }
+
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                if (!_prefix.IsEmpty)
+                {
+                    // Validates args
+                    var destination = new Span<byte>(buffer, offset, count);
+                    return Task.FromResult(ReadPrefix(destination));
+                }
+
+                return _innerStream.ReadAsync(buffer, offset, count, cancellationToken);
+            }
+
+            private int ReadPrefix(Span<byte> destination)
+            {
+                if (destination.Length == 0)
+                {
+                    // Data is available
+                    return 0;
+                }
+
+                var read = Math.Min(destination.Length, _prefix.Length);
+                var source = _prefix.Span.Slice(0, read);
+                source.CopyTo(destination);
+                _prefix = _prefix.Slice(read);
+                if (_prefix.IsEmpty)
+                {
+                    _prefix = new Memory<byte>(Array.Empty<byte>());
+                }
+                return read;
             }
         }
     }

@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         [Fact]
-        public async Task EmptyRequestLoggedAsInformation()
+        public async Task EmptyRequestLoggedAsDebug()
         {
             var loggerProvider = new HandshakeErrorLoggerProvider();
 
@@ -126,7 +126,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
                     });
                 })
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+                .ConfigureLogging(builder =>
+                {
+                    builder.AddProvider(loggerProvider);
+                    builder.SetMinimumLevel(LogLevel.Debug);
+                })
                 .Configure(app => { });
 
             using (var host = hostBuilder.Build())
@@ -141,8 +145,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await loggerProvider.FilterLogger.LogTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
             }
 
-            Assert.Equal(1, loggerProvider.FilterLogger.LastEventId.Id);
-            Assert.Equal(LogLevel.Information, loggerProvider.FilterLogger.LastLogLevel);
+            Assert.Equal(3, loggerProvider.FilterLogger.LastEventId.Id);
+            Assert.Equal(LogLevel.Debug, loggerProvider.FilterLogger.LastLogLevel);
             Assert.True(loggerProvider.ErrorLogger.TotalErrorsLogged == 0,
                 userMessage: string.Join(Environment.NewLine, loggerProvider.ErrorLogger.ErrorMessages));
         }
@@ -374,6 +378,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
                 using (var stream = new NetworkStream(socket, ownsSocket: false))
                 {
+                    // Send just enough data to start the handshake
+                    stream.WriteByte(0x16);
                     // No data should be sent and the connection should be closed in well under 30 seconds.
                     Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1).TimeoutAfter(TestConstants.DefaultTimeout));
                 }
