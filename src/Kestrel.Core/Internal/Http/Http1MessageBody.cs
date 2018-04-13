@@ -126,28 +126,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override Task OnConsumeAsync()
         {
-            var readTask = _context.RequestBodyPipe.Reader.ReadAsync();
+            try
+            {
+                if (_context.RequestBodyPipe.Reader.TryRead(out var readResult))
+                {
+                    _context.RequestBodyPipe.Reader.AdvanceTo(readResult.Buffer.End);
 
-            if (readTask.IsFaulted)
+                    if (readResult.IsCompleted)
+                    {
+                        return Task.CompletedTask;
+                    }
+                }
+            }
+            catch
             {
                 return Task.CompletedTask;
             }
 
-            if (readTask.IsCompletedSuccessfully)
-            {
-                var result = readTask.GetAwaiter().GetResult();
-
-                if (result.IsCompleted)
-                {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(result.Buffer.End);
-                    return Task.CompletedTask;
-                }
-            }
-
-            return OnConsumeAsyncAwaited(readTask);
+            return OnConsumeAsyncAwaited();
         }
 
-        private async Task OnConsumeAsyncAwaited(ValueTask<ReadResult> readTask)
+        private async Task OnConsumeAsyncAwaited()
         {
             _context.TimeoutControl.SetTimeout(Constants.RequestBodyDrainTimeout.Ticks, TimeoutAction.AbortConnection);
 
@@ -155,8 +154,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             try
             {
-                var result = await readTask;
-                _context.RequestBodyPipe.Reader.AdvanceTo(result.Buffer.End);
+                ReadResult result = default;
 
                 while (!result.IsCompleted)
                 {
