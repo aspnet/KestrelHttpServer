@@ -128,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             var readTask = _context.RequestBodyPipe.Reader.ReadAsync();
 
-            if (readTask.IsFaulted || readTask.IsCanceled)
+            if (readTask.IsFaulted)
             {
                 return Task.CompletedTask;
             }
