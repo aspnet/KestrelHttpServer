@@ -614,7 +614,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     // At this point both the request body pipe reader and writer should be completed.
                     RequestBodyPipe.Reset();
                 }
-            } while (_keepAlive && _requestRejectedException == null);
+            } while (_keepAlive);
         }
 
         public void OnStarting(Func<object, Task> callback, object state)
