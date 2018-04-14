@@ -300,8 +300,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             (RequestBody, ResponseBody) = _streams.Start(messageBody);
         }
 
-        public void PauseStreams() => _streams.Pause();
-
         public void StopStreams() => _streams.Stop();
 
         // For testing
@@ -561,7 +559,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     await FireOnStarting();
                 }
 
-                PauseStreams();
+                // At this point all user code that needs use to the request or response streams has completed.
+                // Using these streams in the OnCompleted callback is not allowed.
+                StopStreams();
 
                 // 4XX responses are written by TryProduceInvalidRequestResponse during connection tear down.
                 if (_requestRejectedException == null)
@@ -597,9 +597,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 application.DisposeContext(httpContext, _applicationException);
-
-                // Don't stop streams until no more user code can run (i.e. after disposing the HttpContext).
-                StopStreams();
 
                 // Even for non-keep-alive requests, try to consume the entire body to avoid RSTs.
                 if (_requestAborted == 0 && _requestRejectedException == null && !messageBody.IsEmpty)
