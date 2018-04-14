@@ -28,4 +28,8 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="EnableTestLogging" BeforeTargets="VSTest" Condition="'$(ASPNETCORE_TEST_LOG_DIR)' == '' AND '$(DisableFTestLogging)' != 'true'">
+    <SDK_SetEnvironmentVariable Variable="ASPNETCORE_TEST_LOG_DIR" Value="$(MSBuildThisFileDirectory)..\artifacts\logs" />
+  </Target>
 </Project>

@@ -13,5 +13,8 @@
     </ItemGroup>
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="TestProjects" Properties="FakeProperty=%(Iteration.Identity)" />
   </Target>
-</Project>
 
+  <Target Name="EnableTestLogging" BeforeTargets="_ExecuteTestAssemblies" Condition="'$(ASPNETCORE_TEST_LOG_DIR)' == '' AND '$(DisableFTestLogging)' != 'true'">
+    <SetEnvironmentVariable Variable="ASPNETCORE_TEST_LOG_DIR" Value="$(MSBuildThisFileDirectory)..\artifacts\logs" />
+  </Target>
+</Project>
