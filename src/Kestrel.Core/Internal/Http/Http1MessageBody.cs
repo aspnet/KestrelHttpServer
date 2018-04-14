@@ -138,8 +138,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     }
                 }
             }
-            catch
+            catch (BadHttpRequestException ex)
             {
+                // At this point, the response has already been written, so this won't result in a 4XX response;
+                // however, we still need to stop the request processing loop and log.
+                _context.SetBadRequestState(ex);
                 return Task.CompletedTask;
             }
 
@@ -148,19 +151,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private async Task OnConsumeAsyncAwaited()
         {
-            _context.TimeoutControl.SetTimeout(Constants.RequestBodyDrainTimeout.Ticks, TimeoutAction.AbortConnection);
-
             Log.RequestBodyNotEntirelyRead(_context.ConnectionIdFeature, _context.TraceIdentifier);
+
+            _context.TimeoutControl.SetTimeout(Constants.RequestBodyDrainTimeout.Ticks, TimeoutAction.AbortConnection);
 
             try
             {
                 ReadResult result = default;
 
-                while (!result.IsCompleted)
+                do
                 {
                     result = await _context.RequestBodyPipe.Reader.ReadAsync();
                     _context.RequestBodyPipe.Reader.AdvanceTo(result.Buffer.End);
-                }
+                } while (!result.IsCompleted);
+            }
+            catch (BadHttpRequestException ex)
+            {
+                _context.SetBadRequestState(ex);
             }
             catch (ConnectionAbortedException)
             {
