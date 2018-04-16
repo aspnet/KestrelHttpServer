@@ -157,8 +157,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             try
             {
-                ReadResult result = default;
-
+                ReadResult result;
                 do
                 {
                     result = await _context.RequestBodyPipe.Reader.ReadAsync();
