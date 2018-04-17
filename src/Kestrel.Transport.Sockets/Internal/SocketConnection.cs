@@ -158,6 +158,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             while (true)
             {
+                // Wait for data before allocating a buffer.
+                await _receiver.WaitForDataAsync();
+
                 // Ensure we have some reasonable amount of buffer space
                 var buffer = Input.GetMemory(MinAllocBufferSize);
 
