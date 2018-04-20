@@ -427,7 +427,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             Interlocked.Add(ref _readTimingBytesRead, count);
         }
 
-        public void StartTimingWrite(int size)
+        public void StartTimingWrite(long size)
         {
             lock (_writeTimingLock)
             {
@@ -439,11 +439,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         minResponseDataRate.GracePeriod.Ticks,
                         TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks);
 
-                    if (_writeTimingWrites == 0)
-                    {
-                        // Add Heartbeat.Interval since this can be called right before the next heartbeat.
-                        _writeTimingTimeoutTimestamp = _lastTimestamp + Heartbeat.Interval.Ticks;
-                    }
+                    // Add Heartbeat.Interval since this can be called right before the next heartbeat.
+
+                    // Don't penalize a connection for completing previous flushes more quickly than required.
+                    // We don't want to kill a connection when flushing the chunk terminator just because the previous
+                    // chunk was large if the previous chunk was flushed quickly.
+                    _writeTimingTimeoutTimestamp = Math.Max(_writeTimingTimeoutTimestamp, _lastTimestamp + Heartbeat.Interval.Ticks);
 
                     _writeTimingTimeoutTimestamp += timeoutTicks;
                     _writeTimingWrites++;

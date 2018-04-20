@@ -24,7 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private bool _completed = false;
         private bool _aborted;
-        private long _bytesWritten;
+        private long _unflushedBytes;
+        private long _totalBytesCommitted;
 
         private readonly IPipe _pipe;
 
@@ -82,7 +83,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var buffer = _pipe.Writer.Alloc(1);
                 callback(buffer, state);
 
-                _bytesWritten += buffer.BytesWritten;
+                var bytesWritten = buffer.BytesWritten;
+                _unflushedBytes += bytesWritten;
+                _totalBytesCommitted += bytesWritten;
+
                 buffer.Commit();
             }
         }
@@ -102,12 +106,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 if (_transportConnection != null)
                 {
-                    var unflushedBytes = _bytesWritten - _transportConnection.TotalBytesWritten;
+                    var unflushedBytes = _totalBytesCommitted - _transportConnection.TotalBytesWritten;
 
                     if (unflushedBytes > 0)
                     {
-                        // unflushedBytes should never be over 64KB in the default configuration.
-                        _timeoutControl.StartTimingWrite((int)Math.Min(unflushedBytes, int.MaxValue));
+                        _timeoutControl.StartTimingWrite(unflushedBytes);
                         _pipe.Writer.OnReaderCompleted((ex, state) => ((ITimeoutControl)state).StopTimingWrite(), _timeoutControl);
                     }
                 }
@@ -145,6 +148,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             bool chunk = false)
         {
             var writableBuffer = default(WritableBuffer);
+            long unflushedBytes;
 
             lock (_contextLock)
             {
@@ -170,15 +174,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     }
                 }
 
-                _bytesWritten += writableBuffer.BytesWritten;
+                var bytesWritten = writableBuffer.BytesWritten;
+                _unflushedBytes += bytesWritten;
+                _totalBytesCommitted += bytesWritten;
 
                 writableBuffer.Commit();
+
+                unflushedBytes = _unflushedBytes;
+                _unflushedBytes = 0;
             }
 
-            return FlushAsync(writableBuffer, cancellationToken);
+            return FlushAsync(writableBuffer, unflushedBytes, cancellationToken);
         }
 
         private Task FlushAsync(WritableBuffer writableBuffer,
+            long count,
             CancellationToken cancellationToken)
         {
             var awaitable = writableBuffer.FlushAsync(cancellationToken);
@@ -187,10 +197,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 // The flush task can't fail today
                 return Task.CompletedTask;
             }
-            return FlushAsyncAwaited(awaitable, writableBuffer.BytesWritten, cancellationToken);
+            return FlushAsyncAwaited(awaitable, count, cancellationToken);
         }
 
-        private async Task FlushAsyncAwaited(WritableBufferAwaitable awaitable, int count, CancellationToken cancellationToken)
+        private async Task FlushAsyncAwaited(WritableBufferAwaitable awaitable, long count, CancellationToken cancellationToken)
         {
             // https://github.com/dotnet/corefxlab/issues/1334
             // Since the flush awaitable doesn't currently support multiple awaiters

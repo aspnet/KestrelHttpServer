@@ -754,8 +754,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(header0Count + header1Count, _frame.RequestHeaders.Count);
 
             await _input.Writer.WriteAsync(Encoding.ASCII.GetBytes("\r\n"));
-            Assert.Equal(header0Count + header1Count, _frame.RequestHeaders.Count);
-
             await requestProcessingTask.TimeoutAfter(TimeSpan.FromSeconds(10));
         }
 
@@ -794,9 +792,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(header0Count + header1Count, _frame.RequestHeaders.Count);
 
             await _input.Writer.WriteAsync(Encoding.ASCII.GetBytes("\r\n"));
-            Assert.Same(newRequestHeaders, _frame.RequestHeaders);
-            Assert.Equal(header0Count + header1Count, _frame.RequestHeaders.Count);
-
             await requestProcessingTask.TimeoutAfter(TimeSpan.FromSeconds(10));
         }
 
