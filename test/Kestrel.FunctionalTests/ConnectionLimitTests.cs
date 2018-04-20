@@ -134,7 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        [Fact(Skip = "https://github.com/aspnet/KestrelHttpServer/issues/2282")]
+        [Fact]
         public async Task ConnectionCountingReturnsToZero()
         {
             const int count = 100;
