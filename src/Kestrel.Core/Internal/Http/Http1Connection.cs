@@ -21,6 +21,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private const byte ByteForwardSlash = (byte)'/';
         private const string Asterisk = "*";
 
+        private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
         private readonly Http1ConnectionContext _context;
         private readonly IHttpParser<Http1ParsingHandler> _parser;
         protected readonly long _keepAliveTicks;
@@ -421,6 +423,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         protected override void OnReset()
         {
             ResetIHttpUpgradeFeature();
+            if (IsWindows)
+            {
+                ResetIHttpSendFileFeature();
+            }
 
             _requestTimedOut = false;
             _requestTargetForm = HttpRequestTarget.Unknown;

@@ -836,7 +836,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        private void VerifyAndUpdateWrite(int count)
+        protected void VerifyAndUpdateWrite(int count)
         {
             var responseHeaders = HttpResponseHeaders;
 

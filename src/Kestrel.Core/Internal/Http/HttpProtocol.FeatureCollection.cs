@@ -261,6 +261,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _currentIHttpUpgradeFeature = this;
         }
 
+        protected void ResetIHttpSendFileFeature()
+        {
+            _currentIHttpSendFileFeature = this;
+        }
+
         protected void ResetIHttp2StreamIdFeature()
         {
             _currentIHttp2StreamIdFeature = this;
