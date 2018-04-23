@@ -259,10 +259,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(MinDataRateData))]
-        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDataRate(string minDataRateName)
+        [MemberData(nameof(MinDataRateDataNames))]
+        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDataRate(string minDataRateDataName)
         {
-            var minDataRate = MinDataRates[minDataRateName];
+            var minDataRate = MinDataRateData[minDataRateDataName];
 
             ((IFeatureCollection)_http1Connection).Get<IHttpMinRequestBodyDataRateFeature>().MinDataRate = minDataRate;
 
@@ -270,10 +270,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(MinDataRateData))]
-        public void ConfiguringIHttpMinResponseDataRateFeatureSetsMinResponseDataRate(string minDataRateName)
+        [MemberData(nameof(MinDataRateDataNames))]
+        public void ConfiguringIHttpMinResponseDataRateFeatureSetsMinResponseDataRate(string minDataRateDataName)
         {
-            var minDataRate = MinDataRates[minDataRateName];
+            var minDataRate = MinDataRateData[minDataRateDataName];
 
             ((IFeatureCollection)_http1Connection).Get<IHttpMinResponseDataRateFeature>().MinDataRate = minDataRate;
 
@@ -974,9 +974,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             TimeSpan.Zero
         };
 
-        public static IEnumerable<object[]> MinDataRateData => MinDataRates.Keys.Select(key => new object[] { key });
+        public static IEnumerable<object[]> MinDataRateDataNames => MinDataRateData.Keys.Select(key => new object[] { key });
 
-        private static Dictionary<string, MinDataRate> MinDataRates => new Dictionary<string, MinDataRate>
+        private static Dictionary<string, MinDataRate> MinDataRateData => new Dictionary<string, MinDataRate>
         {
             { "Null", null },
             { "OneBytePerSecond", new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue) },
