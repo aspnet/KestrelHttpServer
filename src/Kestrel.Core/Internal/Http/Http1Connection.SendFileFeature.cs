@@ -39,10 +39,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var actualCount = count.Value;
 
             cancellationToken.ThrowIfCancellationRequested();
-            using (var sendFile = new SendFile(this, _context.Transport.Output))
-            {
-                await sendFile.SendFileAsync(path, offset, actualCount, cancellationToken);
-            } 
+            var sendFile = new SendFile(this, _context.Transport.Output);
+            await sendFile.SendFileAsync(path, offset, actualCount, cancellationToken);
         }
     }
 }
