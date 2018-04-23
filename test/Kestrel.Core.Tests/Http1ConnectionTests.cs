@@ -259,18 +259,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(MinDataRateData))]
-        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDataRate(MinDataRate minDataRate)
+        [MemberData(nameof(MinDataRateDataNames))]
+        public void ConfiguringIHttpMinRequestBodyDataRateFeatureSetsMinRequestBodyDataRate(string minDataRateDataName)
         {
+            var minDataRate = MinDataRateData[minDataRateDataName];
+
             ((IFeatureCollection)_http1Connection).Get<IHttpMinRequestBodyDataRateFeature>().MinDataRate = minDataRate;
 
             Assert.Same(minDataRate, _http1Connection.MinRequestBodyDataRate);
         }
 
         [Theory]
-        [MemberData(nameof(MinDataRateData))]
-        public void ConfiguringIHttpMinResponseDataRateFeatureSetsMinResponseDataRate(MinDataRate minDataRate)
+        [MemberData(nameof(MinDataRateDataNames))]
+        public void ConfiguringIHttpMinResponseDataRateFeatureSetsMinResponseDataRate(string minDataRateDataName)
         {
+            var minDataRate = MinDataRateData[minDataRateDataName];
+
             ((IFeatureCollection)_http1Connection).Get<IHttpMinResponseDataRateFeature>().MinDataRate = minDataRate;
 
             Assert.Same(minDataRate, _http1Connection.MinResponseDataRate);
@@ -970,10 +974,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             TimeSpan.Zero
         };
 
-        public static TheoryData<MinDataRate> MinDataRateData => new TheoryData<MinDataRate>
+        public static IEnumerable<object[]> MinDataRateDataNames => MinDataRateData.Keys.Select(key => new object[] { key });
+
+        private static Dictionary<string, MinDataRate> MinDataRateData => new Dictionary<string, MinDataRate>
         {
-            null,
-            new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue)
+            { "Null", null },
+            { "OneBytePerSecond", new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue) },
         };
 
         private class RequestHeadersWrapper : IHeaderDictionary
