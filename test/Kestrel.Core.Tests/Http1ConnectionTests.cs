@@ -976,7 +976,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         public static IEnumerable<object[]> MinDataRateDataNames => MinDataRateData.Keys.Select(key => new object[] { key });
 
-        private static IDictionary<string, MinDataRate> MinDataRateData => new Dictionary<string, MinDataRate>
+        public static IDictionary<string, MinDataRate> MinDataRateData => new Dictionary<string, MinDataRate>
         {
             { "Null", null },
             { "OneBytePerSecond", new MinDataRate(bytesPerSecond: 1, gracePeriod: TimeSpan.MaxValue) },
