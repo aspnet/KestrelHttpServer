@@ -22,6 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 {
     public class LibuvTransportTests
     {
+        private static HttpClient _client = new HttpClient();
+
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
             new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
@@ -91,7 +93,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
         [ConditionalTheory]
         [MemberData(nameof(OneToTen))]
-        [OSSkipCondition(OperatingSystems.MacOSX, SkipReason = "Tests fail on OS X due to low file descriptor limit.")]
         public async Task OneToTenThreads(int threadCount)
         {
             var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
@@ -113,20 +114,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
             await transport.BindAsync();
 
-            using (var client = new HttpClient())
+            // Send 20 requests just to make sure we don't get any failures
+            var requestTasks = new List<Task<string>>();
+            for (int i = 0; i < 20; i++)
             {
-                // Send 20 requests just to make sure we don't get any failures
-                var requestTasks = new List<Task<string>>();
-                for (int i = 0; i < 20; i++)
-                {
-                    var requestTask = client.GetStringAsync($"http://127.0.0.1:{listenOptions.IPEndPoint.Port}/");
-                    requestTasks.Add(requestTask);
-                }
+                var requestTask = _client.GetStringAsync($"http://127.0.0.1:{listenOptions.IPEndPoint.Port}/");
+                requestTasks.Add(requestTask);
+            }
 
-                foreach (var result in await Task.WhenAll(requestTasks))
-                {
-                    Assert.Equal("Hello World", result);
-                }
+            foreach (var result in await Task.WhenAll(requestTasks))
+            {
+                Assert.Equal("Hello World", result);
             }
 
             await transport.UnbindAsync();
