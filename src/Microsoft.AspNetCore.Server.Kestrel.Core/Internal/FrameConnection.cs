@@ -435,18 +435,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 if (minResponseDataRate != null)
                 {
-                    var timeoutTicks = Math.Max(
-                        minResponseDataRate.GracePeriod.Ticks,
-                        TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks);
-
                     // Add Heartbeat.Interval since this can be called right before the next heartbeat.
+                    var currentTimeUpperBound = _lastTimestamp + Heartbeat.Interval.Ticks;
+                    var ticksToCompleteWriteAtMinRate = TimeSpan.FromSeconds(size / minResponseDataRate.BytesPerSecond).Ticks;
 
-                    // Don't penalize a connection for completing previous flushes more quickly than required.
+                    // If ticksToCompleteWriteAtMinRate is less than the configured grace period,
+                    // allow that write to take up to the grace period to complete. Only add the grace period
+                    // to the current time and not to any accumulated timeout.
+                    var singleWriteTimeoutTimestamp = currentTimeUpperBound + Math.Max(
+                        minResponseDataRate.GracePeriod.Ticks,
+                        ticksToCompleteWriteAtMinRate);
+
+                    // Don't penalize a connection for completing previous writes more quickly than required.
                     // We don't want to kill a connection when flushing the chunk terminator just because the previous
                     // chunk was large if the previous chunk was flushed quickly.
-                    _writeTimingTimeoutTimestamp = Math.Max(_writeTimingTimeoutTimestamp, _lastTimestamp + Heartbeat.Interval.Ticks);
 
-                    _writeTimingTimeoutTimestamp += timeoutTicks;
+                    // Don't add any grace period to this accumulated timeout because the grace period could
+                    // get accumulated repeatedly making the timeout for a bunch of consecutive small writes
+                    // far too conservative.
+                    var accumulatedWriteTimeoutTimestamp = _writeTimingTimeoutTimestamp + ticksToCompleteWriteAtMinRate;
+
+                    _writeTimingTimeoutTimestamp = Math.Max(singleWriteTimeoutTimestamp, accumulatedWriteTimeoutTimestamp);
                     _writeTimingWrites++;
                 }
             }

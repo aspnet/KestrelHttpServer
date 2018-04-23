@@ -2446,8 +2446,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
             // Smaller chunks allow for quicker response rate timeouts.
-            var chunkSize = 1024;
-            var chunks = 8192;
+            const int chunkSize = 1024;
+            const int chunks = 256 * 1024;;
 
             var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>();
             var connectionStopMessageLogged = new TaskCompletionSource<object>();
@@ -2518,7 +2518,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task HttpsConnectionClosedWhenResponseDoesNotSatisfyMinimumDataRate()
         {
             const int chunkSize = 1024;
-            const int chunks = 8192;
+            const int chunks = 256 * 1024;
 
             var certificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
 
