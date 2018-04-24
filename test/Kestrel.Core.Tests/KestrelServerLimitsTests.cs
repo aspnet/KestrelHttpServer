@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Xunit;
 
@@ -154,9 +156,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TimeoutValidData))]
-        public void KeepAliveTimeoutValid(TimeSpan value)
+        [MemberData(nameof(TimeoutValidDataNames))]
+        public void KeepAliveTimeoutValid(string timeoutName)
         {
+            var value = TimeoutValidData[timeoutName];
+
             Assert.Equal(value, new KestrelServerLimits { KeepAliveTimeout = value }.KeepAliveTimeout);
         }
 
@@ -167,9 +171,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TimeoutInvalidData))]
-        public void KeepAliveTimeoutInvalid(TimeSpan value)
+        [MemberData(nameof(TimeoutInvalidDataNames))]
+        public void KeepAliveTimeoutInvalid(string timeoutName)
         {
+            var value = TimeoutInvalidData[timeoutName];
+
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits { KeepAliveTimeout = value });
 
             Assert.Equal("value", exception.ParamName);
@@ -183,9 +189,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TimeoutValidData))]
-        public void RequestHeadersTimeoutValid(TimeSpan value)
+        [MemberData(nameof(TimeoutValidDataNames))]
+        public void RequestHeadersTimeoutValid(string timeoutName)
         {
+            var value = TimeoutValidData[timeoutName];
+
             Assert.Equal(value, new KestrelServerLimits { RequestHeadersTimeout = value }.RequestHeadersTimeout);
         }
 
@@ -308,17 +316,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Equal(TimeSpan.FromSeconds(5), new KestrelServerLimits().MinResponseDataRate.GracePeriod);
         }
 
-        public static TheoryData<TimeSpan> TimeoutValidData => new TheoryData<TimeSpan>
+        public static IEnumerable<object[]> TimeoutValidDataNames => TimeoutValidData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, TimeSpan> TimeoutValidData => new Dictionary<string, TimeSpan>
         {
-            TimeSpan.FromTicks(1),
-            TimeSpan.MaxValue,
+            { "OneTick", TimeSpan.FromTicks(1) },
+            { "MaxValue", TimeSpan.MaxValue },
         };
 
-        public static TheoryData<TimeSpan> TimeoutInvalidData => new TheoryData<TimeSpan>
+        public static IEnumerable<object[]> TimeoutInvalidDataNames => TimeoutInvalidData.Keys.Select(key => new object[] { key });
+
+        public static Dictionary<string, TimeSpan> TimeoutInvalidData => new Dictionary<string, TimeSpan>
         {
-            TimeSpan.MinValue,
-            TimeSpan.FromTicks(-1),
-            TimeSpan.Zero
+            { "MinValue", TimeSpan.MinValue },
+            { "NegativeOneTick", TimeSpan.FromTicks(-1) },
+            { "Zero", TimeSpan.Zero },
         };
     }
 }
