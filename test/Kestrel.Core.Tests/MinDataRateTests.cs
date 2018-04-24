@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Xunit;
 
@@ -30,34 +32,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(GracePeriodValidData))]
-        public void GracePeriodValid(TimeSpan value)
+        [MemberData(nameof(GracePeriodValidDataNames))]
+        public void GracePeriodValid(string gracePeriodName)
         {
+            var value = GracePeriodValidData[gracePeriodName];
+
             Assert.Equal(value, new MinDataRate(bytesPerSecond: 1, gracePeriod: value).GracePeriod);
         }
 
         [Theory]
-        [MemberData(nameof(GracePeriodInvalidData))]
-        public void GracePeriodInvalid(TimeSpan value)
+        [MemberData(nameof(GracePeriodInvalidDataNames))]
+        public void GracePeriodInvalid(string gracePeriodName)
         {
+            var value = GracePeriodInvalidData[gracePeriodName];
+
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new MinDataRate(bytesPerSecond: 1, gracePeriod: value));
 
             Assert.Equal("gracePeriod", exception.ParamName);
             Assert.StartsWith(CoreStrings.FormatMinimumGracePeriodRequired(Heartbeat.Interval.TotalSeconds), exception.Message);
         }
 
-        public static TheoryData<TimeSpan> GracePeriodValidData => new TheoryData<TimeSpan>
+        public static IEnumerable<object[]> GracePeriodValidDataNames => GracePeriodValidData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, TimeSpan> GracePeriodValidData => new Dictionary<string, TimeSpan>
         {
-            Heartbeat.Interval + TimeSpan.FromTicks(1),
-            TimeSpan.MaxValue
+            { "HeartbeatIntervalPlusOneTick", Heartbeat.Interval + TimeSpan.FromTicks(1) },
+            { "MaxValue", TimeSpan.MaxValue },
         };
 
-        public static TheoryData<TimeSpan> GracePeriodInvalidData => new TheoryData<TimeSpan>
+        public static IEnumerable<object[]> GracePeriodInvalidDataNames => GracePeriodInvalidData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, TimeSpan> GracePeriodInvalidData => new Dictionary<string, TimeSpan>
         {
-            TimeSpan.MinValue,
-            TimeSpan.FromTicks(-1),
-            TimeSpan.Zero,
-            Heartbeat.Interval
+            { "MinValue", TimeSpan.MinValue },
+            { "NegativeOneTicks", TimeSpan.FromTicks(-1) },
+            { "Zero", TimeSpan.Zero },
+            { "HeartbeatInterval", Heartbeat.Interval },
         };
     }
 }

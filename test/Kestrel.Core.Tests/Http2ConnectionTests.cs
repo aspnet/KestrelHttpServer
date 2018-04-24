@@ -1076,23 +1076,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(DuplicatePseudoHeaderFieldData))]
-        public Task HEADERS_Received_HeaderBlockContainsDuplicatePseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        [MemberData(nameof(DuplicatePseudoHeaderFieldDataNames))]
+        public Task HEADERS_Received_HeaderBlockContainsDuplicatePseudoHeaderField_StreamError(string headersName)
         {
+            var headers = DuplicatePseudoHeaderFieldData[headersName];
             return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorDuplicatePseudoHeaderField);
         }
 
         [Theory]
-        [MemberData(nameof(MissingPseudoHeaderFieldData))]
-        public Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        [MemberData(nameof(MissingPseudoHeaderFieldDataNames))]
+        public Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(string headersName)
         {
+            var headers = MissingPseudoHeaderFieldData[headersName];
             return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorMissingMandatoryPseudoHeaderFields);
         }
 
         [Theory]
-        [MemberData(nameof(ConnectMissingPseudoHeaderFieldData))]
-        public async Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_MethodIsCONNECT_NoError(IEnumerable<KeyValuePair<string, string>> headers)
+        [MemberData(nameof(ConnectMissingPseudoHeaderFieldDataNames))]
+        public async Task HEADERS_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_MethodIsCONNECT_NoError(string headersName)
         {
+            var headers = ConnectMissingPseudoHeaderFieldData[headersName];
+
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_HEADERS | Http2HeadersFrameFlags.END_STREAM, headers);
@@ -1110,9 +1114,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(PseudoHeaderFieldAfterRegularHeadersData))]
-        public Task HEADERS_Received_HeaderBlockContainsPseudoHeaderFieldAfterRegularHeaders_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        [MemberData(nameof(PseudoHeaderFieldAfterRegularHeadersDataNames))]
+        public Task HEADERS_Received_HeaderBlockContainsPseudoHeaderFieldAfterRegularHeaders_StreamError(string headersName)
         {
+            var headers = PseudoHeaderFieldAfterRegularHeadersData[headersName];
+
             return HEADERS_Received_InvalidHeaderFields_StreamError(headers, expectedErrorMessage: CoreStrings.Http2ErrorPseudoHeaderFieldAfterRegularHeaders);
         }
 
@@ -2140,9 +2146,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(MissingPseudoHeaderFieldData))]
-        public async Task CONTINUATION_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(IEnumerable<KeyValuePair<string, string>> headers)
+        [MemberData(nameof(MissingPseudoHeaderFieldDataNames))]
+        public async Task CONTINUATION_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_StreamError(string headersName)
         {
+            var headers = MissingPseudoHeaderFieldData[headersName];
+
             await InitializeConnectionAsync(_noopApplication);
 
             Assert.True(await SendHeadersAsync(1, Http2HeadersFrameFlags.NONE, headers));
@@ -2164,9 +2172,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [MemberData(nameof(ConnectMissingPseudoHeaderFieldData))]
-        public async Task CONTINUATION_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_MethodIsCONNECT_NoError(IEnumerable<KeyValuePair<string, string>> headers)
+        [MemberData(nameof(ConnectMissingPseudoHeaderFieldDataNames))]
+        public async Task CONTINUATION_Received_HeaderBlockDoesNotContainMandatoryPseudoHeaderField_MethodIsCONNECT_NoError(string headersName)
         {
+            var headers = ConnectMissingPseudoHeaderFieldData[headersName];
+
             await InitializeConnectionAsync(_noopApplication);
 
             await SendHeadersAsync(1, Http2HeadersFrameFlags.END_STREAM, headers);
@@ -2935,11 +2945,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
         }
 
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> DuplicatePseudoHeaderFieldData
+        public static IEnumerable<object[]> DuplicatePseudoHeaderFieldDataNames =>
+            DuplicatePseudoHeaderFieldData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, IEnumerable<KeyValuePair<string, string>>> DuplicatePseudoHeaderFieldData
         {
             get
             {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var data = new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>();
                 var requestHeaders = new[]
                 {
                     new KeyValuePair<string, string>(":method", "GET"),
@@ -2951,18 +2964,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 foreach (var headerField in requestHeaders)
                 {
                     var headers = requestHeaders.Concat(new[] { new KeyValuePair<string, string>(headerField.Key, headerField.Value) });
-                    data.Add(headers);
+                    data.Add(headerField.Key, headers);
                 }
 
                 return data;
             }
         }
 
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> MissingPseudoHeaderFieldData
+        public static IEnumerable<object[]> MissingPseudoHeaderFieldDataNames =>
+            MissingPseudoHeaderFieldData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, IEnumerable<KeyValuePair<string, string>>> MissingPseudoHeaderFieldData
         {
             get
             {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var data = new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>();
                 var requestHeaders = new[]
                 {
                     new KeyValuePair<string, string>(":method", "GET"),
@@ -2973,18 +2989,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 foreach (var headerField in requestHeaders)
                 {
                     var headers = requestHeaders.Except(new[] { headerField });
-                    data.Add(headers);
+                    data.Add(headerField.Key, headers);
                 }
 
                 return data;
             }
         }
 
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> ConnectMissingPseudoHeaderFieldData
+        public static IEnumerable<object[]> ConnectMissingPseudoHeaderFieldDataNames => 
+            ConnectMissingPseudoHeaderFieldData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, IEnumerable<KeyValuePair<string, string>>> ConnectMissingPseudoHeaderFieldData
         {
             get
             {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var data = new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>();
                 var methodHeader = new[] { new KeyValuePair<string, string>(":method", "CONNECT") };
                 var requestHeaders = new[]
                 {
@@ -2996,18 +3015,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 foreach (var headerField in requestHeaders)
                 {
                     var headers = methodHeader.Concat(requestHeaders.Except(new[] { headerField }));
-                    data.Add(headers);
+                    data.Add(headerField.Key, headers);
                 }
 
                 return data;
             }
         }
 
-        public static TheoryData<IEnumerable<KeyValuePair<string, string>>> PseudoHeaderFieldAfterRegularHeadersData
+        public static IEnumerable<object[]> PseudoHeaderFieldAfterRegularHeadersDataNames =>
+            PseudoHeaderFieldAfterRegularHeadersData.Keys.Select(key => new object[] { key });
+
+        public static IDictionary<string, IEnumerable<KeyValuePair<string, string>>> PseudoHeaderFieldAfterRegularHeadersData
         {
             get
             {
-                var data = new TheoryData<IEnumerable<KeyValuePair<string, string>>>();
+                var data = new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>();
                 var requestHeaders = new[]
                 {
                     new KeyValuePair<string, string>(":method", "GET"),
@@ -3020,7 +3042,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 foreach (var headerField in requestHeaders.Where(h => h.Key.StartsWith(":")))
                 {
                     var headers = requestHeaders.Except(new[] { headerField }).Concat(new[] { headerField });
-                    data.Add(headers);
+                    data.Add(headerField.Key, headers);
                 }
 
                 return data;
