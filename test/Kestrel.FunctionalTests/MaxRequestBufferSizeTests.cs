@@ -169,10 +169,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        // This test is release only because it creates a situation where we dispose server with
-        // pipe containing data which causes MemoryPool validation to throw
-#if RELEASE
-
         [Fact]
         public async Task ServerShutsDownGracefullyWhenMaxRequestBufferSizeExceeded()
         {
@@ -245,15 +241,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-#endif
-
         private IWebHost StartWebHost(long? maxRequestBufferSize,
             byte[] expectedBody,
             bool useConnectionAdapter,
             TaskCompletionSource<object> startReadingRequestBody,
             TaskCompletionSource<object> clientFinishedSendingRequestBody)
         {
-            var host = TransportSelector.GetWebHostBuilder()
+            var host = TransportSelector.GetWebHostBuilder(supressMemoryPoolDisposeException: true)
                 .ConfigureServices(AddTestLogging)
                 .UseKestrel(options =>
                 {
