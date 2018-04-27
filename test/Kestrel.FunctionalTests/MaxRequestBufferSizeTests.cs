@@ -242,8 +242,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     host.Dispose();
                 }
             }
-
-            await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
+            // TODO: Reenable
+            // await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
         }
 
         private IWebHost StartWebHost(long? maxRequestBufferSize,
