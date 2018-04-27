@@ -242,8 +242,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     host.Dispose();
                 }
             }
-            // TODO: Reenable
-            // await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
+            // Allow appfunc to unblock
+            startReadingRequestBody.SetResult(null);
+            clientFinishedSendingRequestBody.SetResult(null);
+            await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
         }
 
         private IWebHost StartWebHost(long? maxRequestBufferSize,
