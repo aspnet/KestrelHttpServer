@@ -38,6 +38,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class ResponseTests : TestApplicationErrorLoggerLoggedTest
     {
+        private static HttpClient _client = new HttpClient();
+
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
             new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
@@ -77,25 +79,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    response.EnsureSuccessStatusCode();
-                    var responseBody = await response.Content.ReadAsStreamAsync();
+                var response = await _client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                response.EnsureSuccessStatusCode();
+                var responseBody = await response.Content.ReadAsStreamAsync();
 
-                    // Read the full response body
-                    var total = 0;
-                    var bytes = new byte[1024];
-                    var count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
-                    while (count > 0)
+                // Read the full response body
+                var total = 0;
+                var bytes = new byte[1024];
+                var count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
+                while (count > 0)
+                {
+                    for (int i = 0; i < count; i++)
                     {
-                        for (int i = 0; i < count; i++)
-                        {
-                            Assert.Equal(total % 256, bytes[i]);
-                            total++;
-                        }
-                        count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
+                        Assert.Equal(total % 256, bytes[i]);
+                        total++;
                     }
+                    count = await responseBody.ReadAsync(bytes, 0, bytes.Length);
                 }
             }
         }
@@ -121,22 +120,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
+                var response = await _client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                response.EnsureSuccessStatusCode();
+
+                var headers = response.Headers;
+
+                if (expectedValue == null)
                 {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    response.EnsureSuccessStatusCode();
-
-                    var headers = response.Headers;
-
-                    if (expectedValue == null)
-                    {
-                        Assert.False(headers.Contains(headerName));
-                    }
-                    else
-                    {
-                        Assert.True(headers.Contains(headerName));
-                        Assert.Equal(headers.GetValues(headerName).Single(), expectedValue);
-                    }
+                    Assert.False(headers.Contains(headerName));
+                }
+                else
+                {
+                    Assert.True(headers.Contains(headerName));
+                    Assert.Equal(headers.GetValues(headerName).Single(), expectedValue);
                 }
             }
         }
@@ -170,14 +166,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                var response = await _client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
 
-                    Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-                    Assert.False(onStartingCalled);
-                    await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
-                }
+                Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+                Assert.False(onStartingCalled);
+                await onCompletedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
             }
         }
 
@@ -204,14 +197,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                var response = await _client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
 
-                    // Despite the error, the response had already started
-                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                    Assert.NotNull(ex);
-                }
+                // Despite the error, the response had already started
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.NotNull(ex);
             }
         }
 
@@ -330,11 +320,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                }
+                var response = await _client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             }
         }
 
@@ -362,11 +349,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
-                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                }
+                var response = await _client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
                 delayTcs.SetResult(null);
             }
@@ -431,19 +415,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 if (!sendMalformedRequest)
                 {
-                    using (var client = new HttpClient())
+                    try
                     {
-                        try
+                        var response = await _client.GetAsync($"http://127.0.0.1:{server.Port}/");
+                        Assert.Equal(expectedClientStatusCode, response.StatusCode);
+                    }
+                    catch
+                    {
+                        if (expectedClientStatusCode != null)
                         {
-                            var response = await client.GetAsync($"http://127.0.0.1:{server.Port}/");
-                            Assert.Equal(expectedClientStatusCode, response.StatusCode);
-                        }
-                        catch
-                        {
-                            if (expectedClientStatusCode != null)
-                            {
-                                throw;
-                            }
+                            throw;
                         }
                     }
                 }

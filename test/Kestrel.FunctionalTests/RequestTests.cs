@@ -39,6 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private const int _connectionStartedEventId = 1;
         private const int _connectionResetEventId = 19;
         private static readonly int _semaphoreWaitTimeout = Debugger.IsAttached ? 10000 : 2500;
+        private static HttpClient _client = new HttpClient();
 
         public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
         {
@@ -162,14 +163,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 });
 
             using (var host = builder.Build())
-            using (var client = new HttpClient())
             {
                 host.Start();
 
-                client.DefaultRequestHeaders.Connection.Clear();
-                client.DefaultRequestHeaders.Connection.Add("close");
+                var request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, $"http://127.0.0.1:{host.GetPort()}/");
+                request.Headers.Connection.Clear();
+                request.Headers.Connection.Add("close");
 
-                var response = await client.GetAsync($"http://127.0.0.1:{host.GetPort()}/");
+                var response = await _client.SendAsync(request);
                 response.EnsureSuccessStatusCode();
             }
         }
@@ -209,14 +210,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 host.Start();
 
-                using (var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{host.GetPort()}") })
-                {
-                    await client.GetAsync("/");
-                    await client.GetAsync("/");
+                var address = $"http://127.0.0.1:{host.GetPort()}";
+                await _client.GetAsync(address);
+                await _client.GetAsync(address);
 
-                    Assert.False(requestBodyPersisted);
-                    Assert.False(responseBodyPersisted);
-                }
+                Assert.False(requestBodyPersisted);
+                Assert.False(responseBodyPersisted);
             }
         }
 
@@ -1647,11 +1646,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 });
 
             using (var host = builder.Build())
-            using (var client = new HttpClient())
             {
                 host.Start();
 
-                var response = await client.GetAsync($"http://{requestAddress}:{host.GetPort()}/");
+                var response = await _client.GetAsync($"http://{requestAddress}:{host.GetPort()}/");
                 response.EnsureSuccessStatusCode();
 
                 var connectionFacts = await response.Content.ReadAsStringAsync();
