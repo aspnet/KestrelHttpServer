@@ -33,6 +33,7 @@ using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
@@ -418,7 +419,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             mockHttpContextFactory.Setup(f => f.Create(It.IsAny<IFeatureCollection>()))
                 .Returns<IFeatureCollection>(fc => new DefaultHttpContext(fc));
 
-            var disposedTcs = new TaskCompletionSource<int>();
+            var disposedTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             mockHttpContextFactory.Setup(f => f.Dispose(It.IsAny<HttpContext>()))
                 .Callback<HttpContext>(c =>
                 {
@@ -619,7 +620,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             const string response = "hello, world";
 
-            var logTcs = new TaskCompletionSource<object>();
+            var logTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
                 .Setup(trace => trace.ConnectionHeadResponseBodyWrite(It.IsAny<string>(), response.Length))
