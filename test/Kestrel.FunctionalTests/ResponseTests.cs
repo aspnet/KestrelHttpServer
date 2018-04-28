@@ -2236,7 +2236,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             // Ensure string is long enough to disable write-behind buffering
             var largeString = new string('a', maxBytesPreCompleted + 1);
 
-            var writeTcs = new TaskCompletionSource<object>();
+            var writeTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var requestAbortedWh = new ManualResetEventSlim();
             var requestStartWh = new ManualResetEventSlim();
 
