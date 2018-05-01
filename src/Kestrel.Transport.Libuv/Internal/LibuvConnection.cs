@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public partial class LibuvConnection : LibuvConnectionContext
+    public partial class LibuvConnection : TransportConnection
     {
         private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
 
@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
         private MemoryHandle _bufferHandle;
 
-        public LibuvConnection(ListenerContext context, UvStreamHandle socket) : base(context)
+        public LibuvConnection(UvStreamHandle socket, ILibuvTrace log, LibuvThread thread)
         {
             _socket = socket;
 
@@ -46,13 +46,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
                 ConnectionClosed = _connectionClosedTokenSource.Token;
             }
+
+            Log = log;
+            Thread = thread;
         }
 
         public LibuvOutputConsumer OutputConsumer { get; set; }
-
-        private ILibuvTrace Log => ListenerContext.TransportContext.Log;
-        private IConnectionDispatcher ConnectionDispatcher => ListenerContext.TransportContext.ConnectionDispatcher;
-        private LibuvThread Thread => ListenerContext.Thread;
+        private ILibuvTrace Log { get; }
+        private LibuvThread Thread { get; }
+        public override MemoryPool<byte> MemoryPool => Thread.MemoryPool;
+        public override PipeScheduler InputWriterScheduler => Thread;
+        public override PipeScheduler OutputReaderScheduler => Thread;
 
         public override long TotalBytesWritten => OutputConsumer?.TotalBytesWritten ?? 0;
 
@@ -60,8 +64,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         {
             try
             {
-                ConnectionDispatcher.OnConnection(this);
-
                 OutputConsumer = new LibuvOutputConsumer(Output, Thread, _socket, ConnectionId, Log);
 
                 StartReading();

@@ -69,12 +69,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public override PipeScheduler OutputReaderScheduler => _scheduler;
         public override long TotalBytesWritten => Interlocked.Read(ref _totalBytesWritten);
 
-        public async Task StartAsync(IConnectionDispatcher connectionDispatcher)
+        public async Task StartAsync()
         {
             try
             {
-                connectionDispatcher.OnConnection(this);
-
                 // Spawn send and receive logic
                 var receiveTask = DoReceive();
                 var sendTask = DoSend();
