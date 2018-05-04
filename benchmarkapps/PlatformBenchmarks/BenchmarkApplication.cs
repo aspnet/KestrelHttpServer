@@ -12,22 +12,22 @@ namespace PlatformBenchmarks
 {
     public class BenchmarkApplication : HttpConnection
     {
-        private static AsciiString _crlf = "\r\n";
-        private static AsciiString _eoh = "\r\n\r\n"; // End Of Headers
-        private static AsciiString _http11OK = "HTTP/1.1 200 OK\r\n";
-        private static AsciiString _headerServer = "Server: Custom";
-        private static AsciiString _headerContentLength = "Content-Length: ";
-        private static AsciiString _headerContentLengthZero = "Content-Length: 0\r\n";
-        private static AsciiString _headerContentTypeText = "Content-Type: text/plain\r\n";
-        private static AsciiString _headerContentTypeJson = "Content-Type: application/json\r\n";
+        private readonly static AsciiString _crlf = "\r\n";
+        private readonly static AsciiString _eoh = "\r\n\r\n"; // End Of Headers
+        private readonly static AsciiString _http11OK = "HTTP/1.1 200 OK\r\n";
+        private readonly static AsciiString _headerServer = "Server: Custom";
+        private readonly static AsciiString _headerContentLength = "Content-Length: ";
+        private readonly static AsciiString _headerContentLengthZero = "Content-Length: 0\r\n";
+        private readonly static AsciiString _headerContentTypeText = "Content-Type: text/plain\r\n";
+        private readonly static AsciiString _headerContentTypeJson = "Content-Type: application/json\r\n";
 
 
-        private static AsciiString _plainTextBody = "Hello, World!";
+        private readonly static AsciiString _plainTextBody = "Hello, World!";
 
         private static class Paths
         {
-            public static AsciiString Plaintext = "/plaintext";
-            public static AsciiString Json = "/json";
+            public readonly static AsciiString Plaintext = "/plaintext";
+            public readonly static AsciiString Json = "/json";
         }
 
         private bool _isPlainText;
@@ -76,6 +76,7 @@ namespace PlatformBenchmarks
         {
             await Writer.FlushAsync();
         }
+
         private static void PlainText(PipeWriter pipeWriter)
         {
             var writer = new BufferWriter<PipeWriter>(pipeWriter);
