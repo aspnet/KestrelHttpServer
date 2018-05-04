@@ -3,10 +3,10 @@
 
 using System;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
+namespace Microsoft.AspNetCore.Server.Kestrel.Core
 {
     [Flags]
-    public enum HttpProtocols
+    internal enum HttpProtocols
     {
         None = 0x0,
         Http1 = 0x1,
