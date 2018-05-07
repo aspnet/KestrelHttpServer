@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Testing
         // Application errors are logged using 13 as the eventId.
         private const int ApplicationErrorEventId = 13;
 
-        public List<Type> IgnoredExceptions { get; } = new List<Type>();
+        public HashSet<Type> IgnoredExceptions { get; } = new HashSet<Type>();
 
         public bool ThrowOnCriticalErrors { get; set; } = true;
 
