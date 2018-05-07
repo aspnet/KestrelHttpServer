@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class MaxRequestBufferSizeTests : LoggedTest
     {
-        private const int _dataLength = 20 * 1024 * 1024;
+        private const int _dataLength = 100 * 1024 * 1024;
 
         private static readonly string[] _requestLines = new[]
         {
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // Larger than default, but still significantly lower than data, so client should be paused.
                     // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
                     // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
-                    Tuple.Create((long?)5 * 1024 * 1024, true),
+                    Tuple.Create((long?)25 * 1024 * 1024, true),
 
                     // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
                     // OS-level buffers in client and/or server will handle the overflow.
@@ -270,6 +270,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             listenOptions.ConnectionAdapters.Add(new PassThroughConnectionAdapter());
                         }
                     });
+
+                    options.Limits.MaxRequestBodySize = _dataLength;
 
                     options.Limits.MaxRequestBufferSize = maxRequestBufferSize;
 
