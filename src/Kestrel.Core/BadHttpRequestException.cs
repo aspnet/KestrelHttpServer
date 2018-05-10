@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         }
 
         [StackTraceHidden]
-        public static void Throw(RequestRejectionReason reason, HttpMethod method)
+        internal static void Throw(RequestRejectionReason reason, HttpMethod method)
             => throw GetException(reason, method.ToString().ToUpperInvariant());
 
         [MethodImpl(MethodImplOptions.NoInlining)]
