@@ -2863,8 +2863,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     await context.Request.Body.CopyToAsync(context.Response.Body);
                 }
-                catch (OperationCanceledException)
+                catch
                 {
+                    // This should always throw an OperationCanceledException. Unfortunately a ECONNRESET UvException sometimes gets thrown.
+                    // This will be fixed by https://github.com/aspnet/KestrelHttpServer/pull/2547
                     appFuncCompleted.SetResult(null);
                     throw;
                 }
