@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class MaxRequestBufferSizeTests : LoggedTest
     {
-        private const int _dataLength = 20 * 1024 * 1024;
+        private const int _dataLength = 100 * 1024 * 1024;
 
         private static readonly string[] _requestLines = new[]
         {
@@ -29,6 +29,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             $"Content-Length: {_dataLength}\r\n",
             "\r\n"
         };
+
+        private static byte[] _scratchBuffer = new byte[1024 * 1024];
 
         public static IEnumerable<object[]> LargeUploadData
         {
@@ -49,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // Larger than default, but still significantly lower than data, so client should be paused.
                     // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
                     // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
-                    Tuple.Create((long?)5 * 1024 * 1024, true),
+                    Tuple.Create((long?)25 * 1024 * 1024, true),
 
                     // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
                     // OS-level buffers in client and/or server will handle the overflow.
@@ -82,10 +84,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task LargeUpload(long? maxRequestBufferSize, bool connectionAdapter, bool expectPause)
         {
             // Parameters
-            var data = new byte[_dataLength];
             var bytesWrittenTimeout = TimeSpan.FromMilliseconds(100);
             var bytesWrittenPollingInterval = TimeSpan.FromMilliseconds(bytesWrittenTimeout.TotalMilliseconds / 10);
-            var maxSendSize = 4096;
+            var maxSendSize = _scratchBuffer.Length;
 
             var startReadingRequestBody = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var clientFinishedSendingRequestBody = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -93,27 +94,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var memoryPoolFactory = new DiagnosticMemoryPoolFactory(allowLateReturn: true);
 
-            using (var host = StartWebHost(maxRequestBufferSize, data, connectionAdapter, startReadingRequestBody, clientFinishedSendingRequestBody, memoryPoolFactory.Create))
+            using (var host = StartWebHost(maxRequestBufferSize, connectionAdapter, startReadingRequestBody, clientFinishedSendingRequestBody, memoryPoolFactory.Create))
             {
                 var port = host.GetPort();
                 using (var socket = CreateSocket(port))
                 using (var stream = new NetworkStream(socket))
                 {
-                    await WritePostRequestHeaders(stream, data.Length);
+                    await WritePostRequestHeaders(stream, _dataLength);
 
                     var bytesWritten = 0;
 
                     Func<Task> sendFunc = async () =>
                     {
-                        while (bytesWritten < data.Length)
+                        while (bytesWritten < _dataLength)
                         {
-                            var size = Math.Min(data.Length - bytesWritten, maxSendSize);
-                            await stream.WriteAsync(data, bytesWritten, size).ConfigureAwait(false);
+                            var size = Math.Min(_dataLength - bytesWritten, maxSendSize);
+                            await stream.WriteAsync(_scratchBuffer, 0, size).ConfigureAwait(false);
                             bytesWritten += size;
                             lastBytesWritten = DateTime.Now;
                         }
 
-                        Assert.Equal(data.Length, bytesWritten);
+                        Assert.Equal(_dataLength, bytesWritten);
                         clientFinishedSendingRequestBody.TrySetResult(null);
                     };
 
@@ -129,8 +130,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         // The maximum is harder to determine, since there can be OS-level buffers in both the client
                         // and server, which allow the client to send more than maxRequestBufferSize before getting
                         // paused.  We assume the combined buffers are smaller than the difference between
-                        // data.Length and maxRequestBufferSize.
-                        var maximumExpectedBytesWritten = data.Length - 1;
+                        // _dataLength and maxRequestBufferSize.
+                        var maximumExpectedBytesWritten = _dataLength - 1;
 
                         // Block until the send task has gone a while without writing bytes AND
                         // the bytes written exceeds the minimum expected.  This indicates the server buffer
@@ -166,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     using (var reader = new StreamReader(stream, Encoding.ASCII))
                     {
                         var response = reader.ReadToEnd();
-                        Assert.Contains($"bytesRead: {data.Length}", response);
+                        Assert.Contains($"bytesRead: {_dataLength}", response);
                     }
                 }
             }
@@ -178,10 +179,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ServerShutsDownGracefullyWhenMaxRequestBufferSizeExceeded()
         {
             // Parameters
-            var data = new byte[_dataLength];
             var bytesWrittenTimeout = TimeSpan.FromMilliseconds(100);
             var bytesWrittenPollingInterval = TimeSpan.FromMilliseconds(bytesWrittenTimeout.TotalMilliseconds / 10);
-            var maxSendSize = 4096;
+            var maxSendSize = _scratchBuffer.Length;
 
             var startReadingRequestBody = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var clientFinishedSendingRequestBody = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -189,22 +189,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var memoryPoolFactory = new DiagnosticMemoryPoolFactory(allowLateReturn: true);
 
-            using (var host = StartWebHost(16 * 1024, data, false, startReadingRequestBody, clientFinishedSendingRequestBody, memoryPoolFactory.Create))
+            using (var host = StartWebHost(16 * 1024, false, startReadingRequestBody, clientFinishedSendingRequestBody, memoryPoolFactory.Create))
             {
                 var port = host.GetPort();
                 using (var socket = CreateSocket(port))
                 using (var stream = new NetworkStream(socket))
                 {
-                    await WritePostRequestHeaders(stream, data.Length);
+                    await WritePostRequestHeaders(stream, _dataLength);
 
                     var bytesWritten = 0;
 
                     Func<Task> sendFunc = async () =>
                     {
-                        while (bytesWritten < data.Length)
+                        while (bytesWritten < _dataLength)
                         {
-                            var size = Math.Min(data.Length - bytesWritten, maxSendSize);
-                            await stream.WriteAsync(data, bytesWritten, size).ConfigureAwait(false);
+                            var size = Math.Min(_dataLength - bytesWritten, maxSendSize);
+                            await stream.WriteAsync(_scratchBuffer, 0, size).ConfigureAwait(false);
                             bytesWritten += size;
                             lastBytesWritten = DateTime.Now;
                         }
@@ -222,8 +222,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     // The maximum is harder to determine, since there can be OS-level buffers in both the client
                     // and server, which allow the client to send more than maxRequestBufferSize before getting
                     // paused.  We assume the combined buffers are smaller than the difference between
-                    // data.Length and maxRequestBufferSize.
-                    var maximumExpectedBytesWritten = data.Length - 1;
+                    // _dataLength and maxRequestBufferSize.
+                    var maximumExpectedBytesWritten = _dataLength - 1;
 
                     // Block until the send task has gone a while without writing bytes AND
                     // the bytes written exceeds the minimum expected.  This indicates the server buffer
@@ -253,7 +253,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         }
 
         private IWebHost StartWebHost(long? maxRequestBufferSize,
-            byte[] expectedBody,
             bool useConnectionAdapter,
             TaskCompletionSource<object> startReadingRequestBody,
             TaskCompletionSource<object> clientFinishedSendingRequestBody,
@@ -270,6 +269,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             listenOptions.ConnectionAdapters.Add(new PassThroughConnectionAdapter());
                         }
                     });
+
+                    options.Limits.MaxRequestBodySize = _dataLength;
 
                     options.Limits.MaxRequestBufferSize = maxRequestBufferSize;
 
@@ -292,20 +293,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 {
                     await startReadingRequestBody.Task.TimeoutAfter(TimeSpan.FromSeconds(120));
 
-                    var buffer = new byte[expectedBody.Length];
                     var bytesRead = 0;
-                    while (bytesRead < buffer.Length)
+                    while (bytesRead < _dataLength)
                     {
-                        bytesRead += await context.Request.Body.ReadAsync(buffer, bytesRead, buffer.Length - bytesRead);
+                        bytesRead += await context.Request.Body.ReadAsync(_scratchBuffer, 0, Math.Min(_scratchBuffer.Length, _dataLength - bytesRead));
                     }
 
                     await clientFinishedSendingRequestBody.Task.TimeoutAfter(TimeSpan.FromSeconds(120));
 
                     // Verify client didn't send extra bytes
-                    if (await context.Request.Body.ReadAsync(new byte[1], 0, 1) != 0)
+                    if (await context.Request.Body.ReadAsync(_scratchBuffer, 0, 1) != 0)
                     {
                         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                        await context.Response.WriteAsync("Client sent more bytes than expectedBody.Length");
+                        await context.Response.WriteAsync("Client sent more bytes than _dataLength");
                         return;
                     }
 
