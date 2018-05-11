@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
@@ -30,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _connectionAdapters = adapters;
         }
 
-        public Task OnConnectionAsync(ConnectionContext connectionContext)
+        public async Task OnConnectionAsync(ConnectionContext connectionContext)
         {
             // We need the transport feature so that we can cancel the output reader that the transport is using
             // This is a bit of a hack but it preserves the existing semantics
@@ -69,22 +70,43 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             var connection = new HttpConnection(httpConnectionContext);
+            var inputCompletionState = new PipeCompletionState(connection);
+            var outputCompletionState = new PipeCompletionState(connection);
 
             var processingTask = connection.StartRequestProcessing(_application);
 
-            connectionContext.Transport.Input.OnWriterCompleted((error, state) =>
-            {
-                ((HttpConnection)state).Abort(error);
-            },
-            connection);
+            connectionContext.Transport.Input.OnWriterCompleted(
+                (error, state) => CompletedCallback(error, state),
+                inputCompletionState);
 
-            connectionContext.Transport.Output.OnReaderCompleted((error, state) =>
-            {
-                ((HttpConnection)state).OnConnectionClosed(error);
-            },
-            connection);
+            connectionContext.Transport.Output.OnReaderCompleted(
+                (error, state) => CompletedCallback(error, state),
+                outputCompletionState);
 
-            return processingTask;
+            await inputCompletionState.CompletedTcs.Task;
+            await outputCompletionState.CompletedTcs.Task;
+
+            connection.OnConnectionClosed();
+
+            await processingTask;
+        }
+
+        private static void CompletedCallback(Exception error, object state)
+        {
+            var pipeCompletionState = (PipeCompletionState)state;
+            pipeCompletionState.Connection.Abort(error);
+            pipeCompletionState.CompletedTcs.SetResult(null);
+        }
+
+        private class PipeCompletionState
+        {
+            public PipeCompletionState(HttpConnection connection)
+            {
+                Connection = connection;
+            }
+
+            public HttpConnection Connection;
+            public TaskCompletionSource<object> CompletedTcs = new TaskCompletionSource<object>();
         }
     }
 }
