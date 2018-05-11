@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

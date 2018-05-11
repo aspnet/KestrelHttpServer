@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Hosting

@@ -11,12 +11,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public static class HttpConnectionBuilderExtensions
     {
-        public static IConnectionBuilder UseHttpServer<TContext>(this IConnectionBuilder builder, ServiceContext serviceContext, IHttpApplication<TContext> application, HttpProtocols protocols)
+        internal static IConnectionBuilder UseHttpServer<TContext>(this IConnectionBuilder builder, ServiceContext serviceContext, IHttpApplication<TContext> application, HttpProtocols protocols)
         {
             return builder.UseHttpServer(Array.Empty<IConnectionAdapter>(), serviceContext, application, protocols);
         }
 
-        public static IConnectionBuilder UseHttpServer<TContext>(this IConnectionBuilder builder, IList<IConnectionAdapter> adapters, ServiceContext serviceContext, IHttpApplication<TContext> application, HttpProtocols protocols)
+        internal static IConnectionBuilder UseHttpServer<TContext>(this IConnectionBuilder builder, IList<IConnectionAdapter> adapters, ServiceContext serviceContext, IHttpApplication<TContext> application, HttpProtocols protocols)
         {
             var middleware = new HttpConnectionMiddleware<TContext>(adapters, serviceContext, application, protocols);
             return builder.Use(next =>

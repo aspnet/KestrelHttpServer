@@ -8,7 +8,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Features
     /// <summary>
     /// Feature for efficiently handling connection timeouts.
     /// </summary>
-    public interface IConnectionTimeoutFeature
+    internal interface IConnectionTimeoutFeature
     {
         /// <summary>
         /// Close the connection after the specified positive finite <see cref="TimeSpan"/>

@@ -3,12 +3,11 @@
 
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Hosting;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
+namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
     public sealed class SocketTransportFactory : ITransportFactory
     {

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;

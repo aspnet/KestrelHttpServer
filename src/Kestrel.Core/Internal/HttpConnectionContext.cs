@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
     {
         public string ConnectionId { get; set; }
         public long HttpConnectionId { get; set; }
-        public HttpProtocols Protocols { get; set; }
+        internal HttpProtocols Protocols { get; set; }
         public ConnectionContext ConnectionContext { get; set; }
         public ServiceContext ServiceContext { get; set; }
         public IFeatureCollection ConnectionFeatures { get; set; }
