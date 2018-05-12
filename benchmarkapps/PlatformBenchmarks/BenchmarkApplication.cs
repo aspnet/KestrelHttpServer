@@ -37,25 +37,20 @@ namespace PlatformBenchmarks
 
         public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
         {
+            var requestType = RequestType.NotRecognized;
             if (method == HttpMethod.Get)
             {
-                if (path.StartsWith(Paths.Plaintext))
+                if (Paths.Plaintext.Length <= path.Length && path.StartsWith(Paths.Plaintext))
                 {
-                    _requestType = RequestType.PlainText;
+                    requestType = RequestType.PlainText;
                 }
-                else if (path.StartsWith(Paths.Json))
+                else if (Paths.Json.Length <= path.Length && path.StartsWith(Paths.Json))
                 {
-                    _requestType = RequestType.Json;
-                }
-                else
-                {
-                    _requestType = RequestType.NotRecognized;
+                    requestType = RequestType.Json;
                 }
             }
-            else
-            {
-                _requestType = RequestType.NotRecognized;
-            }
+
+            _requestType = requestType;
         }
 
         public void OnHeader(Span<byte> name, Span<byte> value)
