@@ -12,17 +12,27 @@ namespace PlatformBenchmarks
 {
     public static class HttpApplicationConnectionBuilderExtensions
     {
-        public static IConnectionBuilder UseHttpApplication<TConnection>(this IConnectionBuilder builder) where TConnection : HttpConnection, new()
+        public static IConnectionBuilder UseHttpApplication<TConnection, TDevirtualizer>(this IConnectionBuilder builder) 
+            where TConnection : HttpConnection<TConnection, TDevirtualizer>, new()
+            where TDevirtualizer : struct, IParsingDevirtualizer<TConnection, TDevirtualizer>
         {
-            return builder.Use(next => new HttpApplication<TConnection>().ExecuteAsync);
+            return builder.Use(next => new HttpApplication<TConnection, TDevirtualizer>().ExecuteAsync);
+        }
+
+        public static IConnectionBuilder UseHttpApplication<TConnection>(this IConnectionBuilder builder)
+            where TConnection : HttpConnection<TConnection, NonDevirtualizer<TConnection>>, new()
+        {
+            return builder.Use(next => new HttpApplication<TConnection, NonDevirtualizer<TConnection>>().ExecuteAsync);
         }
     }
 
-    public class HttpApplication<TConnection> where TConnection : HttpConnection, new()
+    public class HttpApplication<TConnection, TDevirtualizer> 
+        where TConnection : HttpConnection<TConnection, TDevirtualizer>, new()
+        where TDevirtualizer : struct, IParsingDevirtualizer<TConnection, TDevirtualizer>
     {
         public Task ExecuteAsync(ConnectionContext connection)
         {
-            var parser = new HttpParser<HttpConnection>();
+            var parser = new HttpParser<TDevirtualizer>();
 
             var httpConnection = new TConnection
             {
@@ -34,14 +44,22 @@ namespace PlatformBenchmarks
         }
     }
 
-    public class HttpConnection : IHttpHeadersHandler, IHttpRequestLineHandler
+    public abstract class HttpConnection<TConnection, TDevirtualizer> : IHttpHeadersHandler, IHttpRequestLineHandler
+        where TConnection : HttpConnection<TConnection, TDevirtualizer>, new()
+        where TDevirtualizer : struct, IParsingDevirtualizer<TConnection, TDevirtualizer>
     {
         private State _state;
+        private TDevirtualizer _devirtualizer;
 
         public PipeReader Reader { get; set; }
         public PipeWriter Writer { get; set; }
 
-        internal HttpParser<HttpConnection> Parser { get; set; }
+        internal HttpParser<TDevirtualizer> Parser { get; set; }
+
+        public HttpConnection()
+        {
+            _devirtualizer = new TDevirtualizer() { Connection = (TConnection)this };
+        }
 
         public virtual void OnHeader(Span<byte> name, Span<byte> value)
         {
@@ -131,7 +149,7 @@ namespace PlatformBenchmarks
             var parsingStartLine = _state == State.StartLine;
             if (parsingStartLine)
             {
-                if (Parser.ParseRequestLine(this, buffer, out consumed, out examined))
+                if (Parser.ParseRequestLine(_devirtualizer, buffer, out consumed, out examined))
                 {
                     _state = State.Headers;
                 }
@@ -139,7 +157,7 @@ namespace PlatformBenchmarks
 
             if (_state == State.Headers)
             {
-                if (Parser.ParseHeaders(this, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
+                if (Parser.ParseHeaders(_devirtualizer, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
                 {
                     _state = State.Body;
                 }
@@ -157,5 +175,17 @@ namespace PlatformBenchmarks
             Headers,
             Body
         }
+    }
+
+    public struct NonDevirtualizer<TConnection> : IParsingDevirtualizer<TConnection, NonDevirtualizer<TConnection>>
+            where TConnection : HttpConnection<TConnection, NonDevirtualizer<TConnection>>, new()
+    {
+        public TConnection Connection { get; set; }
+
+        public void OnHeader(Span<byte> name, Span<byte> value)
+            => Connection.OnHeader(name, value);
+
+        public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
+            => Connection.OnStartLine(method, version, target, path, query, customMethod, pathEncoded);
     }
 }
