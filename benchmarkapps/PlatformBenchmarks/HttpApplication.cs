@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -140,6 +142,27 @@ namespace PlatformBenchmarks
             StartLine,
             Headers,
             Body
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static CountingBufferWriter<WriterAdapter> GetWriter(PipeWriter pipeWriter)
+            => new CountingBufferWriter<WriterAdapter>(new WriterAdapter(pipeWriter));
+
+        private struct WriterAdapter : IBufferWriter<byte>
+        {
+            public PipeWriter Writer;
+
+            public WriterAdapter(PipeWriter writer)
+                => Writer = writer;
+
+            public void Advance(int count)
+                => Writer.Advance(count);
+
+            public Memory<byte> GetMemory(int sizeHint = 0)
+                => Writer.GetMemory(sizeHint);
+
+            public Span<byte> GetSpan(int sizeHint = 0)
+                => Writer.GetSpan(sizeHint);
         }
     }
 

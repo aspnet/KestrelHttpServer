@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Buffers;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -79,9 +78,11 @@ namespace PlatformBenchmarks
         {
             await Writer.FlushAsync();
         }
+
         private static void PlainText(PipeWriter pipeWriter)
         {
-            var writer = new CountingBufferWriter<PipeWriter>(pipeWriter);
+            var writer = GetWriter(pipeWriter);
+
             // HTTP 1.1 OK
             writer.Write(_http11OK);
 
@@ -108,7 +109,7 @@ namespace PlatformBenchmarks
 
         private static void Json(PipeWriter pipeWriter)
         {
-            var writer = new CountingBufferWriter<PipeWriter>(pipeWriter);
+            var writer = GetWriter(pipeWriter);
 
             // HTTP 1.1 OK
             writer.Write(_http11OK);
@@ -137,7 +138,7 @@ namespace PlatformBenchmarks
 
         private static void Default(PipeWriter pipeWriter)
         {
-            var writer = new CountingBufferWriter<PipeWriter>(pipeWriter);
+            var writer = GetWriter(pipeWriter);
 
             // HTTP 1.1 OK
             writer.Write(_http11OK);
