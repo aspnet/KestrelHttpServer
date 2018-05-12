@@ -30,23 +30,28 @@ namespace PlatformBenchmarks
             public static AsciiString Json = "/json";
         }
 
-        private bool _isPlainText;
-        private bool _isJson;
+        private RequestType _requestType;
 
         public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
         {
-            if (path.StartsWith(Paths.Plaintext) && method == HttpMethod.Get)
+            if (method == HttpMethod.Get)
             {
-                _isPlainText = true;
-            }
-            else if (path.StartsWith(Paths.Json) && method == HttpMethod.Get)
-            {
-                _isJson = true;
+                if (path.StartsWith(Paths.Plaintext))
+                {
+                    _requestType = RequestType.PlainText;
+                }
+                else if (path.StartsWith(Paths.Json))
+                {
+                    _requestType = RequestType.Json;
+                }
+                else
+                {
+                    _requestType = RequestType.NotRecognized;
+                }
             }
             else
             {
-                _isPlainText = false;
-                _isJson = false;
+                _requestType = RequestType.NotRecognized;
             }
         }
 
@@ -56,11 +61,11 @@ namespace PlatformBenchmarks
 
         public ValueTask ProcessRequestAsync()
         {
-            if (_isPlainText)
+            if (_requestType == RequestType.PlainText)
             {
                 PlainText(Writer);
             }
-            else if (_isJson)
+            else if (_requestType == RequestType.Json)
             {
                 Json(Writer);
             }
@@ -151,6 +156,13 @@ namespace PlatformBenchmarks
             // End of headers
             writer.Write(_crlf);
             writer.Commit();
+        }
+
+        private enum RequestType
+        {
+            NotRecognized,
+            PlainText,
+            Json
         }
     }
 }
