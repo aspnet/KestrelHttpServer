@@ -12,6 +12,8 @@ namespace PlatformBenchmarks
     {
         public static void Main(string[] args)
         {
+            Console.WriteLine(BenchmarkApplication.ApplicationName);
+
             BuildWebHost(args).Run();
         }
 
