@@ -49,11 +49,17 @@ namespace PlatformBenchmarks
         where TDevirtualizer : struct, IParsingDevirtualizer<TConnection, TDevirtualizer>
     {
         private State _state;
+        private TDevirtualizer _devirtualizer;
 
         public PipeReader Reader { get; set; }
         public PipeWriter Writer { get; set; }
 
         internal HttpParser<TDevirtualizer> Parser { get; set; }
+
+        public HttpConnection()
+        {
+            _devirtualizer = new TDevirtualizer() { Connection = (TConnection)this };
+        }
 
         public virtual void OnHeader(Span<byte> name, Span<byte> value)
         {
@@ -143,8 +149,7 @@ namespace PlatformBenchmarks
             var parsingStartLine = _state == State.StartLine;
             if (parsingStartLine)
             {
-                var devirtualizer = new TDevirtualizer() { Connection = (TConnection)this };
-                if (Parser.ParseRequestLine(devirtualizer, buffer, out consumed, out examined))
+                if (Parser.ParseRequestLine(_devirtualizer, buffer, out consumed, out examined))
                 {
                     _state = State.Headers;
                 }
@@ -152,8 +157,7 @@ namespace PlatformBenchmarks
 
             if (_state == State.Headers)
             {
-                var devirtualizer = new TDevirtualizer() { Connection = (TConnection)this };
-                if (Parser.ParseHeaders(devirtualizer, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
+                if (Parser.ParseHeaders(_devirtualizer, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
                 {
                     _state = State.Body;
                 }
