@@ -94,25 +94,10 @@ namespace PlatformBenchmarks
                 }
 
                 var result = await task;
-                var buffer = result.Buffer;
-                var consumed = buffer.Start;
-                var examined = buffer.End;
-
-                if (!buffer.IsEmpty)
-                {
-                    ParseHttpRequest(buffer, out consumed, out examined);
-
-                    if (_state != State.Body && result.IsCompleted)
-                    {
-                        ThrowUnexpectedEndOfData();
-                    }
-                }
-                else if (result.IsCompleted)
+                if (!ParseHttpRequest(ref result))
                 {
                     break;
                 }
-
-                Reader.AdvanceTo(consumed, examined);
 
                 if (_state == State.Body)
                 {
@@ -123,27 +108,44 @@ namespace PlatformBenchmarks
             }
         }
 
-        private void ParseHttpRequest(in ReadOnlySequence<byte> buffer, out SequencePosition consumed, out SequencePosition examined)
+        // Should be `in` but ReadResult isn't readonly struct
+        private bool ParseHttpRequest(ref ReadResult result)
         {
-            consumed = buffer.Start;
-            examined = buffer.End;
+            var buffer = result.Buffer;
+            var consumed = buffer.Start;
+            var examined = buffer.End;
 
-            var parsingStartLine = _state == State.StartLine;
-            if (parsingStartLine)
+            if (!buffer.IsEmpty)
             {
-                if (Parser.ParseRequestLine(this, buffer, out consumed, out examined))
+                var parsingStartLine = _state == State.StartLine;
+                if (parsingStartLine)
                 {
-                    _state = State.Headers;
+                    if (Parser.ParseRequestLine(this, buffer, out consumed, out examined))
+                    {
+                        _state = State.Headers;
+                    }
+                }
+
+                if (_state == State.Headers)
+                {
+                    if (Parser.ParseHeaders(this, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
+                    {
+                        _state = State.Body;
+                    }
+                }
+
+                if (_state != State.Body && result.IsCompleted)
+                {
+                    ThrowUnexpectedEndOfData();
                 }
             }
-
-            if (_state == State.Headers)
+            else if (result.IsCompleted)
             {
-                if (Parser.ParseHeaders(this, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
-                {
-                    _state = State.Body;
-                }
+                return false;
             }
+
+            Reader.AdvanceTo(consumed, examined);
+            return true;
         }
 
         private static void ThrowUnexpectedEndOfData()
