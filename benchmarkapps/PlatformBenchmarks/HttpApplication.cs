@@ -22,7 +22,7 @@ namespace PlatformBenchmarks
     {
         public Task ExecuteAsync(ConnectionContext connection)
         {
-            var parser = new HttpParser<HttpConnection>();
+            var parser = new HttpParser<ParsingAdapter>();
 
             var httpConnection = new TConnection
             {
@@ -41,7 +41,7 @@ namespace PlatformBenchmarks
         public PipeReader Reader { get; set; }
         public PipeWriter Writer { get; set; }
 
-        internal HttpParser<HttpConnection> Parser { get; set; }
+        internal HttpParser<ParsingAdapter> Parser { get; set; }
 
         public virtual void OnHeader(Span<byte> name, Span<byte> value)
         {
@@ -159,5 +159,22 @@ namespace PlatformBenchmarks
             Headers,
             Body
         }
+    }
+
+    public struct ParsingAdapter : IHttpRequestLineHandler, IHttpHeadersHandler
+    {
+        public HttpConnection RequestHandler;
+
+        public ParsingAdapter(HttpConnection requestHandler)
+            => RequestHandler = requestHandler;
+
+        public static implicit operator ParsingAdapter(HttpConnection connection)
+            => new ParsingAdapter(connection);
+
+        public void OnHeader(Span<byte> name, Span<byte> value)
+            => RequestHandler.OnHeader(name, value);
+
+        public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
+            => RequestHandler.OnStartLine(method, version, target, path, query, customMethod, pathEncoded);
     }
 }

@@ -10,7 +10,7 @@ using Utf8Json;
 
 namespace PlatformBenchmarks
 {
-    public class BenchmarkApplication : HttpConnection
+    public sealed class BenchmarkApplication : HttpConnection
     {
         private static AsciiString _crlf = "\r\n";
         private static AsciiString _eoh = "\r\n\r\n"; // End Of Headers
