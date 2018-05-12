@@ -120,7 +120,7 @@ namespace PlatformBenchmarks
                 var parsingStartLine = _state == State.StartLine;
                 if (parsingStartLine)
                 {
-                    if (Parser.ParseRequestLine(this, buffer, out consumed, out examined))
+                    if (Parser.ParseRequestLine(new ParsingAdapter(this), buffer, out consumed, out examined))
                     {
                         _state = State.Headers;
                     }
@@ -128,7 +128,7 @@ namespace PlatformBenchmarks
 
                 if (_state == State.Headers)
                 {
-                    if (Parser.ParseHeaders(this, parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
+                    if (Parser.ParseHeaders(new ParsingAdapter(this), parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
                     {
                         _state = State.Body;
                     }
@@ -167,9 +167,6 @@ namespace PlatformBenchmarks
 
         public ParsingAdapter(HttpConnection requestHandler)
             => RequestHandler = requestHandler;
-
-        public static implicit operator ParsingAdapter(HttpConnection connection)
-            => new ParsingAdapter(connection);
 
         public void OnHeader(Span<byte> name, Span<byte> value)
             => RequestHandler.OnHeader(name, value);
