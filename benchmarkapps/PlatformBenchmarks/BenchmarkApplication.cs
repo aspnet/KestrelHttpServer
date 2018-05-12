@@ -25,7 +25,7 @@ namespace PlatformBenchmarks
 
         private readonly static AsciiString _plainTextBody = "Hello, World!";
 
-        private static class Paths
+        public static class Paths
         {
             public readonly static AsciiString Plaintext = "/plaintext";
             public readonly static AsciiString Json = "/json";
