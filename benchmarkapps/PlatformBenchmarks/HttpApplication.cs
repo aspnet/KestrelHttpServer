@@ -21,8 +21,6 @@ namespace PlatformBenchmarks
     {
         public Task ExecuteAsync(ConnectionContext connection)
         {
-            var parser = new HttpParser<ParsingAdapter>();
-
             var httpConnection = new TConnection
             {
                 Reader = connection.Transport.Input,
@@ -45,7 +43,7 @@ namespace PlatformBenchmarks
         public PipeReader Reader { get; set; }
         public PipeWriter Writer { get; set; }
 
-        internal HttpParser<ParsingAdapter> Parser { get; set; } = new HttpParser<ParsingAdapter>();
+        private HttpParser<ParsingAdapter> Parser { get; } = new HttpParser<ParsingAdapter>();
 
         public async Task ExecuteAsync()
         {
