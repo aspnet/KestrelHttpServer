@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Buffers;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
@@ -12,13 +11,13 @@ namespace PlatformBenchmarks
 {
     public static class HttpApplicationConnectionBuilderExtensions
     {
-        public static IConnectionBuilder UseHttpApplication<TConnection>(this IConnectionBuilder builder) where TConnection : HttpConnection, new()
+        public static IConnectionBuilder UseHttpApplication<TConnection>(this IConnectionBuilder builder) where TConnection : IHttpConnection, new()
         {
             return builder.Use(next => new HttpApplication<TConnection>().ExecuteAsync);
         }
     }
 
-    public class HttpApplication<TConnection> where TConnection : HttpConnection, new()
+    public class HttpApplication<TConnection> where TConnection : IHttpConnection, new()
     {
         public Task ExecuteAsync(ConnectionContext connection)
         {
@@ -26,42 +25,27 @@ namespace PlatformBenchmarks
 
             var httpConnection = new TConnection
             {
-                Parser = parser,
                 Reader = connection.Transport.Input,
                 Writer = connection.Transport.Output
             };
             return httpConnection.ExecuteAsync();
         }
     }
+    public interface IHttpConnection
+    {
+        PipeReader Reader { get; set; }
+        PipeWriter Writer { get; set; }
+        Task ExecuteAsync();
+    }
 
-    public class HttpConnection : IHttpHeadersHandler, IHttpRequestLineHandler
+    public partial class BenchmarkApplication : IHttpHeadersHandler, IHttpRequestLineHandler, IHttpConnection
     {
         private State _state;
 
         public PipeReader Reader { get; set; }
         public PipeWriter Writer { get; set; }
 
-        internal HttpParser<ParsingAdapter> Parser { get; set; }
-
-        public virtual void OnHeader(Span<byte> name, Span<byte> value)
-        {
-
-        }
-
-        public virtual void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
-        {
-
-        }
-
-        public virtual ValueTask ProcessRequestAsync()
-        {
-            return default;
-        }
-
-        public virtual ValueTask OnReadCompletedAsync()
-        {
-            return default;
-        }
+        internal HttpParser<ParsingAdapter> Parser { get; set; } = new HttpParser<ParsingAdapter>();
 
         public async Task ExecuteAsync()
         {
@@ -163,9 +147,9 @@ namespace PlatformBenchmarks
 
     public struct ParsingAdapter : IHttpRequestLineHandler, IHttpHeadersHandler
     {
-        public HttpConnection RequestHandler;
+        public BenchmarkApplication RequestHandler;
 
-        public ParsingAdapter(HttpConnection requestHandler)
+        public ParsingAdapter(BenchmarkApplication requestHandler)
             => RequestHandler = requestHandler;
 
         public void OnHeader(Span<byte> name, Span<byte> value)

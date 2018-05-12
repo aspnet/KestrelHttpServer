@@ -10,7 +10,7 @@ using Utf8Json;
 
 namespace PlatformBenchmarks
 {
-    public sealed class BenchmarkApplication : HttpConnection
+    public partial class BenchmarkApplication
     {
         private static AsciiString _crlf = "\r\n";
         private static AsciiString _eoh = "\r\n\r\n"; // End Of Headers
@@ -33,7 +33,7 @@ namespace PlatformBenchmarks
         private bool _isPlainText;
         private bool _isJson;
 
-        public override void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
+        public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
         {
             if (path.StartsWith(Paths.Plaintext) && method == HttpMethod.Get)
             {
@@ -50,11 +50,11 @@ namespace PlatformBenchmarks
             }
         }
 
-        public override void OnHeader(Span<byte> name, Span<byte> value)
+        public void OnHeader(Span<byte> name, Span<byte> value)
         {
         }
 
-        public override ValueTask ProcessRequestAsync()
+        public ValueTask ProcessRequestAsync()
         {
             if (_isPlainText)
             {
@@ -72,7 +72,7 @@ namespace PlatformBenchmarks
             return default;
         }
 
-        public override async ValueTask OnReadCompletedAsync()
+        public async ValueTask OnReadCompletedAsync()
         {
             await Writer.FlushAsync();
         }
