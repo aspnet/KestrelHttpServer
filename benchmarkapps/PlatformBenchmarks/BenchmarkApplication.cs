@@ -10,7 +10,7 @@ using Utf8Json;
 
 namespace PlatformBenchmarks
 {
-    public class BenchmarkApplication : HttpConnection
+    public sealed class BenchmarkApplication : HttpConnection<BenchmarkApplication, BenchmarkApplication.Devirtualizer>
     {
         private static AsciiString _crlf = "\r\n";
         private static AsciiString _eoh = "\r\n\r\n"; // End Of Headers
@@ -151,6 +151,17 @@ namespace PlatformBenchmarks
             // End of headers
             writer.Write(_crlf);
             writer.Commit();
+        }
+
+        public struct Devirtualizer : IParsingDevirtualizer<BenchmarkApplication, Devirtualizer>
+        {
+            public BenchmarkApplication Connection { get; set; }
+
+            public void OnHeader(Span<byte> name, Span<byte> value)
+                => Connection.OnHeader(name, value);
+
+            public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
+                => Connection.OnStartLine(method, version, target, path, query, customMethod, pathEncoded);
         }
     }
 }
