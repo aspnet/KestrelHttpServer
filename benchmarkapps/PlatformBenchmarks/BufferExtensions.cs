@@ -13,7 +13,7 @@ namespace PlatformBenchmarks
     // This allows a struct wrapper to turn CountingBufferWriter into a non-shared generic,
     // while still offering the WriteNumeric extension.
 
-    public static class PipelineExtensions
+    public static class BufferExtensions
     {
         private const int _maxULongByteLength = 20;
 
