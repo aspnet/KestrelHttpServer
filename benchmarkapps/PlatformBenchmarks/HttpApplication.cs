@@ -112,7 +112,12 @@ namespace PlatformBenchmarks
 
                 if (_state == State.Headers)
                 {
-                    if (Parser.ParseHeaders(new ParsingAdapter(this), parsingStartLine ? buffer.Slice(consumed) : buffer, out consumed, out examined, out int consumedBytes))
+                    if (parsingStartLine)
+                    {
+                        buffer = buffer.Slice(consumed);
+                    }
+
+                    if (Parser.ParseHeaders(new ParsingAdapter(this), buffer, out consumed, out examined, out int consumedBytes))
                     {
                         _state = State.Body;
                     }
