@@ -4,6 +4,7 @@
 using System;
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace PlatformBenchmarks
@@ -15,6 +16,7 @@ namespace PlatformBenchmarks
             Console.WriteLine(BenchmarkApplication.ApplicationName);
             Console.WriteLine(BenchmarkApplication.Paths.Plaintext);
             Console.WriteLine(BenchmarkApplication.Paths.Json);
+            DateHeader.SyncDateTimer();
 
             BuildWebHost(args).Run();
         }
