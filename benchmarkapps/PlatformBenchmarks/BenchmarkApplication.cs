@@ -97,7 +97,7 @@ namespace PlatformBenchmarks
 
             // Content-Length header
             writer.Write(_headerContentLength);
-            writer.WriteNumeric((ulong)_plainTextBody.Length);
+            writer.WriteNumeric((uint)_plainTextBody.Length);
 
             // End of headers
             writer.Write(_eoh);
@@ -126,7 +126,7 @@ namespace PlatformBenchmarks
             // Content-Length header
             writer.Write(_headerContentLength);
             var jsonPayload = JsonSerializer.SerializeUnsafe(new { message = "Hello, World!" });
-            writer.WriteNumeric((ulong)jsonPayload.Count);
+            writer.WriteNumeric((uint)jsonPayload.Count);
 
             // End of headers
             writer.Write(_eoh);

@@ -21,7 +21,7 @@ namespace PlatformBenchmarks
         private static byte[] _numericBytesScratch;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static unsafe void WriteNumeric<T>(ref this BufferWriter<T> buffer, ulong number)
+        internal static unsafe void WriteNumeric<T>(ref this BufferWriter<T> buffer, uint number)
              where T : struct, IBufferWriter<byte>
         {
             const byte AsciiDigitStart = (byte)'0';
@@ -30,49 +30,47 @@ namespace PlatformBenchmarks
             var bytesLeftInBlock = span.Length;
 
             // Fast path, try copying to the available memory directly
-            var simpleWrite = true;
+            var advanceBy = 0;
             fixed (byte* output = &MemoryMarshal.GetReference(span))
             {
                 var start = output;
                 if (number < 10 && bytesLeftInBlock >= 1)
                 {
-                    *(start) = (byte)(((uint)number) + AsciiDigitStart);
-                    buffer.Advance(1);
+                    start[0] = (byte)(number + AsciiDigitStart);
+                    advanceBy = 1;
                 }
                 else if (number < 100 && bytesLeftInBlock >= 2)
                 {
-                    var val = (uint)number;
-                    var tens = (byte)((val * 205u) >> 11); // div10, valid to 1028
+                    var tens = (byte)((number * 205u) >> 11); // div10, valid to 1028
 
-                    *(start) = (byte)(tens + AsciiDigitStart);
-                    *(start + 1) = (byte)(val - (tens * 10) + AsciiDigitStart);
-                    buffer.Advance(2);
+                    start[0] = (byte)(tens + AsciiDigitStart);
+                    start[1] = (byte)(number - (tens * 10) + AsciiDigitStart);
+                    advanceBy = 2;
                 }
                 else if (number < 1000 && bytesLeftInBlock >= 3)
                 {
-                    var val = (uint)number;
-                    var digit0 = (byte)((val * 41u) >> 12); // div100, valid to 1098
-                    var digits01 = (byte)((val * 205u) >> 11); // div10, valid to 1028
+                    var digit0 = (byte)((number * 41u) >> 12); // div100, valid to 1098
+                    var digits01 = (byte)((number * 205u) >> 11); // div10, valid to 1028
 
-                    *(start) = (byte)(digit0 + AsciiDigitStart);
-                    *(start + 1) = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
-                    *(start + 2) = (byte)(val - (digits01 * 10) + AsciiDigitStart);
-                    buffer.Advance(3);
-                }
-                else
-                {
-                    simpleWrite = false;
+                    start[0] = (byte)(digit0 + AsciiDigitStart);
+                    start[1] = (byte)(digits01 - (digit0 * 10) + AsciiDigitStart);
+                    start[2] = (byte)(number - (digits01 * 10) + AsciiDigitStart);
+                    advanceBy = 3;
                 }
             }
 
-            if (!simpleWrite)
+            if (advanceBy > 0)
+            {
+                buffer.Advance(advanceBy);
+            }
+            else
             {
                 WriteNumericMultiWrite(ref buffer, number);
             }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void WriteNumericMultiWrite<T>(ref this BufferWriter<T> buffer, ulong number)
+        private static void WriteNumericMultiWrite<T>(ref this BufferWriter<T> buffer, uint number)
              where T : struct, IBufferWriter<byte>
         {
             const byte AsciiDigitStart = (byte)'0';
