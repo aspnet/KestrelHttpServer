@@ -98,19 +98,20 @@ namespace PlatformBenchmarks
             var buffer = result.Buffer;
             var consumed = buffer.Start;
             var examined = buffer.End;
+            var state = _state;
 
             if (!buffer.IsEmpty)
             {
-                var parsingStartLine = _state == State.StartLine;
+                var parsingStartLine = state == State.StartLine;
                 if (parsingStartLine)
                 {
                     if (Parser.ParseRequestLine(new ParsingAdapter(this), buffer, out consumed, out examined))
                     {
-                        _state = State.Headers;
+                        state = State.Headers;
                     }
                 }
 
-                if (_state == State.Headers)
+                if (state == State.Headers)
                 {
                     if (parsingStartLine)
                     {
@@ -119,11 +120,11 @@ namespace PlatformBenchmarks
 
                     if (Parser.ParseHeaders(new ParsingAdapter(this), buffer, out consumed, out examined, out int consumedBytes))
                     {
-                        _state = State.Body;
+                        state = State.Body;
                     }
                 }
 
-                if (_state != State.Body && result.IsCompleted)
+                if (state != State.Body && result.IsCompleted)
                 {
                     ThrowUnexpectedEndOfData();
                 }
@@ -133,6 +134,7 @@ namespace PlatformBenchmarks
                 return false;
             }
 
+            _state = state;
             Reader.AdvanceTo(consumed, examined);
             return true;
         }
