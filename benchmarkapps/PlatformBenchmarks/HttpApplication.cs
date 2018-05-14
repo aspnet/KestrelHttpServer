@@ -171,19 +171,20 @@ namespace PlatformBenchmarks
             public Span<byte> GetSpan(int sizeHint = 0)
                 => Writer.GetSpan(sizeHint);
         }
+
+        private struct ParsingAdapter : IHttpRequestLineHandler, IHttpHeadersHandler
+        {
+            public BenchmarkApplication RequestHandler;
+
+            public ParsingAdapter(BenchmarkApplication requestHandler)
+                => RequestHandler = requestHandler;
+
+            public void OnHeader(Span<byte> name, Span<byte> value)
+                => RequestHandler.OnHeader(name, value);
+
+            public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
+                => RequestHandler.OnStartLine(method, version, target, path, query, customMethod, pathEncoded);
+        }
     }
 
-    public struct ParsingAdapter : IHttpRequestLineHandler, IHttpHeadersHandler
-    {
-        public BenchmarkApplication RequestHandler;
-
-        public ParsingAdapter(BenchmarkApplication requestHandler)
-            => RequestHandler = requestHandler;
-
-        public void OnHeader(Span<byte> name, Span<byte> value)
-            => RequestHandler.OnHeader(name, value);
-
-        public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
-            => RequestHandler.OnStartLine(method, version, target, path, query, customMethod, pathEncoded);
-    }
 }
