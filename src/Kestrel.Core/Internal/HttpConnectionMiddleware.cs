@@ -76,37 +76,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             var processingTask = connection.StartRequestProcessing(_application);
 
             connectionContext.Transport.Input.OnWriterCompleted(
-                (error, state) => CompletedCallback(error, state),
+                (error, state) => ((PipeCompletionState)state).CompletionCallback(error),
                 inputCompletionState);
 
             connectionContext.Transport.Output.OnReaderCompleted(
-                (error, state) => CompletedCallback(error, state),
+                (error, state) => ((PipeCompletionState)state).CompletionCallback(error),
                 outputCompletionState);
 
-            await inputCompletionState.CompletedTcs.Task;
-            await outputCompletionState.CompletedTcs.Task;
+            await inputCompletionState.CompletionTask;
+            await outputCompletionState.CompletionTask;
 
             connection.OnConnectionClosed();
 
             await processingTask;
         }
 
-        private static void CompletedCallback(Exception error, object state)
-        {
-            var pipeCompletionState = (PipeCompletionState)state;
-            pipeCompletionState.Connection.Abort(error);
-            pipeCompletionState.CompletedTcs.SetResult(null);
-        }
-
         private class PipeCompletionState
         {
+            private readonly HttpConnection _connection;
+            private readonly TaskCompletionSource<object> _completionTcs = new TaskCompletionSource<object>();
+
             public PipeCompletionState(HttpConnection connection)
             {
-                Connection = connection;
+                _connection = connection;
+                CompletionTask = _completionTcs.Task;
             }
 
-            public HttpConnection Connection;
-            public TaskCompletionSource<object> CompletedTcs = new TaskCompletionSource<object>();
+
+            public Task CompletionTask { get; }
+
+            public void CompletionCallback(Exception error)
+            {
+                _connection.Abort(error);
+                _completionTcs.SetResult(null);
+            }
         }
     }
 }
