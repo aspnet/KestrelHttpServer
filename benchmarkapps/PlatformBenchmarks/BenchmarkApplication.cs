@@ -12,6 +12,7 @@ namespace PlatformBenchmarks
     public partial class BenchmarkApplication
     {
         private readonly static AsciiString _applicationName = "Kestrel Platform-Level Application";
+        public static AsciiString ApplicationName => _applicationName;
 
         private readonly static AsciiString _crlf = "\r\n";
         private readonly static AsciiString _eoh = "\r\n\r\n"; // End Of Headers
@@ -32,8 +33,6 @@ namespace PlatformBenchmarks
 
         private RequestType _requestType;
 
-        public static AsciiString ApplicationName => _applicationName;
-
         public void OnStartLine(HttpMethod method, HttpVersion version, Span<byte> target, Span<byte> path, Span<byte> query, Span<byte> customMethod, bool pathEncoded)
         {
             var requestType = RequestType.NotRecognized;
@@ -52,10 +51,6 @@ namespace PlatformBenchmarks
             _requestType = requestType;
         }
 
-        public void OnHeader(Span<byte> name, Span<byte> value)
-        {
-        }
-
         public ValueTask ProcessRequestAsync()
         {
             if (_requestType == RequestType.PlainText)
@@ -72,11 +67,6 @@ namespace PlatformBenchmarks
             }
 
             return default;
-        }
-
-        public async ValueTask OnReadCompletedAsync()
-        {
-            await Writer.FlushAsync();
         }
 
         private static void PlainText(PipeWriter pipeWriter)
