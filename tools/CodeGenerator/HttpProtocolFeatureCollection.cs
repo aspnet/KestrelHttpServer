@@ -77,7 +77,8 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Features;";
                 className: "HttpProtocol",
                 allFeatures: allFeatures,
                 implementedFeatures: implementedFeatures,
-                extraUsings: usings);
+                extraUsings: usings,
+                fallbackFeatures: "ConnectionFeatures");
         }
     }
 }

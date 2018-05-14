@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -16,8 +14,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public partial class HttpProtocol : IFeatureCollection,
-                                        IHttpRequestFeature,
+    public partial class HttpProtocol : IHttpRequestFeature,
                                         IHttpResponseFeature,
                                         IHttpConnectionFeature,
                                         IHttpRequestLifetimeFeature,
@@ -129,38 +126,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         bool IHttpResponseFeature.HasStarted => HasResponseStarted;
 
-        bool IFeatureCollection.IsReadOnly => false;
-
-        int IFeatureCollection.Revision => _featureRevision;
-
-        object IFeatureCollection.this[Type key]
-        {
-            get
-            {
-                return this[key] ?? ConnectionFeatures[key];
-            }
-            set
-            {
-                this[key] = value;
-            }
-        }
-
-        TFeature IFeatureCollection.Get<TFeature>()
-        {
-            var feature = Get<TFeature>();
-
-            if (feature == default)
-            {
-                feature = ConnectionFeatures.Get<TFeature>();
-            }
-
-            return feature;
-        }
-
-        void IFeatureCollection.Set<TFeature>(TFeature feature)
-        {
-            Set(feature);
-        }
 
         IPAddress IHttpConnectionFeature.RemoteIpAddress
         {
@@ -259,10 +224,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             OnCompleted(callback, state);
         }
-
-        IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => FastEnumerable().GetEnumerator();
 
         void IHttpRequestLifetimeFeature.Abort()
         {

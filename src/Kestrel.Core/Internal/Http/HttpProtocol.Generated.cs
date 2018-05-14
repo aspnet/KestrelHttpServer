@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 using Microsoft.AspNetCore.Http.Features;
@@ -10,7 +11,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public partial class HttpProtocol
+    public partial class HttpProtocol : IFeatureCollection
     {
         private static readonly Type IHttpRequestFeatureType = typeof(IHttpRequestFeature);
         private static readonly Type IHttpResponseFeatureType = typeof(IHttpResponseFeature);
@@ -71,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _currentIHttpMinRequestBodyDataRateFeature = this;
             _currentIHttpMinResponseDataRateFeature = this;
             _currentIHttpBodyControlFeature = this;
-            
+
             _currentIServiceProvidersFeature = null;
             _currentIHttpAuthenticationFeature = null;
             _currentIQueryFeature = null;
@@ -129,7 +130,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             MaybeExtra.Add(new KeyValuePair<Type, object>(key, value));
         }
 
-        private object this[Type key]
+        bool IFeatureCollection.IsReadOnly => false;
+
+        int IFeatureCollection.Revision => _featureRevision;
+
+        object IFeatureCollection.this[Type key]
         {
             get
             {
@@ -223,13 +228,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     feature = ExtraFeatureGet(key);
                 }
 
-                return feature;
+                return feature ?? ConnectionFeatures[key];
             }
 
             set
             {
                 _featureRevision++;
-                
+
                 if (key == IHttpRequestFeatureType)
                 {
                     _currentIHttpRequestFeature = value;
@@ -321,7 +326,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        private TFeature Get<TFeature>()
+        TFeature IFeatureCollection.Get<TFeature>()
         {
             TFeature feature = default;
             if (typeof(TFeature) == typeof(IHttpRequestFeature))
@@ -413,10 +418,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 feature = (TFeature)(ExtraFeatureGet(typeof(TFeature)));
             }
 
+            if (feature == null)
+            {
+                feature = ConnectionFeatures.Get<TFeature>();
+            }
+
             return feature;
         }
 
-        private void Set<TFeature>(TFeature feature) 
+        void IFeatureCollection.Set<TFeature>(TFeature feature)
         {
             _featureRevision++;
             if (typeof(TFeature) == typeof(IHttpRequestFeature))
@@ -604,5 +614,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
             }
         }
+
+        IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => FastEnumerable().GetEnumerator();
     }
 }

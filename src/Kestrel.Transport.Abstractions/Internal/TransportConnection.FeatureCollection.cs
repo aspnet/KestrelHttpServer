@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
@@ -13,8 +11,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
-    public partial class TransportConnection : IFeatureCollection,
-                                               IHttpConnectionFeature,
+    public partial class TransportConnection : IHttpConnectionFeature,
                                                IConnectionIdFeature,
                                                IConnectionTransportFeature,
                                                IConnectionItemsFeature,
@@ -27,32 +24,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         // NOTE: When feature interfaces are added to or removed from this TransportConnection class implementation,
         // then the list of `features` in the generated code project MUST also be updated.
         // See also: tools/CodeGenerator/TransportConnectionFeatureCollection.cs
-
-        bool IFeatureCollection.IsReadOnly => false;
-
-        int IFeatureCollection.Revision => _featureRevision;
-
-        object IFeatureCollection.this[Type key]
-        {
-            get
-            {
-                return this[key];
-            }
-            set
-            {
-                this[key] = value;
-            }
-        }
-
-        TFeature IFeatureCollection.Get<TFeature>()
-        {
-            return Get<TFeature>();
-        }
-
-        void IFeatureCollection.Set<TFeature>(TFeature feature)
-        {
-            Set(feature);
-        }
 
         string IHttpConnectionFeature.ConnectionId
         {
@@ -106,10 +77,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         PipeScheduler ITransportSchedulerFeature.InputWriterScheduler => InputWriterScheduler;
         PipeScheduler ITransportSchedulerFeature.OutputReaderScheduler => OutputReaderScheduler;
-
-        IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => FastEnumerable().GetEnumerator();
 
         CancellationToken IConnectionLifetimeFeature.ConnectionClosed
         {

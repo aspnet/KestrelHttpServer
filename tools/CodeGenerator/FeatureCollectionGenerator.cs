@@ -9,7 +9,7 @@ namespace CodeGenerator
 {
     public static class FeatureCollectionGenerator
     {
-        public static string GenerateFile(string namespaceName, string className, string[] allFeatures, string[] implementedFeatures, string extraUsings)
+        public static string GenerateFile(string namespaceName, string className, string[] allFeatures, string[] implementedFeatures, string extraUsings, string fallbackFeatures)
         {
             // NOTE: This list MUST always match the set of feature interfaces implemented by TransportConnection.
             // See also: src/Kestrel/Http/TransportConnection.FeatureCollection.cs
@@ -23,12 +23,13 @@ namespace CodeGenerator
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 {extraUsings}
 
 namespace {namespaceName}
 {{
-    public partial class {className}
+    public partial class {className} : IFeatureCollection
     {{{Each(features, feature => $@"
         private static readonly Type {feature.Name}Type = typeof({feature.Name});")}
 {Each(features, feature => $@"
@@ -41,7 +42,7 @@ namespace {namespaceName}
         private void FastReset()
         {{{Each(implementedFeatures, feature => $@"
             _current{feature} = this;")}
-            {Each(allFeatures.Where(f => !implementedFeatures.Contains(f)), feature => $@"
+{Each(allFeatures.Where(f => !implementedFeatures.Contains(f)), feature => $@"
             _current{feature} = null;")}
         }}
 
@@ -88,7 +89,11 @@ namespace {namespaceName}
             MaybeExtra.Add(new KeyValuePair<Type, object>(key, value));
         }}
 
-        private object this[Type key]
+        bool IFeatureCollection.IsReadOnly => false;
+
+        int IFeatureCollection.Revision => _featureRevision;
+
+        object IFeatureCollection.this[Type key]
         {{
             get
             {{
@@ -102,13 +107,13 @@ namespace {namespaceName}
                     feature = ExtraFeatureGet(key);
                 }}
 
-                return feature;
+                return feature{(string.IsNullOrEmpty(fallbackFeatures) ? "" : $" ?? {fallbackFeatures}[key]")};
             }}
 
             set
             {{
                 _featureRevision++;
-                {Each(features, feature => $@"
+{Each(features, feature => $@"
                 {(feature.Index != 0 ? "else " : "")}if (key == {feature.Name}Type)
                 {{
                     _current{feature.Name} = value;
@@ -120,7 +125,7 @@ namespace {namespaceName}
             }}
         }}
 
-        private TFeature Get<TFeature>()
+        TFeature IFeatureCollection.Get<TFeature>()
         {{
             TFeature feature = default;{Each(features, feature => $@"
             {(feature.Index != 0 ? "else " : "")}if (typeof(TFeature) == typeof({feature.Name}))
@@ -130,12 +135,17 @@ namespace {namespaceName}
             else if (MaybeExtra != null)
             {{
                 feature = (TFeature)(ExtraFeatureGet(typeof(TFeature)));
-            }}
+            }}{(string.IsNullOrEmpty(fallbackFeatures) ? "" : $@"
+
+            if (feature == null)
+            {{
+                feature = {fallbackFeatures}.Get<TFeature>();
+            }}")}
 
             return feature;
         }}
 
-        private void Set<TFeature>(TFeature feature) 
+        void IFeatureCollection.Set<TFeature>(TFeature feature)
         {{
             _featureRevision++;{Each(features, feature => $@"
             {(feature.Index != 0 ? "else " : "")}if (typeof(TFeature) == typeof({feature.Name}))
@@ -163,6 +173,10 @@ namespace {namespaceName}
                 }}
             }}
         }}
+
+        IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => FastEnumerable().GetEnumerator();
     }}
 }}
 ";

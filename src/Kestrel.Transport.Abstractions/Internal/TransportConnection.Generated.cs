@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 using Microsoft.AspNetCore.Connections.Features;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
-    public partial class TransportConnection
+    public partial class TransportConnection : IFeatureCollection
     {
         private static readonly Type IHttpConnectionFeatureType = typeof(IHttpConnectionFeature);
         private static readonly Type IConnectionIdFeatureType = typeof(IConnectionIdFeature);
@@ -46,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             _currentITransportSchedulerFeature = this;
             _currentIConnectionLifetimeFeature = this;
             _currentIBytesWrittenFeature = this;
-            
+
         }
 
         // Internal for testing
@@ -92,7 +93,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             MaybeExtra.Add(new KeyValuePair<Type, object>(key, value));
         }
 
-        private object this[Type key]
+        bool IFeatureCollection.IsReadOnly => false;
+
+        int IFeatureCollection.Revision => _featureRevision;
+
+        object IFeatureCollection.this[Type key]
         {
             get
             {
@@ -144,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             set
             {
                 _featureRevision++;
-                
+
                 if (key == IHttpConnectionFeatureType)
                 {
                     _currentIHttpConnectionFeature = value;
@@ -188,7 +193,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             }
         }
 
-        private TFeature Get<TFeature>()
+        TFeature IFeatureCollection.Get<TFeature>()
         {
             TFeature feature = default;
             if (typeof(TFeature) == typeof(IHttpConnectionFeature))
@@ -235,7 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             return feature;
         }
 
-        private void Set<TFeature>(TFeature feature) 
+        void IFeatureCollection.Set<TFeature>(TFeature feature)
         {
             _featureRevision++;
             if (typeof(TFeature) == typeof(IHttpConnectionFeature))
@@ -327,5 +332,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
                 }
             }
         }
+
+        IEnumerator<KeyValuePair<Type, object>> IEnumerable<KeyValuePair<Type, object>>.GetEnumerator() => FastEnumerable().GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => FastEnumerable().GetEnumerator();
     }
 }
