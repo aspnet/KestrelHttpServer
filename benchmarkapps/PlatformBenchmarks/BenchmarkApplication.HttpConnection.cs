@@ -12,6 +12,9 @@ namespace PlatformBenchmarks
 {
     public partial class BenchmarkApplication : IHttpConnection
     {
+        private static readonly Task<bool> TrueTask = Task.FromResult(true);
+        private static readonly Task<bool> FalseTask = Task.FromResult(false);
+
         private State _state;
 
         public PipeReader Reader { get; set; }
@@ -41,6 +44,7 @@ namespace PlatformBenchmarks
         {
             while (true)
             {
+                // Request input data
                 var task = Reader.ReadAsync();
 
                 if (!task.IsCompleted)
@@ -49,24 +53,79 @@ namespace PlatformBenchmarks
                     await OnReadCompletedAsync();
                 }
 
+                // Wait for input data
                 var result = await task;
                 var buffer = result.Buffer;
+
+                // Process all requests in input data
+                if (await ProcessRequests(ref buffer, result.IsCompleted))
+                {
+                    // Finished, closing connection
+                    break;
+                }
+            }
+        }
+
+        private State ParseHttpRequest(State state, ref ReadOnlySequence<byte> buffer, ref SequencePosition examined)
+        {
+            SequencePosition consumed = default;
+
+            if (state == State.StartLine)
+            {
+                if (Parser.ParseRequestLine(new ParsingAdapter(this), buffer, out consumed, out examined))
+                {
+                    state = State.Headers;
+                }
+
+                buffer = buffer.Slice(consumed);
+            }
+
+            if (state == State.Headers)
+            {
+                if (Parser.ParseHeaders(new ParsingAdapter(this), buffer, out consumed, out examined, out int consumedBytes))
+                {
+                    state = State.Body;
+                }
+
+                buffer = buffer.Slice(consumed);
+            }
+
+            return state;
+        }
+
+        private Task<bool> ProcessRequests(ref ReadOnlySequence<byte> buffer, bool isCompleted)
+        {
+            var state = _state;
+            if (!buffer.IsEmpty)
+            {
+                if (state == State.RequestStart)
+                {
+                    state = State.StartLine;
+                }
+
+                var examined = buffer.End;
+                Task responseTask = null;
                 while (true)
                 {
-                    if (!ParseHttpRequest(ref buffer, result.IsCompleted, out var examined))
-                    {
-                        return;
-                    }
+                    state = ParseHttpRequest(state, ref buffer, ref examined);
 
-                    if (_state == State.Body)
+                    if (state == State.Body)
                     {
-                        await ProcessRequestAsync();
-
-                        _state = State.StartLine;
+                        responseTask = ProcessRequestAsync();
+                        if (responseTask.IsCompletedSuccessfully)
+                        {
+                            responseTask = null;
+                        }
+                        else
+                        {
+                            // Move out of loop fast path to await the response
+                            break;
+                        }
 
                         if (!buffer.IsEmpty)
                         {
                             // More input data to parse
+                            state = State.StartLine;
                             continue;
                         }
                     }
@@ -75,51 +134,48 @@ namespace PlatformBenchmarks
                     Reader.AdvanceTo(buffer.Start, examined);
                     break;
                 }
+
+                if (responseTask == null)
+                {
+                    // All requests processed
+                    if (state == State.Body)
+                    {
+                        state = State.RequestStart;
+                    }
+                }
+                else
+                {
+                    // Await response not yet completed
+                    _state = state;
+                    return ProcessRequestAsync(responseTask, buffer.Start, examined, isCompleted);
+                }
             }
-        }
 
-        private bool ParseHttpRequest(ref ReadOnlySequence<byte> buffer, bool isCompleted, out SequencePosition examined)
-        {
-            examined = buffer.End;
-
-            var consumed = buffer.Start;
-            var state = _state;
-
-            if (!buffer.IsEmpty)
+            if (isCompleted)
             {
-                var parsingStartLine = state == State.StartLine;
-                if (parsingStartLine)
-                {
-                    if (Parser.ParseRequestLine(new ParsingAdapter(this), buffer, out consumed, out examined))
-                    {
-                        state = State.Headers;
-                    }
-
-                    buffer = buffer.Slice(consumed);
-                }
-
-                if (state == State.Headers)
-                {
-                    if (Parser.ParseHeaders(new ParsingAdapter(this), buffer, out consumed, out examined, out int consumedBytes))
-                    {
-                        state = State.Body;
-                    }
-
-                    buffer = buffer.Slice(consumed);
-                }
-
-                if (state != State.Body && isCompleted)
+                if (state != State.RequestStart)
                 {
                     ThrowUnexpectedEndOfData();
                 }
-            }
-            else if (isCompleted)
-            {
-                return false;
+
+                // Finished sucessfully
+                return TrueTask;
             }
 
+            // Ready for more input
             _state = state;
-            return true;
+            return FalseTask;
+        }
+
+        private async Task<bool> ProcessRequestAsync(Task currentResponse, SequencePosition consumed, SequencePosition examined, bool isCompleted)
+        {
+            await currentResponse;
+
+            Reader.AdvanceTo(consumed, examined);
+
+            _state = State.RequestStart;
+
+            return false;
         }
 
         public void OnHeader(Span<byte> name, Span<byte> value)
@@ -138,6 +194,7 @@ namespace PlatformBenchmarks
 
         private enum State
         {
+            RequestStart,
             StartLine,
             Headers,
             Body
