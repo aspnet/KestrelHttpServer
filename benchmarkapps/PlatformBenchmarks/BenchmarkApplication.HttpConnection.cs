@@ -87,8 +87,7 @@ namespace PlatformBenchmarks
 
             if (!buffer.IsEmpty)
             {
-                var parsingStartLine = state == State.StartLine;
-                if (parsingStartLine)
+                if (state == State.StartLine)
                 {
                     if (Parser.ParseRequestLine(new ParsingAdapter(this), buffer, out consumed, out examined))
                     {
