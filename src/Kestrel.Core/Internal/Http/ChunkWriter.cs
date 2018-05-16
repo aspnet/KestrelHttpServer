@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -21,19 +22,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public static ArraySegment<byte> BeginChunkBytes(int dataCount)
         {
-            var bytes = new byte[10]
-            {
-                _hex[((dataCount >> 0x1c) & 0x0f)],
-                _hex[((dataCount >> 0x18) & 0x0f)],
-                _hex[((dataCount >> 0x14) & 0x0f)],
-                _hex[((dataCount >> 0x10) & 0x0f)],
-                _hex[((dataCount >> 0x0c) & 0x0f)],
-                _hex[((dataCount >> 0x08) & 0x0f)],
-                _hex[((dataCount >> 0x04) & 0x0f)],
-                _hex[((dataCount >> 0x00) & 0x0f)],
-                (byte)'\r',
-                (byte)'\n',
-            };
+            var bytes = new byte[10];
+            ref var r = ref bytes[0];
+            ref var hex = ref _hex[0];
+
+            Unsafe.Add(ref r, 0) = Unsafe.Add(ref hex, (dataCount >> 0x1c) & 0x0f);
+            Unsafe.Add(ref r, 1) = Unsafe.Add(ref hex, (dataCount >> 0x18) & 0x0f);
+            Unsafe.Add(ref r, 2) = Unsafe.Add(ref hex, (dataCount >> 0x14) & 0x0f);
+            Unsafe.Add(ref r, 3) = Unsafe.Add(ref hex, (dataCount >> 0x10) & 0x0f);
+            Unsafe.Add(ref r, 4) = Unsafe.Add(ref hex, (dataCount >> 0x0c) & 0x0f);
+            Unsafe.Add(ref r, 5) = Unsafe.Add(ref hex, (dataCount >> 0x08) & 0x0f);
+            Unsafe.Add(ref r, 6) = Unsafe.Add(ref hex, (dataCount >> 0x04) & 0x0f);
+            Unsafe.Add(ref r, 7) = Unsafe.Add(ref hex, (dataCount >> 0x00) & 0x0f);
+            Unsafe.Add(ref r, 8) = (byte)'\r';
+            Unsafe.Add(ref r, 9) = (byte)'\n';
 
             // Determine the most-significant non-zero nibble
             int total, shift;
