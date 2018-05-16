@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
@@ -145,25 +146,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ValidateState(CancellationToken cancellationToken)
         {
-            switch (_state)
+            var state = _state;
+            if (state == HttpStreamState.Open || state == HttpStreamState.Aborted)
             {
-                case HttpStreamState.Open:
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-                    break;
-                case HttpStreamState.Closed:
-                    throw new ObjectDisposedException(nameof(HttpResponseStream), CoreStrings.WritingToResponseBodyAfterResponseCompleted);
-                case HttpStreamState.Aborted:
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        // Aborted state only throws on write if cancellationToken requests it
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-                    break;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    // Aborted state only throws on write if cancellationToken requests it
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
+            else
+            {
+                ThrowObjectDisposedException();
+            }
+
+            void ThrowObjectDisposedException()
+            {
+                throw new ObjectDisposedException(nameof(HttpResponseStream), CoreStrings.WritingToResponseBodyAfterResponseCompleted);
             }
         }
     }
