@@ -2,13 +2,20 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
     internal class StringUtilities
     {
+#if NETCOREAPP2_1
+        private static readonly SpanAction<char, (string, char, uint)> _spanAction = ConcatAsHexSuffixCore;
+#endif
+        private static readonly char[] _encode16Chars = "0123456789ABCDEF".ToCharArray();
+
         public static unsafe bool TryGetAsciiString(byte* input, char* output, int count)
         {
             // Calculate end position
@@ -109,8 +116,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             return isValid;
         }
 
-        private static readonly string _encode16Chars = "0123456789ABCDEF";
-
         /// <summary>
         /// A faster version of String.Concat(<paramref name="str"/>, <paramref name="separator"/>, <paramref name="number"/>.ToString("X8"))
         /// </summary>
@@ -126,31 +131,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 length += str.Length;
             }
 
-            // stackalloc to allocate array on stack rather than heap
+#if NETCOREAPP2_1
+            return string.Create(length, (str, separator, number), _spanAction);
+#else
             char* charBuffer = stackalloc char[length];
+            ConcatAsHexSuffixCore(ref Unsafe.AsRef<char>(charBuffer), str, separator, number);
+            return new string(charBuffer, 0, length);
+#endif
+        }
 
+        private static void ConcatAsHexSuffixCore(Span<char> charBuffer, (string str, char separator, uint number) state)
+        {
+            ConcatAsHexSuffixCore(ref MemoryMarshal.GetReference(charBuffer), state.str, state.separator, state.number);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ConcatAsHexSuffixCore(ref char charBuffer, string str, char separator, uint number)
+        {
             var i = 0;
+
             if (str != null)
             {
-                for (i = 0; i < str.Length; i++)
+                for (; i < str.Length; ++i)
                 {
-                    charBuffer[i] = str[i];
+                    Unsafe.Add(ref charBuffer, i) = str[i];
                 }
+
+                charBuffer = ref Unsafe.Add(ref charBuffer, i);
             }
 
-            charBuffer[i] = separator;
+            ref char encode16Chars = ref _encode16Chars[0];
 
-            charBuffer[i + 1] = _encode16Chars[(int)(number >> 28) & 0xF];
-            charBuffer[i + 2] = _encode16Chars[(int)(number >> 24) & 0xF];
-            charBuffer[i + 3] = _encode16Chars[(int)(number >> 20) & 0xF];
-            charBuffer[i + 4] = _encode16Chars[(int)(number >> 16) & 0xF];
-            charBuffer[i + 5] = _encode16Chars[(int)(number >> 12) & 0xF];
-            charBuffer[i + 6] = _encode16Chars[(int)(number >> 8) & 0xF];
-            charBuffer[i + 7] = _encode16Chars[(int)(number >> 4) & 0xF];
-            charBuffer[i + 8] = _encode16Chars[(int)number & 0xF];
-
-            // string ctor overload that takes char*
-            return new string(charBuffer, 0, length);
+            charBuffer = separator;
+            Unsafe.Add(ref charBuffer, 1) = Unsafe.Add(ref encode16Chars, (int)(number >> 28) & 0xF);
+            Unsafe.Add(ref charBuffer, 2) = Unsafe.Add(ref encode16Chars, (int)(number >> 24) & 0xF);
+            Unsafe.Add(ref charBuffer, 3) = Unsafe.Add(ref encode16Chars, (int)(number >> 20) & 0xF);
+            Unsafe.Add(ref charBuffer, 4) = Unsafe.Add(ref encode16Chars, (int)(number >> 16) & 0xF);
+            Unsafe.Add(ref charBuffer, 5) = Unsafe.Add(ref encode16Chars, (int)(number >> 12) & 0xF);
+            Unsafe.Add(ref charBuffer, 6) = Unsafe.Add(ref encode16Chars, (int)(number >> 8) & 0xF);
+            Unsafe.Add(ref charBuffer, 7) = Unsafe.Add(ref encode16Chars, (int)(number >> 4) & 0xF);
+            Unsafe.Add(ref charBuffer, 8) = Unsafe.Add(ref encode16Chars, (int)(number >> 0) & 0xF);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // Needs a push
