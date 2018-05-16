@@ -2,18 +2,19 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
-using System.Runtime.CompilerServices;
-
-#if NETCOREAPP2_1
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-#endif
+using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
     internal static class CorrelationIdGenerator
     {
+#if NETCOREAPP2_1
+        private static readonly SpanAction<char, long> _spanAction = FillBufferAction;
+#endif
+
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly char[] _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV".ToCharArray();
 
@@ -35,9 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 #else
             // stackalloc to allocate array on stack rather than heap
             char* charBuffer = stackalloc char[13];
-            ref char encodeChars = ref _encode32Chars[0];
-
-            FillBuffer(ref Unsafe.AsRef<char>(charBuffer), id, ref encodeChars);
+            FillBuffer(ref Unsafe.AsRef<char>(charBuffer), id, ref _encode32Chars[0]);
 
             // string ctor overload that takes char*
             return new string(charBuffer, 0, 13);
@@ -45,8 +44,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         }
 
 #if NETCOREAPP2_1
-        private static readonly SpanAction<char, long> _spanAction = FillBufferAction;
-
         private static void FillBufferAction(Span<char> charBuffer, long id)
         {
             ref char buffer = ref MemoryMarshal.GetReference(charBuffer);
