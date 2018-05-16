@@ -152,11 +152,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var state = _state;
             if (state == HttpStreamState.Open || state == HttpStreamState.Aborted)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    // Aborted state only throws on write if cancellationToken requests it
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
+				// Aborted state only throws on write if cancellationToken requests it
+				cancellationToken.ThrowIfCancellationRequested();
             }
             else
             {

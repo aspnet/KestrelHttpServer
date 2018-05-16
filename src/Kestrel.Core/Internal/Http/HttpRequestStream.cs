@@ -196,10 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var state = _state;
             if (state == HttpStreamState.Open)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
+                cancellationToken.ThrowIfCancellationRequested();
             }
             else if (state == HttpStreamState.Closed)
             {
