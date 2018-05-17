@@ -162,15 +162,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             await Task.Delay(bytesWrittenPollingInterval);
                         }
 
-                        // TODO: Remove logging
-                        var path = Path.Combine(Path.GetTempPath(), "MaxRequestBufferSizeTests");
-                        Directory.CreateDirectory(path);
-                        var transport = (this.GetType().Assembly.FullName.ToLowerInvariant().Contains("libuv")) ?
-                            "libuv" : "sockets";
-                        var filename = Path.Combine(path,
-                            string.Join("_", transport, maxRequestBufferSize, connectionAdapter, expectPause) + ".txt");
-                        File.AppendAllLines(filename, new[] { bytesWritten.ToString() });
-
                         // Verify the number of bytes written before the client was paused.
                         Assert.InRange(bytesWritten, minimumExpectedBytesWritten, maximumExpectedBytesWritten);
 
