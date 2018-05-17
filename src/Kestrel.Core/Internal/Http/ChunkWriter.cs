@@ -12,7 +12,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     internal static class ChunkWriter
     {
         private static readonly ArraySegment<byte> _endChunkBytes = CreateAsciiByteArraySegment("\r\n");
-        private static readonly byte[] _hex = Encoding.ASCII.GetBytes("0123456789abcdef");
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
         {
@@ -22,20 +21,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public static ArraySegment<byte> BeginChunkBytes(int dataCount)
         {
-            var bytes = new byte[10];
-            ref var r = ref bytes[0];
-            ref var hex = ref _hex[0];
-
-            Unsafe.Add(ref r, 0) = Unsafe.Add(ref hex, (dataCount >> 0x1c) & 0x0f);
-            Unsafe.Add(ref r, 1) = Unsafe.Add(ref hex, (dataCount >> 0x18) & 0x0f);
-            Unsafe.Add(ref r, 2) = Unsafe.Add(ref hex, (dataCount >> 0x14) & 0x0f);
-            Unsafe.Add(ref r, 3) = Unsafe.Add(ref hex, (dataCount >> 0x10) & 0x0f);
-            Unsafe.Add(ref r, 4) = Unsafe.Add(ref hex, (dataCount >> 0x0c) & 0x0f);
-            Unsafe.Add(ref r, 5) = Unsafe.Add(ref hex, (dataCount >> 0x08) & 0x0f);
-            Unsafe.Add(ref r, 6) = Unsafe.Add(ref hex, (dataCount >> 0x04) & 0x0f);
-            Unsafe.Add(ref r, 7) = Unsafe.Add(ref hex, (dataCount >> 0x00) & 0x0f);
-            Unsafe.Add(ref r, 8) = (byte)'\r';
-            Unsafe.Add(ref r, 9) = (byte)'\n';
+            var bytes = new byte[10]
+            {
+                GetChunkByte(dataCount, 0x1c),
+                GetChunkByte(dataCount, 0x18),
+                GetChunkByte(dataCount, 0x14),
+                GetChunkByte(dataCount, 0x10),
+                GetChunkByte(dataCount, 0x0c),
+                GetChunkByte(dataCount, 0x08),
+                GetChunkByte(dataCount, 0x04),
+                GetChunkByte(dataCount, 0x00),
+                (byte)'\r',
+                (byte)'\n'
+            };
 
             // Determine the most-significant non-zero nibble
             int total, shift;
@@ -48,6 +46,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             var offset = 7 - (total >> 2);
             return new ArraySegment<byte>(bytes, offset, 10 - offset);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte GetChunkByte(int dataCount, byte shift)
+        {
+            // Get the byte out of 0123456789abcdef
+
+            int digit = (dataCount >> shift) & 0x0f;
+            int add = digit < 10 ? '0' : 'a' - 10;      // 'a' - 10 because of offset
+            return (byte)(digit + add);
         }
 
         internal static int WriteBeginChunkBytes(ref CountingBufferWriter<PipeWriter> start, int dataCount)
