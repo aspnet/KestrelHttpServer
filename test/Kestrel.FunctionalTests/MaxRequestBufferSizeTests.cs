@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 {
     public class MaxRequestBufferSizeTests : LoggedTest
     {
-        private const int _dataLength = 20 * 1024 * 1024;
+        private const int _dataLength = 40 * 1024 * 1024;
 
         private static readonly string[] _requestLines = new[]
         {
@@ -47,8 +47,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     Tuple.Create((long?)1024 * 1024, true),
 
                     // Larger than default, but still significantly lower than data, so client should be paused.
-                    // On Windows, the client is usually paused around (MaxRequestBufferSize + 700,000).
-                    // On Linux, the client is usually paused around (MaxRequestBufferSize + 10,000,000).
+                    // 
+                    // When connectionAdapter=true, the MaxRequestBufferSize is set on two pipes, so it's effectively doubled.
+                    // 
+                    // Client is typically paused after uploading this many bytes:
+                    // 
+                    // OS                   connectionAdapter   Transport   min pause (MB)      max pause (MB)
+                    // ---------------      --------------      ---------   --------------      --------------
+                    // Windows 10 1803      false               Libuv       6                   13
+                    // Windows 10 1803      false               Sockets     7                   24
+                    // Windows 10 1803      true                Libuv       12                  12
+                    // Windows 10 1803      true                Sockets     12                  36
+                    // Ubuntu 18.04         false                           
+                    // Ubuntu 18.04         true                            
+                    // OS X High Sierra     false                           
+                    // OS X High Sierra     true                            
                     Tuple.Create((long?)5 * 1024 * 1024, true),
 
                     // Even though maxRequestBufferSize < _dataLength, client should not be paused since the
@@ -144,6 +157,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         {
                             await Task.Delay(bytesWrittenPollingInterval);
                         }
+
+                        // TODO: Remove logging
+                        var path = Path.Combine(Path.GetTempPath(), "MaxRequestBufferSizeTests");
+                        Directory.CreateDirectory(path);
+                        var transport = (this.GetType().Assembly.FullName.ToLowerInvariant().Contains("libuv")) ?
+                            "libuv" : "sockets";
+                        var filename = Path.Combine(path,
+                            string.Join("_", transport, maxRequestBufferSize, connectionAdapter, expectPause) + ".txt");
+                        File.AppendAllLines(filename, new[] { bytesWritten.ToString() });
 
                         // Verify the number of bytes written before the client was paused.
                         Assert.InRange(bytesWritten, minimumExpectedBytesWritten, maximumExpectedBytesWritten);
@@ -286,6 +308,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
 
                     options.Limits.MinRequestBodyDataRate = null;
+
+                    options.Limits.MaxRequestBodySize = _dataLength;
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .Configure(app => app.Run(async context =>
