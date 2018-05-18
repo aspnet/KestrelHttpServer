@@ -37,10 +37,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             if (_error != SocketError.Success)
             {
-                throw new SocketException((int)_error);
+                ThrowSocketException(_error);
             }
 
             return _bytesTransferred;
+
+            void ThrowSocketException(SocketError e)
+            {
+                throw new SocketException((int)e);
+            }
         }
 
         public void OnCompleted(Action continuation)
