@@ -11,20 +11,12 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    public class SocketSender : IDisposable
+    public sealed class SocketSender : SocketSenderReceiverBase
     {
-        private readonly Socket _socket;
-        private readonly SocketAsyncEventArgs _eventArgs = new SocketAsyncEventArgs();
-        private readonly SocketAwaitable _awaitable;
-
         private List<ArraySegment<byte>> _bufferList;
 
-        public SocketSender(Socket socket, PipeScheduler scheduler)
+        public SocketSender(Socket socket, PipeScheduler scheduler) : base(socket, scheduler)
         {
-            _socket = socket;
-            _awaitable = new SocketAwaitable(scheduler);
-            _eventArgs.UserToken = _awaitable;
-            _eventArgs.Completed += (_, e) => ((SocketAwaitable)e.UserToken).Complete(e.BytesTransferred, e.SocketError);
         }
 
         public SocketAwaitable SendAsync(ReadOnlySequence<byte> buffers)
@@ -101,11 +93,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
 
             return _bufferList;
-        }
-
-        public void Dispose()
-        {
-            _eventArgs.Dispose();
         }
     }
 }
