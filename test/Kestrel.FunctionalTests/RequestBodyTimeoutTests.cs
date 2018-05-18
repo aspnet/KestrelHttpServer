@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // 2. [server]  Heartbeat._timer is triggered, which calls HttpConnection.Tick()
                 // 3. [server]  HttpConnection.Tick() calls HttpConnection.CheckForReadDataRateTimeout()
                 // 4. [server]  HttpConnection.CheckForReadDataRateTimeout() is a no-op, since _readTimingEnabled is false,
-                //              since Request.Body.ReadAsync() has not been called yet.
+                //              since Request.Body.ReadAsync() has not been called yet
                 // 5. [server]  HttpConnection.Tick() sets _lastTimestamp = timestamp
                 // 6. [server]  Request.Body.ReadAsync() is called
                 // 6. [test]    systemClock.UtcNow is never updated again, so server timestamp is never updated,
