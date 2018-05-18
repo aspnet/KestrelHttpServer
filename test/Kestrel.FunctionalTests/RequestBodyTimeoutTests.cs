@@ -53,6 +53,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // This is a pretty tight race, since the once-per-second Heartbeat._timer needs to fire between the test updating
                 // systemClock.UtcNow and the server calling Request.Body.ReadAsync().  But it happened often enough to cause
                 // test flakiness in our CI (https://github.com/aspnet/KestrelHttpServer/issues/2539).
+                //
+                // For verification, I was able to induce the race by adding a sleep in the RequestDelegate:
+                //     appRunningEvent.Set();
+                //     Thread.Sleep(5000);
+                //     return context.Request.Body.ReadAsync(new byte[1], 0, 1);
 
                 var readTask = context.Request.Body.ReadAsync(new byte[1], 0, 1);
                 appRunningEvent.Set();
