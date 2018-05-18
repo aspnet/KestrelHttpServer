@@ -10,17 +10,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     public abstract class SocketSenderReceiverBase : IDisposable
     {
         protected readonly Socket _socket;
-        protected readonly SocketAsyncEventArgs _eventArgs = new SocketAsyncEventArgs();
-        protected readonly SocketAwaitable _awaitable;
+        protected readonly SocketAwaitableEventArgs _awaitableEventArgs;
 
         protected SocketSenderReceiverBase(Socket socket, PipeScheduler scheduler)
         {
             _socket = socket;
-            _awaitable = new SocketAwaitable(scheduler);
-            _eventArgs.UserToken = _awaitable;
-            _eventArgs.Completed += (_, e) => ((SocketAwaitable)e.UserToken).Complete(e.BytesTransferred, e.SocketError);
+            _awaitableEventArgs = new SocketAwaitableEventArgs(scheduler);
         }
 
-        public void Dispose() => _eventArgs.Dispose();
+        public void Dispose() => _awaitableEventArgs.Dispose();
     }
 }

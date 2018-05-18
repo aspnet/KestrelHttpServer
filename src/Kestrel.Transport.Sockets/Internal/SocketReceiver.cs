@@ -13,23 +13,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
         }
 
-        public SocketAwaitable ReceiveAsync(Memory<byte> buffer)
+        public SocketAwaitableEventArgs ReceiveAsync(Memory<byte> buffer)
         {
 #if NETCOREAPP2_1
-            _eventArgs.SetBuffer(buffer);
+            _awaitableEventArgs.SetBuffer(buffer);
 #elif NETSTANDARD2_0
             var segment = buffer.GetArray();
 
-            _eventArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+            _awaitableEventArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
 #else
 #error TFMs need to be updated
 #endif
-            if (!_socket.ReceiveAsync(_eventArgs))
+            if (!_socket.ReceiveAsync(_awaitableEventArgs))
             {
-                _awaitable.Complete(_eventArgs.BytesTransferred, _eventArgs.SocketError);
+                _awaitableEventArgs.Complete();
             }
 
-            return _awaitable;
+            return _awaitableEventArgs;
         }
     }
 }
