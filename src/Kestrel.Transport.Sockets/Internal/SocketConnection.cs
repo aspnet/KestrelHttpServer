@@ -61,21 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public override MemoryPool<byte> MemoryPool { get; }
         public override PipeScheduler InputWriterScheduler => _scheduler;
         public override PipeScheduler OutputReaderScheduler => _scheduler;
-
-        public override long TotalBytesWritten
-        {
-            get
-            {
-                if (IntPtr.Size == sizeof(long))
-                {
-                    return _totalBytesWritten;
-                }
-                else
-                {
-                    return Interlocked.Read(ref _totalBytesWritten);
-                }
-            }
-        }
+        public override long TotalBytesWritten => Volatile.Read(ref _totalBytesWritten);
 
         public async Task StartAsync()
         {
