@@ -140,7 +140,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             set => ConnectionClosed = value;
         }
 
-        void IConnectionLifetimeFeature.Abort() => Abort();
+        void IConnectionLifetimeFeature.Abort() => Abort(abortReason: null);
 
         long IBytesWrittenFeature.TotalBytesWritten => TotalBytesWritten;
 

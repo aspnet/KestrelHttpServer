@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 {
-    public partial class TransportConnection : ConnectionContext
+    public abstract partial class TransportConnection : ConnectionContext
     {
         private IDictionary<object, object> _items;
 
@@ -60,8 +60,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         public CancellationToken ConnectionClosed { get; set; }
 
-        public virtual void Abort()
+        // DO NOT remove this override to ConnectionContext.Abort(). Doing so would cause
+        // any TransportConnection that does not override Abort() or calls base.Abort()
+        // to stack overflow when IConnectionLifetimeFeature.Abort() is called.
+        public override void Abort(ConnectionAbortedException abortReason)
         {
+            AbortImpl(abortReason);
         }
+
+        public abstract void AbortImpl(ConnectionAbortedException abortReason);
     }
 }
