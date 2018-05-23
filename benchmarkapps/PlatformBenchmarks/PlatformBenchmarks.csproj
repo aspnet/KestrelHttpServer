@@ -9,9 +9,15 @@
     <!-- Prevent the SDK from validating the supported tfm. Can be removed when a new SDK supporting netcoreapp2.2 is available. -->
     <NETCoreAppMaximumVersion>99.9</NETCoreAppMaximumVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="Utf8Json" Version="$(Utf8JsonPackageVersion)" />
+    <PackageReference Include="Npgsql" Version="$(NpgsqlPackageVersion)" />
+    <PackageReference Include="MySqlConnector" Version="$(MySqlConnectorPackageVersion)" />
   </ItemGroup>
   
   <!-- These references are used when running locally -->
@@ -20,6 +26,7 @@
     <ProjectReference Include="..\..\src\Kestrel.Transport.Libuv\Kestrel.Transport.Libuv.csproj" />
 
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="$(MicrosoftExtensionsConfigurationCommandLinePackageVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsConfigurationJsonPackageVersion)" />
   </ItemGroup>
 
   <!-- These references are used when running on the Benchmarks Server -->
