@@ -176,7 +176,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _context.SetBadRequestState(ex);
             }
-            catch (ConnectionAbortedException)
+            catch (TimeoutException)
             {
                 Log.RequestBodyDrainTimedOut(_context.ConnectionIdFeature, _context.TraceIdentifier);
             }

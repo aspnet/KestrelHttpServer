@@ -93,7 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 finally
                 {
                     // Now, complete the input so that no more reads can happen
-                    Input.Complete(inputError ?? new ConnectionAbortedException());
+                    Input.Complete(inputError ?? OutputConsumer.AbortException ?? new ConnectionAbortedException());
                     Output.Complete(outputError);
 
                     // Make sure it isn't possible for a paused read to resume reading after calling uv_close

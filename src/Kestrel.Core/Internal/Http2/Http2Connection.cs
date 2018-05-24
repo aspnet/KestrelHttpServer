@@ -89,6 +89,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public IFeatureCollection ConnectionFeatures => _context.ConnectionFeatures;
 
+        public void OnInputOrOutputCompleted()
+        {
+            _stopping = true;
+            _frameWriter.Abort(ex: null);
+        }
+
         public void Abort(Exception ex)
         {
             _stopping = true;

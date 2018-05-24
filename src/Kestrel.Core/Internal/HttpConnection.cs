@@ -256,19 +256,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     case ProtocolSelectionState.Initializing:
                         CloseUninitializedConnection();
-                        _protocolSelectionState = ProtocolSelectionState.Stopped;
+                        _protocolSelectionState = ProtocolSelectionState.Aborted;
                         break;
                     case ProtocolSelectionState.Selected:
                         _requestProcessor.StopProcessingNextRequest();
-                        _protocolSelectionState = ProtocolSelectionState.Stopping;
                         break;
-                    case ProtocolSelectionState.Stopping:
-                    case ProtocolSelectionState.Stopped:
+                    case ProtocolSelectionState.Aborted:
                         break;
                 }
             }
 
             return _lifetimeTask;
+        }
+
+        public void OnInputOrOutputCompleted()
+        {
+            lock (_protocolSelectionLock)
+            {
+                switch (_protocolSelectionState)
+                {
+                    case ProtocolSelectionState.Initializing:
+                        CloseUninitializedConnection();
+                        _protocolSelectionState = ProtocolSelectionState.Aborted;
+                        break;
+                    case ProtocolSelectionState.Selected:
+                        _requestProcessor.OnInputOrOutputCompleted();
+                        break;
+                    case ProtocolSelectionState.Aborted:
+                        break;
+                }
+
+            }
         }
 
         public void Abort(Exception ex)
@@ -281,14 +299,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         CloseUninitializedConnection();
                         break;
                     case ProtocolSelectionState.Selected:
-                    case ProtocolSelectionState.Stopping:
                         _requestProcessor.Abort(ex);
                         break;
-                    case ProtocolSelectionState.Stopped:
+                    case ProtocolSelectionState.Aborted:
                         break;
                 }
 
-                _protocolSelectionState = ProtocolSelectionState.Stopped;
+                _protocolSelectionState = ProtocolSelectionState.Aborted;
             }
         }
 
@@ -373,7 +390,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public void Tick(DateTimeOffset now)
         {
-            if (_protocolSelectionState == ProtocolSelectionState.Stopped)
+            if (_protocolSelectionState == ProtocolSelectionState.Aborted)
             {
                 // It's safe to check for timeouts on a dead connection,
                 // but try not to in order to avoid extraneous logs.
@@ -419,7 +436,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                             break;
                         case TimeoutAction.AbortConnection:
                             // This is actually supported with HTTP/2!
-                            Abort(new TimeoutException());
+                            Abort(new TimeoutException(CoreStrings.ConnectionTimedOutByServer));
                             break;
                     }
                 }
@@ -482,7 +499,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     RequestTimedOut = true;
                     Log.ResponseMininumDataRateNotSatisfied(_http1Connection.ConnectionIdFeature, _http1Connection.TraceIdentifier);
-                    Abort(new TimeoutException());
+                    Abort(new TimeoutException(CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied));
                 }
             }
         }
@@ -638,8 +655,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             Initializing,
             Selected,
-            Stopping,
-            Stopped
+            Aborted
         }
     }
 }

@@ -34,6 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         }
 
         public long TotalBytesWritten => Interlocked.Read(ref _totalBytesWritten);
+        public Exception AbortException { get; private set; }
 
         public async Task WriteOutputAsync()
         {
@@ -47,9 +48,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 {
                     result = await _pipe.ReadAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Handled in LibuvConnection.Abort()
+                    AbortException = ex;
                     return;
                 }
 

@@ -11,6 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
     {
         Task ProcessRequestsAsync<TContext>(IHttpApplication<TContext> application);
         void StopProcessingNextRequest();
+        void OnInputOrOutputCompleted();
         void Abort(Exception ex);
     }
 }
