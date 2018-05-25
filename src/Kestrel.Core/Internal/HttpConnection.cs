@@ -10,6 +10,7 @@ using System.IO.Pipelines;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
@@ -123,9 +124,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 if (_context.ConnectionAdapters.Count > 0)
                 {
                     adaptedPipeline = new AdaptedPipeline(_adaptedTransport,
-                                                          application,
                                                           new Pipe(AdaptedInputPipeOptions),
-                                                          new Pipe(AdaptedOutputPipeOptions));
+                                                          new Pipe(AdaptedOutputPipeOptions),
+                                                          Log);
 
                     _adaptedTransport = adaptedPipeline;
                 }
@@ -255,7 +256,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 switch (_protocolSelectionState)
                 {
                     case ProtocolSelectionState.Initializing:
-                        CloseUninitializedConnection();
+                        CloseUninitializedConnection(abortReason: null);
                         _protocolSelectionState = ProtocolSelectionState.Aborted;
                         break;
                     case ProtocolSelectionState.Selected:
@@ -276,7 +277,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 switch (_protocolSelectionState)
                 {
                     case ProtocolSelectionState.Initializing:
-                        CloseUninitializedConnection();
+                        CloseUninitializedConnection(abortReason: null);
                         _protocolSelectionState = ProtocolSelectionState.Aborted;
                         break;
                     case ProtocolSelectionState.Selected:
@@ -296,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 switch (_protocolSelectionState)
                 {
                     case ProtocolSelectionState.Initializing:
-                        CloseUninitializedConnection();
+                        CloseUninitializedConnection(ex);
                         break;
                     case ProtocolSelectionState.Selected:
                         _requestProcessor.Abort(ex);
@@ -639,13 +640,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             ResetTimeout(timeSpan.Ticks, TimeoutAction.AbortConnection);
         }
 
-        private void CloseUninitializedConnection()
+        private void CloseUninitializedConnection(Exception abortReason)
         {
             Debug.Assert(_adaptedTransport != null);
 
-            // CancelPendingRead signals the transport directly to close the connection
-            // without any potential interference from connection adapters.
-            _context.Application.Input.CancelPendingRead();
+            _context.ConnectionFeatures.Get<IConnectionLifetimeFeature>().Abort(abortReason);
 
             _adaptedTransport.Input.Complete();
             _adaptedTransport.Output.Complete();

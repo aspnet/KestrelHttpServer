@@ -45,7 +45,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
             Output = new Http1OutputProducer(
-                _context.Application.Input,
                 _context.Transport.Output,
                 _context.ConnectionId,
                 _context.ServiceContext.Log,

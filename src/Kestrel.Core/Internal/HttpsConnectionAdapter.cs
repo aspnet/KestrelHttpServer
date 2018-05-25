@@ -181,7 +181,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
                         _options.SslProtocols, _options.CheckCertificateRevocation);
 #endif
             }
-            catch (OperationCanceledException)
+            catch (TimeoutException)
             {
                 _logger?.LogDebug(2, CoreStrings.AuthenticationTimedOut);
                 sslStream.Dispose();

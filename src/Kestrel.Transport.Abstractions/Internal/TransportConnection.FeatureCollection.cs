@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
@@ -84,7 +85,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             set => ConnectionClosed = value;
         }
 
-        void IConnectionLifetimeFeature.Abort() => Abort();
+        void IConnectionLifetimeFeature.Abort() => Abort(abortReason: null);
+        void IConnectionLifetimeFeature.Abort(Exception abortReason) => Abort(abortReason);
 
         long IBytesWrittenFeature.TotalBytesWritten => TotalBytesWritten;
     }

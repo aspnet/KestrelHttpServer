@@ -34,7 +34,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         }
 
         public long TotalBytesWritten => Interlocked.Read(ref _totalBytesWritten);
-        public Exception AbortException { get; private set; }
 
         public async Task WriteOutputAsync()
         {
@@ -42,17 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 
             while (true)
             {
-                ReadResult result;
-
-                try
-                {
-                    result = await _pipe.ReadAsync();
-                }
-                catch (Exception ex)
-                {
-                    AbortException = ex;
-                    return;
-                }
+                var result = await _pipe.ReadAsync();
 
                 var buffer = result.Buffer;
                 var consumed = buffer.End;

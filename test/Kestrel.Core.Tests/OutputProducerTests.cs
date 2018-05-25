@@ -67,15 +67,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             outputProducer.Dispose();
 
-            mockLifetimeFeature.Verify(f => f.Abort(), Times.Never());
+            mockLifetimeFeature.Verify(f => f.Abort(It.IsAny<Exception>()), Times.Never());
 
             outputProducer.Abort(null);
 
-            mockLifetimeFeature.Verify(f => f.Abort(), Times.Once());
+            mockLifetimeFeature.Verify(f => f.Abort(null), Times.Once());
 
             outputProducer.Abort(null);
 
-            mockLifetimeFeature.Verify(f => f.Abort(), Times.Once());
+            mockLifetimeFeature.Verify(f => f.Abort(null), Times.Once());
         }
 
         private Http1OutputProducer CreateOutputProducer(
@@ -88,7 +88,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var pipe = new Pipe(pipeOptions);
             var serviceContext = new TestServiceContext();
             var socketOutput = new Http1OutputProducer(
-                pipe.Reader,
                 pipe.Writer,
                 "0",
                 serviceContext.Log,

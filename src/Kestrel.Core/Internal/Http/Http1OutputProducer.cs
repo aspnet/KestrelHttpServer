@@ -36,7 +36,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private long _totalBytesCommitted;
 
         private readonly PipeWriter _pipeWriter;
-        private readonly PipeReader _outputPipeReader;
 
         // https://github.com/dotnet/corefxlab/issues/1334
         // Pipelines don't support multiple awaiters on flush
@@ -48,7 +47,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private ValueTask<FlushResult> _flushTask;
 
         public Http1OutputProducer(
-            PipeReader outputPipeReader,
             PipeWriter pipeWriter,
             string connectionId,
             IKestrelTrace log,
@@ -56,7 +54,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             IConnectionLifetimeFeature lifetimeFeature,
             IBytesWrittenFeature transportBytesWrittenFeature)
         {
-            _outputPipeReader = outputPipeReader;
             _pipeWriter = pipeWriter;
             _connectionId = connectionId;
             _timeoutControl = timeoutControl;
@@ -181,17 +178,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return;
                 }
 
+                _aborted = true;
+                _lifetimeFeature.Abort(error);
+
                 if (!_completed)
                 {
                     _log.ConnectionDisconnect(_connectionId);
                     _completed = true;
-
-                    _outputPipeReader.CancelPendingRead();
-                    _pipeWriter.Complete(error);
+                    _pipeWriter.Complete();
                 }
-
-                _aborted = true;
-                _lifetimeFeature.Abort();
             }
         }
 
