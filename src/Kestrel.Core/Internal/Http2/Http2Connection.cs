@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _frameWriter.Abort(ex: null);
         }
 
-        public void Abort(Exception ex)
+        public void Abort(ConnectionAbortedException ex)
         {
             _stopping = true;
             _frameWriter.Abort(ex);
@@ -208,7 +208,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 {
                     foreach (var stream in _streams.Values)
                     {
-                        stream.Abort(error);
+                        stream.Http2Abort(error);
                     }
 
                     await _frameWriter.WriteGoAwayAsync(_highestOpenedStreamId, errorCode);
@@ -470,7 +470,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
-                stream.Abort(error: null);
+                stream.Abort(abortReason: null);
             }
 
             return Task.CompletedTask;

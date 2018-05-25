@@ -15,6 +15,6 @@ namespace Microsoft.AspNetCore.Connections.Features
         // REVIEW: This is technically a breaking change for implementors of this interface,
         // but realistically this only affects transport implementations which today must
         // implement other pubternal interfaces or facades which I doubt exist.
-        void Abort(Exception abortReason);
+        void Abort(ConnectionAbortedException abortReason);
     }
 }

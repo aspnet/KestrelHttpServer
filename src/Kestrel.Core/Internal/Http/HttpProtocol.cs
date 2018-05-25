@@ -429,18 +429,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         /// <summary>
         /// Immediately kill the connection and poison the request and response streams with an error if there is one.
         /// </summary>
-        public void Abort(Exception error)
+        public void Abort(ConnectionAbortedException abortReason)
         {
             if (Interlocked.Exchange(ref _requestAborted, 1) != 0)
             {
                 return;
             }
 
-            _streams?.Abort(error);
+            _streams?.Abort(abortReason);
 
             // Abort output prior to calling OnIOCompleted() to give the transport the chance to
-            // complete the input with the correct error (e.g. TimeoutException)
-            Output.Abort(error);
+            // complete the input with the correct error and message.
+            Output.Abort(abortReason);
 
             OnInputOrOutputCompleted();
         }

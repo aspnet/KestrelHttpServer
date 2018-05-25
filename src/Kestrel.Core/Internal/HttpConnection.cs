@@ -10,6 +10,7 @@ using System.IO.Pipelines;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
@@ -290,7 +291,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public void Abort(Exception ex)
+        public void Abort(ConnectionAbortedException ex)
         {
             lock (_protocolSelectionLock)
             {
@@ -310,7 +311,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public Task AbortAsync(Exception ex)
+        public Task AbortAsync(ConnectionAbortedException ex)
         {
             Abort(ex);
 
@@ -437,7 +438,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                             break;
                         case TimeoutAction.AbortConnection:
                             // This is actually supported with HTTP/2!
-                            Abort(new TimeoutException(CoreStrings.ConnectionTimedOutByServer));
+                            Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedOutByServer));
                             break;
                     }
                 }
@@ -500,7 +501,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     RequestTimedOut = true;
                     Log.ResponseMininumDataRateNotSatisfied(_http1Connection.ConnectionIdFeature, _http1Connection.TraceIdentifier);
-                    Abort(new TimeoutException(CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied));
+                    Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied));
                 }
             }
         }
@@ -640,7 +641,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             ResetTimeout(timeSpan.Ticks, TimeoutAction.AbortConnection);
         }
 
-        private void CloseUninitializedConnection(Exception abortReason)
+        private void CloseUninitializedConnection(ConnectionAbortedException abortReason)
         {
             Debug.Assert(_adaptedTransport != null);
 

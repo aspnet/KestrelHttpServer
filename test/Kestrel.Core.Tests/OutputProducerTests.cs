@@ -5,6 +5,7 @@ using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Threading;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -67,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             outputProducer.Dispose();
 
-            mockLifetimeFeature.Verify(f => f.Abort(It.IsAny<Exception>()), Times.Never());
+            mockLifetimeFeature.Verify(f => f.Abort(It.IsAny<ConnectionAbortedException>()), Times.Never());
 
             outputProducer.Abort(null);
 

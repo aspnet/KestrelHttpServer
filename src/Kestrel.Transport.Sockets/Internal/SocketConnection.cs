@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         private readonly object _shutdownLock = new object();
         private volatile bool _aborted;
-        private volatile Exception _abortReason;
+        private volatile ConnectionAbortedException _abortReason;
         private long _totalBytesWritten;
 
         internal SocketConnection(Socket socket, MemoryPool<byte> memoryPool, PipeScheduler scheduler, ISocketsTrace trace)
@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
         }
 
-        public override void Abort(Exception abortReason)
+        public override void Abort(ConnectionAbortedException abortReason)
         {
             _abortReason = abortReason;
             Output.CancelPendingRead();

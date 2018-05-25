@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
         private readonly UvStreamHandle _socket;
         private readonly CancellationTokenSource _connectionClosedTokenSource = new CancellationTokenSource();
 
-        private volatile Exception _abortReason;
+        private volatile ConnectionAbortedException _abortReason;
 
         private MemoryHandle _bufferHandle;
 
@@ -116,7 +116,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        public override void Abort(Exception abortReason)
+        public override void Abort(ConnectionAbortedException abortReason)
         {
             _abortReason = abortReason;
             Output.CancelPendingRead();
