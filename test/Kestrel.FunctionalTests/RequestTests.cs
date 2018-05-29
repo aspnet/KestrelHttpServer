@@ -578,8 +578,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ConnectionClosedTokenFiresOnClientFIN(ListenOptions listenOptions)
         {
             var testContext = new TestServiceContext(LoggerFactory);
-            var appStartedTcs = new TaskCompletionSource<object>();
-            var connectionClosedTcs = new TaskCompletionSource<object>();
+            var appStartedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var connectionClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(context =>
             {
@@ -613,7 +613,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ConnectionClosedTokenFiresOnServerFIN(ListenOptions listenOptions)
         {
             var testContext = new TestServiceContext(LoggerFactory);
-            var connectionClosedTcs = new TaskCompletionSource<object>();
+            var connectionClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(context =>
             {
@@ -649,7 +649,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ConnectionClosedTokenFiresOnServerAbort(ListenOptions listenOptions)
         {
             var testContext = new TestServiceContext(LoggerFactory);
-            var connectionClosedTcs = new TaskCompletionSource<object>();
+            var connectionClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(context =>
             {
@@ -694,9 +694,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [InlineData("http://localhost/path%20with%20space?q=abc%20123", "/path with space", "abc 123")]
         public async Task CanHandleRequestsWithUrlInAbsoluteForm(string requestUrl, string expectedPath, string queryValue)
         {
-            var pathTcs = new TaskCompletionSource<PathString>();
-            var rawTargetTcs = new TaskCompletionSource<string>();
-            var queryTcs = new TaskCompletionSource<IQueryCollection>();
+            var pathTcs = new TaskCompletionSource<PathString>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var rawTargetTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var queryTcs = new TaskCompletionSource<IQueryCollection>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(async context =>
                  {
@@ -1135,8 +1135,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
-            var readTcs = new TaskCompletionSource<object>();
-            var registrationTcs = new TaskCompletionSource<int>();
+            var readTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var registrationTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             var requestId = 0;
 
             using (var server = new TestServer(async httpContext =>

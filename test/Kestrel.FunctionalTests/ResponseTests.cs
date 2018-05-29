@@ -145,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task OnCompleteCalledEvenWhenOnStartingNotCalled()
         {
             var onStartingCalled = false;
-            var onCompletedTcs = new TaskCompletionSource<object>();
+            var onCompletedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
@@ -341,7 +341,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task OnCompletedShouldNotBlockAResponse()
         {
-            var delayTcs = new TaskCompletionSource<object>();
+            var delayTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var hostBuilder = TransportSelector.GetWebHostBuilder()
                 .UseKestrel()
                 .UseUrls("http://127.0.0.1:0/")
@@ -375,7 +375,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task InvalidChunkedEncodingInRequestShouldNotBlockOnCompleted()
         {
-            var onCompletedTcs = new TaskCompletionSource<object>();
+            var onCompletedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(httpContext =>
             {
@@ -418,7 +418,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             mockHttpContextFactory.Setup(f => f.Create(It.IsAny<IFeatureCollection>()))
                 .Returns<IFeatureCollection>(fc => new DefaultHttpContext(fc));
 
-            var disposedTcs = new TaskCompletionSource<int>();
+            var disposedTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             mockHttpContextFactory.Setup(f => f.Dispose(It.IsAny<HttpContext>()))
                 .Callback<HttpContext>(c =>
                 {
@@ -619,7 +619,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             const string response = "hello, world";
 
-            var logTcs = new TaskCompletionSource<object>();
+            var logTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
                 .Setup(trace => trace.ConnectionHeadResponseBodyWrite(It.IsAny<string>(), response.Length))
@@ -808,7 +808,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         [Fact]
         public async Task WhenAppWritesLessThanContentLengthErrorLogged()
         {
-            var logTcs = new TaskCompletionSource<object>();
+            var logTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var mockTrace = new Mock<IKestrelTrace>();
             mockTrace
                 .Setup(trace => trace.ApplicationError(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<InvalidOperationException>()))
@@ -1182,7 +1182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var connectionClosed = new ManualResetEventSlim();
             var requestStarted = new ManualResetEventSlim();
-            var tcs = new TaskCompletionSource<object>();
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(async httpContext =>
             {
@@ -2279,7 +2279,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             // Ensure string is long enough to disable write-behind buffering
             var largeString = new string('a', maxBytesPreCompleted + 1);
 
-            var writeTcs = new TaskCompletionSource<object>();
+            var writeTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var requestAbortedWh = new ManualResetEventSlim();
             var requestStartWh = new ManualResetEventSlim();
 
@@ -2619,7 +2619,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var testContext= new TestServiceContext(LoggerFactory);
 
             var callOrder = new Stack<int>();
-            var onStartingTcs = new TaskCompletionSource<object>();
+            var onStartingTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(async context =>
             {
@@ -2671,7 +2671,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var testContext= new TestServiceContext(LoggerFactory);
 
             var callOrder = new Stack<int>();
-            var onCompletedTcs = new TaskCompletionSource<object>();
+            var onCompletedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using (var server = new TestServer(async context =>
             {
@@ -2815,10 +2815,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var responseSize = chunks * chunkSize;
                 var chunkData = new byte[chunkSize];
 
-                var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>();
-                var connectionStopMessageLogged = new TaskCompletionSource<object>();
-                var requestAborted = new TaskCompletionSource<object>();
-                var appFuncCompleted = new TaskCompletionSource<object>();
+                var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var connectionStopMessageLogged = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var requestAborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 var mockKestrelTrace = new Mock<IKestrelTrace>();
                 mockKestrelTrace
@@ -2906,10 +2906,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var certificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
 
-            var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>();
-            var connectionStopMessageLogged = new TaskCompletionSource<object>();
-            var aborted = new TaskCompletionSource<object>();
-            var appFuncCompleted = new TaskCompletionSource<object>();
+            var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var connectionStopMessageLogged = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var aborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
@@ -2998,10 +2998,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var responseSize = bufferCount * bufferSize;
             var buffer = new byte[bufferSize];
 
-            var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>();
-            var connectionStopMessageLogged = new TaskCompletionSource<object>();
-            var requestAborted = new TaskCompletionSource<object>();
-            var appFuncCompleted = new TaskCompletionSource<object>();
+            var responseRateTimeoutMessageLogged = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var connectionStopMessageLogged = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var requestAborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var mockKestrelTrace = new Mock<IKestrelTrace>();
             mockKestrelTrace
@@ -3085,7 +3085,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var chunkData = new byte[chunkSize];
 
             var requestAborted = false;
-            var appFuncCompleted = new TaskCompletionSource<object>();
+            var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var mockKestrelTrace = new Mock<IKestrelTrace>();
 
             var testContext = new TestServiceContext
