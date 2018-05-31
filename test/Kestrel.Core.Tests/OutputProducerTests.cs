@@ -62,38 +62,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public void AbortsTransportEvenAfterDispose()
         {
-            var mockLifetimeFeature = new Mock<IConnectionLifetimeFeature>();
+            var mockConnectionContext = new Mock<ConnectionContext>();
 
-            var outputProducer = CreateOutputProducer(lifetimeFeature: mockLifetimeFeature.Object);
+            var outputProducer = CreateOutputProducer(connectionContext: mockConnectionContext.Object);
 
             outputProducer.Dispose();
 
-            mockLifetimeFeature.Verify(f => f.Abort(It.IsAny<ConnectionAbortedException>()), Times.Never());
+            mockConnectionContext.Verify(f => f.Abort(It.IsAny<ConnectionAbortedException>()), Times.Never());
 
             outputProducer.Abort(null);
 
-            mockLifetimeFeature.Verify(f => f.Abort(null), Times.Once());
+            mockConnectionContext.Verify(f => f.Abort(null), Times.Once());
 
             outputProducer.Abort(null);
 
-            mockLifetimeFeature.Verify(f => f.Abort(null), Times.Once());
+            mockConnectionContext.Verify(f => f.Abort(null), Times.Once());
         }
 
         private Http1OutputProducer CreateOutputProducer(
             PipeOptions pipeOptions = null,
-            IConnectionLifetimeFeature lifetimeFeature = null)
+            ConnectionContext connectionContext = null)
         {
             pipeOptions = pipeOptions ?? new PipeOptions();
-            lifetimeFeature = lifetimeFeature ?? Mock.Of<IConnectionLifetimeFeature>();
+            connectionContext = connectionContext ?? Mock.Of<ConnectionContext>();
 
             var pipe = new Pipe(pipeOptions);
             var serviceContext = new TestServiceContext();
             var socketOutput = new Http1OutputProducer(
                 pipe.Writer,
                 "0",
+                connectionContext,
                 serviceContext.Log,
                 Mock.Of<ITimeoutControl>(),
-                lifetimeFeature,
                 Mock.Of<IBytesWrittenFeature>());
 
             return socketOutput;

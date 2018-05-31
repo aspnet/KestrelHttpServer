@@ -23,9 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly ReadOnlyMemory<byte> _endChunkedResponseBytes = new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes("0\r\n\r\n"));
 
         private readonly string _connectionId;
+        private readonly ConnectionContext _connectionContext;
         private readonly ITimeoutControl _timeoutControl;
         private readonly IKestrelTrace _log;
-        private readonly IConnectionLifetimeFeature _lifetimeFeature;
         private readonly IBytesWrittenFeature _transportBytesWrittenFeature;
 
         // This locks access to to all of the below fields
@@ -50,17 +50,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public Http1OutputProducer(
             PipeWriter pipeWriter,
             string connectionId,
+            ConnectionContext connectionContext,
             IKestrelTrace log,
             ITimeoutControl timeoutControl,
-            IConnectionLifetimeFeature lifetimeFeature,
             IBytesWrittenFeature transportBytesWrittenFeature)
         {
             _pipeWriter = pipeWriter;
             _connectionId = connectionId;
+            _connectionContext = connectionContext;
             _timeoutControl = timeoutControl;
             _log = log;
             _flushCompleted = OnFlushCompleted;
-            _lifetimeFeature = lifetimeFeature;
             _transportBytesWrittenFeature = transportBytesWrittenFeature;
         }
 
@@ -180,7 +180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
 
                 _aborted = true;
-                _lifetimeFeature.Abort(error);
+                _connectionContext.Abort(error);
 
                 if (!_completed)
                 {

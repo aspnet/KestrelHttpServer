@@ -739,6 +739,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
             var http1Connection = new Http1Connection(new Http1ConnectionContext
             {
                 ServiceContext = serviceContext,
+                ConnectionContext = Mock.Of<ConnectionContext>(),
                 ConnectionFeatures = connectionFeatures,
                 MemoryPool = _memoryPool,
                 TimeoutControl = Mock.Of<ITimeoutControl>(),

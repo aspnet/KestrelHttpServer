@@ -224,6 +224,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 LocalEndPoint = LocalEndPoint,
                 RemoteEndPoint = RemoteEndPoint,
                 ServiceContext = _context.ServiceContext,
+                ConnectionContext = _context.ConnectionContext,
                 TimeoutControl = this,
                 Transport = transport,
                 Application = application
@@ -645,7 +646,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             Debug.Assert(_adaptedTransport != null);
 
-            _context.ConnectionFeatures.Get<IConnectionLifetimeFeature>().Abort(abortReason);
+            _context.ConnectionContext.Abort(abortReason);
 
             _adaptedTransport.Input.Complete();
             _adaptedTransport.Output.Complete();

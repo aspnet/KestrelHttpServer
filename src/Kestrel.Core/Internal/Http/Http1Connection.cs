@@ -47,9 +47,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             Output = new Http1OutputProducer(
                 _context.Transport.Output,
                 _context.ConnectionId,
+                _context.ConnectionContext,
                 _context.ServiceContext.Log,
                 _context.TimeoutControl,
-                _context.ConnectionFeatures.Get<IConnectionLifetimeFeature>(),
                 _context.ConnectionFeatures.Get<IBytesWrittenFeature>());
         }
 
