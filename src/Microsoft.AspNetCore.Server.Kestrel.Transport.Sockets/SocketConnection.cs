@@ -194,7 +194,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                                 }
                             }
                         }
-                        else if (result.IsCompleted)
+
+                        if (result.IsCompleted)
                         {
                             break;
                         }

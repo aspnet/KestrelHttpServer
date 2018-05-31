@@ -95,7 +95,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                             pool.Return(writeReq);
                         }
                     }
-                    else if (result.IsCompleted)
+
+                    if (result.IsCompleted)
                     {
                         break;
                     }

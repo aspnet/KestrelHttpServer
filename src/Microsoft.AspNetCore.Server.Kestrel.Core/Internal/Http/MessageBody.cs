@@ -109,7 +109,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                                 break;
                             }
                         }
-                        else if (result.IsCompleted)
+
+                        // Read() will have already have greedily consumed the entire request body if able.
+                        if (result.IsCompleted)
                         {
                             _context.ThrowRequestRejected(RequestRejectionReason.UnexpectedEndOfRequestContent);
                         }
@@ -153,7 +155,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         slice.CopyTo(buffer);
                         return actual;
                     }
-                    else if (result.IsCompleted)
+
+                    if (result.IsCompleted)
                     {
                         return 0;
                     }
@@ -185,7 +188,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
                         }
                     }
-                    else if (result.IsCompleted)
+
+                    if (result.IsCompleted)
                     {
                         return;
                     }

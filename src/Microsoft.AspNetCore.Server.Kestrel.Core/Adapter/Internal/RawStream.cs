@@ -110,7 +110,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
                         readableBuffer.CopyTo(buffer);
                         return count;
                     }
-                    else if (result.IsCompleted)
+
+                    if (result.IsCompleted)
                     {
                         return 0;
                     }
