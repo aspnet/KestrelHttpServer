@@ -206,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Performance
                 }
             }
 
-            public override void AbortImpl(ConnectionAbortedException abortReason)
+            protected override void AbortCore(ConnectionAbortedException abortReason)
             {
             }
         }

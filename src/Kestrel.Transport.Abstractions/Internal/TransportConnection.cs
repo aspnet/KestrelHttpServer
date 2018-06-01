@@ -60,9 +60,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         // to stack overflow when IConnectionLifetimeFeature.Abort() is called.
         public override void Abort(ConnectionAbortedException abortReason)
         {
-            AbortImpl(abortReason);
+            AbortCore(abortReason);
         }
 
-        public abstract void AbortImpl(ConnectionAbortedException abortReason);
+        protected abstract void AbortCore(ConnectionAbortedException abortReason);
     }
 }
