@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
     [OSSkipCondition(OperatingSystems.Windows, SkipReason = "Listening to open TCP socket and/or pipe handles is not supported on Windows.")]
     public class ListenHandleTests : LoggedTest
     {
-        [ConditionalFact]
+        [ConditionalFact(Skip = "https://github.com/aspnet/KestrelHttpServer/issues/2597")]
         public async Task CanListenToOpenTcpSocketHandle()
         {
             using (var listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
