@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
@@ -91,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
         }
 
-        public override void AbortImpl(ConnectionAbortedException abortReason)
+        public override void Abort(ConnectionAbortedException abortReason)
         {
             _abortReason = abortReason;
             Output.CancelPendingRead();
