@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    internal sealed class SocketConnection : TransportConnection, IDisposable
+    internal sealed class SocketConnection : TransportConnection
     {
         private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
         private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -99,12 +99,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             // Try to gracefully close the socket to match libuv behavior.
             Shutdown();
-        }
-
-        // Only called after connection middleware is complete which means the ConnectionClosed token has fired.
-        public void Dispose()
-        {
-            _connectionClosedTokenSource.Dispose();
         }
 
         private async Task DoReceive()

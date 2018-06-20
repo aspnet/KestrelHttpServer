@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             }
         }
 
-        protected async Task HandleConnectionAsync(UvStreamHandle socket)
+        protected void HandleConnectionAsync(UvStreamHandle socket)
         {
             try
             {
@@ -64,13 +64,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
                 }
 
                 var connection = new LibuvConnection(socket, TransportContext.Log, Thread, remoteEndPoint, localEndPoint);
-                var middlewareTask = TransportContext.ConnectionDispatcher.OnConnection(connection);
-                var transportTask = connection.Start();
-
-                await transportTask;
-                await middlewareTask;
-
-                connection.Dispose();
+                TransportContext.ConnectionDispatcher.OnConnection(connection);
+                _ = connection.Start();
             }
             catch (Exception ex)
             {

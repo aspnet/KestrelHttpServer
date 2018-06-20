@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
 {
-    public partial class LibuvConnection : TransportConnection, IDisposable
+    public partial class LibuvConnection : TransportConnection
     {
         private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
 
@@ -123,12 +123,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             
             // This cancels any pending I/O.
             Thread.Post(s => s.Dispose(), _socket);
-        }
-
-        // Only called after connection middleware is complete which means the ConnectionClosed token has fired.
-        public void Dispose()
-        {
-            _connectionClosedTokenSource.Dispose();
         }
 
         // Called on Libuv thread

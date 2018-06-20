@@ -155,10 +155,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
                             acceptSocket.NoDelay = _endPointInformation.NoDelay;
 
                             var connection = new SocketConnection(acceptSocket, _memoryPool, _schedulers[schedulerIndex], _trace);
-
-                            // REVIEW: This task should be tracked by the server for graceful shutdown
-                            // Today it's handled specifically for http but not for arbitrary middleware
-                            _ = HandleConnectionAsync(connection);
+                            HandleConnectionAsync(connection);
                         }
                         catch (SocketException) when (!_unbinding)
                         {
@@ -185,17 +182,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets
             }
         }
 
-        private async Task HandleConnectionAsync(SocketConnection connection)
+        private void HandleConnectionAsync(SocketConnection connection)
         {
             try
             {
-                var middlewareTask = _dispatcher.OnConnection(connection);
-                var transportTask = connection.StartAsync();
-
-                await transportTask;
-                await middlewareTask;
-
-                connection.Dispose();
+                _dispatcher.OnConnection(connection);
+                _ = connection.StartAsync();
             }
             catch (Exception ex)
             {

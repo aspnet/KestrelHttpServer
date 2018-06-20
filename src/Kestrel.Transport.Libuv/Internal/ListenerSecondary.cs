@@ -151,10 +151,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             try
             {
                 DispatchPipe.Accept(acceptSocket);
-
-                // REVIEW: This task should be tracked by the server for graceful shutdown
-                // Today it's handled specifically for http but not for aribitrary middleware
-                _ = HandleConnectionAsync(acceptSocket);
+                HandleConnectionAsync(acceptSocket);
             }
             catch (UvException ex) when (LibuvConstants.IsConnectionReset(ex.StatusCode))
             {
