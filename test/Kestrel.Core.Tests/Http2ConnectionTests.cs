@@ -2175,6 +2175,99 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task WINDOW_UPDATE_Received_Respected()
+        {
+            _clientSettings.InitialWindowSize = 6;
+
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _helloWorldBytes, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+
+            var dataFrame1 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 6,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await SendWindowUpdateAsync(1, 6);
+
+            var dataFrame2 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 6,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            Assert.Equal(dataFrame1.DataPayload, new ArraySegment<byte>(_helloWorldBytes, 0, 6));
+            Assert.Equal(dataFrame2.DataPayload, new ArraySegment<byte>(_helloWorldBytes, 6, 6));
+        }
+
+        [Fact]
+        public async Task WINDOW_UPDATE_Received_Respected_WhenInitialWindowSizeReducedMidStream()
+        {
+            _clientSettings.InitialWindowSize = 6;
+
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _helloWorldBytes, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+
+            var dataFrame1 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 6,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            // Reduce the initial window size for response data by 3 bytes.
+            _clientSettings.InitialWindowSize = 3;
+            await SendSettingsAsync();
+
+            await ExpectAsync(Http2FrameType.SETTINGS,
+                withLength: 0,
+                withFlags: (byte)Http2SettingsFrameFlags.ACK,
+                withStreamId: 0);
+
+            await SendWindowUpdateAsync(1, 6);
+
+            var dataFrame2 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 3,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await SendWindowUpdateAsync(1, 3);
+
+            var dataFrame3 = await ExpectAsync(Http2FrameType.DATA,
+                withLength: 3,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            Assert.Equal(dataFrame1.DataPayload, new ArraySegment<byte>(_helloWorldBytes, 0, 6));
+            Assert.Equal(dataFrame2.DataPayload, new ArraySegment<byte>(_helloWorldBytes, 6, 3));
+            Assert.Equal(dataFrame3.DataPayload, new ArraySegment<byte>(_helloWorldBytes, 9, 3));
+        }
+
+        [Fact]
         public async Task CONTINUATION_Received_Decoded()
         {
             await InitializeConnectionAsync(_readHeadersApplication);

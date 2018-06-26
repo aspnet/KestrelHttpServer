@@ -17,13 +17,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public partial class Http2Stream : HttpProtocol
     {
         private readonly Http2StreamContext _context;
+        private readonly Http2StreamFlowControl _outputFlowControl;
 
         public Http2Stream(Http2StreamContext context)
             : base(context)
         {
             _context = context;
+            _outputFlowControl = new Http2StreamFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
 
-            Output = new Http2OutputProducer(StreamId, _context.FrameWriter);
+            Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
         }
 
         public int StreamId => _context.StreamId;
@@ -152,6 +154,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _streams?.Abort(abortReason);
 
             OnInputOrOutputCompleted();
+        }
+
+        public bool TryUpdateOutputWindow(int bytes)
+        {
+            return _context.FrameWriter.TryUpdateStreamWindow(_outputFlowControl, bytes);
         }
     }
 }

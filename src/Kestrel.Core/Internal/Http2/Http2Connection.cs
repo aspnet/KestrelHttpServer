@@ -61,6 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
         private readonly HPackDecoder _hpackDecoder;
+        private readonly Http2FlowControl _outputFlowControl = new Http2FlowControl(Http2PeerSettings.DefaultInitialWindowSize);
 
         private readonly Http2PeerSettings _serverSettings = new Http2PeerSettings();
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
@@ -143,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                             if (Http2FrameReader.ReadFrame(readableBuffer, _incomingFrame, _serverSettings.MaxFrameSize, out consumed, out examined))
                             {
                                 Log.LogTrace($"Connection id {ConnectionId} received {_incomingFrame.Type} frame with flags 0x{_incomingFrame.Flags:x} and length {_incomingFrame.Length} for stream ID {_incomingFrame.StreamId}");
-                                await ProcessFrameAsync<TContext>(application);
+                                await ProcessFrameAsync(application);
                             }
                         }
                         else if (result.IsCompleted)
@@ -296,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 case Http2FrameType.DATA:
                     return ProcessDataFrameAsync();
                 case Http2FrameType.HEADERS:
-                    return ProcessHeadersFrameAsync<TContext>(application);
+                    return ProcessHeadersFrameAsync(application);
                 case Http2FrameType.PRIORITY:
                     return ProcessPriorityFrameAsync();
                 case Http2FrameType.RST_STREAM:
@@ -312,7 +313,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 case Http2FrameType.WINDOW_UPDATE:
                     return ProcessWindowUpdateFrameAsync();
                 case Http2FrameType.CONTINUATION:
-                    return ProcessContinuationFrameAsync<TContext>(application);
+                    return ProcessContinuationFrameAsync(application);
                 default:
                     return ProcessUnknownFrameAsync();
             }
@@ -442,7 +443,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     LocalEndPoint = _context.LocalEndPoint,
                     RemoteEndPoint = _context.RemoteEndPoint,
                     StreamLifetimeHandler = this,
-                    FrameWriter = _frameWriter
+                    ClientPeerSettings = _clientSettings,
+                    FrameWriter = _frameWriter,
+                    ConnectionOutputFlowControl = _outputFlowControl,
+                    TimeoutControl = this,
                 });
 
                 if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == Http2HeadersFrameFlags.END_STREAM)
@@ -503,7 +507,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
-                stream.Abort(abortReason: null);
+                stream.Abort(new ConnectionAbortedException("TODO: RST_STREAM received."));
             }
 
             return Task.CompletedTask;
@@ -533,7 +537,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             try
             {
+                // ParseFrame will not parse an InitialWindowSize > int.MaxValue.
+                var previousInitialWindowSize = (int)_clientSettings.InitialWindowSize;
+
                 _clientSettings.ParseFrame(_incomingFrame);
+
+                // This difference can be negative.
+                var windowSizeDifference = (int)_clientSettings.InitialWindowSize - previousInitialWindowSize;
+
+                if (windowSizeDifference != 0)
+                {
+                    foreach (var stream in _streams.Values)
+                    {
+                        if (!stream.TryUpdateOutputWindow(windowSizeDifference))
+                        {
+                            // This means that this caused a stream window to become larger than int.MaxValue.
+                            // This can never happen with a well behaved client and MUST be treated as a connection error.
+                            // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2
+                            throw new Http2ConnectionErrorException("TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
+                        }
+                    }
+                }
+
                 return _frameWriter.WriteSettingsAckAsync();
             }
             catch (Http2SettingsParameterOutOfRangeException ex)
@@ -618,6 +643,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 // implemented and tested, we treat all zero length window
                 // increments as connection errors for now.
                 throw new Http2ConnectionErrorException(CoreStrings.Http2ErrorWindowUpdateIncrementZero, Http2ErrorCode.PROTOCOL_ERROR);
+            }
+
+            if (_incomingFrame.StreamId == 0)
+            {
+                if (!_frameWriter.TryUpdateConnectionWindow(_outputFlowControl, _incomingFrame.WindowUpdateSizeIncrement))
+                {
+                    throw new Http2ConnectionErrorException("TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
+                }
+            }
+            else if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
+            {
+                if (!stream.TryUpdateOutputWindow(_incomingFrame.WindowUpdateSizeIncrement))
+                {
+                    throw new Http2StreamErrorException(_incomingFrame.StreamId, "TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
+                }
+            }
+            else
+            {
+                throw new Http2ConnectionErrorException(CoreStrings.FormatHttp2ErrorStreamClosed(_incomingFrame.Type, _incomingFrame.StreamId), Http2ErrorCode.STREAM_CLOSED);
             }
 
             return Task.CompletedTask;
