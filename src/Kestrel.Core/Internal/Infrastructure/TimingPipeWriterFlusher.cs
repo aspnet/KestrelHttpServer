@@ -1,9 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
@@ -11,14 +14,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
     {
         private readonly PipeWriter _writer;
         private readonly ITimeoutControl _timeoutControl;
+        private readonly IHttpOutputProducer _outputProducer;
         private readonly object _flushLock = new object();
 
         private Task _lastFlushTask = Task.CompletedTask;
 
-        public TimingPipeWriterFlusher(PipeWriter writer, ITimeoutControl timeoutControl)
+        public TimingPipeWriterFlusher(
+            PipeWriter writer,
+            ITimeoutControl timeoutControl,
+            IHttpOutputProducer outputProducer)
         {
             _writer = writer;
             _timeoutControl = timeoutControl;
+            _outputProducer = outputProducer;
         }
 
         public Task FlushAsync(long count, CancellationToken cancellationToken)
@@ -53,6 +61,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             try
             {
                 await _lastFlushTask;
+            }
+            catch (OperationCanceledException ex)
+            {
+                _outputProducer.Abort(new ConnectionAbortedException("TODO", ex));
             }
             catch
             {

@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _frameWriter = frameWriter;
             _flowControl = flowControl;
             _dataPipe = CreateDataPipe(pool);
-            _flusher = new TimingPipeWriterFlusher(_dataPipe.Writer, timeoutControl);
+            _flusher = new TimingPipeWriterFlusher(_dataPipe.Writer, timeoutControl, this);
             _ = ProcessDataWrites();
         }
 

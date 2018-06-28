@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _timeoutControl = timeoutControl;
             _log = log;
             _transportBytesWrittenFeature = transportBytesWrittenFeature;
-            _flusher = new TimingPipeWriterFlusher(pipeWriter, timeoutControl);
+            _flusher = new TimingPipeWriterFlusher(pipeWriter, timeoutControl, this);
         }
 
         public Task WriteDataAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default)
