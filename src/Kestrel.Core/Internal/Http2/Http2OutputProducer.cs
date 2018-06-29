@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly int _streamId;
         private readonly Http2FrameWriter _frameWriter;
-        private readonly TimingPipeWriterFlusher _flusher;
+        private readonly SafePipeWriterFlusher _flusher;
 
         // This should only be accessed via the FrameWriter. The connection-level output flow control is protected by the
         // FrameWriter's connection-level write lock.
@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _frameWriter = frameWriter;
             _flowControl = flowControl;
             _dataPipe = CreateDataPipe(pool);
-            _flusher = new TimingPipeWriterFlusher(_dataPipe.Writer, timeoutControl, this);
+            _flusher = new SafePipeWriterFlusher(_dataPipe.Writer, timeoutControl);
             _ = ProcessDataWrites();
         }
 
@@ -80,13 +80,48 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             throw new NotImplementedException();
         }
 
-        public Task FlushAsync(CancellationToken cancellationToken) => _frameWriter.FlushAsync(cancellationToken);
+        public Task FlushAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled(cancellationToken);
+            }
 
-        public Task Write100ContinueAsync() => _frameWriter.Write100ContinueAsync(_streamId);
+            lock (_dataWriterLock)
+            {
+                if (_completed)
+                {
+                    return Task.CompletedTask;
+                }
+
+                return _flusher.FlushAsync(0, this, cancellationToken);
+            }
+        }
+
+        public Task Write100ContinueAsync()
+        {
+            lock (_dataWriterLock)
+            {
+                if (_completed)
+                {
+                    return Task.CompletedTask;
+                }
+
+                return _frameWriter.Write100ContinueAsync(_streamId);
+            }
+        }
 
         public void WriteResponseHeaders(int statusCode, string ReasonPhrase, HttpResponseHeaders responseHeaders)
         {
-            _frameWriter.WriteResponseHeaders(_streamId, statusCode, responseHeaders);
+            lock (_dataWriterLock)
+            {
+                if (_completed)
+                {
+                    return;
+                }
+
+                _frameWriter.WriteResponseHeaders(_streamId, statusCode, responseHeaders);
+            }
         }
 
         public Task WriteDataAsync(ReadOnlySpan<byte> data, CancellationToken cancellationToken)
@@ -104,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 }
 
                 _dataPipe.Writer.Write(data);
-                return _flusher.FlushAsync(data.Length, cancellationToken);
+                return _flusher.FlushAsync(data.Length, this, cancellationToken);
             }
         }
 
@@ -125,6 +160,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private async Task ProcessDataWrites()
         {
+            var wroteData = false;
+
             try
             {
                 ReadResult readResult;
@@ -134,13 +171,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     readResult = await _dataPipe.Reader.ReadAsync();
 
                     await _frameWriter.WriteDataAsync(_streamId, _flowControl, readResult.Buffer, endStream: readResult.IsCompleted);
+                    wroteData = true;
 
                     _dataPipe.Reader.AdvanceTo(readResult.Buffer.End);
                 } while (!readResult.IsCompleted);
             }
             catch (ConnectionAbortedException)
             {
-                // Writes should not fail for aborted connections.
+                // Writes should not throw for aborted connections.
             }
             catch (Exception ex)
             {
@@ -148,6 +186,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             _dataPipe.Reader.Complete();
+
+            if (!wroteData)
+            {
+                // If no data was written, still make sure the headers are flushed by flushing the connection-level pipe.
+                await _frameWriter.FlushAsync();
+            }
         }
 
         private static Pipe CreateDataPipe(MemoryPool<byte> pool)

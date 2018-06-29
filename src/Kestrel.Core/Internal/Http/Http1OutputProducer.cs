@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly ITimeoutControl _timeoutControl;
         private readonly IKestrelTrace _log;
         private readonly IBytesWrittenFeature _transportBytesWrittenFeature;
-        private readonly TimingPipeWriterFlusher _flusher;
+        private readonly SafePipeWriterFlusher _flusher;
 
         // This locks access to to all of the below fields
         private readonly object _contextLock = new object();
@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _timeoutControl = timeoutControl;
             _log = log;
             _transportBytesWrittenFeature = transportBytesWrittenFeature;
-            _flusher = new TimingPipeWriterFlusher(pipeWriter, timeoutControl, this);
+            _flusher = new SafePipeWriterFlusher(pipeWriter, timeoutControl);
         }
 
         public Task WriteDataAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default)
@@ -209,7 +209,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var bytesWritten = _unflushedBytes;
                 _unflushedBytes = 0;
 
-                return _flusher.FlushAsync(bytesWritten, cancellationToken);
+                return _flusher.FlushAsync(bytesWritten, this, cancellationToken);
             }
         }
     }

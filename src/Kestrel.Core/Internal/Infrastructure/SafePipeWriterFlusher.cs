@@ -10,26 +10,23 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public class TimingPipeWriterFlusher
+    public class SafePipeWriterFlusher
     {
         private readonly PipeWriter _writer;
         private readonly ITimeoutControl _timeoutControl;
-        private readonly IHttpOutputProducer _outputProducer;
         private readonly object _flushLock = new object();
 
         private Task _lastFlushTask = Task.CompletedTask;
 
-        public TimingPipeWriterFlusher(
+        public SafePipeWriterFlusher(
             PipeWriter writer,
-            ITimeoutControl timeoutControl,
-            IHttpOutputProducer outputProducer)
+            ITimeoutControl timeoutControl)
         {
             _writer = writer;
             _timeoutControl = timeoutControl;
-            _outputProducer = outputProducer;
         }
 
-        public Task FlushAsync(long count, CancellationToken cancellationToken)
+        public Task FlushAsync(long count = 0, IHttpOutputProducer outputProducer = null, CancellationToken cancellationToken = default)
         {
             var flushValueTask = _writer.FlushAsync(cancellationToken);
 
@@ -50,11 +47,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                     _lastFlushTask = flushValueTask.AsTask();
                 }
 
-                return TimeFlushAsync(count, cancellationToken);
+                return TimeFlushAsync(count, outputProducer, cancellationToken);
             }
         }
 
-        private async Task TimeFlushAsync(long count, CancellationToken cancellationToken)
+        private async Task TimeFlushAsync(long count, IHttpOutputProducer outputProducer, CancellationToken cancellationToken)
         {
             _timeoutControl.StartTimingWrite(count);
 
@@ -64,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
             catch (OperationCanceledException ex)
             {
-                _outputProducer.Abort(new ConnectionAbortedException("TODO", ex));
+                outputProducer.Abort(new ConnectionAbortedException("TODO", ex));
             }
             catch
             {

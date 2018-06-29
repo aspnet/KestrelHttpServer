@@ -7,7 +7,9 @@ using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
@@ -23,13 +25,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly PipeWriter _outputWriter;
         private readonly PipeReader _outputReader;
+        private readonly SafePipeWriterFlusher _flusher;
 
         private bool _completed;
 
-        public Http2FrameWriter(PipeWriter outputPipeWriter, PipeReader outputPipeReader)
+        public Http2FrameWriter(PipeWriter outputPipeWriter, PipeReader outputPipeReader, ITimeoutControl timeoutControl)
         {
             _outputWriter = outputPipeWriter;
             _outputReader = outputPipeReader;
+
+            _flusher = new SafePipeWriterFlusher(outputPipeWriter, timeoutControl);
         }
 
         public void Complete()
@@ -46,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public void Abort(Exception ex)
+        public void Abort(ConnectionAbortedException ex)
         {
             lock (_writeLock)
             {
@@ -61,11 +66,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public Task FlushAsync(CancellationToken cancellationToken)
+        // The outputProducer allows a canceled flush to abort an individual stream.
+        public Task FlushAsync()
         {
             lock (_writeLock)
             {
-                return FlushUnsynchronizedAsync(cancellationToken);
+                if (_completed)
+                {
+                    return Task.CompletedTask;
+                }
+
+                return _flusher.FlushAsync();
             }
         }
 
@@ -180,7 +191,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _outgoingFrame.Length = unwrittenPayloadLength;
             _outputWriter.Write(_outgoingFrame.Raw);
 
-            return FlushUnsynchronizedAsync(default);
+            return _flusher.FlushAsync();
         }
 
         private async Task WriteDataAsyncAwaited(int streamId, Http2StreamFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
@@ -286,7 +297,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private Task WriteUnsynchronizedAsync(ReadOnlySpan<byte> data, CancellationToken cancellationToken = default)
+        private Task WriteUnsynchronizedAsync(ReadOnlySpan<byte> data)
         {
             if (_completed)
             {
@@ -294,19 +305,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             _outputWriter.Write(data);
-            return FlushUnsynchronizedAsync(cancellationToken);
-        }
-
-        private Task FlushUnsynchronizedAsync(CancellationToken cancellationToken)
-        {
-            var valueTask = _outputWriter.FlushAsync(cancellationToken);
-
-            if (valueTask.IsCompleted)
-            {
-                return Task.CompletedTask;
-            }
-
-            return valueTask.AsTask();
+            return _flusher.FlushAsync();
         }
 
         private static IEnumerable<KeyValuePair<string, string>> EnumerateHeaders(IHeaderDictionary headers)
