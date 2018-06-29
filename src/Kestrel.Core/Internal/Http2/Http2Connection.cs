@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2Connection(Http2ConnectionContext context)
         {
             _context = context;
-            _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, this);
+            _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl, this);
             _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
         }
 
@@ -650,7 +650,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_incomingFrame.StreamId == 0)
             {
-                if (!_frameWriter.TryUpdateConnectionWindow(_outputFlowControl, _incomingFrame.WindowUpdateSizeIncrement))
+                if (!_frameWriter.TryUpdateConnectionWindow(_incomingFrame.WindowUpdateSizeIncrement))
                 {
                     throw new Http2ConnectionErrorException("TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
                 }

@@ -25,15 +25,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly PipeWriter _outputWriter;
         private readonly PipeReader _outputReader;
+        private readonly Http2FlowControl _connectionOutputFlowControl;
         private readonly SafePipeWriterFlusher _flusher;
 
         private bool _completed;
 
-        public Http2FrameWriter(PipeWriter outputPipeWriter, PipeReader outputPipeReader, ITimeoutControl timeoutControl)
+        public Http2FrameWriter(
+            PipeWriter outputPipeWriter,
+            PipeReader outputPipeReader,
+            Http2FlowControl connectionOutputFlowControl,
+            ITimeoutControl timeoutControl)
         {
             _outputWriter = outputPipeWriter;
             _outputReader = outputPipeReader;
 
+            _connectionOutputFlowControl = connectionOutputFlowControl;
             _flusher = new SafePipeWriterFlusher(outputPipeWriter, timeoutControl);
         }
 
@@ -289,11 +295,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public bool TryUpdateConnectionWindow(Http2FlowControl flowControl, int bytes)
+        public bool TryUpdateConnectionWindow(int bytes)
         {
             lock (_writeLock)
             {
-                return flowControl.TryUpdateWindow(bytes);
+                return _connectionOutputFlowControl.TryUpdateWindow(bytes);
             }
         }
 

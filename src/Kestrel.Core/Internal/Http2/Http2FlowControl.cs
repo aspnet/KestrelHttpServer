@@ -8,6 +8,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public class Http2FlowControl
     {
+        // MaxWindowSize must be a long to prevent overflows in TryUpdateWindow.
+        private const long MaxWindowSize = int.MaxValue;
+
         private bool _awaitingAvailability;
         private TaskCompletionSource<object> _availabilityTcs;
 
@@ -42,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void Advance(int bytes)
         {
-            Debug.Assert(bytes <= Available, $"{nameof(Advance)}({bytes}) called with only {Available} bytes available.");
+            Debug.Assert(bytes >= 0 && bytes <= Available, $"{nameof(Advance)}({bytes}) called with {Available} bytes available.");
 
             Available -= bytes;
         }
@@ -52,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2
         public bool TryUpdateWindow(int bytes)
         {
-            var maxUpdate = (long)int.MaxValue - Available;
+            var maxUpdate = MaxWindowSize - Available;
 
             if (bytes > maxUpdate)
             {
