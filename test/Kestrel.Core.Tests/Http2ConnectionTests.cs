@@ -125,6 +125,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly RequestDelegate _largeHeadersApplication;
         private readonly RequestDelegate _waitForAbortApplication;
         private readonly RequestDelegate _waitForAbortFlushingApplication;
+        private readonly RequestDelegate _waitForAbortWithDataApplication;
 
         private Task _connectionTask;
 
@@ -265,6 +266,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 await sem.WaitAsync().DefaultTimeout();
 
                 await context.Response.Body.FlushAsync();
+
+                _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
+            };
+
+            _waitForAbortWithDataApplication = async context =>
+            {
+                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+                var sem = new SemaphoreSlim(0);
+
+                context.RequestAborted.Register(() =>
+                {
+                    lock (_abortedStreamIdsLock)
+                    {
+                        _abortedStreamIds.Add(streamIdFeature.StreamId);
+                    }
+
+                    sem.Release();
+                });
+
+                await sem.WaitAsync().DefaultTimeout();
+
+                await context.Response.Body.WriteAsync(new byte[10], 0, 10);
 
                 _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
             };
@@ -1740,33 +1763,147 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
             await SendRstStreamAsync(1);
-
-            // No data is received from the stream since it was aborted before writing anything
-
-            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
-
             await WaitForAllStreamsAsync();
             Assert.Contains(1, _abortedStreamIds);
+
+            await SendGoAwayAsync();
+
+            // No data is received from the stream since it was aborted before writing anything
+            await WaitForConnectionStopAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            // TODO: Check logs
         }
 
         [Fact]
-        public async Task RST_STREAM_Received_AbortsStream_FlushedDataIsSent()
+        public async Task RST_STREAM_Received_AbortsStream_FlushedHeadersNotSent()
         {
             await InitializeConnectionAsync(_waitForAbortFlushingApplication);
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
             await SendRstStreamAsync(1);
-
-            await ExpectAsync(Http2FrameType.HEADERS,
-                withLength: 37,
-                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
-                withStreamId: 1);
-
-            // No END_STREAM DATA frame is received since the stream was aborted
-
-            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
-
+            await WaitForAllStreamsAsync();
             Assert.Contains(1, _abortedStreamIds);
+
+            await SendGoAwayAsync();
+
+            // No END_STREAM HEADERS or DATA frame is received since the stream was aborted
+            await WaitForConnectionStopAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            // TODO: Check logs
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_AbortsStream_FlushedDataNotSent()
+        {
+            await InitializeConnectionAsync(_waitForAbortWithDataApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+            await SendRstStreamAsync(1);
+            await WaitForAllStreamsAsync();
+            Assert.Contains(1, _abortedStreamIds);
+
+            await SendGoAwayAsync();
+
+            // No END_STREAM HEADERS or DATA frame is received since the stream was aborted
+            await WaitForConnectionStopAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            // TODO: Check logs
+        }
+
+        [Fact]
+        public async Task RST_STREAM_WaitingForRequestBody_RequestBodyThrows()
+        {
+            var sem = new SemaphoreSlim(0);
+            await InitializeConnectionAsync(async context =>
+            {
+                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+
+                try
+                {
+                    var readTask = context.Request.Body.ReadAsync(new byte[100], 0, 100).DefaultTimeout();
+                    sem.Release();
+                    await readTask;
+
+                    _runningStreams[streamIdFeature.StreamId].TrySetException(new Exception("ReadAsync was expected to throw."));
+                }
+                catch (IOException) // Expected failure
+                {
+                    await context.Response.Body.WriteAsync(new byte[10], 0, 10);
+
+                    lock (_abortedStreamIdsLock)
+                    {
+                        _abortedStreamIds.Add(streamIdFeature.StreamId);
+                    }
+
+                    _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    _runningStreams[streamIdFeature.StreamId].TrySetException(ex);
+                }
+            });
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await sem.WaitAsync().DefaultTimeout();
+            await SendRstStreamAsync(1);
+            await WaitForAllStreamsAsync();
+            Assert.Contains(1, _abortedStreamIds);
+
+            await SendGoAwayAsync();
+
+            // No data is received from the stream since it was aborted before writing anything
+            await WaitForConnectionStopAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            // TODO: Check logs
+        }
+
+        [Fact]
+        public async Task RST_STREAM_IncompleteRequest_RequestBodyThrows()
+        {
+            var sem = new SemaphoreSlim(0);
+            await InitializeConnectionAsync(async context =>
+            {
+                var streamIdFeature = context.Features.Get<IHttp2StreamIdFeature>();
+
+                try
+                {
+                    var read = await context.Request.Body.ReadAsync(new byte[100], 0, 100).DefaultTimeout();
+                    var readTask = context.Request.Body.ReadAsync(new byte[100], 0, 100).DefaultTimeout();
+                    sem.Release();
+                    await readTask;
+
+                    _runningStreams[streamIdFeature.StreamId].TrySetException(new Exception("ReadAsync was expected to throw."));
+                }
+                catch (IOException) // Expected failure
+                {
+                    await context.Response.Body.WriteAsync(new byte[10], 0, 10);
+
+                    lock (_abortedStreamIdsLock)
+                    {
+                        _abortedStreamIds.Add(streamIdFeature.StreamId);
+                    }
+
+                    _runningStreams[streamIdFeature.StreamId].TrySetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    _runningStreams[streamIdFeature.StreamId].TrySetException(ex);
+                }
+            });
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, new byte[10], endStream: false);
+            await sem.WaitAsync().DefaultTimeout();
+            await SendRstStreamAsync(1);
+            await WaitForAllStreamsAsync();
+            Assert.Contains(1, _abortedStreamIds);
+
+            await SendGoAwayAsync();
+
+            // No data is received from the stream since it was aborted before writing anything
+            await WaitForConnectionStopAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            // TODO: Check logs
         }
 
         [Fact]

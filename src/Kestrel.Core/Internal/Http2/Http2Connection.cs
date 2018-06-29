@@ -190,9 +190,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 try
                 {
+                     var connectionError = error as ConnectionAbortedException
+                        ?? new ConnectionAbortedException("The connection has faulted and all streams are being aborted.", error);
+
                     foreach (var stream in _streams.Values)
                     {
-                        stream.Http2Abort(error);
+                        stream.Abort(connectionError);
                     }
 
                     await _frameWriter.WriteGoAwayAsync(_highestOpenedStreamId, errorCode);
@@ -507,7 +510,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
-                stream.Abort(new ConnectionAbortedException("TODO: RST_STREAM received."));
+                stream.Abort(new ConnectionAbortedException("The request stream was reset by the client."));
             }
 
             return Task.CompletedTask;
