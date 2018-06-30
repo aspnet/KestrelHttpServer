@@ -59,11 +59,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         MaxConcurrentStreams = value;
                         break;
                     case Http2SettingsParameter.SETTINGS_INITIAL_WINDOW_SIZE:
-                        if (value > int.MaxValue)
+                        if (value > Http2FlowControl.MaxWindowSize)
                         {
                             throw new Http2SettingsParameterOutOfRangeException(Http2SettingsParameter.SETTINGS_INITIAL_WINDOW_SIZE,
                                 lowerBound: 0,
-                                upperBound: int.MaxValue);
+                                upperBound: Http2FlowControl.MaxWindowSize);
                         }
 
                         InitialWindowSize = value;

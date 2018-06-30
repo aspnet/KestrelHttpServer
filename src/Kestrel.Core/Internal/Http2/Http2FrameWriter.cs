@@ -5,11 +5,9 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
@@ -143,14 +141,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             lock (_writeLock)
             {
-                // Zero-length data frames are allowed even if there is no space available in the flow control window.
+                // Zero-length data frames are allowed to be sent immediately even if there is no space available in the flow control window.
                 // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.1
                 if (dataLength != 0 && dataLength > flowControl.Available)
                 {
                     return WriteDataAsyncAwaited(streamId, flowControl, data, dataLength, endStream);
                 }
 
-                flowControl.Advance((int)dataLength);
+                flowControl.Take(dataLength, out _);
                 return WriteDataUnsynchronizedAsync(streamId, data, endStream);
             }
         }
@@ -204,40 +202,41 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             while (dataLength > 0)
             {
+                Http2FlowControlAwaitable availabilityAwaitable;
                 var writeTask = Task.CompletedTask;
-                var availabilityTask = Task.CompletedTask;
 
                 lock (_writeLock)
                 {
-                    var available = flowControl.Available;
+                    var actual = flowControl.Take(dataLength, out availabilityAwaitable);
 
-                    if (available <= 0)
+                    if (actual > 0)
                     {
-                        availabilityTask = flowControl.AvailabilityTask;
-                    }
-                    else if (dataLength > available)
-                    {
-                        writeTask = WriteDataUnsynchronizedAsync(streamId, data.Slice(0, available), endStream: false);
-                        data = data.Slice(available);
-
-                        flowControl.Advance(available);
-                        availabilityTask = flowControl.AvailabilityTask;
-
-                        dataLength -= available;
-                    }
-                    else
-                    {
-                        writeTask = WriteDataUnsynchronizedAsync(streamId, data, endStream);
-
-                        flowControl.Advance((int)dataLength);
-
-                        dataLength = 0;
+                        if (actual < dataLength)
+                        {
+                            writeTask = WriteDataUnsynchronizedAsync(streamId, data.Slice(0, actual), endStream: false);
+                            data = data.Slice(actual);
+                            dataLength -= actual;
+                        }
+                        else
+                        {
+                            writeTask = WriteDataUnsynchronizedAsync(streamId, data, endStream);
+                            dataLength = 0;
+                        }
                     }
                 }
 
+                // This awaitable releases continuations in FIFO order when the window updates.
+                // It should be very rare for a continuation to run without any availability. 
+                if (availabilityAwaitable != null)
+                {
+                    await availabilityAwaitable;
+                }
+
                 await writeTask;
-                await availabilityTask;
             }
+
+            // Ensure that the application continuation isn't executed inline by ProcessWindowUpdateFrameAsync.
+            await ThreadPoolAwaitable.Instance;
         }
 
         public Task WriteRstStreamAsync(int streamId, Http2ErrorCode errorCode)

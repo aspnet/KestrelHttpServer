@@ -1,45 +1,38 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public class Http2FlowControl
     {
         // MaxWindowSize must be a long to prevent overflows in TryUpdateWindow.
-        private const long MaxWindowSize = int.MaxValue;
+        public const long MaxWindowSize = int.MaxValue;
 
-        private bool _awaitingAvailability;
-        private TaskCompletionSource<object> _availabilityTcs;
+        private readonly Queue<Http2FlowControlAwaitable> _awaitableQueue = new Queue<Http2FlowControlAwaitable>();
+        private readonly Queue<Http2FlowControlAwaitable> _awaitablePool = new Queue<Http2FlowControlAwaitable>();
 
         public int Available { get; private set; }
 
         public Http2FlowControl(uint initialWindowSize)
         {
-            Debug.Assert(initialWindowSize <= int.MaxValue, $"{nameof(initialWindowSize)} too large.");
+            Debug.Assert(initialWindowSize <= MaxWindowSize, $"{nameof(initialWindowSize)} too large.");
 
             Available = (int)initialWindowSize;
         }
 
         // TODO: Cancel this task during connection and stream aborts.
-        public Task AvailabilityTask
+        public Http2FlowControlAwaitable AvailabilityAwaitable
         {
             get
             {
-                if (Available > 0)
-                {
-                    return Task.CompletedTask;
-                }
+                Debug.Assert(Available <= 0, $"({nameof(AvailabilityAwaitable)} accessed with {Available} bytes available.");
 
-                if (!_awaitingAvailability)
-                {
-                    _awaitingAvailability = true;
-                    _availabilityTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-                }
-
-                return _availabilityTcs.Task;
+                var awaitable = _awaitablePool.Count > 0 ? _awaitablePool.Dequeue() : new Http2FlowControlAwaitable();
+                _awaitableQueue.Enqueue(awaitable);
+                return awaitable;
             }
         }
 
@@ -64,12 +57,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             Available += bytes;
 
-            if (Available > 0 && _awaitingAvailability)
+            while (Available > 0 && _awaitableQueue.Count > 0)
             {
-                // Set _awaitingAvailability before setting Tcs because the AvailabilityTask
-                // can be awaited inline.
-                _awaitingAvailability = false;
-                _availabilityTcs.SetResult(null);
+                var awaitable = _awaitableQueue.Dequeue();
+                awaitable.Complete();
+                _awaitablePool.Enqueue(awaitable);
             }
 
             return true;
