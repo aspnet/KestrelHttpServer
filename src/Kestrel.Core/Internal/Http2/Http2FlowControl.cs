@@ -14,8 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Queue<Http2FlowControlAwaitable> _awaitableQueue = new Queue<Http2FlowControlAwaitable>();
         private readonly Queue<Http2FlowControlAwaitable> _awaitablePool = new Queue<Http2FlowControlAwaitable>();
 
-        public int Available { get; private set; }
-
         public Http2FlowControl(uint initialWindowSize)
         {
             Debug.Assert(initialWindowSize <= MaxWindowSize, $"{nameof(initialWindowSize)} too large.");
@@ -23,11 +21,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Available = (int)initialWindowSize;
         }
 
-        // TODO: Cancel this task during connection and stream aborts.
+        public int Available { get; private set; }
+        public bool IsAborted { get; private set; }
+
         public Http2FlowControlAwaitable AvailabilityAwaitable
         {
             get
             {
+                Debug.Assert(!IsAborted, $"({nameof(AvailabilityAwaitable)} accessed after abort.");
                 Debug.Assert(Available <= 0, $"({nameof(AvailabilityAwaitable)} accessed with {Available} bytes available.");
 
                 var awaitable = _awaitablePool.Count > 0 ? _awaitablePool.Dequeue() : new Http2FlowControlAwaitable();
@@ -38,6 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void Advance(int bytes)
         {
+            Debug.Assert(!IsAborted, $"({nameof(Advance)} called after abort.");
             Debug.Assert(bytes >= 0 && bytes <= Available, $"{nameof(Advance)}({bytes}) called with {Available} bytes available.");
 
             Available -= bytes;
@@ -61,10 +63,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 var awaitable = _awaitableQueue.Dequeue();
                 awaitable.Complete();
-                _awaitablePool.Enqueue(awaitable);
             }
 
             return true;
+        }
+
+        public void Abort()
+        {
+            IsAborted = true;
+
+            while (_awaitableQueue.Count > 0)
+            {
+                _awaitableQueue.Dequeue().Complete();
+            }
+        }
+
+        public void ReturnAwaitable(Http2FlowControlAwaitable awaitable)
+        {
+            _awaitablePool.Enqueue(awaitable);
         }
     }
 }

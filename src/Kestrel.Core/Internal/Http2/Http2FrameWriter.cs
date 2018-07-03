@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
@@ -24,21 +23,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly PipeWriter _outputWriter;
         private readonly PipeReader _outputReader;
         private readonly Http2FlowControl _connectionOutputFlowControl;
-        private readonly SafePipeWriterFlusher _flusher;
 
         private bool _completed;
 
         public Http2FrameWriter(
             PipeWriter outputPipeWriter,
             PipeReader outputPipeReader,
-            Http2FlowControl connectionOutputFlowControl,
-            ITimeoutControl timeoutControl)
+            Http2FlowControl connectionOutputFlowControl)
         {
             _outputWriter = outputPipeWriter;
             _outputReader = outputPipeReader;
 
             _connectionOutputFlowControl = connectionOutputFlowControl;
-            _flusher = new SafePipeWriterFlusher(outputPipeWriter, timeoutControl);
         }
 
         public void Complete()
@@ -51,26 +47,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 }
 
                 _completed = true;
+                _connectionOutputFlowControl.Abort();
                 _outputWriter.Complete();
             }
         }
 
         public void Abort(ConnectionAbortedException ex)
         {
-            lock (_writeLock)
-            {
-                if (_completed)
-                {
-                    return;
-                }
-
-                _completed = true;
-                _outputReader.CancelPendingRead();
-                _outputWriter.Complete(ex);
-            }
+            // TODO: Really abort the connection using the ConnectionContex like Http1OutputProducer.
+            _outputReader.CancelPendingRead();
+            Complete();
         }
 
-        // The outputProducer allows a canceled flush to abort an individual stream.
         public Task FlushAsync()
         {
             lock (_writeLock)
@@ -80,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return Task.CompletedTask;
                 }
 
-                return _flusher.FlushAsync();
+                return FlushUnsynchronizedAsync();
             }
         }
 
@@ -141,6 +129,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             lock (_writeLock)
             {
+                if (flowControl.IsAborted)
+                {
+                    return Task.CompletedTask;
+                }
+
                 // Zero-length data frames are allowed to be sent immediately even if there is no space available in the flow control window.
                 // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.1
                 if (dataLength != 0 && dataLength > flowControl.Available)
@@ -148,7 +141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return WriteDataAsyncAwaited(streamId, flowControl, data, dataLength, endStream);
                 }
 
-                flowControl.Take(dataLength, out _);
+                flowControl.Advance(dataLength, out _);
                 return WriteDataUnsynchronizedAsync(streamId, data, endStream);
             }
         }
@@ -195,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _outgoingFrame.Length = unwrittenPayloadLength;
             _outputWriter.Write(_outgoingFrame.Raw);
 
-            return _flusher.FlushAsync();
+            return FlushUnsynchronizedAsync();
         }
 
         private async Task WriteDataAsyncAwaited(int streamId, Http2StreamFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
@@ -207,7 +200,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 lock (_writeLock)
                 {
-                    var actual = flowControl.Take(dataLength, out availabilityAwaitable);
+                    if (flowControl.IsAborted)
+                    {
+                        break;
+                    }
+
+                    var actual = flowControl.Advance(dataLength, out availabilityAwaitable);
 
                     if (actual > 0)
                     {
@@ -286,12 +284,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public bool TryUpdateStreamWindow(Http2StreamFlowControl flowControl, int bytes)
+        private Task WriteUnsynchronizedAsync(ReadOnlySpan<byte> data)
         {
-            lock (_writeLock)
+            if (_completed)
             {
-                return flowControl.TryUpdateWindow(bytes);
+                return Task.CompletedTask;
             }
+
+            _outputWriter.Write(data);
+            return FlushUnsynchronizedAsync();
+        }
+
+        private Task FlushUnsynchronizedAsync()
+        {
+            var flushAwaitable = _outputWriter.FlushAsync();
+
+            if (flushAwaitable.IsCompletedSuccessfully)
+            {
+                return Task.CompletedTask;
+            }
+
+            return FlushUnsynchronizedAsyncAwaited(flushAwaitable);
+        }
+
+        private async Task FlushUnsynchronizedAsyncAwaited(ValueTask<FlushResult> flushAwaitable)
+        {
+            await flushAwaitable;
         }
 
         public bool TryUpdateConnectionWindow(int bytes)
@@ -302,15 +320,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        private Task WriteUnsynchronizedAsync(ReadOnlySpan<byte> data)
+        public bool TryUpdateStreamWindow(Http2StreamFlowControl flowControl, int bytes)
         {
-            if (_completed)
+            lock (_writeLock)
             {
-                return Task.CompletedTask;
+                return flowControl.TryUpdateWindow(bytes);
             }
+        }
 
-            _outputWriter.Write(data);
-            return _flusher.FlushAsync();
+        public void AbortPendingStreamDataWrites(Http2StreamFlowControl flowControl)
+        {
+            lock (_writeLock)
+            {
+                flowControl.Abort();
+            }
         }
 
         private static IEnumerable<KeyValuePair<string, string>> EnumerateHeaders(IHeaderDictionary headers)

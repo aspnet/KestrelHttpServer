@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
             catch (OperationCanceledException ex)
             {
-                outputProducer.Abort(new ConnectionAbortedException("TODO", ex));
+                outputProducer.Abort(new ConnectionAbortedException(CoreStrings.ConnectionAbortedByCancellationToken, ex));
             }
             catch
             {

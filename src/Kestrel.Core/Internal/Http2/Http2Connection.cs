@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2Connection(Http2ConnectionContext context)
         {
             _context = context;
-            _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl, this);
+            _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl);
             _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
         }
 
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public void OnInputOrOutputCompleted()
         {
             _stopping = true;
-            _frameWriter.Abort(ex: null);
+            _frameWriter.Complete();
         }
 
         public void Abort(ConnectionAbortedException ex)
@@ -188,11 +188,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
             finally
             {
+                 var connectionError = error as ConnectionAbortedException
+                    ?? new ConnectionAbortedException(CoreStrings.Http2ConnectionFaulted, error);
+
                 try
                 {
-                     var connectionError = error as ConnectionAbortedException
-                        ?? new ConnectionAbortedException("The connection has faulted and all streams are being aborted.", error);
-
                     foreach (var stream in _streams.Values)
                     {
                         stream.Abort(connectionError);
@@ -204,7 +204,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 finally
                 {
                     Input.Complete();
-                    _frameWriter.Abort(ex: null);
+                    _frameWriter.Abort(connectionError);
                 }
             }
         }
@@ -510,7 +510,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
-                stream.Abort(new ConnectionAbortedException("The request stream was reset by the client."));
+                stream.Abort(new ConnectionAbortedException(CoreStrings.Http2StreamResetByClient));
             }
 
             return Task.CompletedTask;
@@ -557,7 +557,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                             // This means that this caused a stream window to become larger than int.MaxValue.
                             // This can never happen with a well behaved client and MUST be treated as a connection error.
                             // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2
-                            throw new Http2ConnectionErrorException("TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
+                            throw new Http2ConnectionErrorException(CoreStrings.Http2ErrorInitialWindowSizeInvalid, Http2ErrorCode.FLOW_CONTROL_ERROR);
                         }
                     }
                 }
@@ -652,14 +652,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 if (!_frameWriter.TryUpdateConnectionWindow(_incomingFrame.WindowUpdateSizeIncrement))
                 {
-                    throw new Http2ConnectionErrorException("TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
+                    throw new Http2ConnectionErrorException(CoreStrings.Http2ErrorWindowUpdateSizeInvalid, Http2ErrorCode.FLOW_CONTROL_ERROR);
                 }
             }
             else if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
             {
                 if (!stream.TryUpdateOutputWindow(_incomingFrame.WindowUpdateSizeIncrement))
                 {
-                    throw new Http2StreamErrorException(_incomingFrame.StreamId, "TODO", Http2ErrorCode.FLOW_CONTROL_ERROR);
+                    throw new Http2StreamErrorException(_incomingFrame.StreamId, CoreStrings.Http2ErrorWindowUpdateSizeInvalid, Http2ErrorCode.FLOW_CONTROL_ERROR);
                 }
             }
 

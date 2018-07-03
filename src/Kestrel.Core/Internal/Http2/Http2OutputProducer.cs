@@ -54,27 +54,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 _completed = true;
 
+                _frameWriter.AbortPendingStreamDataWrites(_flowControl);
+
                 // Complete with an exception to prevent an end of stream data frame from being sent
                 // without an explicit call to WriteStreamSuffixAsync.
+                // ConnectionAbortedExceptions are swallowed, so the message doesn't matter.
                 _dataPipe.Writer.Complete(new ConnectionAbortedException());
             }
         }
 
-        public void Abort(ConnectionAbortedException error)
+        public void Abort(ConnectionAbortedException abortReason)
         {
             // TODO: RST_STREAM?
-
-            lock (_dataWriterLock)
-            {
-                if (_completed)
-                {
-                    return;
-                }
-
-                _completed = true;
-                _dataPipe.Writer.Complete(error);
-            }
+            Dispose();
         }
+
         public Task WriteAsync<T>(Func<PipeWriter, T, long> callback, T state)
         {
             throw new NotImplementedException();
