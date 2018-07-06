@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
@@ -78,6 +79,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int Clamp(int value, int min, long max)
         {
+            Debug.Assert(min <= max, $"{nameof(Clamp)} called with a min greater than the max.");
+
             if (value < min)
             {
                 return min;

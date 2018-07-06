@@ -155,6 +155,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     catch (Http2StreamErrorException ex)
                     {
                         Log.Http2StreamError(ConnectionId, ex);
+                        AbortStream(_incomingFrame.StreamId, new ConnectionAbortedException(ex.Message, ex));
                         await _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
                     }
                     finally
@@ -516,11 +517,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             ThrowIfIncomingFrameSentToIdleStream();
-
-            if (_streams.TryGetValue(_incomingFrame.StreamId, out var stream))
-            {
-                stream.Abort(new ConnectionAbortedException(CoreStrings.Http2StreamResetByClient));
-            }
+            AbortStream(_incomingFrame.StreamId, new ConnectionAbortedException(CoreStrings.Http2StreamResetByClient));
 
             return Task.CompletedTask;
         }
@@ -799,6 +796,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             if (_incomingFrame.StreamId > _highestOpenedStreamId)
             {
                 throw new Http2ConnectionErrorException(CoreStrings.FormatHttp2ErrorStreamIdle(_incomingFrame.Type, _incomingFrame.StreamId), Http2ErrorCode.PROTOCOL_ERROR);
+            }
+        }
+
+        private void AbortStream(int streamId, ConnectionAbortedException error)
+        {
+            if (_streams.TryGetValue(streamId, out var stream))
+            {
+                stream.Abort(error);
             }
         }
 
