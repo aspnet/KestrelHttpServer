@@ -1974,6 +1974,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         internal static string FormatHttp2StreamResetByClient()
             => GetString("Http2StreamResetByClient");
 
+        /// <summary>
+        /// The request stream was aborted.
+        /// </summary>
+        internal static string Http2StreamAborted
+        {
+            get => GetString("Http2StreamAborted");
+        }
+
+        /// <summary>
+        /// The request stream was aborted.
+        /// </summary>
+        internal static string FormatHttp2StreamAborted()
+            => GetString("Http2StreamAborted");
+
         private static string GetString(string name, params string[] formatterNames)
         {
             var value = _resourceManager.GetString(name);

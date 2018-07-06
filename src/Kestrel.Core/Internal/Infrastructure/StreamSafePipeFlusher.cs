@@ -10,7 +10,11 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public class SafePipeWriterFlusher
+    /// <summary>
+    /// This wraps PipeWriter.FlushAsync() in a way that allows multiple awaiters making it safe to call from publicly
+    /// exposed Stream implementations.
+    /// </summary>
+    public class StreamSafePipeFlusher
     {
         private readonly PipeWriter _writer;
         private readonly ITimeoutControl _timeoutControl;
@@ -18,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         private Task _lastFlushTask = Task.CompletedTask;
 
-        public SafePipeWriterFlusher(
+        public StreamSafePipeFlusher(
             PipeWriter writer,
             ITimeoutControl timeoutControl)
         {

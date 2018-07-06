@@ -18,11 +18,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly int _streamId;
         private readonly Http2FrameWriter _frameWriter;
-        private readonly SafePipeWriterFlusher _flusher;
+        private readonly StreamSafePipeFlusher _flusher;
 
         // This should only be accessed via the FrameWriter. The connection-level output flow control is protected by the
         // FrameWriter's connection-level write lock.
-        private readonly Http2StreamFlowControl _flowControl;
+        private readonly Http2StreamOutputFlowControl _flowControl;
 
         private readonly object _dataWriterLock = new object();
         private readonly Pipe _dataPipe;
@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2OutputProducer(
             int streamId,
             Http2FrameWriter frameWriter,
-            Http2StreamFlowControl flowControl,
+            Http2StreamOutputFlowControl flowControl,
             ITimeoutControl timeoutControl,
             MemoryPool<byte> pool)
         {
@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _frameWriter = frameWriter;
             _flowControl = flowControl;
             _dataPipe = CreateDataPipe(pool);
-            _flusher = new SafePipeWriterFlusher(_dataPipe.Writer, timeoutControl);
+            _flusher = new StreamSafePipeFlusher(_dataPipe.Writer, timeoutControl);
             _ = ProcessDataWrites();
         }
 

@@ -2314,7 +2314,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task WINDOW_UPDATE_Received_Respected()
         {
-            _clientSettings.InitialWindowSize = 6;
+            _clientSettings.InitialFlowControlWindowSize = 6;
 
             await InitializeConnectionAsync(_echoApplication);
 
@@ -2352,7 +2352,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task WINDOW_UPDATE_Received_Respected_WhenInitialWindowSizeReducedMidStream()
         {
-            _clientSettings.InitialWindowSize = 6;
+            _clientSettings.InitialFlowControlWindowSize = 6;
 
             await InitializeConnectionAsync(_echoApplication);
 
@@ -2370,7 +2370,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withStreamId: 1);
 
             // Reduce the initial window size for response data by 3 bytes.
-            _clientSettings.InitialWindowSize = 3;
+            _clientSettings.InitialFlowControlWindowSize = 3;
             await SendSettingsAsync();
 
             await ExpectAsync(Http2FrameType.SETTINGS,

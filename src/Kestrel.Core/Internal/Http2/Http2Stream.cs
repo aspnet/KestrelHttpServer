@@ -16,13 +16,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public partial class Http2Stream : HttpProtocol
     {
         private readonly Http2StreamContext _context;
-        private readonly Http2StreamFlowControl _outputFlowControl;
+        private readonly Http2StreamOutputFlowControl _outputFlowControl;
 
         public Http2Stream(Http2StreamContext context)
             : base(context)
         {
             _context = context;
-            _outputFlowControl = new Http2StreamFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
+            _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialFlowControlWindowSize);
 
             Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
         }
@@ -149,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             base.Abort(abortReason);
 
             // Unblock the request body.
-            RequestBodyPipe.Writer.Complete(new IOException("The request stream was aborted.", abortReason));
+            RequestBodyPipe.Writer.Complete(new IOException(CoreStrings.Http2StreamAborted, abortReason));
         }
 
         public bool TryUpdateOutputWindow(int bytes)

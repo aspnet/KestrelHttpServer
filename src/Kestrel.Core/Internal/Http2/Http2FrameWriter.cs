@@ -22,14 +22,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly PipeWriter _outputWriter;
         private readonly PipeReader _outputReader;
-        private readonly Http2FlowControl _connectionOutputFlowControl;
+        private readonly Http2OutputFlowControl _connectionOutputFlowControl;
 
         private bool _completed;
 
         public Http2FrameWriter(
             PipeWriter outputPipeWriter,
             PipeReader outputPipeReader,
-            Http2FlowControl connectionOutputFlowControl)
+            Http2OutputFlowControl connectionOutputFlowControl)
         {
             _outputWriter = outputPipeWriter;
             _outputReader = outputPipeReader;
@@ -122,7 +122,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public Task WriteDataAsync(int streamId, Http2StreamFlowControl flowControl, ReadOnlySequence<byte> data, bool endStream)
+        public Task WriteDataAsync(int streamId, Http2StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, bool endStream)
         {
             // The Length property of a ReadOnlySequence can be expensive, so we cache the value.
             long dataLength = data.Length;
@@ -141,7 +141,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return WriteDataAsyncAwaited(streamId, flowControl, data, dataLength, endStream);
                 }
 
-                flowControl.Advance(dataLength, out _);
+                // This cast is safe since if dataLength would overflow an int, it's guaranteed to be greater than the available flow control window.
+                flowControl.Advance((int)dataLength);
                 return WriteDataUnsynchronizedAsync(streamId, data, endStream);
             }
         }
@@ -191,11 +192,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return FlushUnsynchronizedAsync();
         }
 
-        private async Task WriteDataAsyncAwaited(int streamId, Http2StreamFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
+        private async Task WriteDataAsyncAwaited(int streamId, Http2StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
         {
             while (dataLength > 0)
             {
-                Http2FlowControlAwaitable availabilityAwaitable;
+                Http2OutputFlowControlAwaitable availabilityAwaitable;
                 var writeTask = Task.CompletedTask;
 
                 lock (_writeLock)
@@ -205,7 +206,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         break;
                     }
 
-                    var actual = flowControl.Advance(dataLength, out availabilityAwaitable);
+                    var actual = flowControl.AdvanceUpToAndWait(dataLength, out availabilityAwaitable);
 
                     if (actual > 0)
                     {
@@ -320,7 +321,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public bool TryUpdateStreamWindow(Http2StreamFlowControl flowControl, int bytes)
+        public bool TryUpdateStreamWindow(Http2StreamOutputFlowControl flowControl, int bytes)
         {
             lock (_writeLock)
             {
@@ -328,7 +329,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public void AbortPendingStreamDataWrites(Http2StreamFlowControl flowControl)
+        public void AbortPendingStreamDataWrites(Http2StreamOutputFlowControl flowControl)
         {
             lock (_writeLock)
             {

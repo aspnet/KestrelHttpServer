@@ -6,17 +6,13 @@ using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2FlowControl
+    public class Http2OutputFlowControl
     {
-        // MaxWindowSize must be a long to prevent overflows in TryUpdateWindow.
-        public const long MaxWindowSize = int.MaxValue;
+        private readonly Queue<Http2OutputFlowControlAwaitable> _awaitableQueue = new Queue<Http2OutputFlowControlAwaitable>();
 
-        private readonly Queue<Http2FlowControlAwaitable> _awaitableQueue = new Queue<Http2FlowControlAwaitable>();
-        private readonly Queue<Http2FlowControlAwaitable> _awaitablePool = new Queue<Http2FlowControlAwaitable>();
-
-        public Http2FlowControl(uint initialWindowSize)
+        public Http2OutputFlowControl(uint initialWindowSize)
         {
-            Debug.Assert(initialWindowSize <= MaxWindowSize, $"{nameof(initialWindowSize)} too large.");
+            Debug.Assert(initialWindowSize <= Http2PeerSettings.MaxFlowControlWindowSize, $"{nameof(initialWindowSize)} too large.");
 
             Available = (int)initialWindowSize;
         }
@@ -24,14 +20,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public int Available { get; private set; }
         public bool IsAborted { get; private set; }
 
-        public Http2FlowControlAwaitable AvailabilityAwaitable
+        public Http2OutputFlowControlAwaitable AvailabilityAwaitable
         {
             get
             {
                 Debug.Assert(!IsAborted, $"({nameof(AvailabilityAwaitable)} accessed after abort.");
                 Debug.Assert(Available <= 0, $"({nameof(AvailabilityAwaitable)} accessed with {Available} bytes available.");
 
-                var awaitable = _awaitablePool.Count > 0 ? _awaitablePool.Dequeue() : new Http2FlowControlAwaitable();
+                var awaitable = new Http2OutputFlowControlAwaitable();
                 _awaitableQueue.Enqueue(awaitable);
                 return awaitable;
             }
@@ -50,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2
         public bool TryUpdateWindow(int bytes)
         {
-            var maxUpdate = MaxWindowSize - Available;
+            var maxUpdate = Http2PeerSettings.MaxFlowControlWindowSize - Available;
 
             if (bytes > maxUpdate)
             {
@@ -76,11 +72,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 _awaitableQueue.Dequeue().Complete();
             }
-        }
-
-        public void ReturnAwaitable(Http2FlowControlAwaitable awaitable)
-        {
-            _awaitablePool.Enqueue(awaitable);
         }
     }
 }

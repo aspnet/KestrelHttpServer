@@ -2,57 +2,57 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2StreamFlowControl
+    public class Http2StreamOutputFlowControl
     {
-        private readonly Http2FlowControl _connectionLevelFlowControl;
-        private readonly Http2FlowControl _streamLevelFlowControl;
+        private readonly Http2OutputFlowControl _connectionLevelFlowControl;
+        private readonly Http2OutputFlowControl _streamLevelFlowControl;
 
-        private Http2FlowControl _lastAwaitedFlowControl;
-        private Http2FlowControlAwaitable _lastAwaitable;
+        private Http2OutputFlowControlAwaitable _currentConnectionLevelAwaitable;
 
-        public Http2StreamFlowControl(Http2FlowControl connectionLevelFlowControl, uint initialWindowSize)
+        public Http2StreamOutputFlowControl(Http2OutputFlowControl connectionLevelFlowControl, uint initialWindowSize)
         {
             _connectionLevelFlowControl = connectionLevelFlowControl;
-            _streamLevelFlowControl = new Http2FlowControl(initialWindowSize);
+            _streamLevelFlowControl = new Http2OutputFlowControl(initialWindowSize);
         }
 
         public int Available => Math.Min(_connectionLevelFlowControl.Available, _streamLevelFlowControl.Available);
 
         public bool IsAborted => _connectionLevelFlowControl.IsAborted || _streamLevelFlowControl.IsAborted;
 
-        public int Advance(long bytes, out Http2FlowControlAwaitable awaitable)
+        public void Advance(int bytes)
         {
-            Debug.Assert(!IsAborted, $"({nameof(Advance)} called after abort.");
+            _connectionLevelFlowControl.Advance(bytes);
+            _streamLevelFlowControl.Advance(bytes);
+        }
 
-            // IMPORTANT: Don't pool aborted awaitables because their Complete() method will
-            // likely be called multiple times.
-            _lastAwaitedFlowControl?.ReturnAwaitable(_lastAwaitable);
-
+        public int AdvanceUpToAndWait(long bytes, out Http2OutputFlowControlAwaitable awaitable)
+        {
             var leastAvailableFlow = _connectionLevelFlowControl.Available < _streamLevelFlowControl.Available
                 ? _connectionLevelFlowControl : _streamLevelFlowControl;
-
-            var actual = (int)Math.Min(bytes, leastAvailableFlow.Available);
+ 
+            // Clamp ~= Math.Clamp from netcoreapp >= 2.0
+            var actual = Clamp(leastAvailableFlow.Available, 0, bytes);
 
             // Make sure to advance prior to accessing AvailabilityAwaitable.
             _connectionLevelFlowControl.Advance(actual);
             _streamLevelFlowControl.Advance(actual);
 
+            awaitable = null;
+            _currentConnectionLevelAwaitable = null;
+
             if (actual < bytes)
             {
-                _lastAwaitedFlowControl = leastAvailableFlow;
-                _lastAwaitable = leastAvailableFlow.AvailabilityAwaitable;
-            }
-            else
-            {
-                _lastAwaitedFlowControl = null;
-                _lastAwaitable = null;
-            }
+                awaitable = leastAvailableFlow.AvailabilityAwaitable;
 
-            awaitable = _lastAwaitable;
+                if (leastAvailableFlow == _connectionLevelFlowControl)
+                {
+                    _currentConnectionLevelAwaitable = awaitable;
+                }
+            }
 
             return actual;
         }
@@ -71,13 +71,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // If this stream is waiting on a connection-level window update, complete this stream's
             // connection-level awaitable so the stream abort is observed immediately.
             // This could complete an awaitable still sitting in the connection-level awaitable queue,
-            // but this is safe because the awaitable will not be repooled after an abort is observed.
-            if (_lastAwaitedFlowControl == _connectionLevelFlowControl)
+            // but this is safe because completing it again will just no-op.
+            _currentConnectionLevelAwaitable?.Complete();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int Clamp(int value, int min, long max)
+        {
+            if (value < min)
             {
-                _lastAwaitable.Complete();
-                _lastAwaitedFlowControl = null;
-                _lastAwaitable = null;
+                return min;
             }
+            else if (value > max)
+            {
+                return (int)max;
+            }
+
+            return value;
         }
     }
 }

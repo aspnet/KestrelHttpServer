@@ -539,4 +539,7 @@ For more information on configuring HTTPS see https://go.microsoft.com/fwlink/?l
   <data name="Http2StreamResetByClient" xml:space="preserve">
     <value>The client reset the request stream.</value>
   </data>
+  <data name="Http2StreamAborted" xml:space="preserve">
+    <value>The request stream was aborted.</value>
+  </data>
 </root>

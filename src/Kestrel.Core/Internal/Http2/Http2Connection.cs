@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
         private readonly HPackDecoder _hpackDecoder;
-        private readonly Http2FlowControl _outputFlowControl = new Http2FlowControl(Http2PeerSettings.DefaultInitialWindowSize);
+        private readonly Http2OutputFlowControl _outputFlowControl = new Http2OutputFlowControl(Http2PeerSettings.DefaultInitialFlowControlWindowSize);
 
         private readonly Http2PeerSettings _serverSettings = new Http2PeerSettings();
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
@@ -152,6 +152,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                             return;
                         }
                     }
+                    catch (Http2StreamErrorException ex)
+                    {
+                        Log.Http2StreamError(ConnectionId, ex);
+                        await _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
+                    }
                     finally
                     {
                         Input.AdvanceTo(consumed, examined);
@@ -201,10 +206,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     await _frameWriter.WriteGoAwayAsync(_highestOpenedStreamId, errorCode);
                     _frameWriter.Complete();
                 }
+                catch
+                {
+                    _frameWriter.Abort(connectionError);
+                    throw;
+                }
                 finally
                 {
                     Input.Complete();
-                    _frameWriter.Abort(connectionError);
                 }
             }
         }
@@ -541,12 +550,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             try
             {
                 // ParseFrame will not parse an InitialWindowSize > int.MaxValue.
-                var previousInitialWindowSize = (int)_clientSettings.InitialWindowSize;
+                var previousInitialWindowSize = (int)_clientSettings.InitialFlowControlWindowSize;
 
                 _clientSettings.ParseFrame(_incomingFrame);
 
                 // This difference can be negative.
-                var windowSizeDifference = (int)_clientSettings.InitialWindowSize - previousInitialWindowSize;
+                var windowSizeDifference = (int)_clientSettings.InitialFlowControlWindowSize - previousInitialWindowSize;
 
                 if (windowSizeDifference != 0)
                 {
@@ -662,6 +671,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     throw new Http2StreamErrorException(_incomingFrame.StreamId, CoreStrings.Http2ErrorWindowUpdateSizeInvalid, Http2ErrorCode.FLOW_CONTROL_ERROR);
                 }
             }
+            else
+            {
+                // The stream was not found in the dictionary which means the stream was probably closed. This can
+                // happen when the client sends a window update for a stream right as the server closes the same stream
+                // Since this is an unavoidable race, we just ignore the window update frame.
+            }
 
             return Task.CompletedTask;
         }
@@ -712,11 +727,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     ResetRequestHeaderParsingState();
                 }
             }
-            catch (Http2StreamErrorException ex)
+            catch (Http2StreamErrorException)
             {
-                Log.Http2StreamError(ConnectionId, ex);
                 ResetRequestHeaderParsingState();
-                return _frameWriter.WriteRstStreamAsync(ex.StreamId, ex.ErrorCode);
+                throw;
             }
 
             return Task.CompletedTask;
