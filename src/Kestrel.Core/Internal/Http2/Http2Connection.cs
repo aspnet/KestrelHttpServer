@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
         private readonly HPackDecoder _hpackDecoder;
-        private readonly Http2OutputFlowControl _outputFlowControl = new Http2OutputFlowControl(Http2PeerSettings.DefaultInitialFlowControlWindowSize);
+        private readonly Http2OutputFlowControl _outputFlowControl = new Http2OutputFlowControl(Http2PeerSettings.DefaultInitialWindowSize);
 
         private readonly Http2PeerSettings _serverSettings = new Http2PeerSettings();
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
@@ -547,12 +547,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             try
             {
                 // ParseFrame will not parse an InitialWindowSize > int.MaxValue.
-                var previousInitialWindowSize = (int)_clientSettings.InitialFlowControlWindowSize;
+                var previousInitialWindowSize = (int)_clientSettings.InitialWindowSize;
 
                 _clientSettings.ParseFrame(_incomingFrame);
 
                 // This difference can be negative.
-                var windowSizeDifference = (int)_clientSettings.InitialFlowControlWindowSize - previousInitialWindowSize;
+                var windowSizeDifference = (int)_clientSettings.InitialWindowSize - previousInitialWindowSize;
 
                 if (windowSizeDifference != 0)
                 {

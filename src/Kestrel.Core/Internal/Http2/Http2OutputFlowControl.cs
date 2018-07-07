@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public Http2OutputFlowControl(uint initialWindowSize)
         {
-            Debug.Assert(initialWindowSize <= Http2PeerSettings.MaxFlowControlWindowSize, $"{nameof(initialWindowSize)} too large.");
+            Debug.Assert(initialWindowSize <= Http2PeerSettings.MaxWindowSize, $"{nameof(initialWindowSize)} too large.");
 
             Available = (int)initialWindowSize;
         }
@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2
         public bool TryUpdateWindow(int bytes)
         {
-            var maxUpdate = Http2PeerSettings.MaxFlowControlWindowSize - Available;
+            var maxUpdate = Http2PeerSettings.MaxWindowSize - Available;
 
             if (bytes > maxUpdate)
             {

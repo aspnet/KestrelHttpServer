@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             : base(context)
         {
             _context = context;
-            _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialFlowControlWindowSize);
+            _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
 
             Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
         }
