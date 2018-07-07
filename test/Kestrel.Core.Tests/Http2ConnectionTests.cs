@@ -1904,6 +1904,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // TODO: Check logs
         }
 
+        // TODO: RST_STREAM_RelievesConnectionBackpressure
+        // TODO: RST_STREAM_RelievesStreamBackpressure
+
         [Fact]
         public async Task RST_STREAM_Received_StreamIdZero_ConnectionError()
         {
@@ -2210,7 +2213,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task GOAWAY_Received_RelievesBackpressure()
+        public async Task GOAWAY_Received_RelievesConnectionBackpressure()
         {
             var expectedFullFrameCountBeforeBackpressure = Http2PeerSettings.DefaultInitialWindowSize / _maxData.Length;
             var remainingBytesBeforeBackpressure = (int)Http2PeerSettings.DefaultInitialWindowSize % _maxData.Length;
@@ -2288,6 +2291,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Contains(3, _abortedStreamIds);
             Assert.Contains(5, _abortedStreamIds);
         }
+
+        // TODO: GOAWAY_Received_RelievesStreamBackpressure
 
         [Fact]
         public async Task GOAWAY_Received_StreamIdNotZero_ConnectionError()
@@ -2449,6 +2454,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var expectedFullFrameCountBeforeBackpressure = Http2PeerSettings.DefaultInitialWindowSize / _maxData.Length;
 
+            // Use this semaphore to wait until a new data frame is expected before trying to send it.
+            // This way we're sure that if Response.Body.WriteAsync returns an incomplete task, it's because
+            // of the flow control window and not Pipe backpressure.
+            var expectingDataSem = new SemaphoreSlim(0);
             var backpressureObservedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var backpressureReleasedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -2456,11 +2465,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 try
                 {
+                    // Flush the headers so expectingDataSem is released. 
+                    await context.Response.Body.FlushAsync();
+
                     for (var i = 0; i < expectedFullFrameCountBeforeBackpressure; i++)
                     {
+                        await expectingDataSem.WaitAsync();
                         Assert.True(context.Response.Body.WriteAsync(_maxData, 0, _maxData.Length).IsCompleted);
                     }
 
+                    await expectingDataSem.WaitAsync();
                     var lastWriteTask = context.Response.Body.WriteAsync(_maxData, 0, _maxData.Length);
 
                     Assert.False(lastWriteTask.IsCompleted);
@@ -2489,6 +2503,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             for (var i = 0; i < expectedFullFrameCountBeforeBackpressure; i++)
             {
+                expectingDataSem.Release();
                 await ExpectAsync(Http2FrameType.DATA,
                     withLength: _maxData.Length,
                     withFlags: (byte)Http2DataFrameFlags.NONE,
@@ -2498,6 +2513,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var remainingBytesBeforeBackpressure = (int)Http2PeerSettings.DefaultInitialWindowSize % _maxData.Length;
             var remainingBytesAfterBackpressure = _maxData.Length - remainingBytesBeforeBackpressure;
 
+            expectingDataSem.Release();
             await ExpectAsync(Http2FrameType.DATA,
                 withLength: remainingBytesBeforeBackpressure,
                 withFlags: (byte)Http2DataFrameFlags.NONE,
@@ -2509,6 +2525,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await backpressureReleasedTcs.Task.DefaultTimeout();
 
+            // This is the remaining data that could have come in the last frame if not for the flow control window,
+            // so there's no need to release the semaphore again.
             await ExpectAsync(Http2FrameType.DATA,
                 withLength: remainingBytesAfterBackpressure,
                 withFlags: (byte)Http2DataFrameFlags.NONE,

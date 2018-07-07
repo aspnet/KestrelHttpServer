@@ -81,7 +81,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2Connection(Http2ConnectionContext context)
         {
             _context = context;
-            _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl);
+            _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl, this);
             _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
         }
 

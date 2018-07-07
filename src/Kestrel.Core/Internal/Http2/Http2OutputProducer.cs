@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return Task.CompletedTask;
                 }
 
-                return _flusher.FlushAsync(0, this, cancellationToken);
+                return _frameWriter.FlushAsync(this, cancellationToken);
             }
         }
 
@@ -156,8 +156,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private async Task ProcessDataWrites()
         {
-            var wroteData = false;
-
             try
             {
                 ReadResult readResult;
@@ -167,7 +165,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     readResult = await _dataPipe.Reader.ReadAsync();
 
                     await _frameWriter.WriteDataAsync(_streamId, _flowControl, readResult.Buffer, endStream: readResult.IsCompleted);
-                    wroteData = true;
 
                     _dataPipe.Reader.AdvanceTo(readResult.Buffer.End);
                 } while (!readResult.IsCompleted);
@@ -182,12 +179,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             _dataPipe.Reader.Complete();
-
-            if (!wroteData)
-            {
-                // If no data was written, still make sure the headers are flushed by flushing the connection-level pipe.
-                await _frameWriter.FlushAsync();
-            }
         }
 
         private static Pipe CreateDataPipe(MemoryPool<byte> pool)

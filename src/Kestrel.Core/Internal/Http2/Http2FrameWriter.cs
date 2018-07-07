@@ -5,10 +5,13 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
@@ -23,18 +26,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly PipeWriter _outputWriter;
         private readonly PipeReader _outputReader;
         private readonly Http2OutputFlowControl _connectionOutputFlowControl;
+        private readonly StreamSafePipeFlusher _flusher;
 
         private bool _completed;
 
         public Http2FrameWriter(
             PipeWriter outputPipeWriter,
             PipeReader outputPipeReader,
-            Http2OutputFlowControl connectionOutputFlowControl)
+            Http2OutputFlowControl connectionOutputFlowControl,
+            ITimeoutControl timeoutControl)
         {
             _outputWriter = outputPipeWriter;
             _outputReader = outputPipeReader;
 
             _connectionOutputFlowControl = connectionOutputFlowControl;
+            _flusher = new StreamSafePipeFlusher(_outputWriter, timeoutControl);
         }
 
         public void Complete()
@@ -59,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Complete();
         }
 
-        public Task FlushAsync()
+        public Task FlushAsync(IHttpOutputProducer outputProducer, CancellationToken cancellationToken)
         {
             lock (_writeLock)
             {
@@ -68,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return Task.CompletedTask;
                 }
 
-                return FlushUnsynchronizedAsync();
+                return _flusher.FlushAsync(0, outputProducer, cancellationToken);
             }
         }
 
@@ -125,11 +131,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Task WriteDataAsync(int streamId, Http2StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, bool endStream)
         {
             // The Length property of a ReadOnlySequence can be expensive, so we cache the value.
-            long dataLength = data.Length;
+            var dataLength = data.Length;
 
             lock (_writeLock)
             {
-                if (flowControl.IsAborted)
+                if (_completed || flowControl.IsAborted)
                 {
                     return Task.CompletedTask;
                 }
@@ -149,11 +155,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task WriteDataUnsynchronizedAsync(int streamId, ReadOnlySequence<byte> data, bool endStream)
         {
-            if (_completed)
-            {
-                return Task.CompletedTask;
-            }
-
             _outgoingFrame.PrepareData(streamId);
 
             var payload = _outgoingFrame.Payload;
@@ -201,7 +202,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 lock (_writeLock)
                 {
-                    if (flowControl.IsAborted)
+                    if (_completed || flowControl.IsAborted)
                     {
                         break;
                     }
@@ -298,19 +299,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private Task FlushUnsynchronizedAsync()
         {
-            var flushAwaitable = _outputWriter.FlushAsync();
-
-            if (flushAwaitable.IsCompletedSuccessfully)
-            {
-                return Task.CompletedTask;
-            }
-
-            return FlushUnsynchronizedAsyncAwaited(flushAwaitable);
-        }
-
-        private async Task FlushUnsynchronizedAsyncAwaited(ValueTask<FlushResult> flushAwaitable)
-        {
-            await flushAwaitable;
+            return _flusher.FlushAsync();
         }
 
         public bool TryUpdateConnectionWindow(int bytes)

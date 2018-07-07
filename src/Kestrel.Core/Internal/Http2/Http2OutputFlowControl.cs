@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public void Advance(int bytes)
         {
             Debug.Assert(!IsAborted, $"({nameof(Advance)} called after abort.");
-            Debug.Assert(bytes >= 0 && bytes <= Available, $"{nameof(Advance)}({bytes}) called with {Available} bytes available.");
+            Debug.Assert(bytes == 0 || (bytes > 0 && bytes <= Available), $"{nameof(Advance)}({bytes}) called with {Available} bytes available.");
 
             Available -= bytes;
         }
