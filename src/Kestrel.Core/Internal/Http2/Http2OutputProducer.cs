@@ -26,7 +26,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private readonly object _dataWriterLock = new object();
         private readonly Pipe _dataPipe;
+        private readonly Task _dataWriteProcessingTask;
+        private bool _startedWritingDataFrames;
         private bool _completed;
+        private bool _disposed;
 
         public Http2OutputProducer(
             int streamId,
@@ -40,26 +43,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _flowControl = flowControl;
             _dataPipe = CreateDataPipe(pool);
             _flusher = new StreamSafePipeFlusher(_dataPipe.Writer, timeoutControl);
-            _ = ProcessDataWrites();
+            _dataWriteProcessingTask = ProcessDataWrites();
         }
 
         public void Dispose()
         {
             lock (_dataWriterLock)
             {
-                if (_completed)
+                if (_disposed)
                 {
                     return;
                 }
 
-                _completed = true;
+                _disposed = true;
+
+                if (!_completed)
+                {
+                    _completed = true;
+
+                    // Complete with an exception to prevent an end of stream data frame from being sent without an
+                    // explicit call to WriteStreamSuffixAsync. ConnectionAbortedExceptions are swallowed, so the
+                    // message doesn't matter
+                    _dataPipe.Writer.Complete(new ConnectionAbortedException());
+                }
 
                 _frameWriter.AbortPendingStreamDataWrites(_flowControl);
-
-                // Complete with an exception to prevent an end of stream data frame from being sent
-                // without an explicit call to WriteStreamSuffixAsync.
-                // ConnectionAbortedExceptions are swallowed, so the message doesn't matter.
-                _dataPipe.Writer.Complete(new ConnectionAbortedException());
             }
         }
 
@@ -88,7 +96,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return Task.CompletedTask;
                 }
 
-                return _frameWriter.FlushAsync(this, cancellationToken);
+                if (_startedWritingDataFrames)
+                {
+                    // If there's already been response data written to the stream, just wait for that. Any header
+                    // should be in front of the data frames in the connection pipe. Trailers could change things.
+                    return _flusher.FlushAsync(0, this, cancellationToken);
+                }
+                else
+                {
+                    // Flushing the connection pipe ensures headers already in the pipe are flushed even if no data
+                    // frames have been written.
+                    return _frameWriter.FlushAsync(this, cancellationToken);
+                }
             }
         }
 
@@ -129,10 +148,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             lock (_dataWriterLock)
             {
-                if (_completed)
+                // This length check is important because we don't want to set _startedWritingDataFrames unless a data
+                // frame will actually be written causing the headers to be flushed.
+                if (_completed || data.Length == 0)
                 {
                     return Task.CompletedTask;
                 }
+
+                _startedWritingDataFrames = true;
 
                 _dataPipe.Writer.Write(data);
                 return _flusher.FlushAsync(data.Length, this, cancellationToken);
@@ -149,8 +172,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 }
 
                 _completed = true;
+
+                // Even if there's no actual data, completing the writer gracefully sends an END_STREAM DATA frame.
+                _startedWritingDataFrames = true;
+
                 _dataPipe.Writer.Complete();
-                return Task.CompletedTask;
+                return _dataWriteProcessingTask;
             }
         }
 
