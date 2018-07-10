@@ -788,6 +788,122 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public async Task DATA_Sent_DespiteConnectionBackpressure_IfEmptyAndEndsStream()
+        {
+            // Zero-length data frames are allowed to be sent even if there is no space available in the flow control window.
+            // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.1
+
+            var expectedFullFrameCountBeforeBackpressure = Http2PeerSettings.DefaultInitialWindowSize / _maxData.Length;
+            var remainingBytesBeforeBackpressure = (int)Http2PeerSettings.DefaultInitialWindowSize % _maxData.Length;
+            var remainingBytesAfterBackpressure = _maxData.Length - remainingBytesBeforeBackpressure;
+
+            // Double the stream window to be 128KiB so it doesn't interfere with the rest of the test.
+            _clientSettings.InitialWindowSize = Http2PeerSettings.DefaultInitialWindowSize * 2;
+
+            await InitializeConnectionAsync(async context =>
+            {
+                var streamId = context.Features.Get<IHttp2StreamIdFeature>().StreamId;
+
+                try
+                {
+                    if (streamId == 1)
+                    {
+                        for (var i = 0; i < expectedFullFrameCountBeforeBackpressure + 1; i++)
+                        {
+                            await context.Response.Body.WriteAsync(_maxData, 0, _maxData.Length);
+                        }
+                    }
+
+                    _runningStreams[streamId].SetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    _runningStreams[streamId].SetException(ex);
+                    throw;
+                }
+            });
+
+            // Start one stream that consumes the entire connection output window.
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+
+            for (var i = 0; i < expectedFullFrameCountBeforeBackpressure; i++)
+            {
+                await ExpectAsync(Http2FrameType.DATA,
+                    withLength: _maxData.Length,
+                    withFlags: (byte)Http2DataFrameFlags.NONE,
+                    withStreamId: 1);
+            }
+
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: remainingBytesBeforeBackpressure,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            // Start one more stream that receives an empty response despite connection backpressure.
+            await StartStreamAsync(3, _browserRequestHeaders, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 3);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 3);
+
+            // Relieve connection backpressure to receive the rest of the first streams body.
+            await SendWindowUpdateAsync(0, remainingBytesAfterBackpressure);
+
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: remainingBytesAfterBackpressure,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            // Ensure that Http2FrameWriter._writeLock isn't acquired when completing the frame processing loop.
+            // Otherwise there's a deadlock where Http2OutputProducer.Abort() being called from the frame processing
+            // loop blocks waiting Http2OutputProducer.Dispose() being called from the stream processing loop to
+            // acquire the _writeLock.
+            await ThreadPoolAwaitable.Instance;
+
+            await StopConnectionAsync(expectedLastStreamId: 3, ignoreNonGoAwayFrames: false);
+            await WaitForAllStreamsAsync();
+        }
+
+        [Fact]
+        public async Task DATA_Sent_DespiteStreamBackpressure_IfEmptyAndEndsStream()
+        {
+            // Zero-length data frames are allowed to be sent even if there is no space available in the flow control window.
+            // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.1
+
+            // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
+            _clientSettings.InitialWindowSize = 0;
+
+            await InitializeConnectionAsync(_noopApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 55,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: 0,
+                withFlags: (byte)Http2DataFrameFlags.END_STREAM,
+                withStreamId: 1);
+
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+        }
+
+        [Fact]
         public async Task HEADERS_Received_Decoded()
         {
             await InitializeConnectionAsync(_readHeadersApplication);
@@ -1828,6 +1944,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var expectedFullFrameCountBeforeBackpressure = Http2PeerSettings.DefaultInitialWindowSize / _maxData.Length;
             var remainingBytesBeforeBackpressure = (int)Http2PeerSettings.DefaultInitialWindowSize % _maxData.Length;
 
+            // Double the stream window to be 128KiB so it doesn't interfere with the rest of the test.
+            _clientSettings.InitialWindowSize = Http2PeerSettings.DefaultInitialWindowSize * 2;
+
             await InitializeConnectionAsync(async context =>
             {
                 var streamId = context.Features.Get<IHttp2StreamIdFeature>().StreamId;
@@ -2429,6 +2548,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var expectedFullFrameCountBeforeBackpressure = Http2PeerSettings.DefaultInitialWindowSize / _maxData.Length;
             var remainingBytesBeforeBackpressure = (int)Http2PeerSettings.DefaultInitialWindowSize % _maxData.Length;
 
+            // Double the stream window to be 128KiB so it doesn't interfere with the rest of the test.
+            _clientSettings.InitialWindowSize = Http2PeerSettings.DefaultInitialWindowSize * 2;
+
             await InitializeConnectionAsync(async context =>
             {
                 var streamId = context.Features.Get<IHttp2StreamIdFeature>().StreamId;
@@ -2760,6 +2882,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var backpressureObservedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var backpressureReleasedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
+            // Double the stream window to be 128KiB so it doesn't interfere with the rest of the test.
+            _clientSettings.InitialWindowSize = Http2PeerSettings.DefaultInitialWindowSize * 2;
+
             await InitializeConnectionAsync(async context =>
             {
                 try
@@ -2791,9 +2916,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             });
 
             await StartStreamAsync(1, _browserRequestHeaders, endStream: true);
-
-            // Update the stream window to be 128KiB so it doesn't interfere with the rest of the test.
-            await SendWindowUpdateAsync(1, (int)Http2PeerSettings.DefaultInitialWindowSize);
 
             await ExpectAsync(Http2FrameType.HEADERS,
                 withLength: 37,
@@ -2883,6 +3005,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task WINDOW_UPDATE_Received_OnStream_Respected_WhenInitialWindowSizeReducedMidStream()
         {
+            // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
             _clientSettings.InitialWindowSize = 6;
 
             await InitializeConnectionAsync(_echoApplication);
