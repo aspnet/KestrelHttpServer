@@ -1905,18 +1905,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             => GetString("Http2ErrorInvalidPreface");
 
         /// <summary>
-        /// The connection was aborted because a write operation was aborted with a CancellationToken.
+        /// The connection or stream was aborted because a write operation was aborted with a CancellationToken.
         /// </summary>
-        internal static string ConnectionAbortedByCancellationToken
+        internal static string ConnectionOrStreamAbortedByCancellationToken
         {
-            get => GetString("ConnectionAbortedByCancellationToken");
+            get => GetString("ConnectionOrStreamAbortedByCancellationToken");
         }
 
         /// <summary>
-        /// The connection was aborted because a write operation was aborted with a CancellationToken.
+        /// The connection or stream was aborted because a write operation was aborted with a CancellationToken.
         /// </summary>
-        internal static string FormatConnectionAbortedByCancellationToken()
-            => GetString("ConnectionAbortedByCancellationToken");
+        internal static string FormatConnectionOrStreamAbortedByCancellationToken()
+            => GetString("ConnectionOrStreamAbortedByCancellationToken");
 
         /// <summary>
         /// The client sent a SETTINGS frame with a SETTINGS_INITIAL_WINDOW_SIZE that caused a flow-control window to exceed the maximum size.
