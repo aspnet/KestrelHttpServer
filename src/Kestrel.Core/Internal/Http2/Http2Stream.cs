@@ -23,13 +23,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly Http2StreamContext _context;
         private readonly Http2OutputProducer _http2Output;
+        private readonly Http2InputFlowControl _inputFlowControl;
         private readonly Http2StreamOutputFlowControl _outputFlowControl;
+
+        private long _totalBytesReceived;
+        private long _totalBytesReadByApp;
+
         private int _requestAborted;
 
         public Http2Stream(Http2StreamContext context)
             : base(context)
         {
             _context = context;
+
+            _inputFlowControl = new Http2InputFlowControl(_context.FrameWriter, _context.StreamId, (int)Http2PeerSettings.DefaultInitialWindowSize / 2);
             _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
             _http2Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
             Output = _http2Output;
@@ -40,8 +47,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public bool RequestBodyStarted { get; private set; }
         public bool EndStreamReceived { get; private set; }
 
-        protected IHttp2StreamLifetimeHandler StreamLifetimeHandler => _context.StreamLifetimeHandler;
-
         public override bool IsUpgradableRequest => false;
 
         protected override void OnReset()
@@ -51,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected override void OnRequestProcessingEnded()
         {
-            StreamLifetimeHandler.OnStreamCompleted(StreamId);
+            _context.StreamLifetimeHandler.OnStreamCompleted(StreamId);
         }
 
         protected override string CreateRequestId()
@@ -246,30 +251,71 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public async Task OnDataAsync(ArraySegment<byte> data, bool endStream)
+        public Task OnDataAsync(Http2Frame dataFrame)
         {
             // TODO: content-length accounting
-            // TODO: flow-control
 
-            try
+            var payload = dataFrame.DataPayload;
+            var endStream = (dataFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
+            var flushTask = default(ValueTask<FlushResult>);
+
+            // TODO: Abort connection if _totalBytesReceived - _totalBytesReadByApp > Http2PeerSettings.DefaultInitialWindowSize.
+            _totalBytesReceived += dataFrame.Length;
+
+            // Since padding isn't buffered, immediately count padding bytes as read for flow control purposes.
+            if (dataFrame.DataHasPadding)
             {
-                if (data.Count > 0)
-                {
-                    RequestBodyPipe.Writer.Write(data);
+                // Add 1 byte for the padding length prefix.
+                OnDataReadByApp(dataFrame.DataPadLength + 1);
+            }
 
-                    RequestBodyStarted = true;
-                    await RequestBodyPipe.Writer.FlushAsync();
-                }
+            if (payload.Count > 0)
+            {
+                RequestBodyPipe.Writer.Write(payload);
 
+                RequestBodyStarted = true;
+                flushTask = RequestBodyPipe.Writer.FlushAsync();
+            }
+
+            if (flushTask.IsCompleted)
+            {
                 if (endStream)
                 {
-                    EndStreamReceived = true;
-                    RequestBodyPipe.Writer.Complete();
+                    OnEndStream();
                 }
+
+                return Task.CompletedTask;
             }
-            catch (Exception ex)
+
+            return OnDataAsyncAwaited(flushTask, endStream);
+        }
+
+        private async Task OnDataAsyncAwaited(ValueTask<FlushResult> flushTask, bool endStream)
+        {
+            await flushTask;
+
+            if (endStream)
             {
-                RequestBodyPipe.Writer.Complete(ex);
+                OnEndStream();
+            }
+        }
+
+        public void OnEndStream()
+        {
+            EndStreamReceived = true;
+            RequestBodyPipe.Writer.Complete();
+        }
+
+        public void OnDataReadByApp(int bytesRead)
+        {
+            _totalBytesReadByApp += bytesRead;
+
+            _inputFlowControl.OnDataRead(bytesRead);
+
+            // TODO: This is bad, and I feel bad.
+            lock (_context.ConnectionInputFlowControl)
+            {
+                _context.ConnectionInputFlowControl.OnDataRead(bytesRead);
             }
         }
 
@@ -315,6 +361,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             // Unblock the request body.
             RequestBodyPipe.Writer.Complete(new IOException(CoreStrings.Http2StreamAborted, abortReason));
+
+            // Count all data for the stream as read for the purposes of connection-level flow control.
+            if (_totalBytesReceived > _totalBytesReadByApp)
+            {
+                _context.ConnectionInputFlowControl.OnDataRead((int)(_totalBytesReceived - _totalBytesReadByApp));
+            }
         }
     }
 }

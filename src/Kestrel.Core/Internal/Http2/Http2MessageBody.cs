@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public abstract class Http2MessageBody : MessageBody
+    public class Http2MessageBody : MessageBody
     {
         private readonly Http2Stream _context;
 
@@ -23,6 +23,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 TryProduceContinue();
             }
+        }
+
+        protected override void OnDataRead(int bytesRead)
+        {
+            _context.OnDataReadByApp(bytesRead);
         }
 
         protected override Task OnConsumeAsync() => Task.CompletedTask;
@@ -43,15 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 return ZeroContentLengthClose;
             }
 
-            return new ForHttp2(context);
-        }
-
-        private class ForHttp2 : Http2MessageBody
-        {
-            public ForHttp2(Http2Stream context)
-                : base(context)
-            {
-            }
+            return new Http2MessageBody(context);
         }
     }
 }

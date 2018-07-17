@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _outgoingFrame.Length = _continueBytes.Length;
                 _continueBytes.CopyTo(_outgoingFrame.HeadersPayload);
 
-                return WriteUnsynchronizedAsync(_outgoingFrame.Raw);
+                return WriteFrameUnsynchronizedAsync();
             }
         }
 
@@ -190,7 +190,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _outgoingFrame.Length = unwrittenPayloadLength;
             _outputWriter.Write(_outgoingFrame.Raw);
 
-            return FlushUnsynchronizedAsync();
+            return _flusher.FlushAsync();
         }
 
         private async Task WriteDataAsyncAwaited(int streamId, Http2StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
@@ -239,12 +239,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             await ThreadPoolAwaitable.Instance;
         }
 
+        public Task WriteWindowUpdateAsync(int streamId, int sizeIncrement)
+        {
+            lock (_writeLock)
+            {
+                _outgoingFrame.PrepareWindowUpdate(streamId, sizeIncrement);
+                return WriteFrameUnsynchronizedAsync();
+            }
+        }
+
         public Task WriteRstStreamAsync(int streamId, Http2ErrorCode errorCode)
         {
             lock (_writeLock)
             {
                 _outgoingFrame.PrepareRstStream(streamId, errorCode);
-                return WriteUnsynchronizedAsync(_outgoingFrame.Raw);
+                return WriteFrameUnsynchronizedAsync();
             }
         }
 
@@ -254,7 +263,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 // TODO: actually send settings
                 _outgoingFrame.PrepareSettings(Http2SettingsFrameFlags.NONE);
-                return WriteUnsynchronizedAsync(_outgoingFrame.Raw);
+                return WriteFrameUnsynchronizedAsync();
             }
         }
 
@@ -263,7 +272,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             lock (_writeLock)
             {
                 _outgoingFrame.PrepareSettings(Http2SettingsFrameFlags.ACK);
-                return WriteUnsynchronizedAsync(_outgoingFrame.Raw);
+                return WriteFrameUnsynchronizedAsync();
             }
         }
 
@@ -273,7 +282,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 _outgoingFrame.PreparePing(Http2PingFrameFlags.ACK);
                 payload.CopyTo(_outgoingFrame.Payload);
-                return WriteUnsynchronizedAsync(_outgoingFrame.Raw);
+                return WriteFrameUnsynchronizedAsync();
             }
         }
 
@@ -282,23 +291,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             lock (_writeLock)
             {
                 _outgoingFrame.PrepareGoAway(lastStreamId, errorCode);
-                return WriteUnsynchronizedAsync(_outgoingFrame.Raw);
+                return WriteFrameUnsynchronizedAsync();
             }
         }
 
-        private Task WriteUnsynchronizedAsync(ReadOnlySpan<byte> data)
+        private Task WriteFrameUnsynchronizedAsync()
         {
             if (_completed)
             {
                 return Task.CompletedTask;
             }
 
-            _outputWriter.Write(data);
-            return FlushUnsynchronizedAsync();
-        }
-
-        private Task FlushUnsynchronizedAsync()
-        {
+            _outputWriter.Write(_outgoingFrame.Raw);
             return _flusher.FlushAsync();
         }
 

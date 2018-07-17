@@ -61,6 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
         private readonly HPackDecoder _hpackDecoder;
+        private readonly Http2InputFlowControl _inputFlowControl;
         private readonly Http2OutputFlowControl _outputFlowControl = new Http2OutputFlowControl(Http2PeerSettings.DefaultInitialWindowSize);
 
         private readonly Http2PeerSettings _serverSettings = new Http2PeerSettings();
@@ -83,6 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
             _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl, this);
             _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
+            _inputFlowControl = new Http2InputFlowControl(_frameWriter, 0, (int)Http2PeerSettings.DefaultInitialWindowSize / 2);
         }
 
         public string ConnectionId => _context.ConnectionId;
@@ -367,8 +369,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     throw new Http2ConnectionErrorException(CoreStrings.FormatHttp2ErrorStreamHalfClosedRemote(_incomingFrame.Type, stream.StreamId), Http2ErrorCode.STREAM_CLOSED);
                 }
 
-                return stream.OnDataAsync(_incomingFrame.DataPayload,
-                    endStream: (_incomingFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM);
+                return stream.OnDataAsync(_incomingFrame);
             }
 
             // If we couldn't find the stream, it was either alive previously but closed with
@@ -460,13 +461,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     StreamLifetimeHandler = this,
                     ClientPeerSettings = _clientSettings,
                     FrameWriter = _frameWriter,
+                    ConnectionInputFlowControl = _inputFlowControl,
                     ConnectionOutputFlowControl = _outputFlowControl,
                     TimeoutControl = this,
                 });
 
                 if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == Http2HeadersFrameFlags.END_STREAM)
                 {
-                    await _currentHeadersStream.OnDataAsync(Constants.EmptyData, endStream: true);
+                    _currentHeadersStream.OnEndStream();
                 }
 
                 _currentHeadersStream.Reset();
@@ -741,9 +743,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (endHeaders)
             {
-                var endStreamTask = _currentHeadersStream.OnDataAsync(Constants.EmptyData, endStream: true);
+                _currentHeadersStream.OnEndStream();
                 ResetRequestHeaderParsingState();
-                return endStreamTask;
             }
 
             return Task.CompletedTask;

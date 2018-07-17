@@ -21,6 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public IHttp2StreamLifetimeHandler StreamLifetimeHandler { get; set; }
         public Http2PeerSettings ClientPeerSettings { get; set; }
         public Http2FrameWriter FrameWriter { get; set; }
+        public Http2InputFlowControl ConnectionInputFlowControl { get; set; }
         public Http2OutputFlowControl ConnectionOutputFlowControl { get; set; }
         public ITimeoutControl TimeoutControl { get; set; }
     }

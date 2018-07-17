@@ -55,6 +55,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         var slice = readableBuffer.Slice(0, actual);
                         consumed = readableBuffer.GetPosition(actual);
                         slice.CopyTo(buffer.Span);
+
+                        OnDataRead(actual);
+
                         return actual;
                     }
 
@@ -89,6 +92,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             // REVIEW: This *could* be slower if 2 things are true
                             // - The WriteAsync(ReadOnlyMemory<byte>) isn't overridden on the destination
                             // - We change the Kestrel Memory Pool to not use pinned arrays but instead use native memory
+
+                            OnDataRead(memory.Length);
+
 #if NETCOREAPP2_1
                             await destination.WriteAsync(memory);
 #elif NETSTANDARD2_0
@@ -147,6 +153,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         }
 
         protected virtual void OnReadStarted()
+        {
+        }
+
+        protected virtual void OnDataRead(int bytesRead)
         {
         }
 
