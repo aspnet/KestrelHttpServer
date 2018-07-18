@@ -45,18 +45,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var result = await _context.RequestBodyPipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
+                var actual = 0;
 
                 try
                 {
                     if (!readableBuffer.IsEmpty)
                     {
-                        //  buffer.Count is int
-                        var actual = (int)Math.Min(readableBuffer.Length, buffer.Length);
+                        // buffer.Count is int
+                        actual = (int)Math.Min(readableBuffer.Length, buffer.Length);
                         var slice = readableBuffer.Slice(0, actual);
                         consumed = readableBuffer.GetPosition(actual);
                         slice.CopyTo(buffer.Span);
-
-                        OnDataRead(actual);
 
                         return actual;
                     }
@@ -69,6 +68,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 finally
                 {
                     _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+
+                    // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
+                    // the pipe despite the client being well-behaved.
+                    OnDataRead(actual);
                 }
             }
         }
@@ -82,6 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var result = await _context.RequestBodyPipe.Reader.ReadAsync();
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
+                var bytesRead = 0;
 
                 try
                 {
@@ -93,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             // - The WriteAsync(ReadOnlyMemory<byte>) isn't overridden on the destination
                             // - We change the Kestrel Memory Pool to not use pinned arrays but instead use native memory
 
-                            OnDataRead(memory.Length);
+                            bytesRead += memory.Length;
 
 #if NETCOREAPP2_1
                             await destination.WriteAsync(memory);
@@ -114,6 +118,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 finally
                 {
                     _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+
+                    // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
+                    // the pipe despite the client being well-behaved.
+                    OnDataRead(bytesRead);
                 }
             }
         }

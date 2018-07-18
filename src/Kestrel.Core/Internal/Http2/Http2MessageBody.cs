@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected override void OnDataRead(int bytesRead)
         {
-            _context.OnDataReadByApp(bytesRead);
+            _context.OnDataRead(bytesRead);
         }
 
         protected override Task OnConsumeAsync() => Task.CompletedTask;
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             HttpRequestHeaders headers,
             Http2Stream context)
         {
-            if (context.EndStreamReceived)
+            if (context.EndStreamReceived && !context.RequestBodyStarted)
             {
                 return ZeroContentLengthClose;
             }

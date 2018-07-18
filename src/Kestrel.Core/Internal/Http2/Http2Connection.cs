@@ -84,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
             _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl, this);
             _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
-            _inputFlowControl = new Http2InputFlowControl(_frameWriter, 0, (int)Http2PeerSettings.DefaultInitialWindowSize / 2);
+            _inputFlowControl = new Http2InputFlowControl(Http2PeerSettings.DefaultInitialWindowSize / 2);
         }
 
         public string ConnectionId => _context.ConnectionId;

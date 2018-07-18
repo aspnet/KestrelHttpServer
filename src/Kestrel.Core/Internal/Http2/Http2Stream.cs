@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
@@ -23,11 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly Http2StreamContext _context;
         private readonly Http2OutputProducer _http2Output;
-        private readonly Http2InputFlowControl _inputFlowControl;
+        private readonly Http2StreamInputFlowControl _inputFlowControl;
         private readonly Http2StreamOutputFlowControl _outputFlowControl;
-
-        private long _totalBytesReceived;
-        private long _totalBytesReadByApp;
 
         private int _requestAborted;
 
@@ -36,9 +34,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             _context = context;
 
-            _inputFlowControl = new Http2InputFlowControl(_context.FrameWriter, _context.StreamId, (int)Http2PeerSettings.DefaultInitialWindowSize / 2);
+            _inputFlowControl = new Http2StreamInputFlowControl(_context.StreamId, _context.FrameWriter, context.ConnectionInputFlowControl, Http2PeerSettings.DefaultInitialWindowSize);
             _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
             _http2Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
+
+            RequestBodyPipe = CreateRequestBodyPipe();
             Output = _http2Output;
         }
 
@@ -255,49 +255,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             // TODO: content-length accounting
 
-            var payload = dataFrame.DataPayload;
-            var endStream = (dataFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
-            var flushTask = default(ValueTask<FlushResult>);
-
-            // TODO: Abort connection if _totalBytesReceived - _totalBytesReadByApp > Http2PeerSettings.DefaultInitialWindowSize.
-            _totalBytesReceived += dataFrame.Length;
-
             // Since padding isn't buffered, immediately count padding bytes as read for flow control purposes.
             if (dataFrame.DataHasPadding)
             {
                 // Add 1 byte for the padding length prefix.
-                OnDataReadByApp(dataFrame.DataPadLength + 1);
+                OnDataRead(dataFrame.DataPadLength + 1);
             }
+
+            var payload = dataFrame.DataPayload;
 
             if (payload.Count > 0)
             {
+                _inputFlowControl.Advance(payload.Count);
+
                 RequestBodyPipe.Writer.Write(payload);
 
                 RequestBodyStarted = true;
-                flushTask = RequestBodyPipe.Writer.FlushAsync();
+                var flushTask = RequestBodyPipe.Writer.FlushAsync();
+
+                // It shouldn't be possible for the RequestBodyPipe to fill up an return an incomplete task if
+                // _inputFlowControl.Advance() didn't throw.
+                Debug.Assert(flushTask.IsCompleted);
             }
 
-            if (flushTask.IsCompleted)
-            {
-                if (endStream)
-                {
-                    OnEndStream();
-                }
-
-                return Task.CompletedTask;
-            }
-
-            return OnDataAsyncAwaited(flushTask, endStream);
-        }
-
-        private async Task OnDataAsyncAwaited(ValueTask<FlushResult> flushTask, bool endStream)
-        {
-            await flushTask;
-
-            if (endStream)
+            if ((dataFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM)
             {
                 OnEndStream();
             }
+
+            return Task.CompletedTask;
         }
 
         public void OnEndStream()
@@ -306,17 +292,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             RequestBodyPipe.Writer.Complete();
         }
 
-        public void OnDataReadByApp(int bytesRead)
+        public void OnDataRead(int bytesRead)
         {
-            _totalBytesReadByApp += bytesRead;
-
-            _inputFlowControl.OnDataRead(bytesRead);
-
-            // TODO: This is bad, and I feel bad.
-            lock (_context.ConnectionInputFlowControl)
-            {
-                _context.ConnectionInputFlowControl.OnDataRead(bytesRead);
-            }
+            _inputFlowControl.UpdateWindows(bytesRead);
         }
 
         public bool TryUpdateOutputWindow(int bytes)
@@ -362,11 +340,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // Unblock the request body.
             RequestBodyPipe.Writer.Complete(new IOException(CoreStrings.Http2StreamAborted, abortReason));
 
-            // Count all data for the stream as read for the purposes of connection-level flow control.
-            if (_totalBytesReceived > _totalBytesReadByApp)
-            {
-                _context.ConnectionInputFlowControl.OnDataRead((int)(_totalBytesReceived - _totalBytesReadByApp));
-            }
+            // Stop counting any buffered bytes for this stream towards the connection input flow-control window.
+            _inputFlowControl.Abort();
         }
+
+        private Pipe CreateRequestBodyPipe()
+            => new Pipe(new PipeOptions
+            (
+                pool: _context.MemoryPool,
+                readerScheduler: ServiceContext.Scheduler,
+                writerScheduler: PipeScheduler.Inline,
+                pauseWriterThreshold: Http2PeerSettings.DefaultInitialWindowSize,
+                resumeWriterThreshold: Http2PeerSettings.DefaultInitialWindowSize,
+                useSynchronizationContext: false,
+                minimumSegmentSize: KestrelMemoryPool.MinimumSegmentSize
+            ));
     }
 }
