@@ -7,13 +7,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
     public class Http2InputFlowControl
     {
-        private readonly Http2FlowControl _flow;
         private readonly int _initialWindowSize;
         private readonly int _minWindowSizeIncrement;
-
-        private int _unconfirmedBytes;
-
         private readonly object _flowLock = new object();
+
+        private Http2FlowControl _flow;
+        private int _unconfirmedBytes;
 
         public Http2InputFlowControl(uint initialWindowSize)
         {

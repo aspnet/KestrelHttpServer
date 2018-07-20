@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly Http2Stream _context;
 
-        protected Http2MessageBody(Http2Stream context)
+        private Http2MessageBody(Http2Stream context)
             : base(context)
         {
             _context = context;
@@ -33,12 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         // REVIEW: Can an app partially consume the request body in a non-aborted stream? Write a test.
         protected override Task OnConsumeAsync() => Task.CompletedTask;
 
-        public override Task StopAsync()
-        {
-            _context.RequestBodyPipe.Reader.Complete();
-            _context.RequestBodyPipe.Writer.Complete();
-            return Task.CompletedTask;
-        }
+        public override Task StopAsync() => Task.CompletedTask;
 
         public static MessageBody For(
             HttpRequestHeaders headers,

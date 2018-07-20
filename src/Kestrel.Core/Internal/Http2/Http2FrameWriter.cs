@@ -29,6 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly StreamSafePipeFlusher _flusher;
 
         private bool _completed;
+        private bool _windowUpdatesDisabled;
 
         public Http2FrameWriter(
             PipeWriter outputPipeWriter,
@@ -63,6 +64,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // TODO: Really abort the connection using the ConnectionContex like Http1OutputProducer.
             _outputReader.CancelPendingRead();
             Complete();
+        }
+
+        public void DisableWindowUpdates()
+        {
+            lock (_writeLock)
+            {
+                // This is called before aborting each stream during connection teardown in order to avoid
+                // sending unnecessary window updates right before closing the connection.
+                _windowUpdatesDisabled = true;
+            }
         }
 
         public Task FlushAsync(IHttpOutputProducer outputProducer, CancellationToken cancellationToken)
@@ -243,6 +254,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             lock (_writeLock)
             {
+                if (_windowUpdatesDisabled)
+                {
+                    return Task.CompletedTask;
+                }
+
                 _outgoingFrame.PrepareWindowUpdate(streamId, sizeIncrement);
                 return WriteFrameUnsynchronizedAsync();
             }

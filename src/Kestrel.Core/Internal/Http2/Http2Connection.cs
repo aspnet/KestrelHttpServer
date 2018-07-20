@@ -84,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
             _frameWriter = new Http2FrameWriter(context.Transport.Output, context.Application.Input, _outputFlowControl, this);
             _hpackDecoder = new HPackDecoder((int)_serverSettings.HeaderTableSize);
-            _inputFlowControl = new Http2InputFlowControl(Http2PeerSettings.DefaultInitialWindowSize / 2);
+            _inputFlowControl = new Http2InputFlowControl(Http2PeerSettings.DefaultInitialWindowSize);
         }
 
         public string ConnectionId => _context.ConnectionId;
@@ -202,6 +202,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 try
                 {
+                    // Ensure aborting each stream doesn't result in unnecessary WINDOW_UPDATE frames being sent.
+                    _frameWriter.DisableWindowUpdates();
+
                     foreach (var stream in _streams.Values)
                     {
                         stream.Abort(connectionError);
@@ -468,7 +471,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 if ((_incomingFrame.HeadersFlags & Http2HeadersFrameFlags.END_STREAM) == Http2HeadersFrameFlags.END_STREAM)
                 {
-                    _currentHeadersStream.OnEndStream();
+                    _currentHeadersStream.OnEndStreamReceived();
                 }
 
                 _currentHeadersStream.Reset();
@@ -743,7 +746,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             if (endHeaders)
             {
-                _currentHeadersStream.OnEndStream();
+                _currentHeadersStream.OnEndStreamReceived();
                 ResetRequestHeaderParsingState();
             }
 
