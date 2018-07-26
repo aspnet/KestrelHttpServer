@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
         private readonly int _minWindowSizeIncrement;
 
         private Http2FlowControl _flow;
-        private int _unconfirmedBytes;
+        private int _unackedBytes;
         private bool _windowUpdatesDisabled;
         private readonly object _flowLock = new object();
 
@@ -70,16 +70,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
                     return true;
                 }
 
-                var potentialUpdateSize = _unconfirmedBytes + bytes;
+                var potentialUpdateSize = _unackedBytes + bytes;
 
                 if (potentialUpdateSize > _minWindowSizeIncrement)
                 {
-                    _unconfirmedBytes = 0;
+                    _unackedBytes = 0;
                     updateSize = potentialUpdateSize;
                 }
                 else
                 {
-                    _unconfirmedBytes = potentialUpdateSize;
+                    _unackedBytes = potentialUpdateSize;
                 }
 
                 return true;
@@ -101,6 +101,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
                 _flow.Abort();
 
                 // Tell caller to return connection window space consumed by this stream.
+                // Even if window updates have been disable at the stream level, connection-level window updates may
+                // still be necessary.
                 return _initialWindowSize - _flow.Available;
             }
         }

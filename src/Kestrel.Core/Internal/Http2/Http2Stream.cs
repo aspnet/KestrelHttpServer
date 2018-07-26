@@ -391,8 +391,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // This could be a single condition, but I think it reads better as two if's.
             if ((completionState & StreamCompletionFlags.RequestProcessingEnded) == StreamCompletionFlags.RequestProcessingEnded)
             {
-                if ((completionState & StreamCompletionFlags.Aborted) == StreamCompletionFlags.Aborted ||
-                    (completionState & StreamCompletionFlags.EndStreamReceived) == StreamCompletionFlags.EndStreamReceived)
+                if ((completionState & StreamCompletionFlags.EndStreamReceived) == StreamCompletionFlags.EndStreamReceived ||
+                    (completionState & StreamCompletionFlags.Aborted) == StreamCompletionFlags.Aborted)
                 {
                     return true;
                 }

@@ -774,7 +774,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [InlineData(0)]
         [InlineData(1)]
         [InlineData(255)]
-        public async Task DATA_Received_WithPadding_CountsTowardsFlowControl(byte padLength)
+        public async Task DATA_Received_WithPadding_CountsTowardsInputFlowControl(byte padLength)
         {
             // _maxData should be 1/4th of the default initial window size + 1.
             Assert.Equal(Http2PeerSettings.DefaultInitialWindowSize + 1, (uint)_maxData.Length * 4);
@@ -822,7 +822,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task DATA_Received_ButNotConsumedByApp_CountsTowardsFlowControl()
+        public async Task DATA_Received_ButNotConsumedByApp_CountsTowardsInputFlowControl()
         {
             // _maxData should be 1/4th of the default initial window size + 1.
             Assert.Equal(Http2PeerSettings.DefaultInitialWindowSize + 1, (uint)_maxData.Length * 4);
@@ -1067,7 +1067,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task DATA_Sent_DespiteConnectionBackpressure_IfEmptyAndEndsStream()
+        public async Task DATA_Received_NoConnectionWindowSpace_ConnectionError()
+        {
+            // _maxData should be 1/4th of the default initial window size + 1.
+            Assert.Equal(Http2PeerSettings.DefaultInitialWindowSize + 1, (uint)_maxData.Length * 4);
+
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: false);
+
+            await StartStreamAsync(3, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(3, _maxData, endStream: false);
+            await SendDataAsync(3, _maxData, endStream: false);
+
+            await WaitForConnectionErrorAsync<Http2ConnectionErrorException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 3,
+                expectedErrorCode: Http2ErrorCode.FLOW_CONTROL_ERROR,
+                expectedErrorMessage: CoreStrings.Http2ErrorFlowControlWindowExceeded);
+
+            // I hate doing this, but it avoids exceptions from MemoryPool.Dipose() in debug mode. The problem is since
+            // the stream's ProcessRequestsAsync loop is never awaited by the connection, it's not really possible to
+            // observe when all the blocks are returned to the pool in this test. This can be removed if we set up the
+            // DiagnosticMemoryPool to allow late returns or after we implement graceful shutdown.
+            await Task.Delay(100);
+        }
+
+        [Fact]
+        public async Task DATA_Sent_DespiteConnectionOutputFlowControl_IfEmptyAndEndsStream()
         {
             // Zero-length data frames are allowed to be sent even if there is no space available in the flow control window.
             // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.1
@@ -1152,7 +1181,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task DATA_Sent_DespiteStreamBackpressure_IfEmptyAndEndsStream()
+        public async Task DATA_Sent_DespiteStreamOutputFlowControl_IfEmptyAndEndsStream()
         {
             // Zero-length data frames are allowed to be sent even if there is no space available in the flow control window.
             // https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.1
@@ -1851,7 +1880,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task RST_STREAM_Received_RelievesConnectionBackpressure()
+        public async Task RST_STREAM_Received_ContinuesAppsAwaitingConnectionOutputFlowControl()
         {
             var writeTasks = new Task[4];
 
@@ -1971,7 +2000,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task RST_STREAM_Received_RelievesStreamBackpressure()
+        public async Task RST_STREAM_Received_ContinuesAppsAwaitingStreamOutputFlowControl()
         {
             var writeTasks = new Task[6];
             var initialWindowSize = _helloWorldBytes.Length / 2;
@@ -2052,6 +2081,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Contains(1, _abortedStreamIds);
             Assert.Contains(3, _abortedStreamIds);
             Assert.Contains(5, _abortedStreamIds);
+        }
+
+        [Fact]
+        public async Task RST_STREAM_Received_ReturnsSpaceToConnectionInputFlowControlWindow()
+        {
+            // _maxData should be 1/4th of the default initial window size + 1.
+            Assert.Equal(Http2PeerSettings.DefaultInitialWindowSize + 1, (uint)_maxData.Length * 4);
+
+            await InitializeConnectionAsync(_waitForAbortApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: false);
+
+            await SendRstStreamAsync(1);
+            await WaitForAllStreamsAsync();
+ 
+            var connectionWindowUpdateFrame = await ExpectAsync(Http2FrameType.WINDOW_UPDATE,
+                withLength: 4,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 0);
+ 
+            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            Assert.Contains(1, _abortedStreamIds);
+            Assert.Equal(_maxData.Length * 3, connectionWindowUpdateFrame.WindowUpdateSizeIncrement);
         }
 
         [Fact]
@@ -2360,7 +2416,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task GOAWAY_Received_RelievesConnectionBackpressure()
+        public async Task GOAWAY_Received_ContinuesAppsAwaitingConnectionOutputFlowControl()
         {
             var writeTasks = new Task[6];
             var expectedFullFrameCountBeforeBackpressure = Http2PeerSettings.DefaultInitialWindowSize / _maxData.Length;
@@ -2460,7 +2516,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task GOAWAY_Received_RelievesStreamBackpressure()
+        public async Task GOAWAY_Received_ContinuesAppsAwaitingStreamOutputFlowControle()
         {
             var writeTasks = new Task[6];
             var initialWindowSize = _helloWorldBytes.Length / 2;
