@@ -17,10 +17,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
             int streamId,
             Http2FrameWriter frameWriter,
             Http2InputFlowControl connectionLevelFlowControl,
-            uint initialWindowSize)
+            uint initialWindowSize,
+            uint minWindowSizeIncrement)
         {
             _connectionLevelFlowControl = connectionLevelFlowControl;
-            _streamLevelFlowControl = new Http2InputFlowControl(initialWindowSize);
+            _streamLevelFlowControl = new Http2InputFlowControl(initialWindowSize, minWindowSizeIncrement);
 
             _streamId = streamId;
             _frameWriter = frameWriter;

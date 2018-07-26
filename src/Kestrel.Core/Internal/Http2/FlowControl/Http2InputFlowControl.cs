@@ -11,15 +11,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
         private readonly int _minWindowSizeIncrement;
 
         private Http2FlowControl _flow;
-        private int _unackedBytes;
+        private int _pendingUpdateSize;
         private bool _windowUpdatesDisabled;
         private readonly object _flowLock = new object();
 
-        public Http2InputFlowControl(uint initialWindowSize)
+        public Http2InputFlowControl(uint initialWindowSize, uint minWindowSizeIncrement)
         {
+            Debug.Assert(initialWindowSize >= minWindowSizeIncrement, "minWindowSizeIncrement is greater than the window size.");
+
             _flow = new Http2FlowControl(initialWindowSize);
             _initialWindowSize = (int)initialWindowSize;
-            _minWindowSizeIncrement = _initialWindowSize / 2;
+            _minWindowSizeIncrement = (int)minWindowSizeIncrement;
         }
 
         public bool TryAdvance(int bytes)
@@ -70,16 +72,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
                     return true;
                 }
 
-                var potentialUpdateSize = _unackedBytes + bytes;
+                var potentialUpdateSize = _pendingUpdateSize + bytes;
 
                 if (potentialUpdateSize > _minWindowSizeIncrement)
                 {
-                    _unackedBytes = 0;
+                    _pendingUpdateSize = 0;
                     updateSize = potentialUpdateSize;
                 }
                 else
                 {
-                    _unackedBytes = potentialUpdateSize;
+                    _pendingUpdateSize = potentialUpdateSize;
                 }
 
                 return true;
@@ -98,11 +100,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
         {
             lock (_flowLock)
             {
+                if (_flow.IsAborted)
+                {
+                    return 0;
+                }
+
                 _flow.Abort();
 
-                // Tell caller to return connection window space consumed by this stream.
-                // Even if window updates have been disable at the stream level, connection-level window updates may
-                // still be necessary.
+                // Tell caller to return connection window space consumed by this stream. Even if window updates have
+                // been disabled at the stream level, connection-level window updates may still be necessary.
                 return _initialWindowSize - _flow.Available;
             }
         }

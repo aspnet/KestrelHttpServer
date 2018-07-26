@@ -100,11 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private static readonly byte[] _noData = new byte[0];
         private static readonly byte[] _maxData = Encoding.ASCII.GetBytes(new string('a', Http2Frame.MinAllowedMaxFrameSize));
 
-        private readonly MemoryPool<byte> _memoryPool = KestrelMemoryPool.Create();
-        private readonly DuplexPipe.DuplexPipePair _pair;
         private readonly TestApplicationErrorLogger _logger;
-        private readonly Http2ConnectionContext _connectionContext;
-        private readonly Http2Connection _connection;
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly HPackDecoder _hpackDecoder;
@@ -126,28 +122,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         private readonly RequestDelegate _waitForAbortFlushingApplication;
         private readonly RequestDelegate _waitForAbortWithDataApplication;
 
+        private MemoryPool<byte> _memoryPool;
+        private DuplexPipe.DuplexPipePair _pair;
+        private Http2ConnectionContext _connectionContext;
+        private Http2Connection _connection;
+
         private Task _connectionTask;
 
         public Http2ConnectionTests()
         {
-            // Always dispatch test code back to the ThreadPool. This prevents deadlocks caused by continuing
-            // Http2Connection.ProcessRequestsAsync() loop with writer locks acquired. Run product code inline to make
-            // it easier to verify request frames are processed correctly immediately after sending the them.
-            var inputPipeOptions = new PipeOptions(
-                pool: _memoryPool,
-                readerScheduler: PipeScheduler.Inline,
-                writerScheduler: PipeScheduler.ThreadPool,
-                useSynchronizationContext: false
-            );
-            var outputPipeOptions = new PipeOptions(
-                pool: _memoryPool,
-                readerScheduler: PipeScheduler.ThreadPool,
-                writerScheduler: PipeScheduler.Inline,
-                useSynchronizationContext: false
-            );
-
-            _pair = DuplexPipe.CreateConnectionPair(inputPipeOptions, outputPipeOptions);
-
             _noopApplication = context => Task.CompletedTask;
 
             _readHeadersApplication = context =>
@@ -297,6 +280,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _logger = new TestApplicationErrorLogger();
 
+            InitializeConnectionFields(KestrelMemoryPool.Create());
+        }
+
+        private void InitializeConnectionFields(MemoryPool<byte> memoryPool)
+        {
+            _memoryPool = memoryPool;
+
+            // Always dispatch test code back to the ThreadPool. This prevents deadlocks caused by continuing
+            // Http2Connection.ProcessRequestsAsync() loop with writer locks acquired. Run product code inline to make
+            // it easier to verify request frames are processed correctly immediately after sending the them.
+            var inputPipeOptions = new PipeOptions(
+                pool: _memoryPool,
+                readerScheduler: PipeScheduler.Inline,
+                writerScheduler: PipeScheduler.ThreadPool,
+                useSynchronizationContext: false
+            );
+            var outputPipeOptions = new PipeOptions(
+                pool: _memoryPool,
+                readerScheduler: PipeScheduler.ThreadPool,
+                writerScheduler: PipeScheduler.Inline,
+                useSynchronizationContext: false
+            );
+
+            _pair = DuplexPipe.CreateConnectionPair(inputPipeOptions, outputPipeOptions);
+
             _connectionContext = new Http2ConnectionContext
             {
                 ConnectionFeatures = new FeatureCollection(),
@@ -308,6 +316,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 Application = _pair.Application,
                 Transport = _pair.Transport
             };
+
             _connection = new Http2Connection(_connectionContext);
         }
 
@@ -714,7 +723,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withLength: 37,
                 withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
                 withStreamId: 3);
-           await ExpectAsync(Http2FrameType.DATA,
+            await ExpectAsync(Http2FrameType.DATA,
                 withLength: 5,
                 withFlags: (byte)Http2DataFrameFlags.NONE,
                 withStreamId: 3);
@@ -840,7 +849,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withLength: 0,
                 withFlags: (byte)Http2DataFrameFlags.END_STREAM,
                 withStreamId: 1);
-            
+
             // Writing over half the initial window size induces both a connection-level window update.
             await SendDataAsync(1, _maxData, endStream: true);
 
@@ -1041,6 +1050,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Fact]
         public async Task DATA_Received_NoStreamWindowSpace_ConnectionError()
         {
+            // I hate doing this, but it avoids exceptions from MemoryPool.Dipose() in debug mode. The problem is since
+            // the stream's ProcessRequestsAsync loop is never awaited by the connection, it's not really possible to
+            // observe when all the blocks are returned. This can be removed after we implement graceful shutdown.
+            Dispose();
+            InitializeConnectionFields(new DiagnosticMemoryPool(KestrelMemoryPool.CreateSlabMemoryPool(), allowLateReturn: true));
+
             // _maxData should be 1/4th of the default initial window size + 1.
             Assert.Equal(Http2PeerSettings.DefaultInitialWindowSize + 1, (uint)_maxData.Length * 4);
 
@@ -1058,17 +1073,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 expectedLastStreamId: 1,
                 expectedErrorCode: Http2ErrorCode.FLOW_CONTROL_ERROR,
                 expectedErrorMessage: CoreStrings.Http2ErrorFlowControlWindowExceeded);
-
-            // I hate doing this, but it avoids exceptions from MemoryPool.Dipose() in debug mode. The problem is since
-            // the stream's ProcessRequestsAsync loop is never awaited by the connection, it's not really possible to
-            // observe when all the blocks are returned to the pool in this test. This can be removed if we set up the
-            // DiagnosticMemoryPool to allow late returns or after we implement graceful shutdown.
-            await Task.Delay(100);
         }
 
         [Fact]
         public async Task DATA_Received_NoConnectionWindowSpace_ConnectionError()
         {
+            // I hate doing this, but it avoids exceptions from MemoryPool.Dipose() in debug mode. The problem is since
+            // the stream's ProcessRequestsAsync loop is never awaited by the connection, it's not really possible to
+            // observe when all the blocks are returned. This can be removed after we implement graceful shutdown.
+            Dispose();
+            InitializeConnectionFields(new DiagnosticMemoryPool(KestrelMemoryPool.CreateSlabMemoryPool(), allowLateReturn: true));
+
             // _maxData should be 1/4th of the default initial window size + 1.
             Assert.Equal(Http2PeerSettings.DefaultInitialWindowSize + 1, (uint)_maxData.Length * 4);
 
@@ -1087,12 +1102,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 expectedLastStreamId: 3,
                 expectedErrorCode: Http2ErrorCode.FLOW_CONTROL_ERROR,
                 expectedErrorMessage: CoreStrings.Http2ErrorFlowControlWindowExceeded);
-
-            // I hate doing this, but it avoids exceptions from MemoryPool.Dipose() in debug mode. The problem is since
-            // the stream's ProcessRequestsAsync loop is never awaited by the connection, it's not really possible to
-            // observe when all the blocks are returned to the pool in this test. This can be removed if we set up the
-            // DiagnosticMemoryPool to allow late returns or after we implement graceful shutdown.
-            await Task.Delay(100);
         }
 
         [Fact]
@@ -2098,12 +2107,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await SendRstStreamAsync(1);
             await WaitForAllStreamsAsync();
- 
+
             var connectionWindowUpdateFrame = await ExpectAsync(Http2FrameType.WINDOW_UPDATE,
                 withLength: 4,
                 withFlags: (byte)Http2DataFrameFlags.NONE,
                 withStreamId: 0);
- 
+
             await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
 
             Assert.Contains(1, _abortedStreamIds);

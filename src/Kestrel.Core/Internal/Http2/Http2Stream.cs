@@ -32,7 +32,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             _context = context;
 
-            _inputFlowControl = new Http2StreamInputFlowControl(_context.StreamId, _context.FrameWriter, context.ConnectionInputFlowControl, Http2PeerSettings.DefaultInitialWindowSize);
+            _inputFlowControl = new Http2StreamInputFlowControl(
+                _context.StreamId,
+                _context.FrameWriter,
+                context.ConnectionInputFlowControl,
+                Http2PeerSettings.DefaultInitialWindowSize,
+                Http2PeerSettings.DefaultInitialWindowSize / 2);
+
             _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
             _http2Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
 
