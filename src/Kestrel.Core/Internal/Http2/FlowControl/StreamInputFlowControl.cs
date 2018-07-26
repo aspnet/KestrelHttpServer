@@ -5,23 +5,23 @@ using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 {
-    public class Http2StreamInputFlowControl
+    public class StreamInputFlowControl
     {
-        private readonly Http2InputFlowControl _connectionLevelFlowControl;
-        private readonly Http2InputFlowControl _streamLevelFlowControl;
+        private readonly InputFlowControl _connectionLevelFlowControl;
+        private readonly InputFlowControl _streamLevelFlowControl;
 
         private readonly int _streamId;
         private readonly Http2FrameWriter _frameWriter;
 
-        public Http2StreamInputFlowControl(
+        public StreamInputFlowControl(
             int streamId,
             Http2FrameWriter frameWriter,
-            Http2InputFlowControl connectionLevelFlowControl,
+            InputFlowControl connectionLevelFlowControl,
             uint initialWindowSize,
             uint minWindowSizeIncrement)
         {
             _connectionLevelFlowControl = connectionLevelFlowControl;
-            _streamLevelFlowControl = new Http2InputFlowControl(initialWindowSize, minWindowSizeIncrement);
+            _streamLevelFlowControl = new InputFlowControl(initialWindowSize, minWindowSizeIncrement);
 
             _streamId = streamId;
             _frameWriter = frameWriter;

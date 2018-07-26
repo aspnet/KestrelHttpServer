@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly HPackEncoder _hpackEncoder = new HPackEncoder();
         private readonly PipeWriter _outputWriter;
         private readonly PipeReader _outputReader;
-        private readonly Http2OutputFlowControl _connectionOutputFlowControl;
+        private readonly OutputFlowControl _connectionOutputFlowControl;
         private readonly StreamSafePipeFlusher _flusher;
 
         private bool _completed;
@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2FrameWriter(
             PipeWriter outputPipeWriter,
             PipeReader outputPipeReader,
-            Http2OutputFlowControl connectionOutputFlowControl,
+            OutputFlowControl connectionOutputFlowControl,
             ITimeoutControl timeoutControl)
         {
             _outputWriter = outputPipeWriter;
@@ -129,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public Task WriteDataAsync(int streamId, Http2StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, bool endStream)
+        public Task WriteDataAsync(int streamId, StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, bool endStream)
         {
             // The Length property of a ReadOnlySequence can be expensive, so we cache the value.
             var dataLength = data.Length;
@@ -194,11 +194,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             return _flusher.FlushAsync();
         }
 
-        private async Task WriteDataAsyncAwaited(int streamId, Http2StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
+        private async Task WriteDataAsyncAwaited(int streamId, StreamOutputFlowControl flowControl, ReadOnlySequence<byte> data, long dataLength, bool endStream)
         {
             while (dataLength > 0)
             {
-                Http2OutputFlowControlAwaitable availabilityAwaitable;
+                OutputFlowControlAwaitable availabilityAwaitable;
                 var writeTask = Task.CompletedTask;
 
                 lock (_writeLock)
@@ -315,7 +315,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public bool TryUpdateStreamWindow(Http2StreamOutputFlowControl flowControl, int bytes)
+        public bool TryUpdateStreamWindow(StreamOutputFlowControl flowControl, int bytes)
         {
             lock (_writeLock)
             {
@@ -323,7 +323,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public void AbortPendingStreamDataWrites(Http2StreamOutputFlowControl flowControl)
+        public void AbortPendingStreamDataWrites(StreamOutputFlowControl flowControl)
         {
             lock (_writeLock)
             {

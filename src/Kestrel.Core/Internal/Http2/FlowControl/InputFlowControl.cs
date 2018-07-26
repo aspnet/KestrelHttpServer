@@ -5,21 +5,21 @@ using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 {
-    public class Http2InputFlowControl
+    public class InputFlowControl
     {
         private readonly int _initialWindowSize;
         private readonly int _minWindowSizeIncrement;
 
-        private Http2FlowControl _flow;
+        private FlowControl _flow;
         private int _pendingUpdateSize;
         private bool _windowUpdatesDisabled;
         private readonly object _flowLock = new object();
 
-        public Http2InputFlowControl(uint initialWindowSize, uint minWindowSizeIncrement)
+        public InputFlowControl(uint initialWindowSize, uint minWindowSizeIncrement)
         {
             Debug.Assert(initialWindowSize >= minWindowSizeIncrement, "minWindowSizeIncrement is greater than the window size.");
 
-            _flow = new Http2FlowControl(initialWindowSize);
+            _flow = new FlowControl(initialWindowSize);
             _initialWindowSize = (int)initialWindowSize;
             _minWindowSizeIncrement = (int)minWindowSizeIncrement;
         }

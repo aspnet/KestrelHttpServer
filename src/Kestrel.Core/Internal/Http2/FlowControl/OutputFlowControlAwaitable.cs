@@ -8,13 +8,13 @@ using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 {
-    public class Http2OutputFlowControlAwaitable : ICriticalNotifyCompletion
+    public class OutputFlowControlAwaitable : ICriticalNotifyCompletion
     {
         private static readonly Action _callbackCompleted = () => { };
 
         private Action _callback;
 
-        public Http2OutputFlowControlAwaitable GetAwaiter() => this;
+        public OutputFlowControlAwaitable GetAwaiter() => this;
         public bool IsCompleted => ReferenceEquals(_callback, _callbackCompleted);
 
         public void GetResult()

@@ -6,20 +6,20 @@ using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 {
-    public class Http2OutputFlowControl
+    public class OutputFlowControl
     {
-        private Http2FlowControl _flow;
-        private Queue<Http2OutputFlowControlAwaitable> _awaitableQueue;
+        private FlowControl _flow;
+        private Queue<OutputFlowControlAwaitable> _awaitableQueue;
 
-        public Http2OutputFlowControl(uint initialWindowSize)
+        public OutputFlowControl(uint initialWindowSize)
         {
-            _flow = new Http2FlowControl(initialWindowSize);
+            _flow = new FlowControl(initialWindowSize);
         }
 
         public int Available => _flow.Available;
         public bool IsAborted => _flow.IsAborted;
 
-        public Http2OutputFlowControlAwaitable AvailabilityAwaitable
+        public OutputFlowControlAwaitable AvailabilityAwaitable
         {
             get
             {
@@ -28,10 +28,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 
                 if (_awaitableQueue == null)
                 {
-                    _awaitableQueue = new Queue<Http2OutputFlowControlAwaitable>();
+                    _awaitableQueue = new Queue<OutputFlowControlAwaitable>();
                 }
 
-                var awaitable = new Http2OutputFlowControlAwaitable();
+                var awaitable = new OutputFlowControlAwaitable();
                 _awaitableQueue.Enqueue(awaitable);
                 return awaitable;
             }

@@ -21,8 +21,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly Http2StreamContext _context;
         private readonly Http2OutputProducer _http2Output;
-        private readonly Http2StreamInputFlowControl _inputFlowControl;
-        private readonly Http2StreamOutputFlowControl _outputFlowControl;
+        private readonly StreamInputFlowControl _inputFlowControl;
+        private readonly StreamOutputFlowControl _outputFlowControl;
 
         private StreamCompletionFlags _completionState;
         private readonly object _completionLock = new object();
@@ -32,14 +32,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         {
             _context = context;
 
-            _inputFlowControl = new Http2StreamInputFlowControl(
+            _inputFlowControl = new StreamInputFlowControl(
                 _context.StreamId,
                 _context.FrameWriter,
                 context.ConnectionInputFlowControl,
                 Http2PeerSettings.DefaultInitialWindowSize,
                 Http2PeerSettings.DefaultInitialWindowSize / 2);
 
-            _outputFlowControl = new Http2StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
+            _outputFlowControl = new StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
             _http2Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool);
 
             RequestBodyPipe = CreateRequestBodyPipe();

@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         // This should only be accessed via the FrameWriter. The connection-level output flow control is protected by the
         // FrameWriter's connection-level write lock.
-        private readonly Http2StreamOutputFlowControl _flowControl;
+        private readonly StreamOutputFlowControl _flowControl;
 
         private readonly object _dataWriterLock = new object();
         private readonly Pipe _dataPipe;
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public Http2OutputProducer(
             int streamId,
             Http2FrameWriter frameWriter,
-            Http2StreamOutputFlowControl flowControl,
+            StreamOutputFlowControl flowControl,
             ITimeoutControl timeoutControl,
             MemoryPool<byte> pool)
         {

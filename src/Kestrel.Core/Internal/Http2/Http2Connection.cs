@@ -62,8 +62,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2ConnectionContext _context;
         private readonly Http2FrameWriter _frameWriter;
         private readonly HPackDecoder _hpackDecoder;
-        private readonly Http2InputFlowControl _inputFlowControl = new Http2InputFlowControl(Http2PeerSettings.DefaultInitialWindowSize, Http2PeerSettings.DefaultInitialWindowSize / 2);
-        private readonly Http2OutputFlowControl _outputFlowControl = new Http2OutputFlowControl(Http2PeerSettings.DefaultInitialWindowSize);
+        private readonly InputFlowControl _inputFlowControl = new InputFlowControl(Http2PeerSettings.DefaultInitialWindowSize, Http2PeerSettings.DefaultInitialWindowSize / 2);
+        private readonly OutputFlowControl _outputFlowControl = new OutputFlowControl(Http2PeerSettings.DefaultInitialWindowSize);
 
         private readonly Http2PeerSettings _serverSettings = new Http2PeerSettings();
         private readonly Http2PeerSettings _clientSettings = new Http2PeerSettings();

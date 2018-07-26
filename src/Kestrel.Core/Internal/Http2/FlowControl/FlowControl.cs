@@ -5,9 +5,9 @@ using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 {
-    public struct Http2FlowControl
+    public struct FlowControl
     {
-        public Http2FlowControl(uint initialWindowSize)
+        public FlowControl(uint initialWindowSize)
         {
             Debug.Assert(initialWindowSize <= Http2PeerSettings.MaxWindowSize, $"{nameof(initialWindowSize)} too large.");
 
