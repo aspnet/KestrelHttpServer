@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
+namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl
 {
     public struct Http2FlowControl
     {

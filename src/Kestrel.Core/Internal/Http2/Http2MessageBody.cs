@@ -30,7 +30,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context.OnDataRead(bytesRead);
         }
 
-        // REVIEW: Can an app partially consume the request body in a non-aborted stream? Write a test.
         protected override Task OnConsumeAsync() => Task.CompletedTask;
 
         public override Task StopAsync() => Task.CompletedTask;

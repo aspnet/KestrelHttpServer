@@ -6,13 +6,10 @@ using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipelines;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
-using Microsoft.AspNetCore.Connections.Abstractions;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.Primitives;
@@ -27,7 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly Http2StreamInputFlowControl _inputFlowControl;
         private readonly Http2StreamOutputFlowControl _outputFlowControl;
 
-        private int _requestAborted;
+        private StreamCompletionFlags _completionState;
+        private readonly object _completionLock = new object();
 
         public Http2Stream(Http2StreamContext context)
             : base(context)
@@ -45,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public int StreamId => _context.StreamId;
 
         public bool RequestBodyStarted { get; private set; }
-        public bool EndStreamReceived { get; private set; }
+        public bool EndStreamReceived => (_completionState & StreamCompletionFlags.EndStreamReceived) == StreamCompletionFlags.EndStreamReceived;
 
         public override bool IsUpgradableRequest => false;
 
@@ -56,9 +54,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected override void OnRequestProcessingEnded()
         {
+            TryApplyCompletionFlag(StreamCompletionFlags.RequestProcessingEnded);
+
             RequestBodyPipe.Reader.Complete();
-            RequestBodyPipe.Writer.Complete();
-            _context.StreamLifetimeHandler.OnStreamCompleted(StreamId);
+
+            // The app can no longer read any more of the request body, so return any bytes that weren't read to the
+            // connection's flow-control window.
+            _inputFlowControl.Abort();
         }
 
         protected override string CreateRequestId()
@@ -265,14 +267,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
 
             var payload = dataFrame.DataPayload;
+            var endStream = (dataFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM;
 
             if (payload.Count > 0)
             {
+                RequestBodyStarted = true;
+
+                if (endStream)
+                {
+                    // No need to send any more window updates for this stream now that we've received all the data.
+                    // Call before flushing the request body pipe, because that might induce a window update.
+                    _inputFlowControl.StopWindowUpdates();
+                }
+
                 _inputFlowControl.Advance(payload.Count);
 
                 RequestBodyPipe.Writer.Write(payload);
-
-                RequestBodyStarted = true;
                 var flushTask = RequestBodyPipe.Writer.FlushAsync();
 
                 // It shouldn't be possible for the RequestBodyPipe to fill up an return an incomplete task if
@@ -280,7 +290,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 Debug.Assert(flushTask.IsCompleted);
             }
 
-            if ((dataFrame.DataFlags & Http2DataFrameFlags.END_STREAM) == Http2DataFrameFlags.END_STREAM)
+            if (endStream)
             {
                 OnEndStreamReceived();
             }
@@ -290,8 +300,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public void OnEndStreamReceived()
         {
-            EndStreamReceived = true;
+            TryApplyCompletionFlag(StreamCompletionFlags.EndStreamReceived);
+
             RequestBodyPipe.Writer.Complete();
+
+            _inputFlowControl.StopWindowUpdates();
         }
 
         public void OnDataRead(int bytesRead)
@@ -306,7 +319,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public override void Abort(ConnectionAbortedException abortReason)
         {
-            if (Interlocked.Exchange(ref _requestAborted, 1) != 0)
+            if (!TryApplyCompletionFlag(StreamCompletionFlags.Aborted))
             {
                 return;
             }
@@ -322,7 +335,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private void ResetAndAbort(ConnectionAbortedException abortReason, Http2ErrorCode error)
         {
-            if (Interlocked.Exchange(ref _requestAborted, 1) != 0)
+            if (!TryApplyCompletionFlag(StreamCompletionFlags.Aborted))
             {
                 return;
             }
@@ -342,7 +355,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // Unblock the request body.
             RequestBodyPipe.Writer.Complete(new IOException(CoreStrings.Http2StreamAborted, abortReason));
 
-            // Stop counting any buffered bytes for this stream towards the connection input flow-control window.
             _inputFlowControl.Abort();
         }
 
@@ -357,5 +369,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 useSynchronizationContext: false,
                 minimumSegmentSize: KestrelMemoryPool.MinimumSegmentSize
             ));
+
+        private bool TryApplyCompletionFlag(StreamCompletionFlags completionState)
+        {
+            lock (_completionLock)
+            {
+                var lastCompletionState = _completionState;
+                _completionState |= completionState;
+
+                if (ShoulStopTrackingStream(_completionState) && !ShoulStopTrackingStream(lastCompletionState))
+                {
+                    _context.StreamLifetimeHandler.OnStreamCompleted(StreamId);
+                }
+
+                return _completionState != lastCompletionState;
+            }
+        }
+
+        private static bool ShoulStopTrackingStream(StreamCompletionFlags completionState)
+        {
+            // This could be a single condition, but I think it reads better as two if's.
+            if ((completionState & StreamCompletionFlags.RequestProcessingEnded) == StreamCompletionFlags.RequestProcessingEnded)
+            {
+                if ((completionState & StreamCompletionFlags.Aborted) == StreamCompletionFlags.Aborted ||
+                    (completionState & StreamCompletionFlags.EndStreamReceived) == StreamCompletionFlags.EndStreamReceived)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        [Flags]
+        private enum StreamCompletionFlags
+        {
+            None = 0,
+            RequestProcessingEnded = 1,
+            EndStreamReceived = 2,
+            Aborted = 4,
+        }
     }
 }
