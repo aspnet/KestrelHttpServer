@@ -4,17 +4,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Security;
-using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 using Microsoft.AspNetCore.Testing;
@@ -121,23 +119,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
 
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
+            using (var server = new TestServer(context => Task.CompletedTask,
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
                 {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => { });
-
-            using (var host = hostBuilder.Build())
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (await HttpClientSlim.GetSocket(new Uri($"http://127.0.0.1:{host.GetPort()}/")))
+                using (var connection = server.CreateConnection())
                 {
                     // Close socket immediately
                 }
@@ -157,26 +146,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
 
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
+            using (var server = new TestServer(context => Task.CompletedTask,
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
                 {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .Configure(app => { });
-
-            using (var host = hostBuilder.Build())
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket))
+                using (var connection = server.CreateConnection())
                 {
                     // Send null bytes and close socket
-                    await stream.WriteAsync(new byte[10], 0, 10);
+                    await connection.Stream.WriteAsync(new byte[10], 0, 10);
                 }
 
                 await loggerProvider.FilterLogger.LogTcs.Task.DefaultTimeout();
@@ -194,17 +174,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(async httpContext =>
+
+            using (var server = new TestServer(async httpContext =>
                 {
                     var ct = httpContext.RequestAborted;
                     while (!ct.IsCancellationRequested)
@@ -219,15 +190,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                             // Don't regard connection abort as an error
                         }
                     }
-                }));
-
-            using (var host = hostBuilder.Build())
+                },
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
+                {
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var connection = server.CreateConnection())
+                using (var sslStream = new SslStream(connection.Stream, true, (sender, certificate, chain, errors) => true))
                 {
                     await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
                         enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
@@ -249,17 +220,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(async httpContext =>
+
+            using (var server = new TestServer(async httpContext =>
                 {
                     httpContext.Abort();
                     try
@@ -271,15 +233,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     {
                         tcs.SetException(ex);
                     }
-                }));
-
-            using (var host = hostBuilder.Build())
+                },
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
+                {
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var connection = server.CreateConnection())
+                using (var sslStream = new SslStream(connection.Stream, true, (sender, certificate, chain, errors) => true))
                 {
                     await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
                         enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
@@ -290,9 +252,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     await sslStream.ReadAsync(new byte[32], 0, 32);
                 }
-            }
 
-            await tcs.Task.DefaultTimeout();
+                await tcs.Task.DefaultTimeout();
+            }
         }
 
         // Regression test for https://github.com/aspnet/KestrelHttpServer/issues/1693
@@ -301,25 +263,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
+
+            using (var server = new TestServer(context => Task.CompletedTask,
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
                 {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => app.Run(httpContext => Task.CompletedTask));
-
-            using (var host = hostBuilder.Build())
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var connection = server.CreateConnection())
+                using (var sslStream = new SslStream(connection.Stream, true, (sender, certificate, chain, errors) => true))
                 {
                     await sslStream.AuthenticateAsClientAsync("127.0.0.1", clientCertificates: null,
                         enabledSslProtocols: SslProtocols.Tls11 | SslProtocols.Tls12,
@@ -337,28 +290,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
 
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
+            using (var server = new TestServer(context => Task.CompletedTask,
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
                 {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
-                .Configure(app => { });
-
-            using (var host = hostBuilder.Build())
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                using (var connection = server.CreateConnection())
                 {
-                    socket.Connect(new IPEndPoint(IPAddress.Loopback, host.GetPort()));
-
-                    // Close socket immediately
-                    socket.LingerState = new LingerOption(true, 0);
+                    connection.Reset();
                 }
             }
         }
@@ -368,30 +309,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
+
+            var testContext = new TestServiceContext(LoggerFactory);
+            var heartbeatManager = new HttpHeartbeatManager(testContext.ConnectionManager);
+
+            var handshakeStartedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            TimeSpan handshakeTimeout = default;
+
+            using (var server = new TestServer(context => Task.CompletedTask,
+                testContext,
+                listenOptions =>
                 {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
+                    listenOptions.UseHttps(o =>
                     {
-                        listenOptions.UseHttps(o =>
-                        {
-                            o.ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
-                            o.HandshakeTimeout = TimeSpan.FromSeconds(1);
-                        });
+                        o.ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
+                        o.OnHandshakeStarted = () => handshakeStartedTcs.SetResult(null);
+
+                        handshakeTimeout = o.HandshakeTimeout;
                     });
-                })
-                .ConfigureServices(AddTestLogging)
-                .Configure(app => app.Run(httpContext => Task.CompletedTask));
-
-            using (var host = hostBuilder.Build())
+                }))
             {
-                host.Start();
-
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
+                using (var connection = server.CreateConnection())
                 {
-                    // No data should be sent and the connection should be closed in well under 30 seconds.
-                    Assert.Equal(0, await stream.ReadAsync(new byte[1], 0, 1).DefaultTimeout());
+                    // HttpsConnectionAdapter dispatches via Task.Run() before starting the handshake.
+                    // Wait for the handshake to start before advancing the system clock.
+                    await handshakeStartedTcs.Task.DefaultTimeout();
+
+                    // Min amount of time between requests that triggers a handshake timeout.
+                    testContext.MockSystemClock.UtcNow += handshakeTimeout + Heartbeat.Interval + TimeSpan.FromTicks(1);
+                    heartbeatManager.OnHeartbeat(testContext.SystemClock.UtcNow);
+
+                    Assert.Equal(0, await connection.Stream.ReadAsync(new byte[1], 0, 1).DefaultTimeout());
                 }
             }
 
@@ -405,24 +353,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             var loggerProvider = new HandshakeErrorLoggerProvider();
             LoggerFactory.AddProvider(loggerProvider);
-            var hostBuilder = TransportSelector.GetWebHostBuilder()
-                .UseKestrel(options =>
+
+            using (var server = new TestServer(context => Task.CompletedTask,
+                new TestServiceContext(LoggerFactory),
+                listenOptions =>
                 {
-                    options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listenOptions =>
-                    {
-                        listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
-                    });
-                })
-                .ConfigureServices(AddTestLogging)
-                .Configure(app => app.Run(httpContext => Task.CompletedTask));
-
-            using (var host = hostBuilder.Build())
+                    listenOptions.UseHttps(TestResources.TestCertificatePath, "testPassword");
+                }))
             {
-                host.Start();
-
-                using (var socket = await HttpClientSlim.GetSocket(new Uri($"https://127.0.0.1:{host.GetPort()}/")))
-                using (var stream = new NetworkStream(socket, ownsSocket: false))
-                using (var sslStream = new SslStream(stream, true, (sender, certificate, chain, errors) => true))
+                using (var connection = server.CreateConnection())
+                using (var sslStream = new SslStream(connection.Stream, true, (sender, certificate, chain, errors) => true))
                 {
                     // SslProtocols.Tls is TLS 1.0 which isn't supported by Kestrel by default.
                     await Assert.ThrowsAsync<IOException>(() =>

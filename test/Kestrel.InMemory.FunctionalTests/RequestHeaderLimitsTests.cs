@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = CreateServer(maxRequestHeadersTotalSize: headers.Length + extraLimit))
             {
-                using (var connection = new TestConnection(server.Port))
+                using (var connection = server.CreateConnection())
                 {
                     await connection.Send($"GET / HTTP/1.1\r\n{headers}\r\n");
                     await connection.ReceiveEnd(
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = CreateServer(maxRequestHeaderCount: maxHeaderCount))
             {
-                using (var connection = new TestConnection(server.Port))
+                using (var connection = server.CreateConnection())
                 {
                     await connection.Send($"GET / HTTP/1.1\r\n{headers}\r\n");
                     await connection.ReceiveEnd(
@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = CreateServer(maxRequestHeadersTotalSize: headers.Length - 1))
             {
-                using (var connection = new TestConnection(server.Port))
+                using (var connection = server.CreateConnection())
                 {
                     await connection.SendAll($"GET / HTTP/1.1\r\n{headers}\r\n");
                     await connection.ReceiveForcedEnd(
@@ -110,7 +110,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = CreateServer(maxRequestHeaderCount: maxHeaderCount))
             {
-                using (var connection = new TestConnection(server.Port))
+                using (var connection = server.CreateConnection())
                 {
                     await connection.SendAll($"GET / HTTP/1.1\r\n{headers}\r\n");
                     await connection.ReceiveForcedEnd(

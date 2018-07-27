@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using InMemory.FunctionalTests.TestTransport;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -62,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     }
                 }
             }, max: 1))
-            using (var disposables = new DisposableStack<TestConnection>())
+            using (var disposables = new DisposableStack<InMemoryConnection>())
             {
                 var upgraded = server.CreateConnection();
                 disposables.Push(upgraded);
@@ -87,7 +88,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     catch { }
 
                     // connection should close without sending any data
-                    await rejected.WaitForConnectionClose().DefaultTimeout();
+                    await rejected.WaitForConnectionClose();
                 }
             }
         }
@@ -103,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 await context.Response.WriteAsync("Hello");
                 await requestTcs.Task;
             }, max))
-            using (var disposables = new DisposableStack<TestConnection>())
+            using (var disposables = new DisposableStack<InMemoryConnection>())
             {
                 for (var i = 0; i < max; i++)
                 {
@@ -127,7 +128,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         catch { }
 
                         // connection should close without sending any data
-                        await connection.WaitForConnectionClose().DefaultTimeout();
+                        await connection.WaitForConnectionClose();
                     }
                 }
 

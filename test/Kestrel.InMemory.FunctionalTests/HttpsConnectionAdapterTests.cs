@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(App, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                var result = await HttpClientSlim.PostAsync($"https://localhost:{server.Port}/",
+                var result = await server.HttpClientSlim.PostAsync($"https://localhost:{server.Port}/",
                     new FormUrlEncodedContent(new[] {
                         new KeyValuePair<string, string>("content", "Hello World?")
                     }),
@@ -80,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 return context.Response.WriteAsync("hello world");
             }, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
+                var result = await server.HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
                 Assert.Equal("hello world", result);
             }
         }
@@ -104,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var server = new TestServer(App, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 await Assert.ThrowsAnyAsync<Exception>(
-                    () => HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/"));
+                    () => server.HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/"));
             }
         }
 
@@ -131,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     return context.Response.WriteAsync("hello world");
                 }, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
+                var result = await server.HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
                 Assert.Equal("hello world", result);
             }
         }
@@ -157,12 +157,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     Assert.True(stream.RemoteCertificate.Equals(_x509Certificate2));
                 }
@@ -198,12 +198,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     Assert.True(stream.RemoteCertificate.Equals(_x509Certificate2));
                     Assert.Equal(1, selectorCalled);
@@ -244,22 +244,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     Assert.True(stream.RemoteCertificate.Equals(_x509Certificate2));
                     Assert.Equal(1, selectorCalled);
                 }
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     Assert.True(stream.RemoteCertificate.Equals(_x509Certificate2NoExt));
                     Assert.Equal(2, selectorCalled);
@@ -287,12 +287,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await Assert.ThrowsAsync<IOException>(() =>
                         stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false));
                     Assert.Equal(1, selectorCalled);
@@ -330,12 +330,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     Assert.True(stream.RemoteCertificate.Equals(_x509Certificate2));
                     Assert.Equal(1, selectorCalled);
@@ -363,12 +363,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             };
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await Assert.ThrowsAsync<IOException>(() =>
                         stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false));
                     Assert.Equal(1, selectorCalled);
@@ -404,12 +404,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     return context.Response.WriteAsync("hello world");
                 }, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
                     // SslStream is used to ensure the certificate is actually passed to the server
                     // HttpClient might not send the certificate because it is invalid or it doesn't match any
                     // of the certificate authorities sent by the server in the SSL handshake.
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     await AssertConnectionResult(stream, true);
                 }
@@ -429,7 +429,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context => context.Response.WriteAsync(context.Request.Scheme), new TestServiceContext(LoggerFactory), listenOptions))
             {
-                var result = await HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
+                var result = await server.HttpClientSlim.GetStringAsync($"https://localhost:{server.Port}/", validateCertificate: false);
                 Assert.Equal("https", result);
             }
         }
@@ -455,9 +455,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // SslStream is used to ensure the certificate is actually passed to the server
                 // HttpClient might not send the certificate because it is invalid or it doesn't match any
                 // of the certificate authorities sent by the server in the SSL handshake.
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     var ex = await Assert.ThrowsAsync<IOException>(
                         async () => await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls, false));
                 }
@@ -491,9 +491,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     await AssertConnectionResult(stream, true);
                     Assert.True(clientCertificateValidationCalled);
@@ -521,9 +521,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     await AssertConnectionResult(stream, false);
                 }
@@ -549,9 +549,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var server = new TestServer(context => Task.CompletedTask, new TestServiceContext(LoggerFactory), listenOptions))
             {
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     await AssertConnectionResult(stream, false);
                 }
@@ -589,9 +589,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 // SslStream is used to ensure the certificate is actually passed to the server
                 // HttpClient might not send the certificate because it is invalid or it doesn't match any
                 // of the certificate authorities sent by the server in the SSL handshake.
-                using (var client = new TcpClient())
+                using (var connection = server.CreateConnection())
                 {
-                    var stream = await OpenSslStream(client, server);
+                    var stream = OpenSslStream(connection.Stream);
                     await stream.AuthenticateAsClientAsync("localhost", new X509CertificateCollection(), SslProtocols.Tls12 | SslProtocols.Tls11, false);
                     await AssertConnectionResult(stream, true);
                 }
@@ -668,13 +668,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
-        private static async Task<SslStream> OpenSslStream(TcpClient client, TestServer server, X509Certificate2 clientCertificate = null)
+        private static SslStream OpenSslStream(Stream rawStream, X509Certificate2 clientCertificate = null)
         {
-            await client.ConnectAsync("127.0.0.1", server.Port);
-            var stream = new SslStream(client.GetStream(), false, (sender, certificate, chain, errors) => true,
+            return new SslStream(rawStream, false, (sender, certificate, chain, errors) => true,
                 (sender, host, certificates, certificate, issuers) => clientCertificate ?? _x509Certificate2);
-
-            return stream;
         }
 
         private static async Task AssertConnectionResult(SslStream stream, bool success)

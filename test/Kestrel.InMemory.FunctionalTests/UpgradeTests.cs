@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using InMemory.FunctionalTests.TestTransport;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -138,7 +139,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     $"Date: {server.Context.DateHeaderValue}",
                     "",
                     "");
-                await connection.WaitForConnectionClose().DefaultTimeout();
+                await connection.WaitForConnectionClose();
             }
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await upgradeTcs.Task.DefaultTimeout());
@@ -275,7 +276,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }, serviceContext))
             {
-                using (var disposables = new DisposableStack<TestConnection>())
+                using (var disposables = new DisposableStack<InMemoryConnection>())
                 {
                     for (var i = 0; i < limit; i++)
                     {

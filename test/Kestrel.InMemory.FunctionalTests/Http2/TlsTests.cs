@@ -41,31 +41,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests.Http2
                 Assert.Equal(tlsFeature.ApplicationProtocol, SslApplicationProtocol.Http2.Protocol);
 
                 return context.Response.WriteAsync("hello world " + context.Request.Protocol);
-            }, new TestServiceContext(LoggerFactory),
-            kestrelOptions =>
+            },
+            new TestServiceContext(LoggerFactory),
+            listenOptions =>
             {
-                kestrelOptions.Listen(IPAddress.Loopback, 0, listenOptions =>
+                listenOptions.Protocols = HttpProtocols.Http2;
+                listenOptions.UseHttps(_x509Certificate2, httpsOptions =>
                 {
-                    listenOptions.Protocols = HttpProtocols.Http2;
-                    listenOptions.UseHttps(_x509Certificate2, httpsOptions =>
-                    {
-                        httpsOptions.SslProtocols = SslProtocols.Tls11 | SslProtocols.Tls12;
-                    });
+                    httpsOptions.SslProtocols = SslProtocols.Tls11 | SslProtocols.Tls12;
                 });
             }))
             {
-                var connection = server.CreateConnection();
-                var sslStream = new SslStream(connection.Stream);
-                await sslStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions()
+                using (var connection = server.CreateConnection())
                 {
-                    TargetHost = "localhost",
-                    RemoteCertificateValidationCallback = (_, __, ___, ____) => true,
-                    ApplicationProtocols = new List<SslApplicationProtocol>() { SslApplicationProtocol.Http2, SslApplicationProtocol.Http11 },
-                    EnabledSslProtocols = SslProtocols.Tls11, // Intentionally less than the required 1.2
-                }, CancellationToken.None);
+                    var sslStream = new SslStream(connection.Stream);
+                    await sslStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions()
+                    {
+                        TargetHost = "localhost",
+                        RemoteCertificateValidationCallback = (_, __, ___, ____) => true,
+                        ApplicationProtocols = new List<SslApplicationProtocol>() { SslApplicationProtocol.Http2, SslApplicationProtocol.Http11 },
+                        EnabledSslProtocols = SslProtocols.Tls11, // Intentionally less than the required 1.2
+                    }, CancellationToken.None);
 
-                var reader = PipeReaderFactory.CreateFromStream(PipeOptions.Default, sslStream, CancellationToken.None);
-                await WaitForConnectionErrorAsync(reader, ignoreNonGoAwayFrames: false, expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.INADEQUATE_SECURITY);
+                    var reader = PipeReaderFactory.CreateFromStream(PipeOptions.Default, sslStream, CancellationToken.None);
+                    await WaitForConnectionErrorAsync(reader, ignoreNonGoAwayFrames: false, expectedLastStreamId: 0, expectedErrorCode: Http2ErrorCode.INADEQUATE_SECURITY);
+                    reader.Complete();
+                }
             }
         }
 

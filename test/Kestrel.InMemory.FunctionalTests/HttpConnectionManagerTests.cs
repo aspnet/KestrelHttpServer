@@ -39,13 +39,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     logWh.Release();
                 });
 
+            var testContext = new TestServiceContext(new LoggerFactory(), mockTrace.Object);
+            testContext.InitializeHeartbeat();
+
             using (var server = new TestServer(context =>
                 {
                     appStartedWh.Release();
                     var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
                     return tcs.Task;
                 },
-                new TestServiceContext(new LoggerFactory(), mockTrace.Object)))
+                testContext))
             {
                 using (var connection = server.CreateConnection())
                 {

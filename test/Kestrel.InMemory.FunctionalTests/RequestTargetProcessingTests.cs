@@ -20,7 +20,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task RequestPathIsNotNormalized()
         {
             var testContext = new TestServiceContext(LoggerFactory);
-            var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0));
 
             using (var server = new TestServer(async context =>
             {
@@ -28,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 context.Response.Headers.ContentLength = 11;
                 await context.Response.WriteAsync("Hello World");
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {

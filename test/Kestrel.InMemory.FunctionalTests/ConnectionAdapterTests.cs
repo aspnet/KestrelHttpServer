@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -93,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var connection = server.CreateConnection())
                 {
                     // FIN
-                    connection.Shutdown(SocketShutdown.Send);
+                    connection.ShutdownSend();
                     await connection.WaitForConnectionClose();
                 }
             }
@@ -114,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 using (var connection = server.CreateConnection())
                 {
                     // FIN
-                    connection.Shutdown(SocketShutdown.Send);
+                    connection.ShutdownSend();
                     await connection.WaitForConnectionClose();
                 }
             }
@@ -156,20 +155,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    // Will throw because the exception in the connection adapter will close the connection.
-                    await Assert.ThrowsAsync<IOException>(async () =>
-                    {
-                        await connection.Send(
-                           "POST / HTTP/1.0",
-                           "Content-Length: 1000",
-                           "\r\n");
+                    await connection.Send(
+                       "POST / HTTP/1.0",
+                       "Content-Length: 1000",
+                       "\r\n");
 
-                        for (var i = 0; i < 1000; i++)
-                        {
-                            await connection.Send("a");
-                            await Task.Delay(5);
-                        }
-                    });
+                    await connection.WaitForConnectionClose();
                 }
             }
         }

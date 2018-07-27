@@ -22,12 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task RequestTimesOutWhenRequestBodyNotReceivedAtSpecifiedMinimumRate()
         {
             var gracePeriod = TimeSpan.FromSeconds(5);
-            var systemClock = new MockSystemClock();
-            var serviceContext = new TestServiceContext(LoggerFactory)
-            {
-                SystemClock = systemClock,
-                DateHeaderValueManager = new DateHeaderValueManager(systemClock)
-            };
+            var serviceContext = new TestServiceContext(LoggerFactory);
+            var heartbeatManager = new HttpHeartbeatManager(serviceContext.ConnectionManager);
 
             var appRunningEvent = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -74,7 +70,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     await appRunningEvent.Task.DefaultTimeout();
-                    systemClock.UtcNow += gracePeriod + TimeSpan.FromSeconds(1);
+
+                    serviceContext.MockSystemClock.UtcNow += gracePeriod + TimeSpan.FromSeconds(1);
+                    heartbeatManager.OnHeartbeat(serviceContext.SystemClock.UtcNow);
 
                     await connection.Receive(
                         "HTTP/1.1 408 Request Timeout",
@@ -93,12 +91,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task RequestTimesOutWhenNotDrainedWithinDrainTimeoutPeriod()
         {
             // This test requires a real clock since we can't control when the drain timeout is set
-            var systemClock = new SystemClock();
-            var serviceContext = new TestServiceContext(LoggerFactory)
-            {
-                SystemClock = systemClock,
-                DateHeaderValueManager = new DateHeaderValueManager(systemClock),
-            };
+            var serviceContext = new TestServiceContext(LoggerFactory);
+            serviceContext.InitializeHeartbeat();
 
             var appRunningEvent = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -142,12 +136,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         public async Task ConnectionClosedEvenIfAppSwallowsException()
         {
             var gracePeriod = TimeSpan.FromSeconds(5);
-            var systemClock = new MockSystemClock();
-            var serviceContext = new TestServiceContext(LoggerFactory)
-            {
-                SystemClock = systemClock,
-                DateHeaderValueManager = new DateHeaderValueManager(systemClock)
-            };
+            var serviceContext = new TestServiceContext(LoggerFactory);
+            var heartbeatManager = new HttpHeartbeatManager(serviceContext.ConnectionManager);
 
             var appRunningTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var exceptionSwallowedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -190,7 +180,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "");
 
                     await appRunningTcs.Task.DefaultTimeout();
-                    systemClock.UtcNow += gracePeriod + TimeSpan.FromSeconds(1);
+
+                    serviceContext.MockSystemClock.UtcNow += gracePeriod + TimeSpan.FromSeconds(1);
+                    heartbeatManager.OnHeartbeat(serviceContext.SystemClock.UtcNow);
+
                     await exceptionSwallowedTcs.Task.DefaultTimeout();
 
                     await connection.Receive(

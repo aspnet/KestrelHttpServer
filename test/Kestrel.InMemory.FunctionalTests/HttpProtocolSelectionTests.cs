@@ -45,22 +45,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
         private async Task TestSuccess(HttpProtocols serverProtocols, string request, string expectedResponse)
         {
-            var builder = TransportSelector.GetWebHostBuilder()
-                .ConfigureServices(AddTestLogging)
-                .UseKestrel(options =>
-                {
-                    options.Listen(IPAddress.Loopback, 0, listenOptions =>
-                    {
-                        listenOptions.Protocols = serverProtocols;
-                    });
-                })
-                .Configure(app => app.Run(context => Task.CompletedTask));
-
-            using (var host = builder.Build())
+            var testContext = new TestServiceContext(LoggerFactory);
+            var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
-                host.Start();
+                Protocols = serverProtocols
+            };
 
-                using (var connection = new TestConnection(host.GetPort()))
+            using (var server = new TestServer(context => Task.CompletedTask, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
                 {
                     await connection.Send(request);
                     await connection.Receive(expectedResponse);
@@ -71,21 +64,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private async Task TestError<TException>(HttpProtocols serverProtocols, string expectedErrorMessage)
             where TException : Exception
         {
-            var builder = TransportSelector.GetWebHostBuilder()
-                .ConfigureServices(AddTestLogging)
-                .UseKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
-                {
-                    listenOptions.Protocols = serverProtocols;
-                }))
-                .Configure(app => app.Run(context => Task.CompletedTask));
-
-            using (var host = builder.Build())
+            var testContext = new TestServiceContext(LoggerFactory);
+            var listenOptions = new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
             {
-                host.Start();
+                Protocols = serverProtocols
+            };
 
-                using (var connection = new TestConnection(host.GetPort()))
+            using (var server = new TestServer(context => Task.CompletedTask, testContext, listenOptions))
+            {
+                using (var connection = server.CreateConnection())
                 {
-                    await connection.WaitForConnectionClose().DefaultTimeout();
+                    await connection.WaitForConnectionClose();
                 }
             }
 

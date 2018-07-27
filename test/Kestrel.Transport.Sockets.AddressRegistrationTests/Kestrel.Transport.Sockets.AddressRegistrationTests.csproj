@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>Sockets.FunctionalTests</AssemblyName>
-    <RootNamespace>Sockets.FunctionalTests</RootNamespace>
+    <AssemblyName>Sockets.AddressRegistrationTests</AssemblyName>
+    <RootNamespace>Sockets.AddressRegistrationTests</RootNamespace>
     <TargetFrameworks>$(StandardTestTfms)</TargetFrameworks>
-    <DefineConstants Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(DefineConstants);MACOS</DefineConstants>
     <ServerGarbageCollection>true</ServerGarbageCollection>
-    <TestGroupName>Sockets.FunctionalTests</TestGroupName>
+    <TestGroupName>Sockets.AddressRegistrationTests</TestGroupName>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Kestrel.Transport.FunctionalTests\**\*.cs" />
+    <Compile Include="..\Kestrel.Transport.AddressRegistrationTests\**\*.cs" />
+    <Compile Include="..\Kestrel.Transport.Sockets.FunctionalTests\TransportSelector.cs" />
     <Compile Include="..\shared\*.cs" LinkBase="shared" />
     <Compile Include="..\shared\FunctionalTestHelpers\*.cs" LinkBase="shared\FunctionalTestHelpers" />
     <Compile Include="..\shared\TransportTestHelpers\*.cs" LinkBase="shared\TransportTestHelpers" />
@@ -24,12 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="$(MicrosoftAspNetCoreHttpAbstractionsPackageVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Testing" Version="$(MicrosoftAspNetCoreTestingPackageVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Testing" Version="$(MicrosoftExtensionsLoggingTestingPackageVersion)" />
-    <PackageReference Include="Microsoft.Internal.AspNetCore.H2Spec.All" Version="$(MicrosoftInternalAspNetCoreH2SpecAllPackageVersion)" />
-    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonPackageVersion)" />
-    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="$(SystemNetHttpWinHttpHandlerPackageVersion)" />
   </ItemGroup>
 
 </Project>

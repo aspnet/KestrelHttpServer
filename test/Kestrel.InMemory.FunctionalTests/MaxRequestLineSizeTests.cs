@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var server = CreateServer(limit))
             {
-                using (var connection = new TestConnection(server.Port))
+                using (var connection = server.CreateConnection())
                 {
                     await connection.Send(request);
                     await connection.ReceiveEnd(
@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         {
             using (var server = CreateServer(requestLine.Length - 1))
             {
-                using (var connection = new TestConnection(server.Port))
+                using (var connection = server.CreateConnection())
                 {
                     await connection.SendAll(requestLine);
                     await connection.ReceiveForcedEnd(

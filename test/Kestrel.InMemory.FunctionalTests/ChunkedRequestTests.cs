@@ -681,7 +681,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                     await readStartedTcs.Task.TimeoutAfter(TestConstants.DefaultTimeout);
 
-                    connection.Socket.Shutdown(SocketShutdown.Send);
+                    connection.ShutdownSend();
 
                     await connection.ReceiveEnd();
 
