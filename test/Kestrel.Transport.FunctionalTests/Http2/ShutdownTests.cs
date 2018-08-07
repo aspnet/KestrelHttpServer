@@ -86,13 +86,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests.Http2
         {
             var requestStarted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var requestUnblocked = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var memoryPoolFactory = new DiagnosticMemoryPoolFactory(allowLateReturn: true);
+
+            var testContext = new TestServiceContext(LoggerFactory)
+            {
+                MemoryPoolFactory = memoryPoolFactory.Create
+            };
+
             // Abortive shutdown leaves one request hanging
-            using (var server = new TestServer(TransportSelector.GetWebHostBuilder(new DiagnosticMemoryPoolFactory(allowLateReturn: true).Create), async context =>
+            using (var server = new TestServer(async context =>
             {
                 requestStarted.SetResult(null);
                 await requestUnblocked.Task.DefaultTimeout();
                 await context.Response.WriteAsync("hello world " + context.Request.Protocol);
-            }, new TestServiceContext(LoggerFactory),
+            },
+            testContext,
             kestrelOptions =>
             {
                 kestrelOptions.Listen(IPAddress.Loopback, 0, listenOptions =>
@@ -108,6 +117,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests.Http2
                 await requestStarted.Task.DefaultTimeout();
 
                 await server.StopAsync().DefaultTimeout();
+
+                requestUnblocked.SetResult(null);
+
+                await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
             }
 
             Assert.Contains(TestApplicationErrorLogger.Messages, m => m.Message.Contains("is closing."));

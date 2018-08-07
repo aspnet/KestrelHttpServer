@@ -149,8 +149,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 return Task.CompletedTask;
             }
 
-            // Transports already dispatch prior to tripping ConnectionClosed
-            // since application code can register to this token.
             var tcs = new TaskCompletionSource<object>();
             token.Register(() => tcs.SetResult(null));
             return tcs.Task;
