@@ -117,16 +117,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests.Http2
                 await requestStarted.Task.DefaultTimeout();
 
                 await server.StopAsync().DefaultTimeout();
-
-                requestUnblocked.SetResult(null);
-
-                await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
             }
 
             Assert.Contains(TestApplicationErrorLogger.Messages, m => m.Message.Contains("is closing."));
             Assert.Contains(TestApplicationErrorLogger.Messages, m => m.Message.Contains("is closed. The last processed stream ID was 1."));
             Assert.Contains(TestApplicationErrorLogger.Messages, m => m.Message.Contains("Some connections failed to close gracefully during server shutdown."));
             Assert.DoesNotContain(TestApplicationErrorLogger.Messages, m => m.Message.Contains("Request finished in"));
+
+            requestUnblocked.SetResult(null);
+
+            await memoryPoolFactory.WhenAllBlocksReturned(TestConstants.DefaultTimeout);
         }
     }
 }

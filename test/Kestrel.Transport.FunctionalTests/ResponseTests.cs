@@ -410,8 +410,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             Assert.True(requestAborted, "RequestAborted token didn't fire.");
 
-            var transportLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv" ||
+            var transportLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel" ||
+                                                           w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv" ||
                                                            w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets");
+
             Assert.Empty(transportLogs.Where(w => w.LogLevel > LogLevel.Debug));
         }
 
@@ -441,11 +443,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var transportLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel" ||
-                                                           w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv" ||
+            var transportLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv" ||
                                                            w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets");
 
+            // The "Microsoft.AspNetCore.Server.Kestrel" logger may contain info level logs because resetting the connection can cause
+            // partial headers to be read leading to a bad request.
+            var coreLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel");
+
             Assert.Empty(transportLogs.Where(w => w.LogLevel > LogLevel.Debug));
+            Assert.Empty(coreLogs.Where(w => w.LogLevel > LogLevel.Information));
         }
 
         [Fact]
