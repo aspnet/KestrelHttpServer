@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -15,25 +14,11 @@ using Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.TestTransport
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging.Testing;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 {
     public class ChunkedRequestTests : LoggedTest
     {
-        public ChunkedRequestTests(ITestOutputHelper output) : base(output)
-        {
-        }
-
-        public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
-        {
-            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
-            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
-            {
-                ConnectionAdapters = { new PassThroughConnectionAdapter() }
-            }
-        };
-
         private async Task App(HttpContext httpContext)
         {
             var request = httpContext.Request;
@@ -62,13 +47,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             await response.Body.WriteAsync(bytes, 0, bytes.Length);
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task Http10TransferEncoding(ListenOptions listenOptions)
+        [Fact]
+        public async Task Http10TransferEncoding()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
-            using (var server = new TestServer(App, testContext, listenOptions))
+            using (var server = new TestServer(App, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -92,13 +76,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task Http10KeepAliveTransferEncoding(ListenOptions listenOptions)
+        [Fact]
+        public async Task Http10KeepAliveTransferEncoding()
         {
             var testContext = new TestServiceContext();
 
-            using (var server = new TestServer(AppChunked, testContext, listenOptions))
+            using (var server = new TestServer(AppChunked, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -134,9 +117,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task RequestBodyIsConsumedAutomaticallyIfAppDoesntConsumeItFully(ListenOptions listenOptions)
+        [Fact]
+        public async Task RequestBodyIsConsumedAutomaticallyIfAppDoesntConsumeItFully()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -150,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -189,9 +171,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task TrailingHeadersAreParsed(ListenOptions listenOptions)
+        [Fact]
+        public async Task TrailingHeadersAreParsed()
         {
             var requestCount = 10;
             var requestsReceived = 0;
@@ -222,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, new TestServiceContext(LoggerFactory), listenOptions))
+            }, new TestServiceContext(LoggerFactory)))
             {
                 var response = string.Join("\r\n", new string[] {
                     "HTTP/1.1 200 OK",
@@ -275,9 +256,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task TrailingHeadersCountTowardsHeadersTotalSizeLimit(ListenOptions listenOptions)
+        [Fact]
+        public async Task TrailingHeadersCountTowardsHeadersTotalSizeLimit()
         {
             const string transferEncodingHeaderLine = "Transfer-Encoding: chunked";
             const string headerLine = "Header: value";
@@ -293,7 +273,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             {
                 var buffer = new byte[128];
                 while (await context.Request.Body.ReadAsync(buffer, 0, buffer.Length) != 0) ; // read to end
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -320,9 +300,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task TrailingHeadersCountTowardsHeaderCountLimit(ListenOptions listenOptions)
+        [Fact]
+        public async Task TrailingHeadersCountTowardsHeaderCountLimit()
         {
             const string transferEncodingHeaderLine = "Transfer-Encoding: chunked";
             const string headerLine = "Header: value";
@@ -335,7 +314,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             {
                 var buffer = new byte[128];
                 while (await context.Request.Body.ReadAsync(buffer, 0, buffer.Length) != 0) ; // read to end
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -362,9 +341,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ExtensionsAreIgnored(ListenOptions listenOptions)
+        [Fact]
+        public async Task ExtensionsAreIgnored()
         {
             var testContext = new TestServiceContext(LoggerFactory);
             var requestCount = 10;
@@ -396,7 +374,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 var response = string.Join("\r\n", new string[] {
                     "HTTP/1.1 200 OK",
@@ -449,9 +427,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task InvalidLengthResultsIn400(ListenOptions listenOptions)
+        [Fact]
+        public async Task InvalidLengthResultsIn400()
         {
             var testContext = new TestServiceContext(LoggerFactory);
             using (var server = new TestServer(async httpContext =>
@@ -469,7 +446,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -493,9 +470,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task InvalidSizedDataResultsIn400(ListenOptions listenOptions)
+        [Fact]
+        public async Task InvalidSizedDataResultsIn400()
         {
             var testContext = new TestServiceContext(LoggerFactory);
             using (var server = new TestServer(async httpContext =>
@@ -513,7 +489,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 response.Headers["Content-Length"] = new[] { "11" };
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World"), 0, 11);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -539,15 +515,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
         }
 
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ChunkedNotFinalTransferCodingResultsIn400(ListenOptions listenOptions)
+        [Fact]
+        public async Task ChunkedNotFinalTransferCodingResultsIn400()
         {
             var testContext = new TestServiceContext(LoggerFactory);
             using (var server = new TestServer(httpContext =>
             {
                 return Task.CompletedTask;
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -643,9 +618,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ClosingConnectionMidChunkPrefixThrows(ListenOptions listenOptions)
+        [Fact]
+        public async Task ClosingConnectionMidChunkPrefixThrows()
         {
             var testContext = new TestServiceContext(LoggerFactory);
             var readStartedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -668,7 +642,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 {
                     exTcs.SetException(ex);
                 }
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {

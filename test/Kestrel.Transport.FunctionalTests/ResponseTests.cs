@@ -441,7 +441,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
             }
 
-            var transportLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv" ||
+            var transportLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel" ||
+                                                           w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv" ||
                                                            w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets");
 
             Assert.Empty(transportLogs.Where(w => w.LogLevel > LogLevel.Debug));

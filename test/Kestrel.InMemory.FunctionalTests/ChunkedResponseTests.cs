@@ -2,12 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.TestTransport;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging.Testing;
@@ -17,18 +15,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 {
     public class ChunkedResponseTests : LoggedTest
     {
-        public static TheoryData<ListenOptions> ConnectionAdapterData => new TheoryData<ListenOptions>
-        {
-            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0)),
-            new ListenOptions(new IPEndPoint(IPAddress.Loopback, 0))
-            {
-                ConnectionAdapters = { new PassThroughConnectionAdapter() }
-            }
-        };
-
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ResponsesAreChunkedAutomatically(ListenOptions listenOptions)
+        [Fact]
+        public async Task ResponsesAreChunkedAutomatically()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -37,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 var response = httpContext.Response;
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -62,9 +50,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ResponsesAreNotChunkedAutomaticallyForHttp10Requests(ListenOptions listenOptions)
+        [Fact]
+        public async Task ResponsesAreNotChunkedAutomaticallyForHttp10Requests()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -72,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             {
                 await httpContext.Response.WriteAsync("Hello ");
                 await httpContext.Response.WriteAsync("World!");
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -91,9 +78,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ResponsesAreChunkedAutomaticallyForHttp11NonKeepAliveRequests(ListenOptions listenOptions)
+        [Fact]
+        public async Task ResponsesAreChunkedAutomaticallyForHttp11NonKeepAliveRequests()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -101,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             {
                 await httpContext.Response.WriteAsync("Hello ");
                 await httpContext.Response.WriteAsync("World!");
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -128,9 +114,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task SettingConnectionCloseHeaderInAppDoesNotDisableChunking(ListenOptions listenOptions)
+        [Fact]
+        public async Task SettingConnectionCloseHeaderInAppDoesNotDisableChunking()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -139,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 httpContext.Response.Headers["Connection"] = "close";
                 await httpContext.Response.WriteAsync("Hello ");
                 await httpContext.Response.WriteAsync("World!");
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -165,9 +150,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ZeroLengthWritesAreIgnored(ListenOptions listenOptions)
+        [Fact]
+        public async Task ZeroLengthWritesAreIgnored()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -177,7 +161,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello "), 0, 6);
                 await response.Body.WriteAsync(new byte[0], 0, 0);
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -202,9 +186,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ZeroLengthWritesFlushHeaders(ListenOptions listenOptions)
+        [Fact]
+        public async Task ZeroLengthWritesFlushHeaders()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -218,7 +201,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 await flushed.WaitAsync();
 
                 await response.WriteAsync("Hello World!");
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -247,9 +230,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task EmptyResponseBodyHandledCorrectlyWithZeroLengthWrite(ListenOptions listenOptions)
+        [Fact]
+        public async Task EmptyResponseBodyHandledCorrectlyWithZeroLengthWrite()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -257,7 +239,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             {
                 var response = httpContext.Response;
                 await response.Body.WriteAsync(new byte[0], 0, 0);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -278,9 +260,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ConnectionClosedIfExceptionThrownAfterWrite(ListenOptions listenOptions)
+        [Fact]
+        public async Task ConnectionClosedIfExceptionThrownAfterWrite()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -289,7 +270,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 var response = httpContext.Response;
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("Hello World!"), 0, 12);
                 throw new Exception();
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -312,9 +293,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ConnectionClosedIfExceptionThrownAfterZeroLengthWrite(ListenOptions listenOptions)
+        [Fact]
+        public async Task ConnectionClosedIfExceptionThrownAfterZeroLengthWrite()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -323,7 +303,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 var response = httpContext.Response;
                 await response.Body.WriteAsync(new byte[0], 0, 0);
                 throw new Exception();
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -345,9 +325,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task WritesAreFlushedPriorToResponseCompletion(ListenOptions listenOptions)
+        [Fact]
+        public async Task WritesAreFlushedPriorToResponseCompletion()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -362,7 +341,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 await flushWh.Task.DefaultTimeout();
 
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("World!"), 0, 6);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
@@ -392,9 +371,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             }
         }
 
-        [Theory]
-        [MemberData(nameof(ConnectionAdapterData))]
-        public async Task ChunksCanBeWrittenManually(ListenOptions listenOptions)
+        [Fact]
+        public async Task ChunksCanBeWrittenManually()
         {
             var testContext = new TestServiceContext(LoggerFactory);
 
@@ -406,7 +384,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("6\r\nHello \r\n"), 0, 11);
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("6\r\nWorld!\r\n"), 0, 11);
                 await response.Body.WriteAsync(Encoding.ASCII.GetBytes("0\r\n\r\n"), 0, 5);
-            }, testContext, listenOptions))
+            }, testContext))
             {
                 using (var connection = server.CreateConnection())
                 {
