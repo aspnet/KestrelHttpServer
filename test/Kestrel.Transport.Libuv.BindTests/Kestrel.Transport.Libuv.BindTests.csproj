@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>Sockets.AddressRegistrationTests</AssemblyName>
-    <RootNamespace>Sockets.AddressRegistrationTests</RootNamespace>
+    <AssemblyName>Libuv.BindTests</AssemblyName>
+    <RootNamespace>Libuv.BindTests</RootNamespace>
     <TargetFrameworks>$(StandardTestTfms)</TargetFrameworks>
     <ServerGarbageCollection>true</ServerGarbageCollection>
-    <TestGroupName>Sockets.AddressRegistrationTests</TestGroupName>
+    <TestGroupName>Libuv.BindTests</TestGroupName>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Kestrel.Transport.AddressRegistrationTests\**\*.cs" />
-    <Compile Include="..\Kestrel.Transport.Sockets.FunctionalTests\TransportSelector.cs" />
+    <Compile Include="..\Kestrel.Transport.BindTests\**\*.cs" />
+    <Compile Include="..\Kestrel.Transport.Libuv.FunctionalTests\TransportSelector.cs" />
     <Compile Include="..\shared\*.cs" LinkBase="shared" />
     <Compile Include="..\shared\FunctionalTestHelpers\*.cs" LinkBase="shared\FunctionalTestHelpers" />
     <Compile Include="..\shared\TransportTestHelpers\*.cs" LinkBase="shared\TransportTestHelpers" />
@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Kestrel\Kestrel.csproj" />
-    <ProjectReference Include="..\..\src\Kestrel.Transport.Sockets\Kestrel.Transport.Sockets.csproj" />
+    <ProjectReference Include="..\..\src\Kestrel.Transport.Libuv\Kestrel.Transport.Libuv.csproj" />
     <ProjectReference Include="..\..\src\Kestrel.Https\Kestrel.Https.csproj" />
   </ItemGroup>
 

@@ -4,16 +4,16 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using InMemory.FunctionalTests.TestTransport;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
+using Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.TestTransport;
 using Microsoft.AspNetCore.Server.Kestrel.Tests;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
+namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 {
     public class UpgradeTests : LoggedTest
     {

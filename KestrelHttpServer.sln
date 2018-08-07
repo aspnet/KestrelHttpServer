@@ -130,9 +130,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlatformBenchmarks", "bench
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kestrel.InMemory.FunctionalTests", "test\Kestrel.InMemory.FunctionalTests\Kestrel.InMemory.FunctionalTests.csproj", "{B5422347-E919-431D-9EF2-C352FFE4D6C1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kestrel.Transport.Sockets.AddressRegistrationTests", "test\Kestrel.Transport.Sockets.AddressRegistrationTests\Kestrel.Transport.Sockets.AddressRegistrationTests.csproj", "{9254C3EB-196B-402F-A059-34FEA6140500}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kestrel.Transport.Sockets.BindTests", "test\Kestrel.Transport.Sockets.BindTests\Kestrel.Transport.Sockets.BindTests.csproj", "{9254C3EB-196B-402F-A059-34FEA6140500}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kestrel.Transport.Libuv.AddressRegistrationTests", "test\Kestrel.Transport.Libuv.AddressRegistrationTests\Kestrel.Transport.Libuv.AddressRegistrationTests.csproj", "{FB9C6B61-0A7B-4FFA-B772-A754316B262E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kestrel.Transport.Libuv.BindTests", "test\Kestrel.Transport.Libuv.BindTests\Kestrel.Transport.Libuv.BindTests.csproj", "{FB9C6B61-0A7B-4FFA-B772-A754316B262E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -5,7 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
-namespace InMemory.FunctionalTests.TestTransport
+namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.TestTransport
 {
     public class InMemoryTransportFactory : ITransportFactory
     {

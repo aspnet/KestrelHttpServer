@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System;
+using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
 
-namespace System.IO.Pipelines
+namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.Http2
 {
     internal class PipeReaderFactory
     {

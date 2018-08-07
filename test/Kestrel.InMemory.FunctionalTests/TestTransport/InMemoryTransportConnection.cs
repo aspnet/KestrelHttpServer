@@ -3,14 +3,13 @@
 
 using System;
 using System.Buffers;
-using System.IO;
 using System.IO.Pipelines;
 using System.Net;
 using System.Threading;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
-namespace InMemory.FunctionalTests.TestTransport
+namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.TestTransport
 {
     public class InMemoryTransportConnection : TransportConnection, IDisposable
     {

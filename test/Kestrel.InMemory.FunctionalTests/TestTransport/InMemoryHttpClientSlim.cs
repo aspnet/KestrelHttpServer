@@ -7,13 +7,11 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
-using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.FunctionalTests;
 
-namespace InMemory.FunctionalTests.TestTransport
+namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests.TestTransport
 {
     /// <summary>
     /// Lightweight version of HttpClient implemented on top of an arbitrary Stream.

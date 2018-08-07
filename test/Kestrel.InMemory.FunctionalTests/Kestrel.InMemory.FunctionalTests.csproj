@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <AssemblyName>InMemory.FunctionalTests</AssemblyName>
-    <RootNamespace>InMemory.FunctionalTests</RootNamespace>
+    <RootNamespace>Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests</RootNamespace>
     <TargetFrameworks>$(StandardTestTfms)</TargetFrameworks>
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
