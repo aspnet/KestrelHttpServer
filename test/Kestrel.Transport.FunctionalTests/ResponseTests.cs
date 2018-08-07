@@ -463,7 +463,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var requestAborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-                var mockKestrelTrace = new Mock<IKestrelTrace>();
+                var mockKestrelTrace = new Mock<KestrelTrace>(Logger) { CallBase = true };
                 mockKestrelTrace
                     .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
                     .Callback(() => responseRateTimeoutMessageLogged.SetResult(null));
@@ -555,7 +555,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var aborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            var mockKestrelTrace = new Mock<KestrelTrace>(Logger) { CallBase = true };
             mockKestrelTrace
                 .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback(() => responseRateTimeoutMessageLogged.SetResult(null));
@@ -640,7 +640,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var requestAborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var copyToAsyncCts = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            var mockKestrelTrace = new Mock<KestrelTrace>(Logger) { CallBase = true };
             mockKestrelTrace
                 .Setup(trace => trace.ResponseMininumDataRateNotSatisfied(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback(() => responseRateTimeoutMessageLogged.SetResult(null));
@@ -727,7 +727,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             var requestAborted = false;
             var appFuncCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            var mockKestrelTrace = new Mock<KestrelTrace>(Logger) { CallBase = true };
 
             var testContext = new TestServiceContext
             {
@@ -796,7 +796,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             var headerStringValues = new StringValues(Enumerable.Repeat(headerValue, headerCount).ToArray());
 
             var requestAborted = false;
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            var mockKestrelTrace = new Mock<KestrelTrace>(Logger) { CallBase = true };
 
             var testContext = new TestServiceContext
             {

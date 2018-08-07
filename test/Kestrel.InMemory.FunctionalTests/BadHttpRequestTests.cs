@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using InMemory.FunctionalTests.TestTransport;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Logging;
@@ -191,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
         private async Task TestBadRequest(string request, string expectedResponseStatusCode, string expectedExceptionMessage, string expectedAllowHeader = null)
         {
             BadHttpRequestException loggedException = null;
-            var mockKestrelTrace = new Mock<IKestrelTrace>();
+            var mockKestrelTrace = new Mock<KestrelTrace>(Logger) { CallBase = true };
             mockKestrelTrace
                 .Setup(trace => trace.IsEnabled(LogLevel.Information))
                 .Returns(true);
