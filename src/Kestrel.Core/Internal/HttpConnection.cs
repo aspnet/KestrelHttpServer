@@ -225,6 +225,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             return new Http2Connection(new Http2ConnectionContext
             {
                 ConnectionId = _context.ConnectionId,
+                ConnectionContext = _context.ConnectionContext,
                 ServiceContext = _context.ServiceContext,
                 ConnectionFeatures = _context.ConnectionFeatures,
                 MemoryPool = MemoryPool,
