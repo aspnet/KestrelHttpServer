@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var connectionId = "0";
             var trace = new Mock<IKestrelTrace>();
-            var httpConnectionManager = new HttpConnectionManager(trace.Object, ResourceCounter.Unlimited);
+            var httpConnectionManager = new ConnectionManager(trace.Object, ResourceCounter.Unlimited);
 
             // Create HttpConnection in inner scope so it doesn't get rooted by the current frame.
             UnrootedConnectionsGetRemovedFromHeartbeatInnerScope(connectionId, httpConnectionManager, trace);
@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void UnrootedConnectionsGetRemovedFromHeartbeatInnerScope(
             string connectionId,
-            HttpConnectionManager httpConnectionManager,
+            ConnectionManager httpConnectionManager,
             Mock<IKestrelTrace> trace)
         {
             var httpConnection = new HttpConnection(new HttpConnectionContext

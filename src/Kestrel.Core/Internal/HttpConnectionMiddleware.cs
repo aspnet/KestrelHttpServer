@@ -16,8 +16,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     public class HttpConnectionMiddleware<TContext>
     {
-        private static long _lastHttpConnectionId = long.MinValue;
-
         private readonly IList<IConnectionAdapter> _connectionAdapters;
         private readonly ServiceContext _serviceContext;
         private readonly IHttpApplication<TContext> _application;
@@ -39,13 +37,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             // This is a bit of a hack but it preserves the existing semantics
             var memoryPoolFeature = connectionContext.Features.Get<IMemoryPoolFeature>();
 
-            var httpConnectionId = Interlocked.Increment(ref _lastHttpConnectionId);
-
             var httpConnectionContext = new HttpConnectionContext
             {
                 ConnectionId = connectionContext.ConnectionId,
                 ConnectionContext = connectionContext,
-                HttpConnectionId = httpConnectionId,
                 Protocols = _protocols,
                 ServiceContext = _serviceContext,
                 ConnectionFeatures = connectionContext.Features,
@@ -71,30 +66,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             var connection = new HttpConnection(httpConnectionContext);
-            _serviceContext.ConnectionManager.AddConnection(httpConnectionId, connection);
 
-            try
-            {
-                var processingTask = connection.ProcessRequestsAsync(_application);
+            var processingTask = connection.ProcessRequestsAsync(_application);
 
-                connectionContext.Transport.Input.OnWriterCompleted(
-                    (_, state) => ((HttpConnection)state).OnInputOrOutputCompleted(),
-                    connection);
+            connectionContext.Transport.Input.OnWriterCompleted(
+                (_, state) => ((HttpConnection)state).OnInputOrOutputCompleted(),
+                connection);
 
-                connectionContext.Transport.Output.OnReaderCompleted(
-                    (_, state) => ((HttpConnection)state).OnInputOrOutputCompleted(),
-                    connection);
+            connectionContext.Transport.Output.OnReaderCompleted(
+                (_, state) => ((HttpConnection)state).OnInputOrOutputCompleted(),
+                connection);
 
-                await CancellationTokenAsTask(lifetimeFeature.ConnectionClosed);
+            await CancellationTokenAsTask(lifetimeFeature.ConnectionClosed);
 
-                connection.OnConnectionClosed();
+            connection.OnConnectionClosed();
 
-                await processingTask;
-            }
-            finally
-            {
-                _serviceContext.ConnectionManager.RemoveConnection(httpConnectionId);
-            }
+            await processingTask;
         }
 
         private static Task CancellationTokenAsTask(CancellationToken token)
@@ -107,7 +94,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             // Transports already dispatch prior to tripping ConnectionClosed
             // since application code can register to this token.
             var tcs = new TaskCompletionSource<object>();
-            token.Register(() => tcs.SetResult(null));
+            token.Register(state => ((TaskCompletionSource<object>)state).SetResult(null), tcs);
             return tcs.Task;
         }
     }

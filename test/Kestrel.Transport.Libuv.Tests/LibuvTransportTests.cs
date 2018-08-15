@@ -85,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 }
             }
 
-            Assert.True(await serviceContext.ConnectionManager.CloseAllConnectionsAsync(new CancellationTokenSource(TestConstants.DefaultTimeout).Token));
+            Assert.True(await serviceContext.ConnectionManager.CloseAllHttpConnectionsAsync(new CancellationTokenSource(TestConstants.DefaultTimeout).Token));
             await transport.UnbindAsync();
             await transport.StopAsync();
         }
@@ -132,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
 
             await transport.UnbindAsync();
 
-            if (!await serviceContext.ConnectionManager.CloseAllConnectionsAsync(default).ConfigureAwait(false))
+            if (!await serviceContext.ConnectionManager.CloseAllHttpConnectionsAsync(default).ConfigureAwait(false))
             {
                 await serviceContext.ConnectionManager.AbortAllConnectionsAsync().ConfigureAwait(false);
             }

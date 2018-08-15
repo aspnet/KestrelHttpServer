@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
@@ -14,6 +15,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
     public abstract partial class TransportConnection : ConnectionContext
     {
         private IDictionary<object, object> _items;
+        private List<(Action<DateTimeOffset, object> handler, object state)> _heartbeatHandlers;
+        private readonly object _heartbeatLock = new object();
 
         public TransportConnection()
         {
@@ -54,6 +57,44 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         public PipeReader Output => Application.Input;
 
         public CancellationToken ConnectionClosed { get; set; }
+
+        public void TickHeartbeat()
+        {
+            lock (_heartbeatLock)
+            {
+                if (_heartbeatHandlers == null)
+                {
+                    return;
+                }
+
+                var now = DateTimeOffset.UtcNow;
+
+                foreach (var (handler, state) in _heartbeatHandlers)
+                {
+                    handler(now, state);
+                }
+            }
+        }
+
+        public void OnHeartbeat(Action<object> action, object state)
+        {
+            // REVIEW: We could avoid this allocation with 2 lists
+            Action<DateTimeOffset, object> handler = (now, state2) => action(state2);
+            OnHeartbeat(handler, state);
+        }
+
+        public void OnHeartbeat(Action<DateTimeOffset, object> action, object state)
+        {
+            lock (_heartbeatLock)
+            {
+                if (_heartbeatHandlers == null)
+                {
+                    _heartbeatHandlers = new List<(Action<DateTimeOffset, object> handler, object state)>();
+                }
+
+                _heartbeatHandlers.Add((action, state));
+            }
+        }
 
         // DO NOT remove this override to ConnectionContext.Abort. Doing so would cause
         // any TransportConnection that does not override Abort or calls base.Abort

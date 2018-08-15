@@ -3,7 +3,9 @@
 
 using System.Diagnostics.Tracing;
 using System.Runtime.CompilerServices;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
@@ -37,6 +39,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
+        [NonEvent]
+        public void ConnectionStart(TransportConnection connection)
+        {
+            // avoid allocating strings unless this event source is enabled
+            if (IsEnabled())
+            {
+                ConnectionStart(
+                    connection.ConnectionId,
+                    connection.LocalAddress?.ToString(),
+                    connection.RemoteAddress?.ToString());
+            }
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         [Event(1, Level = EventLevel.Verbose)]
         private void ConnectionStart(string connectionId,
@@ -53,6 +68,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         [NonEvent]
         public void ConnectionStop(HttpConnection connection)
+        {
+            if (IsEnabled())
+            {
+                ConnectionStop(connection.ConnectionId);
+            }
+        }
+
+        [NonEvent]
+        public void ConnectionStop(TransportConnection connection)
         {
             if (IsEnabled())
             {

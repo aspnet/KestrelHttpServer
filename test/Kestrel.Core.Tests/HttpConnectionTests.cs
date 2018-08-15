@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ConnectionAdapters = new List<IConnectionAdapter>(),
                 ConnectionFeatures = connectionFeatures,
                 MemoryPool = _memoryPool,
-                HttpConnectionId = long.MinValue,
+                Application = pair.Application,
                 Transport = pair.Transport,
                 ServiceContext = new TestServiceContext
                 {

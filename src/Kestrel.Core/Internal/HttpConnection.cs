@@ -11,6 +11,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal;
@@ -100,14 +101,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             try
             {
-                // TODO: When we start tracking all connection middleware for shutdown, go back
-                // to logging connections tart and stop in ConnectionDispatcher so we get these
-                // logs for all connection middleware.
-                Log.ConnectionStart(ConnectionId);
-                KestrelEventSource.Log.ConnectionStart(this);
-
                 AdaptedPipeline adaptedPipeline = null;
                 var adaptedPipelineTask = Task.CompletedTask;
+
+                // REVIEW: This feature should never be null in Kestrel
+                var connectionTickFeature = _context.ConnectionFeatures.Get<IConnectionHeartbeatTickFeature>();
+
+                Debug.Assert(connectionTickFeature != null, "IConnectionHeartbeatTickFeature is missing!");
+
+                connectionTickFeature?.OnHeartbeat((now, state) => ((HttpConnection)state).Tick(now), this);
 
                 // _adaptedTransport must be set prior to adding the connection to the manager in order
                 // to allow the connection to be aported prior to protocol selection.
@@ -189,9 +191,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 {
                     _context.ServiceContext.ConnectionManager.UpgradedConnectionCount.ReleaseOne();
                 }
-
-                Log.ConnectionStop(ConnectionId);
-                KestrelEventSource.Log.ConnectionStop(this);
 
                 _lifetimeTcs.SetResult(null);
             }
@@ -301,13 +300,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public Task AbortAsync(ConnectionAbortedException ex)
-        {
-            Abort(ex);
-
-            return _socketClosedTcs.Task;
-        }
-
         private async Task<Stream> ApplyConnectionAdaptersAsync()
         {
             var connectionAdapters = _context.ConnectionAdapters;
@@ -381,7 +373,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             return http2Enabled && (!hasTls || Http2Id.Span.SequenceEqual(applicationProtocol.Span)) ? HttpProtocols.Http2 : HttpProtocols.Http1;
         }
 
-        public void Tick(DateTimeOffset now)
+        public void Tick(in DateTimeOffset now)
         {
             if (_protocolSelectionState == ProtocolSelectionState.Aborted)
             {

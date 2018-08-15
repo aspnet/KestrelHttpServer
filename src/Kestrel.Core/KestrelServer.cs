@@ -67,16 +67,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             var serverOptions = options.Value ?? new KestrelServerOptions();
             var logger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Server.Kestrel");
             var trace = new KestrelTrace(logger);
-            var connectionManager = new HttpConnectionManager(
+            var connectionManager = new ConnectionManager(
                 trace,
                 serverOptions.Limits.MaxConcurrentUpgradedConnections);
 
             var systemClock = new SystemClock();
             var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
 
-            var httpHeartbeatManager = new HttpHeartbeatManager(connectionManager);
+            var heartbeatManager = new HeartbeatManager(connectionManager);
             var heartbeat = new Heartbeat(
-                new IHeartbeatHandler[] { dateHeaderValueManager, httpHeartbeatManager },
+                new IHeartbeatHandler[] { dateHeaderValueManager, heartbeatManager },
                 systemClock,
                 DebuggerWrapper.Singleton,
                 trace);
@@ -118,7 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
         private IKestrelTrace Trace => ServiceContext.Log;
 
-        private HttpConnectionManager ConnectionManager => ServiceContext.ConnectionManager;
+        private ConnectionManager ConnectionManager => ServiceContext.ConnectionManager;
 
         public async Task StartAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellationToken)
         {
@@ -188,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 }
                 await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                if (!await ConnectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
+                if (!await ConnectionManager.CloseAllHttpConnectionsAsync(cancellationToken).ConfigureAwait(false))
                 {
                     Trace.NotAllConnectionsClosedGracefully();
 
