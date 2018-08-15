@@ -27,7 +27,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var options = new PipeOptions(pool: _memoryPool, readerScheduler: PipeScheduler.Inline, writerScheduler: PipeScheduler.Inline, useSynchronizationContext: false);
             var pair = DuplexPipe.CreateConnectionPair(options, options);
             Transport = pair.Transport;
-            Application = pair.Application;
 
             var connectionFeatures = new FeatureCollection();
             connectionFeatures.Set(Mock.Of<IConnectionLifetimeFeature>());
@@ -38,7 +37,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ServiceContext = new TestServiceContext(),
                 ConnectionContext = Mock.Of<ConnectionContext>(),
                 ConnectionFeatures = connectionFeatures,
-                Application = Application,
                 Transport = Transport,
                 MemoryPool = _memoryPool,
                 TimeoutControl = Mock.Of<ITimeoutControl>()
