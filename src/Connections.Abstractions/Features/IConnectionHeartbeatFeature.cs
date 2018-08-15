@@ -9,4 +9,9 @@ namespace Microsoft.AspNetCore.Connections.Features
     {
         void OnHeartbeat(Action<object> action, object state);
     }
+
+    public interface IConnectionHeartbeatTickFeature
+    {
+        void OnHeartbeat(Action<DateTimeOffset, object> action, object state);
+    }
 }
