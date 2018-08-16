@@ -188,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 }
                 await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                if (!await ConnectionManager.CloseAllHttpConnectionsAsync(cancellationToken).ConfigureAwait(false))
+                if (!await ConnectionManager.CloseAllConnectionsAsync(cancellationToken).ConfigureAwait(false))
                 {
                     Trace.NotAllConnectionsClosedGracefully();
 

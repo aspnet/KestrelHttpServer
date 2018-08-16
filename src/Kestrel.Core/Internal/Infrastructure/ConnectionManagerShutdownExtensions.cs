@@ -10,13 +10,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
     public static class ConnectionManagerShutdownExtensions
     {
-        public static async Task<bool> CloseAllHttpConnectionsAsync(this ConnectionManager connectionManager, CancellationToken token)
+        public static async Task<bool> CloseAllConnectionsAsync(this ConnectionManager connectionManager, CancellationToken token)
         {
             var closeTasks = new List<Task>();
 
             connectionManager.Walk(connection =>
             {
-                // connection.HttpConnection.StopProcessingNextRequestAsync();
+                connection.TransportConnection.CloseGracefully();
                 closeTasks.Add(connection.ExecutionTask);
             });
 

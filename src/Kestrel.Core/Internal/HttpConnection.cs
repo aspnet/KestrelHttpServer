@@ -111,6 +111,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 connectionTickFeature?.OnHeartbeat((now, state) => ((HttpConnection)state).Tick(now), this);
 
+                var shutdownFeature = _context.ConnectionFeatures.Get<IGracefulConnectionLifetimeFeature>();
+
+                Debug.Assert(shutdownFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
+
+                shutdownFeature?.ConnectionClosingGracefully.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this);
+
                 // _adaptedTransport must be set prior to adding the connection to the manager in order
                 // to allow the connection to be aported prior to protocol selection.
                 _adaptedTransport = _context.Transport;
@@ -239,7 +245,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _socketClosedTcs.TrySetResult(null);
         }
 
-        public Task StopProcessingNextRequestAsync()
+        public void StopProcessingNextRequest()
         {
             lock (_protocolSelectionLock)
             {
@@ -256,8 +262,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         break;
                 }
             }
-
-            return _lifetimeTcs.Task;
         }
 
         public void OnInputOrOutputCompleted()
