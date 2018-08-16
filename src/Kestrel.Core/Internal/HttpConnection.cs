@@ -115,75 +115,77 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 Debug.Assert(shutdownFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
 
-                shutdownFeature?.ConnectionClosingGracefully.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this);
-
-                // _adaptedTransport must be set prior to adding the connection to the manager in order
-                // to allow the connection to be aported prior to protocol selection.
-                _adaptedTransport = _context.Transport;
-
-
-                if (_context.ConnectionAdapters.Count > 0)
+                using (shutdownFeature?.ConnectionClosingGracefully.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
-                    adaptedPipeline = new AdaptedPipeline(_adaptedTransport,
-                                                          new Pipe(AdaptedInputPipeOptions),
-                                                          new Pipe(AdaptedOutputPipeOptions),
-                                                          Log);
 
-                    _adaptedTransport = adaptedPipeline;
-                }
+                    // _adaptedTransport must be set prior to adding the connection to the manager in order
+                    // to allow the connection to be aported prior to protocol selection.
+                    _adaptedTransport = _context.Transport;
 
-                _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 
-                _context.ConnectionFeatures.Set<IConnectionTimeoutFeature>(this);
-
-                if (adaptedPipeline != null)
-                {
-                    // Stream can be null here and run async will close the connection in that case
-                    var stream = await ApplyConnectionAdaptersAsync();
-                    adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
-                }
-
-                IRequestProcessor requestProcessor = null;
-
-                lock (_protocolSelectionLock)
-                {
-                    // Ensure that the connection hasn't already been stopped.
-                    if (_protocolSelectionState == ProtocolSelectionState.Initializing)
+                    if (_context.ConnectionAdapters.Count > 0)
                     {
-                        switch (SelectProtocol())
-                        {
-                            case HttpProtocols.Http1:
-                                // _http1Connection must be initialized before adding the connection to the connection manager
-                                requestProcessor = _http1Connection = CreateHttp1Connection(_adaptedTransport);
-                                _protocolSelectionState = ProtocolSelectionState.Selected;
-                                break;
-                            case HttpProtocols.Http2:
-                                // _http2Connection must be initialized before yielding control to the transport thread,
-                                // to prevent a race condition where _http2Connection.Abort() is called just as
-                                // _http2Connection is about to be initialized.
-                                requestProcessor = CreateHttp2Connection(_adaptedTransport);
-                                _protocolSelectionState = ProtocolSelectionState.Selected;
-                                break;
-                            case HttpProtocols.None:
-                                // An error was already logged in SelectProtocol(), but we should close the connection.
-                                Abort(ex: null);
-                                break;
-                            default:
-                                // SelectProtocol() only returns Http1, Http2 or None.
-                                throw new NotSupportedException($"{nameof(SelectProtocol)} returned something other than Http1, Http2 or None.");
-                        }
+                        adaptedPipeline = new AdaptedPipeline(_adaptedTransport,
+                                                              new Pipe(AdaptedInputPipeOptions),
+                                                              new Pipe(AdaptedOutputPipeOptions),
+                                                              Log);
 
-                        _requestProcessor = requestProcessor;
+                        _adaptedTransport = adaptedPipeline;
                     }
-                }
 
-                if (requestProcessor != null)
-                {
-                    await requestProcessor.ProcessRequestsAsync(httpApplication);
-                }
+                    _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 
-                await adaptedPipelineTask;
-                await _socketClosedTcs.Task;
+                    _context.ConnectionFeatures.Set<IConnectionTimeoutFeature>(this);
+
+                    if (adaptedPipeline != null)
+                    {
+                        // Stream can be null here and run async will close the connection in that case
+                        var stream = await ApplyConnectionAdaptersAsync();
+                        adaptedPipelineTask = adaptedPipeline.RunAsync(stream);
+                    }
+
+                    IRequestProcessor requestProcessor = null;
+
+                    lock (_protocolSelectionLock)
+                    {
+                        // Ensure that the connection hasn't already been stopped.
+                        if (_protocolSelectionState == ProtocolSelectionState.Initializing)
+                        {
+                            switch (SelectProtocol())
+                            {
+                                case HttpProtocols.Http1:
+                                    // _http1Connection must be initialized before adding the connection to the connection manager
+                                    requestProcessor = _http1Connection = CreateHttp1Connection(_adaptedTransport);
+                                    _protocolSelectionState = ProtocolSelectionState.Selected;
+                                    break;
+                                case HttpProtocols.Http2:
+                                    // _http2Connection must be initialized before yielding control to the transport thread,
+                                    // to prevent a race condition where _http2Connection.Abort() is called just as
+                                    // _http2Connection is about to be initialized.
+                                    requestProcessor = CreateHttp2Connection(_adaptedTransport);
+                                    _protocolSelectionState = ProtocolSelectionState.Selected;
+                                    break;
+                                case HttpProtocols.None:
+                                    // An error was already logged in SelectProtocol(), but we should close the connection.
+                                    Abort(ex: null);
+                                    break;
+                                default:
+                                    // SelectProtocol() only returns Http1, Http2 or None.
+                                    throw new NotSupportedException($"{nameof(SelectProtocol)} returned something other than Http1, Http2 or None.");
+                            }
+
+                            _requestProcessor = requestProcessor;
+                        }
+                    }
+
+                    if (requestProcessor != null)
+                    {
+                        await requestProcessor.ProcessRequestsAsync(httpApplication);
+                    }
+
+                    await adaptedPipelineTask;
+                    await _socketClosedTcs.Task;
+                }
             }
             catch (Exception ex)
             {
