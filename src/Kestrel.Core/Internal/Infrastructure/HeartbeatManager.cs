@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         private void WalkCallback(KestrelConnection connection)
         {
-            connection.TransportConnection.TickHeartbeat();
+            connection.TransportConnection.TickHeartbeat(_now);
         }
     }
 }

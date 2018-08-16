@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Diagnostics.Tracing;
+using System.Net;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
@@ -47,8 +48,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             {
                 ConnectionStart(
                     connection.ConnectionId,
-                    connection.LocalAddress?.ToString(),
-                    connection.RemoteAddress?.ToString());
+                    connection.LocalAddress != null ? new IPEndPoint(connection.LocalAddress, connection.LocalPort).ToString() : null,
+                    connection.RemoteAddress != null ? new IPEndPoint(connection.RemoteAddress, connection.RemotePort).ToString() : null);
             }
         }
 
