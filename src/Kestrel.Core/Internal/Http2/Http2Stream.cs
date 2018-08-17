@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
@@ -63,6 +64,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected override void OnRequestProcessingEnded()
         {
+            Log.LogInformation("OnRequestProcessingEnded({streamId})", StreamId);
+
             TryApplyCompletionFlag(StreamCompletionFlags.RequestProcessingEnded);
 
             RequestBodyPipe.Reader.Complete();
