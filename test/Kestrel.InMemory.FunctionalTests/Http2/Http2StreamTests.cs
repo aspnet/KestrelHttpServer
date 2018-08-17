@@ -836,18 +836,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             await StartStreamAsync(1, headers, endStream: false);
             await SendDataAsync(1, new byte[1].AsSpan(), endStream: false);
             await SendDataAsync(1, new byte[2].AsSpan(), endStream: false);
+            // This will cause the content length to go bad
             await SendDataAsync(1, new byte[10].AsSpan(), endStream: false);
-            await SendDataAsync(1, new byte[2].AsSpan(), endStream: true);
 
             await WaitForStreamErrorAsync(1, Http2ErrorCode.PROTOCOL_ERROR, CoreStrings.Http2StreamErrorMoreDataThanLength);
 
-            await StopConnectionAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+            // This will cause trigger a go away frame to be sent
+            await SendDataAsync(1, new byte[2].AsSpan(), endStream: true);
 
-            var expectedError = new Http2StreamErrorException(1, CoreStrings.Http2StreamErrorMoreDataThanLength, Http2ErrorCode.PROTOCOL_ERROR);
-
-            Assert.NotNull(thrownEx);
-            Assert.Equal(expectedError.Message, thrownEx.Message);
-            Assert.IsType<Http2StreamErrorException>(thrownEx.InnerException);
+            await WaitForConnectionErrorAsync<Http2ConnectionErrorException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 1,
+                expectedErrorCode: Http2ErrorCode.STREAM_CLOSED,
+                expectedErrorMessage: null);
         }
 
         [Fact]
