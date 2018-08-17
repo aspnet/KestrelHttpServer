@@ -69,8 +69,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected override void OnRequestProcessingEnded()
         {
-            Log.LogInformation("OnRequestProcessingEnded({streamId})", StreamId);
-
             TryApplyCompletionFlag(StreamCompletionFlags.RequestProcessingEnded);
 
             RequestBodyPipe.Reader.Complete();
