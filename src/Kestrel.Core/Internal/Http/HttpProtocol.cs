@@ -607,7 +607,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 application.DisposeContext(httpContext, _applicationException);
 
                 // Even for non-keep-alive requests, try to consume the entire body to avoid RSTs.
-                if (_ioCompleted == 0 && _requestRejectedException == null && !messageBody.IsEmpty)
+                if (_requestRejectedException == null && !messageBody.IsEmpty)
                 {
                     await messageBody.ConsumeAsync();
                 }
