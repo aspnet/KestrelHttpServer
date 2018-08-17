@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
@@ -26,6 +27,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         private StreamCompletionFlags _completionState;
         private readonly object _completionLock = new object();
+
+        private TaskCompletionSource<object> _processTask = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Http2Stream(Http2StreamContext context)
             : base(context)
@@ -44,6 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             RequestBodyPipe = CreateRequestBodyPipe();
             Output = _http2Output;
+            ProcessingTask = _processTask.Task;
         }
 
         public int StreamId => _context.StreamId;
@@ -55,6 +59,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private bool IsAborted => (_completionState & StreamCompletionFlags.Aborted) == StreamCompletionFlags.Aborted;
 
         public override bool IsUpgradableRequest => false;
+
+        public Task ProcessingTask { get; }
 
         protected override void OnReset()
         {
@@ -70,6 +76,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // The app can no longer read any more of the request body, so return any bytes that weren't read to the
             // connection's flow-control window.
             _inputFlowControl.Abort();
+
+            // Mark processing as completed
+            _processTask.TrySetResult(null);
         }
 
         protected override string CreateRequestId()

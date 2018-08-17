@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
 using System.Security.Authentication;
@@ -270,12 +271,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     // Ensure aborting each stream doesn't result in unnecessary WINDOW_UPDATE frames being sent.
                     _inputFlowControl.StopWindowUpdates();
 
-                    foreach (var stream in _streams.Values)
+                    var tasks = new List<Task>(_streams.Count);
+
+                    foreach (var stream in _streams)
                     {
-                        stream.Abort(new IOException(CoreStrings.Http2StreamAborted, connectionError));
+                        stream.Value.Abort(new IOException(CoreStrings.Http2StreamAborted, connectionError));
+                        tasks.Add(stream.Value.ProcessingTask);
                     }
 
                     await _streamsCompleted.Task;
+
+                    // REVIEW: Do we need a timeout?
+                    await Task.WhenAll(tasks);
 
                     _frameWriter.Complete();
                 }
