@@ -94,6 +94,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public override void Abort(ConnectionAbortedException abortReason)
         {
+            _trace.ConnectionAborted(ConnectionId);
+
             _abortReason = abortReason;
             Output.CancelPendingRead();
 
@@ -155,6 +157,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 {
                     error = error ?? _abortReason ?? new ConnectionAbortedException();
                 }
+
+                _trace.LogInformation("DoReceive({error})", error);
 
                 Input.Complete(error);
             }
@@ -236,6 +240,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 // Complete the output after disposing the socket
                 Output.Complete(error);
+
+                // Cancel any pending flushes so that the input loop is un-paused
+                Input.CancelPendingFlush();
             }
         }
 
