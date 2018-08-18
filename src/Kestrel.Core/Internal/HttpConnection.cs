@@ -29,7 +29,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly ReadOnlyMemory<byte> Http2Id = new[] { (byte)'h', (byte)'2' };
 
         private readonly HttpConnectionContext _context;
-        private readonly TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private IList<IAdaptedConnection> _adaptedConnections;
         private IDuplexPipe _adaptedTransport;
@@ -177,13 +176,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         }
                     }
 
+                    _context.Transport.Input.OnWriterCompleted(
+                        (_, state) => ((HttpConnection)state).OnInputOrOutputCompleted(),
+                        this);
+
+                    _context.Transport.Output.OnReaderCompleted(
+                        (_, state) => ((HttpConnection)state).OnInputOrOutputCompleted(),
+                        this);
+
                     if (requestProcessor != null)
                     {
                         await requestProcessor.ProcessRequestsAsync(httpApplication);
                     }
 
                     await adaptedPipelineTask;
-                    await _socketClosedTcs.Task;
                 }
             }
             catch (Exception ex)
@@ -239,12 +245,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             });
         }
 
-        public void OnConnectionClosed()
-        {
-            _socketClosedTcs.TrySetResult(null);
-        }
-
-        public void StopProcessingNextRequest()
+        private void StopProcessingNextRequest()
         {
             lock (_protocolSelectionLock)
             {
@@ -263,7 +264,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public void OnInputOrOutputCompleted()
+        private void OnInputOrOutputCompleted()
         {
             lock (_protocolSelectionLock)
             {
@@ -283,7 +284,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
         }
 
-        public void Abort(ConnectionAbortedException ex)
+        private void Abort(ConnectionAbortedException ex)
         {
             lock (_protocolSelectionLock)
             {
