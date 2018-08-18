@@ -158,8 +158,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     error = error ?? _abortReason ?? new ConnectionAbortedException();
                 }
 
-                _trace.LogInformation("DoReceive({error})", error);
-
                 Input.Complete(error);
             }
         }
