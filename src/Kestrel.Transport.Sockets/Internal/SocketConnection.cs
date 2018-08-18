@@ -182,14 +182,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 var flushTask = Input.FlushAsync();
 
-                if (!flushTask.IsCompleted)
+                var paused = !flushTask.IsCompleted;
+
+                if (paused)
                 {
                     _trace.ConnectionPause(ConnectionId);
                 }
 
                 var result = await flushTask;
 
-                _trace.ConnectionResume(ConnectionId);
+                if (paused)
+                {
+                    _trace.ConnectionResume(ConnectionId);
+                }
 
                 if (result.IsCompleted || result.IsCanceled)
                 {
