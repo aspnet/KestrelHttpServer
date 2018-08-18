@@ -185,14 +185,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 if (!flushTask.IsCompleted)
                 {
                     _trace.ConnectionPause(ConnectionId);
-
-                    await flushTask;
-
-                    _trace.ConnectionResume(ConnectionId);
                 }
 
-                var result = flushTask.GetAwaiter().GetResult();
-                if (result.IsCompleted)
+                var result = await flushTask;
+
+                _trace.ConnectionResume(ConnectionId);
+
+                if (result.IsCompleted || result.IsCanceled)
                 {
                     // Pipe consumer is shut down, do we stop writing
                     break;
