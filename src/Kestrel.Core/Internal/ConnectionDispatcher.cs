@@ -77,9 +77,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                         connectionContext.Transport.Input.Complete();
                         connectionContext.Transport.Output.Complete();
                     }
-
-                    // Wait for the transport to close
-                    await CancellationTokenAsTask(connectionContext.ConnectionClosed);
                 }
             }
             finally
@@ -101,20 +98,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             }
 
             return null;
-        }
-
-        private static Task CancellationTokenAsTask(CancellationToken token)
-        {
-            if (token.IsCancellationRequested)
-            {
-                return Task.CompletedTask;
-            }
-
-            // Transports already dispatch prior to tripping ConnectionClosed
-            // since application code can register to this token.
-            var tcs = new TaskCompletionSource<object>();
-            token.Register(state => ((TaskCompletionSource<object>)state).SetResult(null), tcs);
-            return tcs.Task;
         }
 
         // Internal for testing
