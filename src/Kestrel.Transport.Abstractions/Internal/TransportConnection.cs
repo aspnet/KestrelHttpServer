@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         public CancellationToken ConnectionClosingGracefully { get; set; }
 
-        public void TickHeartbeat(in DateTimeOffset now)
+        public void TickHeartbeat(DateTimeOffset now)
         {
             lock (_heartbeatLock)
             {

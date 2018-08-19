@@ -377,7 +377,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             return http2Enabled && (!hasTls || Http2Id.Span.SequenceEqual(applicationProtocol.Span)) ? HttpProtocols.Http2 : HttpProtocols.Http1;
         }
 
-        public void Tick(in DateTimeOffset now)
+        public void Tick(DateTimeOffset now)
         {
             if (_protocolSelectionState == ProtocolSelectionState.Aborted)
             {
