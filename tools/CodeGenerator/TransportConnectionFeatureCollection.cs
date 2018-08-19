@@ -20,7 +20,7 @@ namespace CodeGenerator
                 "ITransportSchedulerFeature",
                 "IConnectionLifetimeFeature",
                 "IConnectionHeartbeatTickFeature",
-                "IGracefulConnectionLifetimeFeature",
+                "IConnectionLifetimeNotificationFeature",
                 "IBytesWrittenFeature",
             };
 

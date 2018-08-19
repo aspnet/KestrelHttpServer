@@ -123,11 +123,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 connectionTickFeature?.OnHeartbeat((now, state) => ((HttpConnection)state).Tick(now), this);
 
-                var gracefulConnectionLifetimeFeature = _context.ConnectionFeatures.Get<IGracefulConnectionLifetimeFeature>();
+                var connectionLifetimeNotificationFeature = _context.ConnectionFeatures.Get<IConnectionLifetimeNotificationFeature>();
 
-                Debug.Assert(gracefulConnectionLifetimeFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
+                Debug.Assert(connectionLifetimeNotificationFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
 
-                using (gracefulConnectionLifetimeFeature?.ConnectionClosingGracefully.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
+                using (connectionLifetimeNotificationFeature?.ConnectionClosing.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
                     _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 

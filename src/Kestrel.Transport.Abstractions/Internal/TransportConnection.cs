@@ -17,13 +17,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         private IDictionary<object, object> _items;
         private List<(Action<DateTimeOffset, object> handler, object state)> _heartbeatHandlers;
         private readonly object _heartbeatLock = new object();
-        private CancellationTokenSource _gracefulCts = new CancellationTokenSource();
+        private CancellationTokenSource _connectionClosingCts = new CancellationTokenSource();
 
         public TransportConnection()
         {
             FastReset();
 
-            ConnectionClosingGracefully = _gracefulCts.Token;
+            ConnectionClosing = _connectionClosingCts.Token;
         }
 
         public IPAddress RemoteAddress { get; set; }
@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         public CancellationToken ConnectionClosed { get; set; }
 
-        public CancellationToken ConnectionClosingGracefully { get; set; }
+        public CancellationToken ConnectionClosing { get; set; }
 
         public void TickHeartbeat(DateTimeOffset now)
         {
@@ -110,6 +110,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             Output.CancelPendingRead();
         }
 
-        public void CloseGracefully() => _gracefulCts.Cancel();
+        public void Close() => _connectionClosingCts.Cancel();
     }
 }

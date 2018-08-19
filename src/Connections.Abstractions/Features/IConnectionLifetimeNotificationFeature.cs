@@ -5,10 +5,10 @@ using System.Threading;
 
 namespace Microsoft.AspNetCore.Connections.Features
 {
-    public interface IGracefulConnectionLifetimeFeature
+    public interface IConnectionLifetimeNotificationFeature
     {
-        CancellationToken ConnectionClosingGracefully { get; set; }
+        CancellationToken ConnectionClosing { get; set; }
 
-        void CloseGracefully();
+        void Close();
     }
 }

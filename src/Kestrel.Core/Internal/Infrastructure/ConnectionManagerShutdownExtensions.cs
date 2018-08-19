@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
             connectionManager.Walk(connection =>
             {
-                connection.TransportConnection.CloseGracefully();
+                connection.TransportConnection.Close();
                 closeTasks.Add(connection.ExecutionTask);
             });
 

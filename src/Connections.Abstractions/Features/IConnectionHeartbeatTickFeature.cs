@@ -5,8 +5,8 @@ using System;
 
 namespace Microsoft.AspNetCore.Connections.Features
 {
-    public interface IConnectionHeartbeatFeature
+    public interface IConnectionHeartbeatTickFeature
     {
-        void OnHeartbeat(Action<object> action, object state);
+        void OnHeartbeat(Action<DateTimeOffset, object> action, object state);
     }
 }

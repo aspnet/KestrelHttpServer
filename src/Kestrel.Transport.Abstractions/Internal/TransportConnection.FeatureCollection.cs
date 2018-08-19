@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
                                                IConnectionLifetimeFeature,
                                                IConnectionHeartbeatFeature,
                                                IConnectionHeartbeatTickFeature,
-                                               IGracefulConnectionLifetimeFeature,
+                                               IConnectionLifetimeNotificationFeature,
                                                IBytesWrittenFeature
     {
         // NOTE: When feature interfaces are added to or removed from this TransportConnection class implementation,
