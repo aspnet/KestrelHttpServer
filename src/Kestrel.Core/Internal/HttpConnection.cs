@@ -102,35 +102,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 AdaptedPipeline adaptedPipeline = null;
                 var adaptedPipelineTask = Task.CompletedTask;
 
-                // REVIEW: This feature should never be null in Kestrel
+                // _adaptedTransport must be set prior to wiring up callbacks
+                // to allow the connection to be aborted prior to protocol selection.
+                _adaptedTransport = _context.Transport;
+
+                if (_context.ConnectionAdapters.Count > 0)
+                {
+                    adaptedPipeline = new AdaptedPipeline(_adaptedTransport,
+                                                          new Pipe(AdaptedInputPipeOptions),
+                                                          new Pipe(AdaptedOutputPipeOptions),
+                                                          Log);
+
+                    _adaptedTransport = adaptedPipeline;
+                }
+
+                // This feature should never be null in Kestrel
                 var connectionTickFeature = _context.ConnectionFeatures.Get<IConnectionHeartbeatTickFeature>();
 
                 Debug.Assert(connectionTickFeature != null, "IConnectionHeartbeatTickFeature is missing!");
 
                 connectionTickFeature?.OnHeartbeat((now, state) => ((HttpConnection)state).Tick(now), this);
 
-                var shutdownFeature = _context.ConnectionFeatures.Get<IGracefulConnectionLifetimeFeature>();
+                var gracefulConnectionLifetimeFeature = _context.ConnectionFeatures.Get<IGracefulConnectionLifetimeFeature>();
 
-                Debug.Assert(shutdownFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
+                Debug.Assert(gracefulConnectionLifetimeFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
 
-                using (shutdownFeature?.ConnectionClosingGracefully.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
+                using (gracefulConnectionLifetimeFeature?.ConnectionClosingGracefully.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
-
-                    // _adaptedTransport must be set prior to adding the connection to the manager in order
-                    // to allow the connection to be aported prior to protocol selection.
-                    _adaptedTransport = _context.Transport;
-
-
-                    if (_context.ConnectionAdapters.Count > 0)
-                    {
-                        adaptedPipeline = new AdaptedPipeline(_adaptedTransport,
-                                                              new Pipe(AdaptedInputPipeOptions),
-                                                              new Pipe(AdaptedOutputPipeOptions),
-                                                              Log);
-
-                        _adaptedTransport = adaptedPipeline;
-                    }
-
                     _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 
                     _context.ConnectionFeatures.Set<IConnectionTimeoutFeature>(this);
