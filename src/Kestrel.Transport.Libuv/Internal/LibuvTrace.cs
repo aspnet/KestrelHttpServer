@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal
             LoggerMessage.Define<string>(LogLevel.Debug, 19, @"Connection id ""{ConnectionId}"" reset.");
 
         private static readonly Action<ILogger, string, Exception> _connectionAborted =
-            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(20, nameof(ConnectionAborted)), @"Connection id ""{ConnectionId}"" was aborted.");
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(20, nameof(ConnectionAborted)), @"Connection id ""{ConnectionId}"" aborted.");
 
         private readonly ILogger _logger;
 
