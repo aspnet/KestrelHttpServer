@@ -29,6 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         private static readonly ReadOnlyMemory<byte> Http2Id = new[] { (byte)'h', (byte)'2' };
 
         private readonly HttpConnectionContext _context;
+        private readonly ISystemClock _systemClock;
 
         private IList<IAdaptedConnection> _adaptedConnections;
         private IDuplexPipe _adaptedTransport;
@@ -55,6 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         public HttpConnection(HttpConnectionContext context)
         {
             _context = context;
+            _systemClock = _context.ServiceContext.SystemClock;
         }
 
         // For testing
@@ -117,15 +119,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 }
 
                 // This feature should never be null in Kestrel
-                var connectionTickFeature = _context.ConnectionFeatures.Get<IConnectionHeartbeatTickFeature>();
+                var connectionHeartbeatFeature = _context.ConnectionFeatures.Get<IConnectionHeartbeatFeature>();
 
-                Debug.Assert(connectionTickFeature != null, "IConnectionHeartbeatTickFeature is missing!");
+                Debug.Assert(connectionHeartbeatFeature != null, nameof(IConnectionHeartbeatFeature) + " is missing!");
 
-                connectionTickFeature?.OnHeartbeat((now, state) => ((HttpConnection)state).Tick(now), this);
+                connectionHeartbeatFeature?.OnHeartbeat(state => ((HttpConnection)state).Tick(), this);
 
                 var connectionLifetimeNotificationFeature = _context.ConnectionFeatures.Get<IConnectionLifetimeNotificationFeature>();
 
-                Debug.Assert(connectionLifetimeNotificationFeature != null, "IGracefulConnectionLifetimeFeature is missing!");
+                Debug.Assert(connectionLifetimeNotificationFeature != null, nameof(IConnectionLifetimeNotificationFeature) + " is missing!");
 
                 using (connectionLifetimeNotificationFeature?.ConnectionClosing.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
@@ -375,6 +377,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             return http2Enabled && (!hasTls || Http2Id.Span.SequenceEqual(applicationProtocol.Span)) ? HttpProtocols.Http2 : HttpProtocols.Http1;
         }
 
+        private void Tick()
+        {
+            Tick(_systemClock.UtcNow);
+        }
         public void Tick(DateTimeOffset now)
         {
             if (_protocolSelectionState == ProtocolSelectionState.Aborted)

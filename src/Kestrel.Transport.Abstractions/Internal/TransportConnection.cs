@@ -15,7 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
     public abstract partial class TransportConnection : ConnectionContext
     {
         private IDictionary<object, object> _items;
-        private List<(Action<DateTimeOffset, object> handler, object state)> _heartbeatHandlers;
+        private List<(Action<object> handler, object state)> _heartbeatHandlers;
         private readonly object _heartbeatLock = new object();
         private CancellationTokenSource _connectionClosingCts = new CancellationTokenSource();
 
@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         public CancellationToken ConnectionClosing { get; set; }
 
-        public void TickHeartbeat(DateTimeOffset now)
+        public void TickHeartbeat()
         {
             lock (_heartbeatLock)
             {
@@ -74,25 +74,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
                 foreach (var (handler, state) in _heartbeatHandlers)
                 {
-                    handler(now, state);
+                    handler(state);
                 }
             }
         }
 
         public void OnHeartbeat(Action<object> action, object state)
         {
-            // REVIEW: We could avoid this allocation with 2 lists
-            Action<DateTimeOffset, object> handler = (now, state2) => action(state2);
-            OnHeartbeat(handler, state);
-        }
-
-        public void OnHeartbeat(Action<DateTimeOffset, object> action, object state)
-        {
             lock (_heartbeatLock)
             {
                 if (_heartbeatHandlers == null)
                 {
-                    _heartbeatHandlers = new List<(Action<DateTimeOffset, object> handler, object state)>();
+                    _heartbeatHandlers = new List<(Action<object> handler, object state)>();
                 }
 
                 _heartbeatHandlers.Add((action, state));

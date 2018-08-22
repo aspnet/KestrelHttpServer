@@ -21,7 +21,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
                                                ITransportSchedulerFeature,
                                                IConnectionLifetimeFeature,
                                                IConnectionHeartbeatFeature,
-                                               IConnectionHeartbeatTickFeature,
                                                IConnectionLifetimeNotificationFeature,
                                                IBytesWrittenFeature
     {

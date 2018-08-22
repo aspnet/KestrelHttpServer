@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
-    public class HeartbeatManager : IHeartbeatHandler
+    public class HeartbeatManager : IHeartbeatHandler, ISystemClock
     {
         private readonly ConnectionManager _connectionManager;
         private readonly Action<KestrelConnection> _walkCallback;
@@ -17,6 +17,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _walkCallback = WalkCallback;
         }
 
+        public DateTimeOffset UtcNow => _now;
+
         public void OnHeartbeat(DateTimeOffset now)
         {
             _now = now;
@@ -25,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         private void WalkCallback(KestrelConnection connection)
         {
-            connection.TransportConnection.TickHeartbeat(_now);
+            connection.TransportConnection.TickHeartbeat();
         }
     }
 }
