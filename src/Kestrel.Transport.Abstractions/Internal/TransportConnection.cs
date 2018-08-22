@@ -103,6 +103,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             Output.CancelPendingRead();
         }
 
-        public void Close() => _connectionClosingCts.Cancel();
+        public void RequestClose() => _connectionClosingCts.Cancel();
     }
 }

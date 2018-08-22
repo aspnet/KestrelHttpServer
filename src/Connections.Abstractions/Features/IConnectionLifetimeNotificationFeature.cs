@@ -9,6 +9,6 @@ namespace Microsoft.AspNetCore.Connections.Features
     {
         CancellationToken ConnectionClosedRequested { get; set; }
 
-        void Close();
+        void RequestClose();
     }
 }
