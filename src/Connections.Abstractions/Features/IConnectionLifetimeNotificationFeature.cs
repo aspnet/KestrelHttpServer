@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Connections.Features
 {
     public interface IConnectionLifetimeNotificationFeature
     {
-        CancellationToken ConnectionClosing { get; set; }
+        CancellationToken ConnectionClosedRequested { get; set; }
 
         void Close();
     }

@@ -129,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 Debug.Assert(connectionLifetimeNotificationFeature != null, nameof(IConnectionLifetimeNotificationFeature) + " is missing!");
 
-                using (connectionLifetimeNotificationFeature?.ConnectionClosing.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
+                using (connectionLifetimeNotificationFeature?.ConnectionClosedRequested.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
                     _lastTimestamp = _context.ServiceContext.SystemClock.UtcNow.Ticks;
 

@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         {
             FastReset();
 
-            ConnectionClosing = _connectionClosingCts.Token;
+            ConnectionClosedRequested = _connectionClosingCts.Token;
         }
 
         public IPAddress RemoteAddress { get; set; }
@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 
         public CancellationToken ConnectionClosed { get; set; }
 
-        public CancellationToken ConnectionClosing { get; set; }
+        public CancellationToken ConnectionClosedRequested { get; set; }
 
         public void TickHeartbeat()
         {
