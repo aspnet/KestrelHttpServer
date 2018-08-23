@@ -381,6 +381,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         {
             Tick(_systemClock.UtcNow);
         }
+
         public void Tick(DateTimeOffset now)
         {
             if (_protocolSelectionState == ProtocolSelectionState.Aborted)

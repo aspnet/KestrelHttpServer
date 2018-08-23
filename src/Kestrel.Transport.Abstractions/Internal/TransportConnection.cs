@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
         private IDictionary<object, object> _items;
         private List<(Action<object> handler, object state)> _heartbeatHandlers;
         private readonly object _heartbeatLock = new object();
-        private CancellationTokenSource _connectionClosingCts = new CancellationTokenSource();
+        protected readonly CancellationTokenSource _connectionClosingCts = new CancellationTokenSource();
 
         public TransportConnection()
         {

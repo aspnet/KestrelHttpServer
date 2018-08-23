@@ -107,6 +107,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public void Dispose()
         {
             _connectionClosedTokenSource.Dispose();
+            _connectionClosingCts.Dispose();
         }
 
         private async Task DoReceive()
