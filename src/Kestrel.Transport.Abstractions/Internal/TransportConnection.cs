@@ -103,6 +103,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
             Output.CancelPendingRead();
         }
 
-        public void RequestClose() => _connectionClosingCts.Cancel();
+        public void RequestClose()
+        {
+            try
+            {
+                _connectionClosingCts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // There's a race where the token could be disposed
+                // swallow the exception and no-op
+            }
+        }
     }
 }
