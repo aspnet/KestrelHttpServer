@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -141,6 +142,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
                 async Task OnBind(ListenOptions endpoint)
                 {
+                    if (endpoint.ConnectionAdapters.Any(c => c.IsHttps))
+                    {
+                        endpoint.IsTls = true;
+                    }
+
                     // Add the HTTP middleware as the terminal connection middleware
                     endpoint.UseHttpServer(endpoint.ConnectionAdapters, ServiceContext, application, endpoint.Protocols);
 

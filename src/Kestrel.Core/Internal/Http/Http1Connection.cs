@@ -71,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
 
             // Abort output prior to calling OnIOCompleted() to give the transport the chance to complete the input
-            // with the correct error and message. 
+            // with the correct error and message.
             Output.Abort(abortReason);
 
             OnInputOrOutputCompleted();

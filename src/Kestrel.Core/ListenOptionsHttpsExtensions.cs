@@ -3,12 +3,15 @@
 
 using System;
 using System.IO;
+using System.IO.Pipelines;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.AspNetCore.Hosting
 {
@@ -24,7 +27,7 @@ namespace Microsoft.AspNetCore.Hosting
         /// <param name="listenOptions">The <see cref="ListenOptions"/> to configure.</param>
         /// <returns>The <see cref="ListenOptions"/>.</returns>
         public static ListenOptions UseHttps(this ListenOptions listenOptions) => listenOptions.UseHttps(_ => { });
- 
+
         /// <summary>
         /// Configure Kestrel to use HTTPS.
         /// </summary>
@@ -210,10 +213,24 @@ namespace Microsoft.AspNetCore.Hosting
         /// <returns>The <see cref="ListenOptions"/>.</returns>
         public static ListenOptions UseHttps(this ListenOptions listenOptions, HttpsConnectionAdapterOptions httpsOptions)
         {
-            var loggerFactory = listenOptions.KestrelServerOptions.ApplicationServices.GetRequiredService<ILoggerFactory>();
+            var loggerFactory = listenOptions.KestrelServerOptions?.ApplicationServices.GetRequiredService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
             // Set the list of protocols from listen options
             httpsOptions.HttpProtocols = listenOptions.Protocols;
-            listenOptions.ConnectionAdapters.Add(new HttpsConnectionAdapter(httpsOptions, loggerFactory));
+            httpsOptions.MaxInputBufferSize = listenOptions.KestrelServerOptions?.Limits.MaxRequestBufferSize;
+            httpsOptions.MaxOutputBufferSize = listenOptions.KestrelServerOptions?.Limits.MaxResponseBufferSize;
+
+            if (listenOptions.KestrelServerOptions?.ApplicationSchedulingMode == SchedulingMode.Inline)
+            {
+                httpsOptions.Scheduler = PipeScheduler.Inline;
+            }
+
+            listenOptions.IsTls = true;
+
+            listenOptions.Use(next =>
+            {
+                var middleware = new HttpsConnectionMiddleware(next, httpsOptions, loggerFactory);
+                return middleware.OnConnectionAsync;
+            });
             return listenOptions;
         }
     }

@@ -110,10 +110,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
                 if (_context.ConnectionAdapters.Count > 0)
                 {
-                    adaptedPipeline = new AdaptedPipeline(_adaptedTransport,
-                                                          new Pipe(AdaptedInputPipeOptions),
+                    adaptedPipeline = new AdaptedPipeline(new Pipe(AdaptedInputPipeOptions),
                                                           new Pipe(AdaptedOutputPipeOptions),
-                                                          Log);
+                                                          Log,
+                                                          _adaptedTransport);
 
                     _adaptedTransport = adaptedPipeline;
                 }
@@ -639,8 +639,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             _context.ConnectionContext.Abort(abortReason);
 
-            _adaptedTransport.Input.Complete();
-            _adaptedTransport.Output.Complete();
+            // Back compat
+            if (_context.ConnectionAdapters.Count > 0)
+            {
+                _adaptedTransport.Input.Complete();
+                _adaptedTransport.Output.Complete();
+            }
         }
 
         private enum ProtocolSelectionState

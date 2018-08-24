@@ -33,8 +33,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
         public Task OnConnectionAsync(ConnectionContext connectionContext)
         {
-            // We need the transport feature so that we can cancel the output reader that the transport is using
-            // This is a bit of a hack but it preserves the existing semantics
             var memoryPoolFeature = connectionContext.Features.Get<IMemoryPoolFeature>();
 
             var httpConnectionContext = new HttpConnectionContext

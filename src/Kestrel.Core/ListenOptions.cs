@@ -123,6 +123,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </remarks>
         public bool NoDelay { get; set; } = true;
 
+        internal string Scheme
+        {
+            get
+            {
+                if (IsHttp)
+                {
+                    return IsTls ? "https" : "http";
+                }
+                return "tcp";
+            }
+        }
+
+        public bool IsTls { get; set; }
+
+        public bool IsHttp { get; set; } = true;
+
         /// <summary>
         /// The protocols enabled on this endpoint.
         /// </summary>
@@ -149,18 +165,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         internal virtual string GetDisplayName()
         {
-            var scheme = ConnectionAdapters.Any(f => f.IsHttps)
-                ? "https"
-                : "http";
-
             switch (Type)
             {
                 case ListenType.IPEndPoint:
-                    return $"{scheme}://{IPEndPoint}";
+                    return $"{Scheme}://{IPEndPoint}";
                 case ListenType.SocketPath:
-                    return $"{scheme}://unix:{SocketPath}";
+                    return $"{Scheme}://unix:{SocketPath}";
                 case ListenType.FileHandle:
-                    return $"{scheme}://<file handle>";
+                    return $"{Scheme}://<file handle>";
                 default:
                     throw new InvalidOperationException();
             }

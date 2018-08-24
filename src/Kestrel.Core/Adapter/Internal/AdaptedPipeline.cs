@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.IO.Pipelines;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -12,16 +13,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 {
-    public class AdaptedPipeline : IDuplexPipe
+    public class AdaptedPipeline : IDuplexPipe, IDisposable
     {
         private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
 
         private readonly IDuplexPipe _transport;
 
-        public AdaptedPipeline(IDuplexPipe transport,
-                               Pipe inputPipe,
+        public AdaptedPipeline(Pipe inputPipe,
                                Pipe outputPipe,
-                               IKestrelTrace log)
+                               ILogger log,
+                               IDuplexPipe transport = null)
         {
             _transport = transport;
             Input = inputPipe;
@@ -33,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
 
         public Pipe Output { get; }
 
-        public IKestrelTrace Log { get; }
+        public ILogger Log { get; }
 
         PipeReader IDuplexPipe.Input => Input.Reader;
 
@@ -111,7 +112,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
             finally
             {
                 Output.Reader.Complete();
-                _transport.Output.Complete();
+
+                _transport?.Output.Complete();
             }
         }
 
@@ -163,10 +165,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
             finally
             {
                 Input.Writer.Complete(error);
+
                 // The application could have ended the input pipe so complete
                 // the transport pipe as well
-                _transport.Input.Complete();
+                _transport?.Input.Complete();
             }
+        }
+
+        public void Dispose()
+        {
+            Input.Reader.Complete();
+            Output.Writer.Complete();
         }
     }
 }
