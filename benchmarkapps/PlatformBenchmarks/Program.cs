@@ -6,6 +6,7 @@ using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace PlatformBenchmarks
 {
@@ -29,6 +30,10 @@ namespace PlatformBenchmarks
                 .Build();
 
             var host = new WebHostBuilder()
+                .ConfigureLogging((hostingContext, logging) =>
+                {
+                    logging.AddConsole();
+                })
                 .UseBenchmarksConfiguration(config)
                 .UseKestrel((context, options) =>
                 {
