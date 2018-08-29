@@ -101,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             bytesRead += memory.Length;
 
 #if NETCOREAPP2_1
-                            await destination.WriteAsync(memory);
+                            await destination.WriteAsync(memory, cancellationToken);
 #elif NETSTANDARD2_0
                             var array = memory.GetArray();
                             await destination.WriteAsync(array.Array, array.Offset, array.Count, cancellationToken);
