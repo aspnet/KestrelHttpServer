@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await _context.RequestBodyPipe.Reader.ReadAsync(cancellationToken);
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
                 var actual = 0;
@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync();
+                var result = await _context.RequestBodyPipe.Reader.ReadAsync(cancellationToken);
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
                 var bytesRead = 0;
