@@ -30,11 +30,11 @@ namespace PlatformBenchmarks
                 .Build();
 
             var host = new WebHostBuilder()
+                .UseBenchmarksConfiguration(config)
                 .ConfigureLogging((hostingContext, logging) =>
                 {
                     logging.AddConsole();
                 })
-                .UseBenchmarksConfiguration(config)
                 .UseKestrel((context, options) =>
                 {
                     IPEndPoint endPoint = context.Configuration.CreateIPEndPoint();
