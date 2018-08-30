@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
         }
 
         [Fact]
-        public async Task CancellationTokenCancelsReads()
+        public async Task RequestBodyReadAsyncCanBeCancelled()
         {
             var helloTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var cts = new CancellationTokenSource();

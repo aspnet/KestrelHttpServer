@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -95,6 +96,58 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                         "");
 
                     Assert.NotNull(ex);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task ResponseBodyWriteAsyncCanBeCancelled()
+        {
+            var serviceContext = new TestServiceContext(LoggerFactory);
+            serviceContext.ServerOptions.Limits.MaxResponseBufferSize = 5;
+            var cts = new CancellationTokenSource();
+            var appTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using (var server = new TestServer(async context =>
+            {
+                await context.Response.WriteAsync("hello", cts.Token);
+                try
+                {
+                    var task = context.Response.WriteAsync("world", cts.Token);
+                    Assert.False(task.IsCompleted);
+                    await task;
+                }
+                catch (OperationCanceledException ex)
+                {
+                    appTcs.TrySetException(ex);
+                }
+
+            }, serviceContext))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send(
+                        "GET / HTTP/1.1",
+                        "Host:",
+                        "",
+                        "");
+
+                    await connection.Receive($"HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Transfer-Encoding: chunked",
+                        "",
+                        "5",
+                        "hello");
+
+                    cts.Cancel();
+
+                    await connection.Receive(
+                        "",
+                        "5",
+                        "world",
+                        "");
+
+                    await Assert.ThrowsAsync<OperationCanceledException>(() => appTcs.Task);
                 }
             }
         }
