@@ -117,9 +117,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                     Assert.False(task.IsCompleted);
                     await task;
                 }
-                catch (OperationCanceledException ex)
+                catch (Exception ex)
                 {
                     appTcs.TrySetException(ex);
+                }
+                finally
+                {
+                    appTcs.TrySetResult(null);
                 }
             }, serviceContext))
             {
