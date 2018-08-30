@@ -121,7 +121,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 {
                     appTcs.TrySetException(ex);
                 }
-
             }, serviceContext))
             {
                 using (var connection = server.CreateConnection())
@@ -140,12 +139,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                         "hello");
 
                     cts.Cancel();
-
-                    await connection.Receive(
-                        "",
-                        "5",
-                        "world",
-                        "");
 
                     await Assert.ThrowsAsync<OperationCanceledException>(() => appTcs.Task);
                 }
