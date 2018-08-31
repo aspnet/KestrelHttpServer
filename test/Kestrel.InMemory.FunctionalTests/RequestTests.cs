@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                 using (var connection = server.CreateConnection())
                 {
                     await connection.Send(
-                        "GET / HTTP/1.1",
+                        "POST / HTTP/1.1",
                         "Host:",
                         "Connection: keep-alive",
                         "Content-Length: 11",
