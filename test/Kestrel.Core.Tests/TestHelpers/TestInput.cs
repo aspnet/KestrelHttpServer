@@ -31,7 +31,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var connectionFeatures = new FeatureCollection();
             connectionFeatures.Set(Mock.Of<IConnectionLifetimeFeature>());
-            connectionFeatures.Set(Mock.Of<IBytesWrittenFeature>());
 
             Http1ConnectionContext = new Http1ConnectionContext
             {

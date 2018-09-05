@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _timeoutControl = timeoutControl;
         }
 
-        public Task FlushAsync(long count = 0, IHttpOutputProducer outputProducer = null, CancellationToken cancellationToken = default)
+        public Task FlushAsync(long count = 0, IHttpOutputAborter outputAborter = null, CancellationToken cancellationToken = default)
         {
             var flushValueTask = _writer.FlushAsync(cancellationToken);
 
@@ -51,11 +51,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                     _lastFlushTask = flushValueTask.AsTask();
                 }
 
-                return TimeFlushAsync(count, outputProducer, cancellationToken);
+                return TimeFlushAsync(count, outputAborter, cancellationToken);
             }
         }
 
-        private async Task TimeFlushAsync(long count, IHttpOutputProducer outputProducer, CancellationToken cancellationToken)
+        private async Task TimeFlushAsync(long count, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
         {
             _timeoutControl.StartTimingWrite(count);
 
@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
             catch (OperationCanceledException ex)
             {
-                outputProducer.Abort(new ConnectionAbortedException(CoreStrings.ConnectionOrStreamAbortedByCancellationToken, ex));
+                outputAborter.Abort(new ConnectionAbortedException(CoreStrings.ConnectionOrStreamAbortedByCancellationToken, ex));
             }
             catch
             {

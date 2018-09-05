@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 {
-    public class Http2OutputProducer : IHttpOutputProducer
+    public class Http2OutputProducer : IHttpOutputProducer, IHttpOutputAborter
     {
         private readonly int _streamId;
         private readonly Http2FrameWriter _frameWriter;
@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     // Complete with an exception to prevent an end of stream data frame from being sent without an
                     // explicit call to WriteStreamSuffixAsync. ConnectionAbortedExceptions are swallowed, so the
                     // message doesn't matter
-                    _dataPipe.Writer.Complete(new ConnectionAbortedException());
+                    _dataPipe.Writer.Complete(new OperationCanceledException());
                 }
 
                 _frameWriter.AbortPendingStreamDataWrites(_flowControl);
@@ -173,9 +173,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                 _completed = true;
 
-                // Even if there's no actual data, completing the writer gracefully sends an END_STREAM DATA frame.
-                _startedWritingDataFrames = true;
-
                 _dataPipe.Writer.Complete();
                 return _dataWriteProcessingTask;
             }
@@ -208,9 +205,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     _dataPipe.Reader.AdvanceTo(readResult.Buffer.End);
                 } while (!readResult.IsCompleted);
             }
-            catch (ConnectionAbortedException)
+            catch (OperationCanceledException)
             {
-                // Writes should not throw for aborted connections.
+                // Writes should not throw for aborted streams/connections.
             }
             catch (Exception ex)
             {

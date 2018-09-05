@@ -23,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private readonly Http1ConnectionContext _context;
         private readonly IHttpParser<Http1ParsingHandler> _parser;
+        private readonly Http1OutputProducer _http1Output;
         protected readonly long _keepAliveTicks;
         private readonly long _requestHeadersTimeoutTicks;
 
@@ -44,13 +45,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _requestHeadersTimeoutTicks = ServerOptions.Limits.RequestHeadersTimeout.Ticks;
 
             RequestBodyPipe = CreateRequestBodyPipe();
-            Output = new Http1OutputProducer(
+
+            _http1Output = new Http1OutputProducer(
                 _context.Transport.Output,
                 _context.ConnectionId,
                 _context.ConnectionContext,
                 _context.ServiceContext.Log,
-                _context.TimeoutControl,
-                _context.ConnectionFeatures.Get<IBytesWrittenFeature>());
+                _context.TimeoutControl);
+
+            Output = _http1Output;
         }
 
         public PipeReader Input => _context.Transport.Input;
@@ -59,6 +62,39 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public bool RequestTimedOut => _requestTimedOut;
 
         public override bool IsUpgradableRequest => _upgradeAvailable;
+
+        protected override void OnRequestProcessingEnded()
+        {
+            Input.Complete();
+
+            var lastMinResponseDataRate = MinResponseDataRate;
+
+            // Prevent RequestAborted from firing. Free up unneeded feature references.
+            Reset();
+
+            _http1Output.Dispose();
+
+            // Ensure TimeoutControl.StartTimingWrite enforces the last configured response body data rate for draining
+            // the output pipe.
+            MinResponseDataRate = lastMinResponseDataRate;
+
+            // Start the drain timeout.
+            // If _maxResponseBufferSize has no value, there's no backpressure and we can't reasonably timeout draining.
+            if (ServerOptions.Limits.MaxResponseBufferSize.HasValue)
+            {
+                // With full backpressure and a connection adapter there could be 2 two pipes buffering.
+                // We already validate that the buffer size is positive.
+                var oneBufferSize = ServerOptions.Limits.MaxResponseBufferSize.Value;
+                var maxBufferedBytes = oneBufferSize < long.MaxValue / 2 ? oneBufferSize * 2 : long.MaxValue;
+                TimeoutControl.StartTimingWrite(maxBufferedBytes);
+            }
+        }
+
+        public void OnInputOrOutputCompleted()
+        {
+            _http1Output.Abort(new ConnectionAbortedException("The client closed the connection."));
+            AbortRequest();
+        }
 
         /// <summary>
         /// Immediately kill the connection and poison the request body stream with an error.
@@ -70,11 +106,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 return;
             }
 
-            // Abort output prior to calling OnIOCompleted() to give the transport the chance to complete the input
-            // with the correct error and message. 
-            Output.Abort(abortReason);
+            _http1Output.Abort(abortReason);
 
-            OnInputOrOutputCompleted();
+            AbortRequest();
 
             PoisonRequestBodyStream(abortReason);
         }
@@ -411,7 +445,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override void OnRequestProcessingEnding()
         {
-            Input.Complete();
         }
 
         protected override string CreateRequestId()

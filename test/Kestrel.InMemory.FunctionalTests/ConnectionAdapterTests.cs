@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 {
-    public class ConnectionAdapterTests : LoggedTest
+    public class ConnectionAdapterTests : TestApplicationErrorLoggerLoggedTest
     {
         [Fact]
         public async Task CanReadAndWriteWithRewritingConnectionAdapter()
@@ -164,6 +164,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
                     await connection.WaitForConnectionClose();
                 }
             }
+
+            Assert.Contains(TestApplicationErrorLogger.Messages, m => m.Message.Contains($"Uncaught exception from the {nameof(IConnectionAdapter.OnConnectionAsync)} method of an {nameof(IConnectionAdapter)}."));
         }
 
         [Fact]

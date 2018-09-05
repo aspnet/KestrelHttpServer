@@ -9,11 +9,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
-    public class Http1OutputProducer : IHttpOutputProducer
+    public class Http1OutputProducer : IHttpOutputProducer, IHttpOutputAborter, IDisposable
     {
         private static readonly ReadOnlyMemory<byte> _continueBytes = new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n"));
         private static readonly byte[] _bytesHttpVersion11 = Encoding.ASCII.GetBytes("HTTP/1.1 ");
@@ -22,9 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private readonly string _connectionId;
         private readonly ConnectionContext _connectionContext;
-        private readonly ITimeoutControl _timeoutControl;
         private readonly IKestrelTrace _log;
-        private readonly IBytesWrittenFeature _transportBytesWrittenFeature;
         private readonly StreamSafePipeFlusher _flusher;
 
         // This locks access to to all of the below fields
@@ -33,23 +30,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private bool _completed = false;
         private bool _aborted;
         private long _unflushedBytes;
-        private long _totalBytesCommitted;
 
         private readonly PipeWriter _pipeWriter;
+
         public Http1OutputProducer(
             PipeWriter pipeWriter,
             string connectionId,
             ConnectionContext connectionContext,
             IKestrelTrace log,
-            ITimeoutControl timeoutControl,
-            IBytesWrittenFeature transportBytesWrittenFeature)
+            ITimeoutControl timeoutControl)
         {
             _pipeWriter = pipeWriter;
             _connectionId = connectionId;
             _connectionContext = connectionContext;
-            _timeoutControl = timeoutControl;
             _log = log;
-            _transportBytesWrittenFeature = transportBytesWrittenFeature;
             _flusher = new StreamSafePipeFlusher(pipeWriter, timeoutControl);
         }
 
@@ -85,7 +79,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var buffer = _pipeWriter;
                 var bytesCommitted = callback(buffer, state);
                 _unflushedBytes += bytesCommitted;
-                _totalBytesCommitted += bytesCommitted;
             }
 
             return FlushAsync(cancellationToken);
@@ -112,7 +105,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 writer.Commit();
 
                 _unflushedBytes += writer.BytesCommitted;
-                _totalBytesCommitted += writer.BytesCommitted;
             }
         }
 
@@ -128,15 +120,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _log.ConnectionDisconnect(_connectionId);
                 _completed = true;
                 _pipeWriter.Complete();
-
-                var unsentBytes = _totalBytesCommitted - _transportBytesWrittenFeature.TotalBytesWritten;
-
-                if (unsentBytes > 0)
-                {
-                    // unsentBytes should never be over 64KB in the default configuration.
-                    _timeoutControl.StartTimingWrite((int)Math.Min(unsentBytes, int.MaxValue));
-                    _pipeWriter.OnReaderCompleted((ex, state) => ((ITimeoutControl)state).StopTimingWrite(), _timeoutControl);
-                }
             }
         }
 
@@ -154,13 +137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 _aborted = true;
                 _connectionContext.Abort(error);
-
-                if (!_completed)
-                {
-                    _log.ConnectionDisconnect(_connectionId);
-                    _completed = true;
-                    _pipeWriter.Complete();
-                }
+                Dispose();
             }
         }
 
@@ -186,7 +163,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     writer.Write(buffer);
 
                     _unflushedBytes += buffer.Length;
-                    _totalBytesCommitted += buffer.Length;
                 }
                 writer.Commit();
 

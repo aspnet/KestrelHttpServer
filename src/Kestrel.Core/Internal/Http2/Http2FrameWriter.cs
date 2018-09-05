@@ -99,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             }
         }
 
-        public Task FlushAsync(IHttpOutputProducer outputProducer, CancellationToken cancellationToken)
+        public Task FlushAsync(IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
         {
             lock (_writeLock)
             {
@@ -108,7 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     return Task.CompletedTask;
                 }
 
-                return _flusher.FlushAsync(0, outputProducer, cancellationToken);
+                return _flusher.FlushAsync(0, outputAborter, cancellationToken);
             }
         }
 
