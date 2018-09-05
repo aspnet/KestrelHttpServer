@@ -110,12 +110,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 
             using (var server = new TestServer(async context =>
             {
-                await context.Response.WriteAsync("hello", cts.Token);
+                await context.Response.WriteAsync("hello", cts.Token).DefaultTimeout();
                 try
                 {
                     var task = context.Response.WriteAsync("world", cts.Token);
                     Assert.False(task.IsCompleted);
-                    await task;
+                    await task.DefaultTimeout();
                 }
                 catch (Exception ex)
                 {
@@ -144,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 
                     cts.Cancel();
 
-                    await Assert.ThrowsAsync<OperationCanceledException>(() => appTcs.Task);
+                    await Assert.ThrowsAsync<OperationCanceledException>(() => appTcs.Task).DefaultTimeout();
                 }
             }
         }
