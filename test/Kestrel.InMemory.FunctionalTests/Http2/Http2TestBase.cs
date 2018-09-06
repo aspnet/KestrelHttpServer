@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
@@ -77,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         protected readonly RequestDelegate _echoHost;
         protected readonly RequestDelegate _echoPath;
 
-        protected Http2ConnectionContext _connectionContext;
+        protected HttpConnectionContext _connectionContext;
         protected Http2Connection _connection;
         protected Task _connectionTask;
 
@@ -282,7 +283,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 .Setup(m => m.Http2ConnectionClosed(It.IsAny<string>(), It.IsAny<int>()))
                 .Callback(() => _closedStateReached.SetResult(null));
 
-            _connectionContext = new Http2ConnectionContext
+            _connectionContext = new HttpConnectionContext
             {
                 ConnectionContext = Mock.Of<ConnectionContext>(),
                 ConnectionFeatures = new FeatureCollection(),

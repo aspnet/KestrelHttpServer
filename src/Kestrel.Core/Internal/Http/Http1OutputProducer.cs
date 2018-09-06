@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -22,7 +23,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private readonly string _connectionId;
         private readonly ConnectionContext _connectionContext;
         private readonly IKestrelTrace _log;
-        private readonly StreamSafePipeFlusher _flusher;
+        private readonly IHttpMinResponseDataRateFeature _minResponseDataRateFeature;
+        private readonly TimingPipeFlusher _flusher;
 
         // This locks access to to all of the below fields
         private readonly object _contextLock = new object();
@@ -38,13 +40,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             string connectionId,
             ConnectionContext connectionContext,
             IKestrelTrace log,
-            ITimeoutControl timeoutControl)
+            ITimeoutControl timeoutControl,
+            IHttpMinResponseDataRateFeature minResponseDataRateFeature)
         {
             _pipeWriter = pipeWriter;
             _connectionId = connectionId;
             _connectionContext = connectionContext;
             _log = log;
-            _flusher = new StreamSafePipeFlusher(pipeWriter, timeoutControl);
+            _minResponseDataRateFeature = minResponseDataRateFeature;
+            _flusher = new TimingPipeFlusher(pipeWriter, timeoutControl);
         }
 
         public Task WriteDataAsync(ReadOnlySpan<byte> buffer, CancellationToken cancellationToken = default)
@@ -169,7 +173,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 var bytesWritten = _unflushedBytes;
                 _unflushedBytes = 0;
 
-                return _flusher.FlushAsync(bytesWritten, this, cancellationToken);
+                return _flusher.FlushAsync(
+                    _minResponseDataRateFeature.MinDataRate,
+                    bytesWritten,
+                    this,
+                    cancellationToken);
             }
         }
     }

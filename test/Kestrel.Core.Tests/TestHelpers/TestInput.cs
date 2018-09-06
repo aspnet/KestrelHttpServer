@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
@@ -32,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var connectionFeatures = new FeatureCollection();
             connectionFeatures.Set(Mock.Of<IConnectionLifetimeFeature>());
 
-            Http1ConnectionContext = new Http1ConnectionContext
+            Http1ConnectionContext = new HttpConnectionContext
             {
                 ServiceContext = new TestServiceContext(),
                 ConnectionContext = Mock.Of<ConnectionContext>(),
@@ -44,13 +45,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             Http1Connection = new Http1Connection(Http1ConnectionContext);
             Http1Connection.HttpResponseControl = Mock.Of<IHttpResponseControl>();
+            Http1Connection.Reset();
         }
 
         public IDuplexPipe Transport { get; }
 
         public IDuplexPipe Application { get; }
 
-        public Http1ConnectionContext Http1ConnectionContext { get; }
+        public HttpConnectionContext Http1ConnectionContext { get; }
 
         public Http1Connection Http1Connection { get; set; }
 

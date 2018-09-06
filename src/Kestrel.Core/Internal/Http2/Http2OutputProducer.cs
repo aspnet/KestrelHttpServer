@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly int _streamId;
         private readonly Http2FrameWriter _frameWriter;
-        private readonly StreamSafePipeFlusher _flusher;
+        private readonly TimingPipeFlusher _flusher;
 
         // This should only be accessed via the FrameWriter. The connection-level output flow control is protected by the
         // FrameWriter's connection-level write lock.
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _frameWriter = frameWriter;
             _flowControl = flowControl;
             _dataPipe = CreateDataPipe(pool);
-            _flusher = new StreamSafePipeFlusher(_dataPipe.Writer, timeoutControl);
+            _flusher = new TimingPipeFlusher(_dataPipe.Writer, timeoutControl);
             _dataWriteProcessingTask = ProcessDataWrites();
         }
 
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 {
                     // If there's already been response data written to the stream, just wait for that. Any header
                     // should be in front of the data frames in the connection pipe. Trailers could change things.
-                    return _flusher.FlushAsync(0, this, cancellationToken);
+                    return _flusher.FlushAsync(this, cancellationToken);
                 }
                 else
                 {
@@ -158,7 +158,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _startedWritingDataFrames = true;
 
                 _dataPipe.Writer.Write(data);
-                return _flusher.FlushAsync(data.Length, this, cancellationToken);
+                return _flusher.FlushAsync(this, cancellationToken);
             }
         }
 

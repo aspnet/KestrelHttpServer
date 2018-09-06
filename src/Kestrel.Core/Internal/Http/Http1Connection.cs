@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private const byte ByteForwardSlash = (byte)'/';
         private const string Asterisk = "*";
 
-        private readonly Http1ConnectionContext _context;
+        private readonly HttpConnectionContext _context;
         private readonly IHttpParser<Http1ParsingHandler> _parser;
         private readonly Http1OutputProducer _http1Output;
         protected readonly long _keepAliveTicks;
@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private int _remainingRequestHeadersBytesAllowed;
 
-        public Http1Connection(Http1ConnectionContext context)
+        public Http1Connection(HttpConnectionContext context)
             : base(context)
         {
             _context = context;
@@ -51,7 +51,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 _context.ConnectionId,
                 _context.ConnectionContext,
                 _context.ServiceContext.Log,
-                _context.TimeoutControl);
+                _context.TimeoutControl,
+                this);
 
             Output = _http1Output;
         }
@@ -74,19 +75,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _http1Output.Dispose();
 
-            // Ensure TimeoutControl.StartTimingWrite enforces the last configured response body data rate for draining
-            // the output pipe.
-            MinResponseDataRate = lastMinResponseDataRate;
-
             // Start the drain timeout.
             // If _maxResponseBufferSize has no value, there's no backpressure and we can't reasonably timeout draining.
-            if (ServerOptions.Limits.MaxResponseBufferSize.HasValue)
+            if (lastMinResponseDataRate != null && ServerOptions.Limits.MaxResponseBufferSize.HasValue)
             {
                 // With full backpressure and a connection adapter there could be 2 two pipes buffering.
                 // We already validate that the buffer size is positive.
+                // There's no reason to stop timing the write after the connection is closed.
                 var oneBufferSize = ServerOptions.Limits.MaxResponseBufferSize.Value;
                 var maxBufferedBytes = oneBufferSize < long.MaxValue / 2 ? oneBufferSize * 2 : long.MaxValue;
-                TimeoutControl.StartTimingWrite(maxBufferedBytes);
+                TimeoutControl.StartTimingWrite(lastMinResponseDataRate, maxBufferedBytes);
             }
         }
 
@@ -149,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         break;
                     }
 
-                    TimeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutAction.SendTimeoutResponse);
+                    TimeoutControl.ResetTimeout(_requestHeadersTimeoutTicks, TimeoutReason.RequestHeaders);
 
                     _requestProcessingStatus = RequestProcessingStatus.ParsingRequestLine;
                     goto case RequestProcessingStatus.ParsingRequestLine;
@@ -457,7 +455,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             // Reset the features and timeout.
             Reset();
-            TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutAction.StopProcessingNextRequest);
+            TimeoutControl.SetTimeout(_keepAliveTicks, TimeoutReason.KeepAlive);
         }
 
         protected override bool BeginRead(out ValueTask<ReadResult> awaitable)

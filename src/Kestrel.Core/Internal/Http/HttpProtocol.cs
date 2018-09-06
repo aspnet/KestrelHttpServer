@@ -58,12 +58,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private long _responseBytesWritten;
 
-        private readonly IHttpProtocolContext _context;
+        private readonly HttpConnectionContext _context;
 
         protected string _methodText = null;
         private string _scheme = null;
 
-        public HttpProtocol(IHttpProtocolContext context)
+        public HttpProtocol(HttpConnectionContext context)
         {
             _context = context;
 
