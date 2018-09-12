@@ -54,6 +54,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             Assert.NotNull(connectionId);
             Assert.NotNull(requestId);
 
+            // We can't fix graceful shutdown to wait for request request processing to fully complete in 2.1, so we
+            // instead introduce a one second delay to give time for the ConnectionStop event to fire.
+            await Task.Delay(1000);
+
             var events = _listener.EventData.Where(e => e != null && GetProperty(e, "connectionId") == connectionId).ToList();
 
             {
