@@ -90,8 +90,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
                 _handshakeTimeout = value != Timeout.InfiniteTimeSpan ? value : TimeSpan.MaxValue;
             }
         }
-
-        // For testing
-        internal Action OnHandshakeStarted;
     }
 }

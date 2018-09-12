@@ -312,34 +312,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
             LoggerFactory.AddProvider(loggerProvider);
 
             var testContext = new TestServiceContext(LoggerFactory);
-            var heartbeatManager = new HttpHeartbeatManager(testContext.ConnectionManager);
+            testContext.InitializeHeartbeat();
 
-            var handshakeStartedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-            TimeSpan handshakeTimeout = default;
-
-            using (var server = new TestServer(context => Task.CompletedTask,
-                testContext,
+            using (var server = new TestServer(context => Task.CompletedTask, testContext,
                 listenOptions =>
                 {
                     listenOptions.UseHttps(o =>
                     {
                         o.ServerCertificate = new X509Certificate2(TestResources.TestCertificatePath, "testPassword");
-                        o.OnHandshakeStarted = () => handshakeStartedTcs.SetResult(null);
-
-                        handshakeTimeout = o.HandshakeTimeout;
+                        o.HandshakeTimeout = TimeSpan.FromSeconds(1);
                     });
                 }))
             {
                 using (var connection = server.CreateConnection())
                 {
-                    // HttpsConnectionAdapter dispatches via Task.Run() before starting the handshake.
-                    // Wait for the handshake to start before advancing the system clock.
-                    await handshakeStartedTcs.Task.DefaultTimeout();
-
-                    // Min amount of time between requests that triggers a handshake timeout.
-                    testContext.MockSystemClock.UtcNow += handshakeTimeout + Heartbeat.Interval + TimeSpan.FromTicks(1);
-                    heartbeatManager.OnHeartbeat(testContext.SystemClock.UtcNow);
-
+                    // No data should be sent and the connection should be closed in well under 30 seconds.
                     Assert.Equal(0, await connection.Stream.ReadAsync(new byte[1], 0, 1).DefaultTimeout());
                 }
             }

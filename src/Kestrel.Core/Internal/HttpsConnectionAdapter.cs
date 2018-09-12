@@ -125,8 +125,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https.Internal
             var timeoutFeature = context.Features.Get<IConnectionTimeoutFeature>();
             timeoutFeature.SetTimeout(_options.HandshakeTimeout);
 
-            _options.OnHandshakeStarted?.Invoke();
-
             try
             {
 #if NETCOREAPP2_1

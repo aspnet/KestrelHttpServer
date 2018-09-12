@@ -21,6 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
     public class KestrelServer : IServer
     {
         private readonly List<ITransport> _transports = new List<ITransport>();
+        private readonly Heartbeat _heartbeat;
         private readonly IServerAddressesFeature _serverAddresses;
         private readonly ITransportFactory _transportFactory;
 
@@ -43,6 +44,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
 
             _transportFactory = transportFactory;
             ServiceContext = serviceContext;
+
+            var httpHeartbeatManager = new HttpHeartbeatManager(serviceContext.ConnectionManager);
+            _heartbeat = new Heartbeat(
+                new IHeartbeatHandler[] { serviceContext.DateHeaderValueManager, httpHeartbeatManager },
+                serviceContext.SystemClock,
+                DebuggerWrapper.Singleton,
+                Trace);
 
             Features = new FeatureCollection();
             _serverAddresses = new ServerAddressesFeature();
@@ -70,13 +78,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             var systemClock = new SystemClock();
             var dateHeaderValueManager = new DateHeaderValueManager(systemClock);
 
-            var httpHeartbeatManager = new HttpHeartbeatManager(connectionManager);
-            var heartbeat = new Heartbeat(
-                new IHeartbeatHandler[] { dateHeaderValueManager, httpHeartbeatManager },
-                systemClock,
-                DebuggerWrapper.Singleton,
-                trace);
-
             // TODO: This logic will eventually move into the IConnectionHandler<T> and off
             // the service context once we get to https://github.com/aspnet/KestrelHttpServer/issues/1662
             PipeScheduler scheduler = null;
@@ -101,8 +102,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 SystemClock = systemClock,
                 DateHeaderValueManager = dateHeaderValueManager,
                 ConnectionManager = connectionManager,
-                Heartbeat = heartbeat,
-                ServerOptions = serverOptions,
+                ServerOptions = serverOptions
             };
         }
 
@@ -133,8 +133,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     throw new InvalidOperationException(CoreStrings.ServerAlreadyStarted);
                 }
                 _hasStarted = true;
-
-                ServiceContext.Heartbeat?.Start();
+                _heartbeat.Start();
 
                 async Task OnBind(ListenOptions endpoint)
                 {
@@ -200,7 +199,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 }
                 await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                ServiceContext.Heartbeat?.Dispose();
+                _heartbeat.Dispose();
             }
             catch (Exception ex)
             {

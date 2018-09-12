@@ -39,13 +39,6 @@ namespace Microsoft.AspNetCore.Testing
             MockSystemClock = null;
             SystemClock = new SystemClock();
             DateHeaderValueManager = new DateHeaderValueManager(SystemClock);
-
-            var heartbeatManager = new HttpHeartbeatManager(ConnectionManager);
-            Heartbeat = new Heartbeat(
-                new IHeartbeatHandler[] { DateHeaderValueManager, heartbeatManager },
-                SystemClock,
-                DebuggerWrapper.Singleton,
-                Log);
         }
 
         private void Initialize(ILoggerFactory loggerFactory, IKestrelTrace kestrelTrace)
