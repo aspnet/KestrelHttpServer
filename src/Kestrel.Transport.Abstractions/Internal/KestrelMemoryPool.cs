@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal
 #if DEBUG
             return new DiagnosticMemoryPool(CreateSlabMemoryPool());
 #else
-            return CreateSlabMemoryPool();
+            return MemoryPool<byte>.Shared;
 #endif
         }
 
