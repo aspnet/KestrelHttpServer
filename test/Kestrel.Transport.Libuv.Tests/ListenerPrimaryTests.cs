@@ -302,11 +302,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Tests
                 throw new InvalidOperationException($"Could not determine a proper URI for options with Type {options.Type}");
             }
 
-            var scheme = options.ConnectionAdapters.Any(f => f.IsHttps)
-                ? "https"
-                : "http";
-
-            return new Uri($"{scheme}://{options.IPEndPoint}");
+            return new Uri($"{options.Scheme}://{options.IPEndPoint}");
         }
 
         private class ConnectionBuilder : IConnectionBuilder

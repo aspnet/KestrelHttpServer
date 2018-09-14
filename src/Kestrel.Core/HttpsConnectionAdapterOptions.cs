@@ -2,12 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Pipelines;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Https
 {
@@ -74,6 +76,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         /// Specifies whether the certificate revocation list is checked during authentication.
         /// </summary>
         public bool CheckCertificateRevocation { get; set; }
+
+        internal PipeScheduler Scheduler { get; set; } = PipeScheduler.ThreadPool;
+
+        internal long? MaxInputBufferSize { get; set; }
+
+        internal long? MaxOutputBufferSize { get; set; }
 
         /// <summary>
         /// Specifies the maximum amount of time allowed for the TLS/SSL handshake. This must be positive and finite.

@@ -28,11 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
         /// </summary>
         internal override string GetDisplayName()
         {
-            var scheme = ConnectionAdapters.Any(f => f.IsHttps)
-                ? "https"
-                : "http";
-
-            return $"{scheme}://localhost:{IPEndPoint.Port}";
+            return $"{Scheme}://localhost:{IPEndPoint.Port}";
         }
 
         internal override async Task BindAsync(AddressBindContext context)
@@ -80,6 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                 KestrelServerOptions = KestrelServerOptions,
                 NoDelay = NoDelay,
                 Protocols = Protocols,
+                IsTls = IsTls
             };
 
             options._middleware.AddRange(_middleware);
