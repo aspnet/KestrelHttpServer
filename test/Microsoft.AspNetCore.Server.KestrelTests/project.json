@@ -11,14 +11,14 @@
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.13-servicing-005091-00",
+          "version": "1.0.13",
           "type": "platform"
         },
         "System.Diagnostics.TraceSource": "4.0.0",
         "System.Globalization.Extensions": "4.0.1",
         "System.IO": "4.1.0",
-        "System.Net.Http": "4.1.4-servicing-26814-02",
-        "System.Net.Http.WinHttpHandler": "4.0.4-servicing-26814-02",
+        "System.Net.Http": "4.1.4",
+        "System.Net.Http.WinHttpHandler": "4.0.4",
         "System.Net.Sockets": "4.1.0",
         "System.Runtime.Handles": "4.0.1",
         "moq.netcore": "4.4.0-beta8"
