@@ -19,10 +19,10 @@
     "netcoreapp1.1": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.1.10-servicing-001782-00",
+          "version": "1.1.10",
           "type": "platform"
         },
-        "System.Net.Http.WinHttpHandler": "4.3.3-servicing-26814-01",
+        "System.Net.Http.WinHttpHandler": "4.3.3",
         "System.Net.NetworkInformation": "4.3.0-*",
         "System.Runtime.Serialization.Primitives": "4.3.0-*"
       },
