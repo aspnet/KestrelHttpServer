@@ -23,9 +23,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
             DynamicTableSizeUpdate
         }
 
-        // TODO: add new configurable limit
-        public const int MaxStringOctets = 4096;
-
         // http://httpwg.org/specs/rfc7541.html#rfc.section.6.1
         //   0   1   2   3   4   5   6   7
         // +---+---+---+---+---+---+---+---+
@@ -83,9 +80,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private readonly int _maxDynamicTableSize;
         private readonly DynamicTable _dynamicTable;
         private readonly IntegerDecoder _integerDecoder = new IntegerDecoder();
-        private readonly byte[] _stringOctets = new byte[MaxStringOctets];
-        private readonly byte[] _headerNameOctets = new byte[MaxStringOctets];
-        private readonly byte[] _headerValueOctets = new byte[MaxStringOctets];
+        private readonly byte[] _stringOctets;
+        private readonly byte[] _headerNameOctets;
+        private readonly byte[] _headerValueOctets;
 
         private State _state = State.Ready;
         private byte[] _headerName;
@@ -97,17 +94,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private bool _huffman;
         private bool _headersObserved;
 
-        public HPackDecoder(int maxDynamicTableSize)
-            : this(maxDynamicTableSize, new DynamicTable(maxDynamicTableSize))
-        {
-            _maxDynamicTableSize = maxDynamicTableSize;
-        }
+        public HPackDecoder(int maxDynamicTableSize, int maxHeaderFieldSize)
+            : this(maxDynamicTableSize, maxHeaderFieldSize, new DynamicTable(maxDynamicTableSize)) { }
 
         // For testing.
-        internal HPackDecoder(int maxDynamicTableSize, DynamicTable dynamicTable)
+        internal HPackDecoder(int maxDynamicTableSize, int maxHeaderFieldSize, DynamicTable dynamicTable)
         {
             _maxDynamicTableSize = maxDynamicTableSize;
             _dynamicTable = dynamicTable;
+
+            _stringOctets = new byte[maxHeaderFieldSize];
+            _headerNameOctets = new byte[maxHeaderFieldSize];
+            _headerValueOctets = new byte[maxHeaderFieldSize];
         }
 
         public void Decode(ReadOnlySequence<byte> data, bool endHeaders, IHttpHeadersHandler handler)

@@ -331,12 +331,27 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Theory]
-        [InlineData(4097)]
+        [InlineData(int.MinValue)]
         [InlineData(-1)]
         public void Http2HeaderTableSizeInvalid(int value)
         {
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().Http2.MaxFrameSize = value);
-            Assert.Contains("A value between", ex.Message);
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().Http2.HeaderTableSize = value);
+            Assert.StartsWith(CoreStrings.GreaterThanZeroRequired, ex.Message);
+        }
+
+        [Fact]
+        public void Http2MaxHeaderFieldSizeDefault()
+        {
+            Assert.Equal(4096, new KestrelServerLimits().Http2.MaxHeaderFieldSize);
+        }
+
+        [Theory]
+        [InlineData(int.MinValue)]
+        [InlineData(-1)]
+        public void Http2MaxHeaderFieldSizeInvalid(int value)
+        {
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().Http2.MaxHeaderFieldSize = value);
+            Assert.StartsWith(CoreStrings.GreaterThanZeroRequired, ex.Message);
         }
 
         public static TheoryData<TimeSpan> TimeoutValidData => new TheoryData<TimeSpan>
