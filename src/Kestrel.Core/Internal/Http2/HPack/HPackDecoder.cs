@@ -94,18 +94,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack
         private bool _huffman;
         private bool _headersObserved;
 
-        public HPackDecoder(int maxDynamicTableSize, int maxHeaderFieldSize)
-            : this(maxDynamicTableSize, maxHeaderFieldSize, new DynamicTable(maxDynamicTableSize)) { }
+        public HPackDecoder(int maxDynamicTableSize, int maxRequestHeaderFieldSize)
+            : this(maxDynamicTableSize, maxRequestHeaderFieldSize, new DynamicTable(maxDynamicTableSize)) { }
 
         // For testing.
-        internal HPackDecoder(int maxDynamicTableSize, int maxHeaderFieldSize, DynamicTable dynamicTable)
+        internal HPackDecoder(int maxDynamicTableSize, int maxRequestHeaderFieldSize, DynamicTable dynamicTable)
         {
             _maxDynamicTableSize = maxDynamicTableSize;
             _dynamicTable = dynamicTable;
 
-            _stringOctets = new byte[maxHeaderFieldSize];
-            _headerNameOctets = new byte[maxHeaderFieldSize];
-            _headerValueOctets = new byte[maxHeaderFieldSize];
+            _stringOctets = new byte[maxRequestHeaderFieldSize];
+            _headerNameOctets = new byte[maxRequestHeaderFieldSize];
+            _headerValueOctets = new byte[maxRequestHeaderFieldSize];
         }
 
         public void Decode(ReadOnlySequence<byte> data, bool endHeaders, IHttpHeadersHandler handler)

@@ -333,6 +333,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         [Theory]
         [InlineData(int.MinValue)]
         [InlineData(-1)]
+        [InlineData(0)]
         public void Http2HeaderTableSizeInvalid(int value)
         {
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().Http2.HeaderTableSize = value);
@@ -340,17 +341,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public void Http2MaxHeaderFieldSizeDefault()
+        public void Http2MaxRequestHeaderFieldSizeDefault()
         {
-            Assert.Equal(4096, new KestrelServerLimits().Http2.MaxHeaderFieldSize);
+            Assert.Equal(4096, new KestrelServerLimits().Http2.MaxRequestHeaderFieldSize);
         }
 
         [Theory]
         [InlineData(int.MinValue)]
         [InlineData(-1)]
-        public void Http2MaxHeaderFieldSizeInvalid(int value)
+        [InlineData(0)]
+        public void Http2MaxRequestHeaderFieldSizeInvalid(int value)
         {
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().Http2.MaxHeaderFieldSize = value);
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new KestrelServerLimits().Http2.MaxRequestHeaderFieldSize = value);
             Assert.StartsWith(CoreStrings.GreaterThanZeroRequired, ex.Message);
         }
 

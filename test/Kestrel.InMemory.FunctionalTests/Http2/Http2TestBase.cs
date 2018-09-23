@@ -31,8 +31,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 {
     public class Http2TestBase : TestApplicationErrorLoggerLoggedTest, IDisposable, IHttpHeadersHandler
     {
-        protected static readonly int MaxHeaderFieldSize = 4096;
-        protected static readonly string _4kHeaderValue = new string('a', MaxHeaderFieldSize);
+        protected static readonly int MaxRequestHeaderFieldSize = 4096;
+        protected static readonly string _4kHeaderValue = new string('a', MaxRequestHeaderFieldSize);
 
         protected static readonly IEnumerable<KeyValuePair<string, string>> _browserRequestHeaders = new[]
         {
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             );
 
             _pair = DuplexPipe.CreateConnectionPair(inputPipeOptions, outputPipeOptions);
-            _hpackDecoder = new HPackDecoder((int)_clientSettings.HeaderTableSize, MaxHeaderFieldSize);
+            _hpackDecoder = new HPackDecoder((int)_clientSettings.HeaderTableSize, MaxRequestHeaderFieldSize);
 
             _noopApplication = context => Task.CompletedTask;
 
