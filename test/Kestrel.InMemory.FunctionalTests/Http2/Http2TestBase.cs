@@ -289,7 +289,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ConnectionFeatures = new FeatureCollection(),
                 ServiceContext = new TestServiceContext(LoggerFactory, mockKestrelTrace.Object),
                 MemoryPool = _memoryPool,
-                Transport = _pair.Transport
+                Transport = _pair.Transport,
+                TimeoutControl = Mock.Of<TimeoutControl>()
             };
 
             _connection = new Http2Connection(_connectionContext);

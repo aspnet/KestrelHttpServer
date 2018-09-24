@@ -102,12 +102,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         }
 
         public string ConnectionId => _context.ConnectionId;
-
         public PipeReader Input => _context.Transport.Input;
-
         public IKestrelTrace Log => _context.ServiceContext.Log;
-
         public IFeatureCollection ConnectionFeatures => _context.ConnectionFeatures;
+        public KestrelServerOptions ServerOptions => _context.ServiceContext.ServerOptions;
 
         internal Http2PeerSettings ServerSettings => _serverSettings;
 
@@ -117,12 +115,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 if (_state != Http2ConnectionState.Closed)
                 {
-                    _frameWriter.WriteGoAwayAsync(_highestOpenedStreamId, Http2ErrorCode.NO_ERROR);
                     UpdateState(Http2ConnectionState.Closed);
                 }
             }
 
-            _frameWriter.Complete();
+            _frameWriter.Abort(new ConnectionAbortedException(CoreStrings.ConnectionAbortedByClient));
         }
 
         public void Abort(ConnectionAbortedException ex)
@@ -301,6 +298,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     await _streamsCompleted.Task;
 
                     _frameWriter.Complete();
+
+                    _context.TimeoutControl.StartDrainTimeout(ServerOptions.Limits.MinResponseDataRate, ServerOptions.Limits.MaxResponseBufferSize);
                 }
                 catch
                 {

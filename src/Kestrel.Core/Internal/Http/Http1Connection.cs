@@ -75,22 +75,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             _http1Output.Dispose();
 
-            // Start the drain timeout.
-            // If _maxResponseBufferSize has no value, there's no backpressure and we can't reasonably timeout draining.
-            if (lastMinResponseDataRate != null && ServerOptions.Limits.MaxResponseBufferSize.HasValue)
-            {
-                // With full backpressure and a connection adapter there could be 2 two pipes buffering.
-                // We already validate that the buffer size is positive.
-                // There's no reason to stop timing the write after the connection is closed.
-                var oneBufferSize = ServerOptions.Limits.MaxResponseBufferSize.Value;
-                var maxBufferedBytes = oneBufferSize < long.MaxValue / 2 ? oneBufferSize * 2 : long.MaxValue;
-                TimeoutControl.StartTimingWrite(lastMinResponseDataRate, maxBufferedBytes);
-            }
+            TimeoutControl.StartDrainTimeout(lastMinResponseDataRate, ServerOptions.Limits.MaxResponseBufferSize);
         }
 
         public void OnInputOrOutputCompleted()
         {
-            _http1Output.Abort(new ConnectionAbortedException("The client closed the connection."));
+            _http1Output.Abort(new ConnectionAbortedException(CoreStrings.ConnectionAbortedByClient));
             AbortRequest();
         }
 
