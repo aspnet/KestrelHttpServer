@@ -68,14 +68,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             Input.Complete();
 
-            var lastMinResponseDataRate = MinResponseDataRate;
+            TimeoutControl.StartDrainTimeout(MinResponseDataRate, ServerOptions.Limits.MaxResponseBufferSize);
 
             // Prevent RequestAborted from firing. Free up unneeded feature references.
             Reset();
 
             _http1Output.Dispose();
-
-            TimeoutControl.StartDrainTimeout(lastMinResponseDataRate, ServerOptions.Limits.MaxResponseBufferSize);
         }
 
         public void OnInputOrOutputCompleted()

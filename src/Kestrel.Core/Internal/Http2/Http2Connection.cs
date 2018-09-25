@@ -297,9 +297,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                     await _streamsCompleted.Task;
 
-                    _frameWriter.Complete();
-
                     _context.TimeoutControl.StartDrainTimeout(ServerOptions.Limits.MinResponseDataRate, ServerOptions.Limits.MaxResponseBufferSize);
+
+                    _frameWriter.Complete();
                 }
                 catch
                 {

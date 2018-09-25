@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipelines;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
@@ -51,9 +50,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         // For testing
         internal HttpProtocol Http1Connection => _http1Connection;
         internal IDebugger Debugger { get; set; } = DebuggerWrapper.Singleton;
-
-        // For testing
-        internal ITimeoutControl TimeoutControl => _timeoutControl;
 
         public string ConnectionId => _context.ConnectionId;
         public IPEndPoint LocalEndPoint => _context.LocalEndPoint;
@@ -121,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 using (connectionLifetimeNotificationFeature?.ConnectionClosedRequested.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
                     // Ensure TimeoutControl._lastTimestamp is intialized before anything that could set timeouts runs.
-                    Tick();
+                    _timeoutControl.Initialize(_systemClock.UtcNow);
 
                     _context.ConnectionFeatures.Set<IConnectionTimeoutFeature>(_timeoutControl);
 

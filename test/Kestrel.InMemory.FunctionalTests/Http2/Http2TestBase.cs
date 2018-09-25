@@ -56,6 +56,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         protected readonly HPackDecoder _hpackDecoder;
         private readonly byte[] _headerEncodingBuffer = new byte[Http2PeerSettings.MinAllowedMaxFrameSize];
 
+        protected readonly Mock<ITimeoutHandler> _mockTimeoutHandler = new Mock<ITimeoutHandler>();
+        protected readonly TimeoutControl _timeoutControl;
+
         protected readonly ConcurrentDictionary<int, TaskCompletionSource<object>> _runningStreams = new ConcurrentDictionary<int, TaskCompletionSource<object>>();
         protected readonly Dictionary<string, string> _receivedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         protected readonly Dictionary<string, string> _decodedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -102,6 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _pair = DuplexPipe.CreateConnectionPair(inputPipeOptions, outputPipeOptions);
             _hpackDecoder = new HPackDecoder((int)_clientSettings.HeaderTableSize, MaxRequestHeaderFieldSize);
+            _timeoutControl = new TimeoutControl(_mockTimeoutHandler.Object);
 
             _noopApplication = context => Task.CompletedTask;
 
@@ -290,7 +294,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 ServiceContext = new TestServiceContext(LoggerFactory, mockKestrelTrace.Object),
                 MemoryPool = _memoryPool,
                 Transport = _pair.Transport,
-                TimeoutControl = Mock.Of<TimeoutControl>()
+                TimeoutControl = _timeoutControl
             };
 
             _connection = new Http2Connection(_connectionContext);
