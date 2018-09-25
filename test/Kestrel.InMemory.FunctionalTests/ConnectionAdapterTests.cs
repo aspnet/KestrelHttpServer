@@ -222,7 +222,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.InMemory.FunctionalTests
 
             public async Task<IAdaptedConnection> OnConnectionAsync(ConnectionAdapterContext context)
             {
-                await Task.Delay(100);
+                await Task.Yield();
                 return new AdaptedConnection(new RewritingStream(context.ConnectionStream));
             }
         }
