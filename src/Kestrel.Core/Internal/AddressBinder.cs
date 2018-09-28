@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 {
     internal class AddressBinder
     {
-        public static async Task BindAsync(IServerAddressesFeature addresses,
+        public static Task BindAsync(IServerAddressesFeature addresses,
             KestrelServerOptions serverOptions,
             ILogger logger,
             Func<ListenOptions, Task> createBinding)
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             listenOptions.Clear();
             addresses.Addresses.Clear();
 
-            await strategy.BindAsync(context).ConfigureAwait(false);
+            return strategy.BindAsync(context);
         }
 
         private static IStrategy CreateStrategy(ListenOptions[] listenOptions, string[] addresses, bool preferAddresses)

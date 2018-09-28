@@ -95,10 +95,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Adapter.Internal
         }
 
 #if NETCOREAPP2_1
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
         {
             _output.Write(source.Span);
-            await _output.FlushAsync(cancellationToken);
+            return _output.FlushAsync(cancellationToken);
         }
 #elif NETSTANDARD2_0
 #else
