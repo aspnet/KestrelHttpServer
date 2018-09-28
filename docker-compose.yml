@@ -1,0 +1,16 @@
+version: "3.2"
+services:
+  kestrel:
+    build: .
+    environment:
+      - "ASPNETCORE_ENVIRONMENT=Development"
+    ports:
+      - "50001:50001"
+    volumes:
+      - "dotnet-root:/root"
+      - "./:/data"
+    # command: /etc/docker-start.sh /data/samples/PlaintextApp/bin/Debug/netcoreapp2.2/PlaintextApp.dll
+    command: /etc/docker-start.sh /data/samples/LargeResponseApp/bin/Debug/netcoreapp2.2/LargeResponseApp.dll
+    # command: /etc/docker-start.sh --help
+volumes:
+  dotnet-root:
