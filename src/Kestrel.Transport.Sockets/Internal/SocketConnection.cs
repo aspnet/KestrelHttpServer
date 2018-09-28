@@ -68,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         public override MemoryPool<byte> MemoryPool { get; }
         public override PipeScheduler InputWriterScheduler => _scheduler;
         public override PipeScheduler OutputReaderScheduler => _scheduler;
-        public override long TotalBytesWritten => Interlocked.Read(ref _totalBytesWritten);
+        public override long TotalBytesWritten => Volatile.Read(ref _totalBytesWritten);
 
         public async Task StartAsync()
         {
@@ -264,9 +264,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     await _sender.SendAsync(buffer);
                 }
 
-                // This is not interlocked because there could be a concurrent writer.
+                // This is not "interlocked" because there could be a concurrent writer.
                 // Instead it's to prevent read tearing on 32-bit systems.
-                Interlocked.Add(ref _totalBytesWritten, buffer.Length);
+                // The implementation is a faster variant for Interlocked.Add (at least on 64-bit)
+                var totalBytesWritten = Volatile.Read(ref _totalBytesWritten);
+                totalBytesWritten += buffer.Length;
+                Volatile.Write(ref _totalBytesWritten, totalBytesWritten);
 
                 Output.AdvanceTo(end);
 
