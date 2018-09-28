@@ -397,6 +397,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedOutByServer));
                     break;
                 default:
+                    Debug.Assert(false, "Invalid TimeoutReason");
                     break;
             }
         }
