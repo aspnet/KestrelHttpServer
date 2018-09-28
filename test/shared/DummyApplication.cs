@@ -40,9 +40,9 @@ namespace Microsoft.AspNetCore.Testing
             _httpContextFactory?.Dispose(context);
         }
 
-        public async Task ProcessRequestAsync(HttpContext context)
+        public Task ProcessRequestAsync(HttpContext context)
         {
-            await _requestDelegate(context);
+            return _requestDelegate(context);
         }
     }
 }
