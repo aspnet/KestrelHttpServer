@@ -450,10 +450,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             // ensure that an app that completes early due to the abort doesn't result in header frames being sent.
             _http2Output.Dispose();
 
-            AbortRequest();
+            AbortRequest(abortReason);
 
             // Unblock the request body.
-            PoisonRequestBodyStream(abortReason);
             RequestBodyPipe.Writer.Complete(abortReason);
 
             _inputFlowControl.Abort();
