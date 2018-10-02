@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
             {
                 case SchedulingMode.Default:
                 case SchedulingMode.ThreadPool:
-                    scheduler = PipeScheduler.ThreadPool;
+                    scheduler = ThreadPoolPipeSchedulerNoContext.Instance;
                     break;
                 case SchedulingMode.Inline:
                     scheduler = PipeScheduler.Inline;
