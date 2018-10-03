@@ -650,6 +650,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await _http1Connection.WriteAsync(new ArraySegment<byte>(new[] { (byte)'d' }));
             Assert.NotEqual(original, _http1Connection.RequestAborted);
+
+            _http1Connection.Abort(new ConnectionAbortedException());
+
+            Assert.False(original.IsCancellationRequested);
+            Assert.False(_http1Connection.RequestAborted.IsCancellationRequested);
         }
 
         [Fact]
@@ -667,6 +672,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await _http1Connection.WriteAsync(new ArraySegment<byte>(new[] { (byte)'d' }), default(CancellationToken));
             Assert.NotEqual(original, _http1Connection.RequestAborted);
+
+            _http1Connection.Abort(new ConnectionAbortedException());
+
+            Assert.False(original.IsCancellationRequested);
+            Assert.False(_http1Connection.RequestAborted.IsCancellationRequested);
         }
 
         [Fact]
@@ -689,6 +699,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await _http1Connection.WriteAsync(new ArraySegment<byte>(new[] { (byte)'d' }), default(CancellationToken));
             Assert.NotEqual(original, _http1Connection.RequestAborted);
+
+            _http1Connection.Abort(new ConnectionAbortedException());
+
+            Assert.False(original.IsCancellationRequested);
+            Assert.False(_http1Connection.RequestAborted.IsCancellationRequested);
         }
 
         [Fact]
@@ -702,6 +717,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             await _http1Connection.ProduceEndAsync();
             Assert.NotEqual(original, _http1Connection.RequestAborted);
+
+            _http1Connection.Abort(new ConnectionAbortedException());
+
+            Assert.False(original.IsCancellationRequested);
+            Assert.False(_http1Connection.RequestAborted.IsCancellationRequested);
         }
 
         [Fact]
