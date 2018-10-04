@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             _awaitableEventArgs.SetBuffer(Array.Empty<byte>(), 0, 0);
 
-            using (ExecutionContext.SuppressFlow())
+            using (SuppressExecutionContext())
             {
                 if (!_socket.ReceiveAsync(_awaitableEventArgs))
                 {
@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 #else
 #error TFMs need to be updated
 #endif
-            using (ExecutionContext.SuppressFlow())
+            using (SuppressExecutionContext())
             {
                 if (!_socket.ReceiveAsync(_awaitableEventArgs))
                 {
