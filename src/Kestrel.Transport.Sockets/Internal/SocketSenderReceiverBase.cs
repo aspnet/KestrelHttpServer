@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         public void Dispose() => _awaitableEventArgs.Dispose();
 
-        protected AsyncFlowControl? SuppressExecutionContext()
+        protected static AsyncFlowControl? SuppressExecutionContext()
         {
             return ExecutionContext.IsFlowSuppressed() ? (AsyncFlowControl?)null : ExecutionContext.SuppressFlow();
         }
