@@ -356,6 +356,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             const int responseBodySegmentCount = 100;
 
             var requestAborted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var appCompletedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var scratchBuffer = new byte[responseBodySegmentSize];
 
@@ -370,6 +371,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 }
 
                 await requestAborted.Task.DefaultTimeout();
+                appCompletedTcs.SetResult(null);
             }, new TestServiceContext(LoggerFactory), listenOptions))
             {
                 using (var connection = server.CreateConnection())
@@ -399,6 +401,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                          (!TestPlatformHelper.IsWindows && w.EventId == connectionFinEventId));
 
                 Assert.NotEmpty(connectionResetLogs);
+
+                // On macOS, the default 5 shutdown timeout is insufficient for the write loop to complete, so give it extra time.
+                await appCompletedTcs.Task.DefaultTimeout();
             }
 
             var coreLogs = TestSink.Writes.Where(w => w.LoggerName == "Microsoft.AspNetCore.Server.Kestrel");
