@@ -56,7 +56,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         protected readonly HPackDecoder _hpackDecoder;
         private readonly byte[] _headerEncodingBuffer = new byte[Http2PeerSettings.MinAllowedMaxFrameSize];
 
+        protected readonly Mock<ConnectionContext> _mockConnectionContext = new Mock<ConnectionContext>();
         protected readonly Mock<ITimeoutHandler> _mockTimeoutHandler = new Mock<ITimeoutHandler>();
+        protected readonly Mock<ITimeoutControl> _mockTimeoutControl = new Mock<ITimeoutControl>();
         protected readonly TimeoutControl _timeoutControl;
 
         protected readonly ConcurrentDictionary<int, TaskCompletionSource<object>> _runningStreams = new ConcurrentDictionary<int, TaskCompletionSource<object>>();
@@ -106,6 +108,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _pair = DuplexPipe.CreateConnectionPair(inputPipeOptions, outputPipeOptions);
             _hpackDecoder = new HPackDecoder((int)_clientSettings.HeaderTableSize, MaxRequestHeaderFieldSize);
             _timeoutControl = new TimeoutControl(_mockTimeoutHandler.Object);
+
+            _mockTimeoutControl.Setup(t => t.SetTimeout(It.IsAny<long>(), It.IsAny<TimeoutReason>())).Callback<long, TimeoutReason>((t, r) => _timeoutControl.SetTimeout(t, r));
+            _mockTimeoutControl.Setup(t => t.ResetTimeout(It.IsAny<long>(), It.IsAny<TimeoutReason>())).Callback<long, TimeoutReason>((t, r) => _timeoutControl.ResetTimeout(t, r));
+            _mockTimeoutControl.Setup(t => t.CancelTimeout()).Callback(() => _timeoutControl.CancelTimeout());
+            _mockTimeoutControl.Setup(t => t.StartTimingReads(It.IsAny<MinDataRate>())).Callback<MinDataRate>(r => _timeoutControl.StartTimingReads(r));
+            _mockTimeoutControl.Setup(t => t.PauseTimingReads()).Callback(() => _timeoutControl.PauseTimingReads());
+            _mockTimeoutControl.Setup(t => t.ResumeTimingReads()).Callback(() => _timeoutControl.ResumeTimingReads());
+            _mockTimeoutControl.Setup(t => t.StopTimingReads()).Callback(() => _timeoutControl.StopTimingReads());
+            _mockTimeoutControl.Setup(t => t.BytesRead(It.IsAny<long>())).Callback<long>(b => _timeoutControl.BytesRead(b));
+            _mockTimeoutControl.Setup(t => t.StartTimingWrite(It.IsAny<MinDataRate>(), It.IsAny<long>())).Callback<MinDataRate, long>((r,b) => _timeoutControl.StartTimingWrite(r, b));
+            _mockTimeoutControl.Setup(t => t.StopTimingWrite()).Callback(() => _timeoutControl.StopTimingWrite());
+
+            // Emulate the HttpConnection.OnTimeout()
+            _mockTimeoutHandler.Setup(h => h.OnTimeout(TimeoutReason.KeepAlive)).Callback(() => _connection.StopProcessingNextRequest());
+            _mockTimeoutHandler.Setup(h => h.OnTimeout(TimeoutReason.RequestHeaders)).Callback(() => _connection.HandleRequestHeadersTimeout());
+            _mockTimeoutHandler.Setup(h => h.OnTimeout(TimeoutReason.WriteDataRate)).Callback(() => _connection.Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)));
+            _mockTimeoutHandler.Setup(h => h.OnTimeout(TimeoutReason.RequestBodyDrain)).Callback(() => _connection.Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedOutByServer)));
+            _mockTimeoutHandler.Setup(h => h.OnTimeout(TimeoutReason.TimeoutFeature)).Callback(() => _connection.Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedOutByServer)));
 
             _noopApplication = context => Task.CompletedTask;
 
@@ -289,12 +309,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _connectionContext = new HttpConnectionContext
             {
-                ConnectionContext = Mock.Of<ConnectionContext>(),
+                ConnectionContext = _mockConnectionContext.Object,
                 ConnectionFeatures = new FeatureCollection(),
                 ServiceContext = new TestServiceContext(LoggerFactory, mockKestrelTrace.Object),
                 MemoryPool = _memoryPool,
                 Transport = _pair.Transport,
-                TimeoutControl = _timeoutControl
+                TimeoutControl = _mockTimeoutControl.Object
             };
 
             _connection = new Http2Connection(_connectionContext);

@@ -379,10 +379,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             switch (reason)
             {
                 case TimeoutReason.KeepAlive:
-                    _http1Connection.StopProcessingNextRequest();
+                    _requestProcessor.StopProcessingNextRequest();
                     break;
                 case TimeoutReason.RequestHeaders:
-                    _http1Connection.SendTimeoutResponse();
+                    _requestProcessor.HandleRequestHeadersTimeout();
                     break;
                 case TimeoutReason.ReadDataRate:
                     Log.RequestBodyMinimumDataRateNotSatisfied(_context.ConnectionId, _http1Connection.TraceIdentifier, _http1Connection.MinRequestBodyDataRate.BytesPerSecond);
