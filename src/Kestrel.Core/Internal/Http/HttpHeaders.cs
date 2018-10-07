@@ -331,6 +331,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             connectionOptions |= ConnectionOptions.Close;
                         }
                     }
+
+                    currentPosition++;
                 }
             }
 
@@ -363,10 +365,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         }
                     }
 
-                    if (token.Length > 0 && offset != token.Length)
+                    if (token.Length > 0 && offset != token.Length-1)
                     {
                         transferEncodingOptions = TransferCoding.Other;
                     }
+
+                    currentPosition++;
                 }
             }
             return transferEncodingOptions;
@@ -385,18 +389,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static ReadOnlySpan<char> GetToken(in ReadOnlySpan<char> value, int startPos)
         {
             var tokenLength = 0;
-            while (tokenLength < value.Length && value[tokenLength] != ',')
+            for (var i = startPos; i < value.Length; i++)
             {
-                tokenLength++;
-            }
+                if (tokenLength < value.Length - startPos && value[tokenLength + startPos] != ',')
+                {
+                    tokenLength++;
+                    continue;
+                }
 
-            var tokenStart = startPos;
-            while (tokenStart < tokenLength && value[tokenStart] == ' ')
+                break;
+            }
+            
+            var tokenStart = 0;
+            while (tokenStart < tokenLength && value[tokenStart + startPos] == ' ')
             {
                 tokenStart++;
             }
 
-            return value.Slice(tokenStart, tokenLength);
+            return value.Slice(tokenStart + startPos, tokenLength-tokenStart);
         }
 
         private static void ThrowInvalidContentLengthException(long value)
