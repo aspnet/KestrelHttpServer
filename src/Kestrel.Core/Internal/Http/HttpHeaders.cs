@@ -277,101 +277,59 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        public static unsafe ConnectionOptions ParseConnection(in StringValues connection)
+        public static ConnectionOptions ParseConnection(in StringValues connection)
         {
             var connectionOptions = ConnectionOptions.None;
 
             var connectionCount = connection.Count;
             for (var i = 0; i < connectionCount; i++)
             {
-                var value = connection[i];
-                fixed (char* ptr = value)
+                var value = connection[i].AsSpan();
+                var currentPosition = 0;
+                while (currentPosition < value.Length)
                 {
-                    var ch = ptr;
-                    var tokenEnd = ch;
-                    var end = ch + value.Length;
-
-                    while (ch < end)
+                    var token = GetToken(value, currentPosition);
+                    currentPosition += token.Length;
+                    var offset = 0;
+                    if (token.Length >= 9 && (token[offset] | 0x20) == 'k')
                     {
-                        while (tokenEnd < end && *tokenEnd != ',')
+                        if ((token[++offset] | 0x20) == 'e' &&
+                            (token[++offset] | 0x20) == 'e' &&
+                            (token[++offset] | 0x20) == 'p' &&
+                            token[++offset] == '-' &&
+                            (token[++offset] | 0x20) == 'a' &&
+                            (token[++offset] | 0x20) == 'l' &&
+                            (token[++offset] | 0x20) == 'i' &&
+                            (token[++offset] | 0x20) == 'v' &&
+                            (token[++offset] | 0x20) == 'e' &&
+                            IsTokenEndValid(token, ++offset))
                         {
-                            tokenEnd++;
+                            connectionOptions |= ConnectionOptions.KeepAlive;
                         }
-
-                        while (ch < tokenEnd && *ch == ' ')
+                    }
+                    else if (token.Length >= 7 && (token[offset] | 0x20) == 'u')
+                    {
+                        if ((token[++offset] | 0x20) == 'p' &&
+                            (token[++offset] | 0x20) == 'g' &&
+                            (token[++offset] | 0x20) == 'r' &&
+                            (token[++offset] | 0x20) == 'a' &&
+                            (token[++offset] | 0x20) == 'd' &&
+                            (token[++offset] | 0x20) == 'e' &&
+                            IsTokenEndValid(token, ++offset))
                         {
-                            ch++;
+                            connectionOptions |= ConnectionOptions.Upgrade;
                         }
-
-                        var tokenLength = tokenEnd - ch;
-
-                        if (tokenLength >= 9 && (*ch | 0x20) == 'k')
+                    }
+                    else if (token.Length >= 5 && (token[offset] | 0x20) == 'c')
+                    {
+                        if ((token[++offset] | 0x20) == 'l' &&
+                            (token[++offset] | 0x20) == 'o' &&
+                            (token[++offset] | 0x20) == 's' &&
+                            (token[++offset] | 0x20) == 'e' &&
+                            IsTokenEndValid(token, ++offset))
                         {
-                            if ((*++ch | 0x20) == 'e' &&
-                                (*++ch | 0x20) == 'e' &&
-                                (*++ch | 0x20) == 'p' &&
-                                *++ch == '-' &&
-                                (*++ch | 0x20) == 'a' &&
-                                (*++ch | 0x20) == 'l' &&
-                                (*++ch | 0x20) == 'i' &&
-                                (*++ch | 0x20) == 'v' &&
-                                (*++ch | 0x20) == 'e')
-                            {
-                                ch++;
-                                while (ch < tokenEnd && *ch == ' ')
-                                {
-                                    ch++;
-                                }
-
-                                if (ch == tokenEnd)
-                                {
-                                    connectionOptions |= ConnectionOptions.KeepAlive;
-                                }
-                            }
+                            connectionOptions |= ConnectionOptions.Close;
                         }
-                        else if (tokenLength >= 7 && (*ch | 0x20) == 'u')
-                        {
-                            if ((*++ch | 0x20) == 'p' &&
-                                (*++ch | 0x20) == 'g' &&
-                                (*++ch | 0x20) == 'r' &&
-                                (*++ch | 0x20) == 'a' &&
-                                (*++ch | 0x20) == 'd' &&
-                                (*++ch | 0x20) == 'e')
-                            {
-                                ch++;
-                                while (ch < tokenEnd && *ch == ' ')
-                                {
-                                    ch++;
-                                }
-
-                                if (ch == tokenEnd)
-                                {
-                                    connectionOptions |= ConnectionOptions.Upgrade;
-                                }
-                            }
-                        }
-                        else if (tokenLength >= 5 && (*ch | 0x20) == 'c')
-                        {
-                            if ((*++ch | 0x20) == 'l' &&
-                                (*++ch | 0x20) == 'o' &&
-                                (*++ch | 0x20) == 's' &&
-                                (*++ch | 0x20) == 'e')
-                            {
-                                ch++;
-                                while (ch < tokenEnd && *ch == ' ')
-                                {
-                                    ch++;
-                                }
-
-                                if (ch == tokenEnd)
-                                {
-                                    connectionOptions |= ConnectionOptions.Close;
-                                }
-                            }
-                        }
-
-                        tokenEnd++;
-                        ch = tokenEnd;
                     }
                 }
             }
@@ -379,68 +337,66 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return connectionOptions;
         }
 
-        public static unsafe TransferCoding GetFinalTransferCoding(in StringValues transferEncoding)
+        public static TransferCoding GetFinalTransferCoding(in StringValues transferEncoding)
         {
             var transferEncodingOptions = TransferCoding.None;
-
-            var transferEncodingCount = transferEncoding.Count;
-            for (var i = 0; i < transferEncodingCount; i++)
+            for (var i = 0; i < transferEncoding.Count; i++)
             {
-                var value = transferEncoding[i];
-                fixed (char* ptr = value)
+                var value = transferEncoding[i].AsSpan();
+                var currentPosition = 0;
+                while (currentPosition < value.Length)
                 {
-                    var ch = ptr;
-                    var tokenEnd = ch;
-                    var end = ch + value.Length;
-
-                    while (ch < end)
+                    var token = GetToken(value, currentPosition);
+                    currentPosition += token.Length;
+                    var offset = 0;
+                    if (token.Length >= 7 && (token[offset] | 0x20) == 'c')
                     {
-                        while (tokenEnd < end && *tokenEnd != ',')
+                        if ((token[++offset] | 0x20) == 'h' &&
+                            (token[++offset] | 0x20) == 'u' &&
+                            (token[++offset] | 0x20) == 'n' &&
+                            (token[++offset] | 0x20) == 'k' &&
+                            (token[++offset] | 0x20) == 'e' &&
+                            (token[++offset] | 0x20) == 'd' &&
+                            IsTokenEndValid(token, ++offset))
                         {
-                            tokenEnd++;
+                            transferEncodingOptions = TransferCoding.Chunked;
                         }
+                    }
 
-                        while (ch < tokenEnd && *ch == ' ')
-                        {
-                            ch++;
-                        }
-
-                        var tokenLength = tokenEnd - ch;
-
-                        if (tokenLength >= 7 && (*ch | 0x20) == 'c')
-                        {
-                            if ((*++ch | 0x20) == 'h' &&
-                                (*++ch | 0x20) == 'u' &&
-                                (*++ch | 0x20) == 'n' &&
-                                (*++ch | 0x20) == 'k' &&
-                                (*++ch | 0x20) == 'e' &&
-                                (*++ch | 0x20) == 'd')
-                            {
-                                ch++;
-                                while (ch < tokenEnd && *ch == ' ')
-                                {
-                                    ch++;
-                                }
-
-                                if (ch == tokenEnd)
-                                {
-                                    transferEncodingOptions = TransferCoding.Chunked;
-                                }
-                            }
-                        }
-
-                        if (tokenLength > 0 && ch != tokenEnd)
-                        {
-                            transferEncodingOptions = TransferCoding.Other;
-                        }
-
-                        tokenEnd++;
-                        ch = tokenEnd;
+                    if (token.Length > 0 && offset != token.Length)
+                    {
+                        transferEncodingOptions = TransferCoding.Other;
                     }
                 }
             }
-
             return transferEncodingOptions;
+        }
+
+        private static bool IsTokenEndValid(in ReadOnlySpan<char> token, int offset)
+        {
+            while (offset < token.Length && token[offset] == ' ')
+            {
+                offset++;
+            }
+
+            return offset == token.Length;
+        }
+
+        private static ReadOnlySpan<char> GetToken(in ReadOnlySpan<char> value, int startPos)
+        {
+            var tokenLength = 0;
+            while (tokenLength < value.Length && value[tokenLength] != ',')
+            {
+                tokenLength++;
+            }
+
+            var tokenStart = startPos;
+            while (tokenStart < tokenLength && value[tokenStart] == ' ')
+            {
+                tokenStart++;
+            }
+
+            return value.Slice(tokenStart, tokenLength);
         }
 
         private static void ThrowInvalidContentLengthException(long value)
