@@ -47,10 +47,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             _timeoutControl = new TimeoutControl(this);
         }
 
-        // For testing
-        internal HttpProtocol Http1Connection => _http1Connection;
-        internal IDebugger Debugger { get; set; } = DebuggerWrapper.Singleton;
-
         public string ConnectionId => _context.ConnectionId;
         public IPEndPoint LocalEndPoint => _context.LocalEndPoint;
         public IPEndPoint RemoteEndPoint => _context.RemoteEndPoint;
@@ -196,9 +192,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
         }
 
         // For testing only
-        internal void Initialize(IDuplexPipe transport)
+        internal void Initialize(IRequestProcessor requestProcessor)
         {
-            _requestProcessor = _http1Connection = new Http1Connection(CreateDerivedContext(transport));
+            _requestProcessor = requestProcessor;
+            _http1Connection = requestProcessor as Http1Connection;
             _protocolSelectionState = ProtocolSelectionState.Selected;
         }
 
@@ -389,7 +386,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     _http1Connection.SendTimeoutResponse();
                     break;
                 case TimeoutReason.WriteDataRate:
-                    Log.ResponseMinimumDataRateNotSatisfied(_http1Connection.ConnectionIdFeature, _http1Connection.TraceIdentifier);
+                    Log.ResponseMinimumDataRateNotSatisfied(_context.ConnectionId, _http1Connection?.TraceIdentifier);
                     Abort(new ConnectionAbortedException(CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied));
                     break;
                 case TimeoutReason.RequestBodyDrain:
