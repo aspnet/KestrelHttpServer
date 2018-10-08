@@ -302,7 +302,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             (token[++offset] | 0x20) == 'i' &&
                             (token[++offset] | 0x20) == 'v' &&
                             (token[++offset] | 0x20) == 'e' &&
-                            IsTokenEndValid(token, ++offset))
+                            IsTokenEndValid(token, ref offset))
                         {
                             connectionOptions |= ConnectionOptions.KeepAlive;
                         }
@@ -315,7 +315,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             (token[++offset] | 0x20) == 'a' &&
                             (token[++offset] | 0x20) == 'd' &&
                             (token[++offset] | 0x20) == 'e' &&
-                            IsTokenEndValid(token, ++offset))
+                            IsTokenEndValid(token, ref offset))
                         {
                             connectionOptions |= ConnectionOptions.Upgrade;
                         }
@@ -326,7 +326,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             (token[++offset] | 0x20) == 'o' &&
                             (token[++offset] | 0x20) == 's' &&
                             (token[++offset] | 0x20) == 'e' &&
-                            IsTokenEndValid(token, ++offset))
+                            IsTokenEndValid(token, ref offset))
                         {
                             connectionOptions |= ConnectionOptions.Close;
                         }
@@ -359,13 +359,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             (token[++offset] | 0x20) == 'k' &&
                             (token[++offset] | 0x20) == 'e' &&
                             (token[++offset] | 0x20) == 'd' &&
-                            IsTokenEndValid(token, ++offset))
+                            IsTokenEndValid(token, ref offset))
                         {
                             transferEncodingOptions = TransferCoding.Chunked;
                         }
                     }
 
-                    if (token.Length > 0 && offset != token.Length-1)
+                    if (token.Length > 0 && offset != token.Length)
                     {
                         transferEncodingOptions = TransferCoding.Other;
                     }
@@ -376,8 +376,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return transferEncodingOptions;
         }
 
-        private static bool IsTokenEndValid(in ReadOnlySpan<char> token, int offset)
+        private static bool IsTokenEndValid(in ReadOnlySpan<char> token, ref int offset)
         {
+            offset++;
             while (offset < token.Length && token[offset] == ' ')
             {
                 offset++;
