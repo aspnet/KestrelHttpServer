@@ -109,6 +109,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _hpackDecoder = new HPackDecoder((int)_clientSettings.HeaderTableSize, MaxRequestHeaderFieldSize);
             _timeoutControl = new TimeoutControl(_mockTimeoutHandler.Object);
 
+            _mockTimeoutControl.Setup(t => t.TimerReason).Returns(() => _timeoutControl.TimerReason);
             _mockTimeoutControl.Setup(t => t.SetTimeout(It.IsAny<long>(), It.IsAny<TimeoutReason>())).Callback<long, TimeoutReason>((t, r) => _timeoutControl.SetTimeout(t, r));
             _mockTimeoutControl.Setup(t => t.ResetTimeout(It.IsAny<long>(), It.IsAny<TimeoutReason>())).Callback<long, TimeoutReason>((t, r) => _timeoutControl.ResetTimeout(t, r));
             _mockTimeoutControl.Setup(t => t.CancelTimeout()).Callback(() => _timeoutControl.CancelTimeout());

@@ -81,7 +81,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         private readonly object _stateLock = new object();
         private int _highestOpenedStreamId;
         private Http2ConnectionState _state = Http2ConnectionState.Open;
-        private TimeoutReason _currentTimeout = TimeoutReason.None;
         private readonly TaskCompletionSource<object> _streamsCompleted = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private readonly ConcurrentDictionary<int, Http2Stream> _streams = new ConcurrentDictionary<int, Http2Stream>();
@@ -107,7 +106,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         public PipeReader Input => _context.Transport.Input;
         public IKestrelTrace Log => _context.ServiceContext.Log;
         public IFeatureCollection ConnectionFeatures => _context.ConnectionFeatures;
-        public KestrelServerOptions ServerOptions => _context.ServiceContext.ServerOptions;
+        public ITimeoutControl TimeoutControl => _context.TimeoutControl;
+        public KestrelServerLimits Limits => _context.ServiceContext.ServerOptions.Limits;
 
         internal Http2PeerSettings ServerSettings => _serverSettings;
 
@@ -182,7 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             try
             {
                 ValidateTlsRequirements();
-                StartKeepAliveTimeout();
+                TimeoutControl.SetTimeout(Limits.KeepAliveTimeout.Ticks, TimeoutReason.KeepAlive);
 
                 if (!await TryReadPrefaceAsync())
                 {
@@ -307,7 +307,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                     await _streamsCompleted.Task;
 
-                    _context.TimeoutControl.StartDrainTimeout(ServerOptions.Limits.MinResponseDataRate, ServerOptions.Limits.MaxResponseBufferSize);
+                    TimeoutControl.StartDrainTimeout(Limits.MinResponseDataRate, Limits.MaxResponseBufferSize);
 
                     _frameWriter.Complete();
                 }
@@ -561,17 +561,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             else
             {
                 // Cancel keep-alive timeout and start header timeout if necessary. The keep-alive timeout can be
-                // started on another thread so a lock is necessary.
+                // started on another thread so the lock is necessary.
                 lock (_stateLock)
                 {
-                    if (_currentTimeout == TimeoutReason.KeepAlive)
+                    if (TimeoutControl.TimerReason != TimeoutReason.None)
                     {
-                        CancelNonRateTimeout();
+                        Debug.Assert(TimeoutControl.TimerReason == TimeoutReason.KeepAlive, "Non keep-alive timeout set at start of stream.");
+                        TimeoutControl.CancelTimeout();
                     }
 
                     if (!_incomingFrame.HeadersEndHeaders)
                     {
-                        StartRequestHeadersTimeout();
+                        TimeoutControl.SetTimeout(Limits.RequestHeadersTimeout.Ticks, TimeoutReason.RequestHeaders);
                     }
 
                     // Start a new stream
@@ -590,7 +591,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                         FrameWriter = _frameWriter,
                         ConnectionInputFlowControl = _inputFlowControl,
                         ConnectionOutputFlowControl = _outputFlowControl,
-                        TimeoutControl = _context.TimeoutControl,
+                        TimeoutControl = TimeoutControl,
                     });
 
                     _currentHeadersStream.Reset();
@@ -861,11 +862,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             {
                 lock (_stateLock)
                 {
-                    Debug.Assert(_currentTimeout == TimeoutReason.RequestHeaders, "Received continuation frame without request header timeout being set");
+                    Debug.Assert(TimeoutControl.TimerReason == TimeoutReason.RequestHeaders, "Received continuation frame without request header timeout being set.");
 
                     if (_incomingFrame.HeadersEndHeaders)
                     {
-                        CancelNonRateTimeout();
+                        TimeoutControl.CancelTimeout();
                     }
 
                     return DecodeHeadersAsync(application, _incomingFrame.ContinuationEndHeaders, payload);
@@ -1013,9 +1014,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                     if (_state == Http2ConnectionState.Open)
                     {
-                        if (_currentTimeout != TimeoutReason.RequestHeaders)
+                        // If we're awaiting headers, either a new stream will be started, or there will be a connection
+                        // error possibly due to a request header timeout, so no need to start a keep-alive timeout.
+                        if (TimeoutControl.TimerReason != TimeoutReason.RequestHeaders)
                         {
-                            StartKeepAliveTimeout();
+                            TimeoutControl.SetTimeout(Limits.KeepAliveTimeout.Ticks, TimeoutReason.KeepAlive);
                         }
                     }
                     else
@@ -1025,24 +1028,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                     }
                 }
             }
-        }
-
-        private void StartKeepAliveTimeout()
-        {
-            _context.TimeoutControl.SetTimeout(ServerOptions.Limits.KeepAliveTimeout.Ticks, TimeoutReason.KeepAlive);
-            _currentTimeout = TimeoutReason.KeepAlive;
-        }
-
-        private void StartRequestHeadersTimeout()
-        {
-            _context.TimeoutControl.SetTimeout(ServerOptions.Limits.RequestHeadersTimeout.Ticks, TimeoutReason.RequestHeaders);
-            _currentTimeout = TimeoutReason.RequestHeaders;
-        }
-
-        private void CancelNonRateTimeout()
-        {
-            _context.TimeoutControl.CancelTimeout();
-            _currentTimeout = TimeoutReason.None;
         }
 
         // We can't throw a Http2StreamErrorException here, it interrupts the header decompression state and may corrupt subsequent header frames on other streams.
@@ -1222,7 +1207,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             else if (state == Http2ConnectionState.Closed)
             {
                 // This cancels keep-alive and request header timeouts, but not the response drain timeout.
-                CancelNonRateTimeout();
+                TimeoutControl.CancelTimeout();
                 Log.Http2ConnectionClosed(_context.ConnectionId, _highestOpenedStreamId);
             }
         }
