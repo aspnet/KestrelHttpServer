@@ -4,6 +4,7 @@
 using System;
 using System.IO.Pipelines;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
@@ -13,19 +14,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
         }
 
-        public SocketAwaitableEventArgs WaitForDataAsync()
+        public ValueTask<int> WaitForDataAsync()
         {
             _awaitableEventArgs.SetBuffer(Array.Empty<byte>(), 0, 0);
 
-            if (!_socket.ReceiveAsync(_awaitableEventArgs))
-            {
-                _awaitableEventArgs.Complete();
-            }
-
-            return _awaitableEventArgs;
+            return _awaitableEventArgs.ReceiveAsync(_socket);
         }
 
-        public SocketAwaitableEventArgs ReceiveAsync(Memory<byte> buffer)
+        public ValueTask<int> ReceiveAsync(Memory<byte> buffer)
         {
 #if NETCOREAPP2_1
             _awaitableEventArgs.SetBuffer(buffer);
@@ -36,12 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 #else
 #error TFMs need to be updated
 #endif
-            if (!_socket.ReceiveAsync(_awaitableEventArgs))
-            {
-                _awaitableEventArgs.Complete();
-            }
-
-            return _awaitableEventArgs;
+            return _awaitableEventArgs.ReceiveAsync(_socket);
         }
     }
 }
