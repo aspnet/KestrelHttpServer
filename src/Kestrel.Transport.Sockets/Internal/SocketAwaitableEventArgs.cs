@@ -81,6 +81,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             SocketError error = SocketError;
             int bytes = BytesTransferred;
 
+            Volatile.Write(ref _callback, null);
+
             if (error != SocketError.Success)
             {
                 ThrowSocketException(error);
@@ -120,8 +122,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             int bytesTransferred = BytesTransferred;
             SocketError error = SocketError;
-
-            Volatile.Write(ref _callback, null);
 
             return error == SocketError.Success ?
                 new ValueTask<int>(bytesTransferred) :
