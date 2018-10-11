@@ -106,19 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 return new ValueTask<int>(this, 0);
             }
 
-            int bytesTransferred = BytesTransferred;
-            SocketError error = SocketError;
-
-            Reset();
-
-            return error == SocketError.Success ?
-                new ValueTask<int>(bytesTransferred) :
-                new ValueTask<int>(Task.FromException<int>(new SocketException((int)error)));
-        }
-
-        private void Reset()
-        {
-            Volatile.Write(ref _completion, null);
+            return CompleteSocketOperation();
         }
 
         /// <summary>Initiates a send operation on the associated socket.</summary>
@@ -130,6 +118,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 return new ValueTask<int>(this, 0);
             }
 
+            return CompleteSocketOperation();
+        }
+
+        private void Reset()
+        {
+            Volatile.Write(ref _completion, null);
+        }
+
+        private ValueTask<int> CompleteSocketOperation()
+        {
             int bytesTransferred = BytesTransferred;
             SocketError error = SocketError;
 
