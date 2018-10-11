@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
             else if (awaitableState != null)
             {
-                Debug.Fail("Multiple continuations registered!");
+                throw new InvalidOperationException("Multiple continuations registered!");
             }
 
         }
