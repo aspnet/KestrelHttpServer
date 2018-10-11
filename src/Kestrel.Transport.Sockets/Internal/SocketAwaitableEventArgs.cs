@@ -14,10 +14,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     public class SocketAwaitableEventArgs : SocketAsyncEventArgs, IValueTaskSource<int>
     {
         private static readonly Action<object> _callbackCompleted = _ => { };
+        private static readonly WaitCallback _waitCallback = OnWorkItemCallback;
 
         private readonly PipeScheduler _ioScheduler;
 
-        private Action<object> _completion;
+        private Action<object> _callback;
 
         public SocketAwaitableEventArgs(PipeScheduler ioScheduler)
         {
@@ -26,22 +27,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         protected override void OnCompleted(SocketAsyncEventArgs _)
         {
-            Action<object> completion = _completion;
+            var callback = Interlocked.CompareExchange(ref _callback, _callbackCompleted, null);
 
-            if (completion != null || (completion = Interlocked.CompareExchange(ref _completion, _callbackCompleted, null)) != null)
+            if (callback != null)
             {
-                Debug.Assert(!ReferenceEquals(completion, _callbackCompleted));
+                Debug.Assert(!ReferenceEquals(callback, _callbackCompleted));
 
                 object state = UserToken;
                 UserToken = null;
 
-                _ioScheduler.Schedule(completion, state);
+                _ioScheduler.Schedule(callback, state);
             }
         }
 
         public ValueTaskSourceStatus GetStatus(short token)
         {
-            if (ReferenceEquals(_completion, _callbackCompleted))
+            if (ReferenceEquals(_callback, _callbackCompleted))
             {
                 if (SocketError != SocketError.Success)
                 {
@@ -62,15 +63,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             // Use UserToken to carry the continuation state around
             UserToken = state;
-            Action<object> awaitableState = Interlocked.CompareExchange(ref _completion, continuation, null);
+            Action<object> awaitableState = Interlocked.CompareExchange(ref _callback, continuation, null);
 
             if (ReferenceEquals(awaitableState, _callbackCompleted))
             {
-#if NETCOREAPP2_1
-                ThreadPool.QueueUserWorkItem(continuation, state, preferLocal: false);
-#else
-                Task.Factory.StartNew(continuation, state);
-#endif
+                ThreadPool.UnsafeQueueUserWorkItem(_waitCallback, this);
             }
             else if (awaitableState != null)
             {
@@ -83,8 +80,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             SocketError error = SocketError;
             int bytes = BytesTransferred;
-
-            Reset();
 
             if (error != SocketError.Success)
             {
@@ -106,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 return new ValueTask<int>(this, 0);
             }
 
-            return CompleteSocketOperation();
+            return GetCompletedValueTask();
         }
 
         /// <summary>Initiates a send operation on the associated socket.</summary>
@@ -118,24 +113,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 return new ValueTask<int>(this, 0);
             }
 
-            return CompleteSocketOperation();
+            return GetCompletedValueTask();
         }
 
-        private void Reset()
-        {
-            Volatile.Write(ref _completion, null);
-        }
-
-        private ValueTask<int> CompleteSocketOperation()
+        private ValueTask<int> GetCompletedValueTask()
         {
             int bytesTransferred = BytesTransferred;
             SocketError error = SocketError;
 
-            Reset();
+            Volatile.Write(ref _callback, null);
 
             return error == SocketError.Success ?
                 new ValueTask<int>(bytesTransferred) :
                 new ValueTask<int>(Task.FromException<int>(new SocketException((int)error)));
+        }
+
+        private static void OnWorkItemCallback(object state)
+        {
+            var args = (SocketAwaitableEventArgs)state;
+            var callbackState = args.UserToken;
+            args.UserToken = null;
+            var callback = args._callback;
+            callback(callbackState);
         }
     }
 }
