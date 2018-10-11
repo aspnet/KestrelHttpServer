@@ -72,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 Task.Factory.StartNew(continuation, state);
 #endif
             }
-            else
+            else if (awaitableState != null)
             {
                 Debug.Fail("Multiple continuations registered!");
             }
