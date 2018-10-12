@@ -265,5 +265,211 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _mockConnectionContext.Verify(c =>c.Abort(It.Is<ConnectionAbortedException>(e => 
                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
         }
+
+        [Fact]
+        public async Task DATA_Sent_TooSlowlyDueToSocketBackPressureOnLargeWrite_AbortsConnectionAfterRateTimeout()
+        {
+            var mockSystemClock = _serviceContext.MockSystemClock;
+            var limits = _serviceContext.ServerOptions.Limits;
+
+            // Disable response buffering so "socket" backpressure is observed immediately.
+            limits.MaxResponseBufferSize = 0;
+
+            _timeoutControl.Initialize(mockSystemClock.UtcNow);
+
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+
+            var timeToWriteMaxData = TimeSpan.FromSeconds(_maxData.Length / limits.MinResponseDataRate.BytesPerSecond);
+
+            // Don't read data frame to induce "socket" backpressure.
+            mockSystemClock.UtcNow += timeToWriteMaxData + Heartbeat.Interval;
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+
+            mockSystemClock.UtcNow += TimeSpan.FromTicks(1);
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.WriteDataRate), Times.Once);
+
+            // The "hello, world" bytes are buffered from before the timeout, but not an END_STREAM data frame.
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: _maxData.Length,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await WaitForConnectionErrorAsync<ConnectionAbortedException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 1,
+                Http2ErrorCode.INTERNAL_ERROR,
+                null);
+
+            _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
+                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+        }
+
+        [Fact]
+        public async Task DATA_Sent_TooSlowlyDueToFlowControlOnSmallWrite_AbortsConnectionAfterGracePeriod()
+        {
+            var mockSystemClock = _serviceContext.MockSystemClock;
+            var limits = _serviceContext.ServerOptions.Limits;
+
+            // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
+            _clientSettings.InitialWindowSize = 6;
+
+            _timeoutControl.Initialize(mockSystemClock.UtcNow);
+
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _helloWorldBytes, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: (int)_clientSettings.InitialWindowSize,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            // Don't send WINDOW_UPDATE to induce flow-control backpressure
+            mockSystemClock.UtcNow += limits.MinResponseDataRate.GracePeriod + Heartbeat.Interval;
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+
+            mockSystemClock.UtcNow += TimeSpan.FromTicks(1);
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.WriteDataRate), Times.Once);
+
+            await WaitForConnectionErrorAsync<ConnectionAbortedException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 1,
+                Http2ErrorCode.INTERNAL_ERROR,
+                null);
+
+            _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
+                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+        }
+
+        [Fact]
+        public async Task DATA_Sent_TooSlowlyDueToOutputFlowControlOnLargeWrite_AbortsConnectionAfterRateTimeout()
+        {
+            var mockSystemClock = _serviceContext.MockSystemClock;
+            var limits = _serviceContext.ServerOptions.Limits;
+
+            // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
+            _clientSettings.InitialWindowSize = (uint)_maxData.Length - 1;
+
+            _timeoutControl.Initialize(mockSystemClock.UtcNow);
+
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: (int)_clientSettings.InitialWindowSize,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            var timeToWriteMaxData = TimeSpan.FromSeconds(_clientSettings.InitialWindowSize / limits.MinResponseDataRate.BytesPerSecond);
+
+            // Don't send WINDOW_UPDATE to induce flow-control backpressure
+            mockSystemClock.UtcNow += timeToWriteMaxData + Heartbeat.Interval;
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+
+            mockSystemClock.UtcNow += TimeSpan.FromTicks(1);
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.WriteDataRate), Times.Once);
+
+            await WaitForConnectionErrorAsync<ConnectionAbortedException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 1,
+                Http2ErrorCode.INTERNAL_ERROR,
+                null);
+
+            _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
+                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+        }
+
+        [Fact]
+        public async Task DATA_Sent_TooSlowlyDueToOutputFlowControlOnMultipleStreams_AbortsConnectionAfterAdditiveRateTimeout()
+        {
+            var mockSystemClock = _serviceContext.MockSystemClock;
+            var limits = _serviceContext.ServerOptions.Limits;
+
+            // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
+            _clientSettings.InitialWindowSize = (uint)_maxData.Length - 1;
+
+            _timeoutControl.Initialize(mockSystemClock.UtcNow);
+
+            await InitializeConnectionAsync(_echoApplication);
+
+            await StartStreamAsync(1, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(1, _maxData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 1);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: (int)_clientSettings.InitialWindowSize,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 1);
+
+            await StartStreamAsync(3, _browserRequestHeaders, endStream: false);
+            await SendDataAsync(3, _maxData, endStream: true);
+
+            await ExpectAsync(Http2FrameType.HEADERS,
+                withLength: 37,
+                withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
+                withStreamId: 3);
+            await ExpectAsync(Http2FrameType.DATA,
+                withLength: (int)_clientSettings.InitialWindowSize,
+                withFlags: (byte)Http2DataFrameFlags.NONE,
+                withStreamId: 3);
+
+            var timeToWriteMaxData = TimeSpan.FromSeconds(_clientSettings.InitialWindowSize / limits.MinResponseDataRate.BytesPerSecond);
+            // Double the timeout for the second stream.
+            timeToWriteMaxData += timeToWriteMaxData;
+
+            // Don't send WINDOW_UPDATE to induce flow-control backpressure
+            mockSystemClock.UtcNow += timeToWriteMaxData + Heartbeat.Interval;
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+
+            mockSystemClock.UtcNow += TimeSpan.FromTicks(1);
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.WriteDataRate), Times.Once);
+
+            await WaitForConnectionErrorAsync<ConnectionAbortedException>(
+                ignoreNonGoAwayFrames: false,
+                expectedLastStreamId: 3,
+                Http2ErrorCode.INTERNAL_ERROR,
+                null);
+
+            _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
+                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+        }
     }
 }
