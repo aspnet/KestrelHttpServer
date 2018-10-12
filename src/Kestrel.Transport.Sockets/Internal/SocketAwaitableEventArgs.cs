@@ -27,12 +27,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
         protected override void OnCompleted(SocketAsyncEventArgs _)
         {
-            var callback = Interlocked.CompareExchange(ref _callback, _callbackCompleted, null);
+            var callback = Interlocked.Exchange(ref _callback, _callbackCompleted);
 
             if (callback != null)
             {
-                Debug.Assert(!ReferenceEquals(callback, _callbackCompleted));
-
                 object state = UserToken;
                 UserToken = null;
 
@@ -67,13 +65,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             if (ReferenceEquals(awaitableState, _callbackCompleted))
             {
+                _callback = continuation;
                 ThreadPool.UnsafeQueueUserWorkItem(_waitCallback, this);
             }
             else if (awaitableState != null)
             {
                 throw new InvalidOperationException("Multiple continuations registered!");
             }
-
         }
 
         public int GetResult(short token)
@@ -132,8 +130,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             var args = (SocketAwaitableEventArgs)state;
             var callbackState = args.UserToken;
-            args.UserToken = null;
             var callback = args._callback;
+            args.UserToken = null;
+            args._callback = _callbackCompleted;
             callback(callbackState);
         }
     }
