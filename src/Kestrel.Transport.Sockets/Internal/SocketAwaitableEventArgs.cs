@@ -5,40 +5,88 @@ using System;
 using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
-    public class SocketAwaitableEventArgs : SocketAsyncEventArgs, ICriticalNotifyCompletion
+    public class SocketAwaitableEventArgs : SocketAsyncEventArgs, IValueTaskSource<int>
     {
-        private static readonly Action _callbackCompleted = () => { };
+        private static readonly Action<object> _callbackCompleted = _ => { };
+        private static readonly WaitCallback _waitCallback = OnWorkItemCallback;
 
         private readonly PipeScheduler _ioScheduler;
 
-        private Action _callback;
+        private Action<object> _callback;
 
         public SocketAwaitableEventArgs(PipeScheduler ioScheduler)
         {
             _ioScheduler = ioScheduler;
         }
 
-        public SocketAwaitableEventArgs GetAwaiter() => this;
-        public bool IsCompleted => ReferenceEquals(_callback, _callbackCompleted);
-
-        public int GetResult()
+        protected override void OnCompleted(SocketAsyncEventArgs _)
         {
-            Debug.Assert(ReferenceEquals(_callback, _callbackCompleted));
+            var callback = Interlocked.Exchange(ref _callback, _callbackCompleted);
 
-            _callback = null;
-
-            if (SocketError != SocketError.Success)
+            if (callback != null)
             {
-                ThrowSocketException(SocketError);
+                object state = UserToken;
+                UserToken = null;
+
+                _ioScheduler.Schedule(callback, state);
+            }
+        }
+
+        public ValueTaskSourceStatus GetStatus(short token)
+        {
+            if (ReferenceEquals(_callback, _callbackCompleted))
+            {
+                if (SocketError != SocketError.Success)
+                {
+                    return ValueTaskSourceStatus.Faulted;
+                }
+
+                return ValueTaskSourceStatus.Succeeded;
             }
 
-            return BytesTransferred;
+            return ValueTaskSourceStatus.Pending;
+        }
+
+        public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags)
+        {
+            // We're ignoring ValueTaskSourceOnCompletedFlags and token since this is used in a single place in the code base
+            // so we don't need to handle capturing the SynchronizationContext and ExecutionContext
+            Debug.Assert((flags & ValueTaskSourceOnCompletedFlags.FlowExecutionContext) == 0, "FlowExecutionContext is set.");
+
+            // Use UserToken to carry the continuation state around
+            UserToken = state;
+            Action<object> awaitableState = Interlocked.CompareExchange(ref _callback, continuation, null);
+
+            if (ReferenceEquals(awaitableState, _callbackCompleted))
+            {
+                _callback = continuation;
+                ThreadPool.UnsafeQueueUserWorkItem(_waitCallback, this);
+            }
+            else if (awaitableState != null)
+            {
+                throw new InvalidOperationException("Multiple continuations registered!");
+            }
+        }
+
+        public int GetResult(short token)
+        {
+            SocketError error = SocketError;
+            int bytes = BytesTransferred;
+
+            Volatile.Write(ref _callback, null);
+
+            if (error != SocketError.Success)
+            {
+                ThrowSocketException(error);
+            }
+
+            return bytes;
 
             void ThrowSocketException(SocketError e)
             {
@@ -46,33 +94,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             }
         }
 
-        public void OnCompleted(Action continuation)
+        public ValueTask<int> ReceiveAsync(Socket socket)
         {
-            if (ReferenceEquals(_callback, _callbackCompleted) ||
-                ReferenceEquals(Interlocked.CompareExchange(ref _callback, continuation, null), _callbackCompleted))
+            if (socket.ReceiveAsync(this))
             {
-                Task.Run(continuation);
+                return new ValueTask<int>(this, 0);
             }
+
+            return GetCompletedValueTask();
         }
 
-        public void UnsafeOnCompleted(Action continuation)
+        /// <summary>Initiates a send operation on the associated socket.</summary>
+        /// <returns>This instance.</returns>
+        public ValueTask<int> SendAsync(Socket socket)
         {
-            OnCompleted(continuation);
-        }
-
-        public void Complete()
-        {
-            OnCompleted(this);
-        }
-
-        protected override void OnCompleted(SocketAsyncEventArgs _)
-        {
-            var continuation = Interlocked.Exchange(ref _callback, _callbackCompleted);
-
-            if (continuation != null)
+            if (socket.SendAsync(this))
             {
-                _ioScheduler.Schedule(state => ((Action)state)(), continuation);
+                return new ValueTask<int>(this, 0);
             }
+
+            return GetCompletedValueTask();
+        }
+
+        private ValueTask<int> GetCompletedValueTask()
+        {
+            int bytesTransferred = BytesTransferred;
+            SocketError error = SocketError;
+
+            return error == SocketError.Success ?
+                new ValueTask<int>(bytesTransferred) :
+                new ValueTask<int>(Task.FromException<int>(new SocketException((int)error)));
+        }
+
+        private static void OnWorkItemCallback(object state)
+        {
+            var args = (SocketAwaitableEventArgs)state;
+            var callbackState = args.UserToken;
+            var callback = args._callback;
+            args.UserToken = null;
+            args._callback = _callbackCompleted;
+            callback(callbackState);
         }
     }
 }
