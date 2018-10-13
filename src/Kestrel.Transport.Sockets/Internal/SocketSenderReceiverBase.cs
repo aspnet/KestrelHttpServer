@@ -4,6 +4,7 @@
 using System;
 using System.IO.Pipelines;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
@@ -19,5 +20,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         }
 
         public void Dispose() => _awaitableEventArgs.Dispose();
+
+        protected static AsyncFlowControl? SuppressExecutionContext()
+        {
+            return ExecutionContext.IsFlowSuppressed() ? (AsyncFlowControl?)null : ExecutionContext.SuppressFlow();
+        }
     }
 }

@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
@@ -39,9 +40,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
             _awaitableEventArgs.BufferList = GetBufferList(buffers);
 
-            if (!_socket.SendAsync(_awaitableEventArgs))
+            using (SuppressExecutionContext())
             {
-                _awaitableEventArgs.Complete();
+                if (!_socket.SendAsync(_awaitableEventArgs))
+                {
+                    _awaitableEventArgs.Complete();
+                }
             }
 
             return _awaitableEventArgs;
@@ -64,9 +68,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 #else
 #error TFMs need to be updated
 #endif
-            if (!_socket.SendAsync(_awaitableEventArgs))
+            using (SuppressExecutionContext())
             {
-                _awaitableEventArgs.Complete();
+                if (!_socket.SendAsync(_awaitableEventArgs))
+                {
+                    _awaitableEventArgs.Complete();
+                }
             }
 
             return _awaitableEventArgs;
