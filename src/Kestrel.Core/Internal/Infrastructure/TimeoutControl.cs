@@ -22,8 +22,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         private long _readTimingElapsedTicks;
         private long _readTimingBytesRead;
 
+        // The following are always 0 or 1 for HTTP/1.x
+        private int _concurrentIncompleteRequestBodies;
+        private int _concurrentAwaitingReads;
+
         private readonly object _writeTimingLock = new object();
-        private int _writeTimingWrites;
+        private int _cuncurrentAwaitingWrites;
         private long _writeTimingTimeoutTimestamp;
 
         public TimeoutControl(ITimeoutHandler timeoutHandler)
@@ -111,7 +115,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_writeTimingLock)
             {
-                if (_writeTimingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
+                if (_cuncurrentAwaitingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
                     _timeoutHandler.OnTimeout(TimeoutReason.WriteDataRate);
                 }
@@ -149,10 +153,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_readTimingLock)
             {
+                // minRate is always KestrelServerLimits.MinRequestBodyDataRate for HTTP/2. Per-stream rate limits are
+                // not supported.
                 _minReadRate = minRate;
-                _readTimingElapsedTicks = 0;
-                _readTimingBytesRead = 0;
-                _readTimingEnabled = true;
+                _concurrentIncompleteRequestBodies++;
+                _concurrentAwaitingReads++;
+
+                if (!_readTimingEnabled)
+                {
+                    _readTimingEnabled = true;
+                    _readTimingElapsedTicks = 0;
+                    _readTimingBytesRead = 0;
+                }
             }
         }
 
@@ -160,7 +172,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_readTimingLock)
             {
-                _readTimingEnabled = false;
+                _concurrentIncompleteRequestBodies--;
+                _concurrentAwaitingReads--;
+
+                if (_concurrentIncompleteRequestBodies == 0)
+                {
+                    _readTimingEnabled = false;
+                }
             }
         }
 
@@ -168,7 +186,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_readTimingLock)
             {
-                _readTimingPauseRequested = true;
+                _concurrentAwaitingReads--;
+
+                if (_concurrentAwaitingReads == 0)
+                {
+                    _readTimingPauseRequested = true;
+                }
             }
         }
 
@@ -176,6 +199,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_readTimingLock)
             {
+                _concurrentAwaitingReads++;
+
                 _readTimingEnabled = true;
 
                 // In case pause and resume were both called between ticks
@@ -213,7 +238,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 var accumulatedWriteTimeoutTimestamp = _writeTimingTimeoutTimestamp + ticksToCompleteWriteAtMinRate;
 
                 _writeTimingTimeoutTimestamp = Math.Max(singleWriteTimeoutTimestamp, accumulatedWriteTimeoutTimestamp);
-                _writeTimingWrites++;
+                _cuncurrentAwaitingWrites++;
             }
         }
 
@@ -221,7 +246,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_writeTimingLock)
             {
-                _writeTimingWrites--;
+                _cuncurrentAwaitingWrites--;
             }
         }
 

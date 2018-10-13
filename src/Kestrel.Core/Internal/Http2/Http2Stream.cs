@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             => StringUtilities.ConcatAsHexSuffix(ConnectionId, ':', (uint)StreamId);
 
         protected override MessageBody CreateMessageBody()
-            => Http2MessageBody.For(HttpRequestHeaders, this);
+            => Http2MessageBody.For(this, _context.TimeoutControl);
 
         // Compare to Http1Connection.OnStartLine
         protected override bool TryParseRequest(ReadResult result, out bool endConnection)
