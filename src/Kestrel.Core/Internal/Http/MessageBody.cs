@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -19,6 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private bool _send100Continue = true;
         private long _consumedBytes;
+        private bool _timingReads;
+        private bool _backpressure;
 
         protected MessageBody(HttpProtocol context)
         {
@@ -43,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync(cancellationToken);
+                var result = await TimedReadAsync(cancellationToken);
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
                 var actual = 0;
@@ -68,11 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
-
-                    // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
-                    // the pipe despite the client being well-behaved.
-                    OnDataRead(actual);
+                    CompleteTimedRead(consumed, actual);
                 }
             }
         }
@@ -83,7 +82,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await _context.RequestBodyPipe.Reader.ReadAsync(cancellationToken);
+                var result = await TimedReadAsync(cancellationToken);
                 var readableBuffer = result.Buffer;
                 var consumed = readableBuffer.End;
                 var bytesRead = 0;
@@ -118,11 +117,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
-
-                    // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
-                    // the pipe despite the client being well-behaved.
-                    OnDataRead(bytesRead);
+                    // TODO: We should't wait for app logic here
+                    CompleteTimedRead(consumed, bytesRead);
                 }
             }
         }
@@ -134,9 +130,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return OnConsumeAsync();
         }
 
+        public virtual Task StopAsync()
+        {
+            TryStopTimingReads();
+
+            return OnStopAsync();
+        }
+
         protected abstract Task OnConsumeAsync();
 
-        public abstract Task StopAsync();
+        protected abstract Task OnStopAsync();
 
         protected void TryProduceContinue()
         {
@@ -153,6 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 OnReadStarting();
                 _context.HasStartedConsumingRequestBody = true;
+                TryInitializeTimingReads();
                 OnReadStarted();
             }
         }
@@ -179,6 +183,65 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
+        private ValueTask<ReadResult> TimedReadAsync(CancellationToken cancellationToken)
+        {
+            var readAwaitable = _context.RequestBodyPipe.Reader.ReadAsync(cancellationToken);
+
+            if (!readAwaitable.IsCompleted && _timingReads)
+            {
+                _backpressure = true;
+                _context.TimeoutControl.ResumeTimingReads();
+            }
+
+            return readAwaitable;
+        }
+
+        private void CompleteTimedRead(SequencePosition consumed, int bytesRead)
+        {
+            _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+
+            _context.TimeoutControl.BytesRead(bytesRead);
+
+            if (_timingReads && _backpressure)
+            {
+                _backpressure = false;
+                _context.TimeoutControl.PauseTimingReads();
+            }
+
+            // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
+            // the pipe despite the client being well-behaved.
+            OnDataRead(bytesRead);
+        }
+
+        private void TryInitializeTimingReads()
+        {
+            if (!RequestUpgrade)
+            {
+                Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
+
+                var minRate = _context.MinRequestBodyDataRate;
+
+                if (minRate != null)
+                {
+                    _timingReads = true;
+                    _context.TimeoutControl.InitializeTimingReads(minRate);
+                }
+            }
+        }
+
+        private void TryStopTimingReads()
+        {
+            if (!RequestUpgrade)
+            {
+                Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
+
+                if (_timingReads)
+                {
+                    _context.TimeoutControl.StopTimingReads();
+                }
+            }
+        }
+
         private class ForZeroContentLength : MessageBody
         {
             public ForZeroContentLength(bool keepAlive)
@@ -198,6 +261,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             public override Task StopAsync() => Task.CompletedTask;
 
             protected override Task OnConsumeAsync() => Task.CompletedTask;
+
+            protected override Task OnStopAsync() => Task.CompletedTask;
         }
     }
 }

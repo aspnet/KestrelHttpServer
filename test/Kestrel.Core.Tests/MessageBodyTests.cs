@@ -746,7 +746,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var minReadRate = input.Http1Connection.MinRequestBodyDataRate;
                 var mockTimeoutControl = new Mock<ITimeoutControl>();
                 mockTimeoutControl
-                    .Setup(timeoutControl => timeoutControl.StartTimingReads(minReadRate))
+                    .Setup(timeoutControl => timeoutControl.InitializeTimingReads(minReadRate))
                     .Callback(() => startTimingReadsCalledAfterProduceContinue = produceContinueCalled);
 
                 input.Http1ConnectionContext.TimeoutControl = mockTimeoutControl.Object;
@@ -785,7 +785,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
                 Assert.Equal(0, await body.ReadAsync(new ArraySegment<byte>(new byte[1])));
 
-                mockTimeoutControl.Verify(timeoutControl => timeoutControl.StartTimingReads(minReadRate), Times.Never);
+                mockTimeoutControl.Verify(timeoutControl => timeoutControl.InitializeTimingReads(minReadRate), Times.Never);
                 mockTimeoutControl.Verify(timeoutControl => timeoutControl.StopTimingReads(), Times.Never);
 
                 // Due to the limits set on HttpProtocol.RequestBodyPipe, backpressure should be triggered on every

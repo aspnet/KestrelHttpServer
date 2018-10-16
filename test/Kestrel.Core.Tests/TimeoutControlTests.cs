@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var now = DateTimeOffset.UtcNow;
             _timeoutControl.Tick(now);
 
-            _timeoutControl.StartTimingReads(minRate);
+            _timeoutControl.InitializeTimingReads(minRate);
 
             // Tick during grace period w/ low data rate
             now += TimeSpan.FromSeconds(1);
@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var now = DateTimeOffset.UtcNow;
             _timeoutControl.Tick(now);
 
-            _timeoutControl.StartTimingReads(minRate);
+            _timeoutControl.InitializeTimingReads(minRate);
 
             // Set base data rate to 200 bytes/second
             now += gracePeriod;
@@ -153,7 +153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Initialize timestamp
             _timeoutControl.Tick(systemClock.UtcNow);
 
-            _timeoutControl.StartTimingReads(minRate);
+            _timeoutControl.InitializeTimingReads(minRate);
 
             // Tick at 3s, expected counted time is 3s, expected data rate is 200 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(3);
@@ -203,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Initialize timestamp
             _timeoutControl.Tick(systemClock.UtcNow);
 
-            _timeoutControl.StartTimingReads(minRate);
+            _timeoutControl.InitializeTimingReads(minRate);
 
             // Tick at 2s, expected counted time is 2s, expected data rate is 100 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(2);
@@ -249,7 +249,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             // Initialize timestamp
             _timeoutControl.Tick(startTime);
 
-            _timeoutControl.StartTimingReads(minRate);
+            _timeoutControl.InitializeTimingReads(minRate);
 
             _timeoutControl.SetTimeout(timeout.Ticks, TimeoutReason.RequestBodyDrain);
 
@@ -394,7 +394,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var now = DateTimeOffset.UtcNow;
             _timeoutControl.Tick(now);
 
-            _timeoutControl.StartTimingReads(minRate);
+            _timeoutControl.InitializeTimingReads(minRate);
 
             // Tick after grace period w/ low data rate
             now += gracePeriod + TimeSpan.FromSeconds(1);
