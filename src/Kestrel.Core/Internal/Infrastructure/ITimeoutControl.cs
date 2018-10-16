@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void ResetTimeout(long ticks, TimeoutReason timeoutReason);
         void CancelTimeout();
 
-        void StartTimingReads(MinDataRate minRate);
+        void InitializeTimingReads(MinDataRate minRate);
         void PauseTimingReads();
         void ResumeTimingReads();
         void StopTimingReads();

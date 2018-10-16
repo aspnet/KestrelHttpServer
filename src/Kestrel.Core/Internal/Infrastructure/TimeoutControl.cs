@@ -149,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + ticks + Heartbeat.Interval.Ticks);
         }
 
-        public void StartTimingReads(MinDataRate minRate)
+        public void InitializeTimingReads(MinDataRate minRate)
         {
             lock (_readTimingLock)
             {
@@ -159,9 +159,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 _concurrentIncompleteRequestBodies++;
                 _concurrentAwaitingReads++;
 
-                if (!_readTimingEnabled)
+                if (_concurrentIncompleteRequestBodies == 1)
                 {
-                    _readTimingEnabled = true;
                     _readTimingElapsedTicks = 0;
                     _readTimingBytesRead = 0;
                 }
