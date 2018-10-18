@@ -20,5 +20,6 @@
     <SignAssembly>true</SignAssembly>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <LangVersion>latest</LangVersion>
+    <NoWarn>$(NoWarn);NU5105</NoWarn>
   </PropertyGroup>
 </Project>
