@@ -3,9 +3,9 @@
   <PropertyGroup>
     <AssemblyName>H2Spec.FunctionalTests</AssemblyName>
     <RootNamespace>H2Spec.FunctionalTests</RootNamespace>
-    <!-- h2spec doesn't run on desktop framework. DeveloperBuildTestTfms is StandardTestTfms minus desktop. -->
+    <!-- h2spec doesn't run on the desktop framework where ALPN isn't available. -->
+    <!-- DeveloperBuildTestTfms is StandardTestTfms minus desktop. -->
     <TargetFrameworks>$(DeveloperBuildTestTfms)</TargetFrameworks>
-    <DefineConstants Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(DefineConstants);MACOS</DefineConstants>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <TestGroupName>H2Spec.FunctionalTests</TestGroupName>
   </PropertyGroup>
