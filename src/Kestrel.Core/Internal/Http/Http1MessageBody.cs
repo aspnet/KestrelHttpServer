@@ -38,8 +38,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     TryProduceContinue();
                 }
 
-                TryInitializeTimingReads();
-
                 while (true)
                 {
                     var result = await awaitable;
@@ -65,22 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             bool done;
                             done = Read(readableBuffer, _context.RequestBodyPipe.Writer, out consumed, out examined);
 
-                            var writeAwaitable = _context.RequestBodyPipe.Writer.FlushAsync();
-                            var backpressure = false;
-
-                            if (!writeAwaitable.IsCompleted)
-                            {
-                                // Backpressure, stop controlling incoming data rate until data is read.
-                                backpressure = true;
-                                TryPauseTimingReads();
-                            }
-
-                            await writeAwaitable;
-
-                            if (backpressure)
-                            {
-                                TryResumeTimingReads();
-                            }
+                            await _context.RequestBodyPipe.Writer.FlushAsync();
 
                             if (done)
                             {
@@ -108,7 +91,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                             BadHttpRequestException.Throw(RequestRejectionReason.UnexpectedEndOfRequestContent);
                         }
-
                     }
                     finally
                     {
@@ -125,11 +107,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             finally
             {
                 _context.RequestBodyPipe.Writer.Complete(error);
-                TryStopTimingReads();
             }
         }
 
-        public override Task StopAsync()
+        protected override Task OnStopAsync()
         {
             if (!_context.HasStartedConsumingRequestBody)
             {

@@ -60,6 +60,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         public override bool IsUpgradableRequest => false;
 
+        // Since there can be multiple concurrent request bodies with HTTP/2, always use the global instead of the per-request data rate.
+        public override MinDataRate MinRequestBodyDataRate => ServerOptions.Limits.MinRequestBodyDataRate;
+
         protected override void OnReset()
         {
             ResetHttp2Features();
@@ -185,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
             // Approximate MaxRequestLineSize by totaling the required pseudo header field lengths.
             var requestLineLength = _methodText.Length + Scheme.Length + hostText.Length + path.Length;
-            if (requestLineLength > ServiceContext.ServerOptions.Limits.MaxRequestLineSize)
+            if (requestLineLength > ServerOptions.Limits.MaxRequestLineSize)
             {
                 ResetAndAbort(new ConnectionAbortedException(CoreStrings.BadRequest_RequestLineTooLong), Http2ErrorCode.PROTOCOL_ERROR);
                 return false;

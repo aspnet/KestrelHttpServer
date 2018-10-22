@@ -276,7 +276,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected HttpResponseHeaders HttpResponseHeaders { get; } = new HttpResponseHeaders();
 
-        public MinDataRate MinRequestBodyDataRate { get; set; }
+        public virtual MinDataRate MinRequestBodyDataRate { get; set; }
 
         public MinDataRate MinResponseDataRate { get; set; }
 
