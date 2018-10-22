@@ -20,8 +20,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private bool _send100Continue = true;
         private long _consumedBytes;
-        private bool _timingReads;
+
+        private bool _timingEnabled;
         private bool _backpressure;
+        private long _alreadyTimedBytes;
 
         protected MessageBody(HttpProtocol context)
         {
@@ -46,8 +48,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await TimedReadAsync(cancellationToken);
+                var result = await StartTimingReadAsync(cancellationToken);
                 var readableBuffer = result.Buffer;
+                var readableBufferLength = readableBuffer.Length;
+                StopTimingRead(readableBufferLength);
+
                 var consumed = readableBuffer.End;
                 var actual = 0;
 
@@ -55,8 +60,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     if (!readableBuffer.IsEmpty)
                     {
-                        // buffer.Count is int
-                        actual = (int)Math.Min(readableBuffer.Length, buffer.Length);
+                        // buffer.Length is int
+                        actual = (int)Math.Min(readableBufferLength, buffer.Length);
+
+                        // Make sure we don't double-count bytes on the next read.
+                        if (readableBufferLength > actual)
+                        {
+                            _alreadyTimedBytes = readableBufferLength - actual;
+                        }
+
                         var slice = readableBuffer.Slice(0, actual);
                         consumed = readableBuffer.GetPosition(actual);
                         slice.CopyTo(buffer.Span);
@@ -71,7 +83,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    CompleteTimedRead(consumed, actual);
+                    _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+
+                    // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
+                    // the pipe despite the client being well-behaved.
+                    OnDataRead(actual);
                 }
             }
         }
@@ -82,10 +98,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             while (true)
             {
-                var result = await TimedReadAsync(cancellationToken);
+                var result = await StartTimingReadAsync(cancellationToken);
                 var readableBuffer = result.Buffer;
-                var consumed = readableBuffer.End;
-                var bytesRead = 0;
+                var readableBufferLength = readableBuffer.Length;
+                StopTimingRead(readableBufferLength);
 
                 try
                 {
@@ -96,8 +112,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             // REVIEW: This *could* be slower if 2 things are true
                             // - The WriteAsync(ReadOnlyMemory<byte>) isn't overridden on the destination
                             // - We change the Kestrel Memory Pool to not use pinned arrays but instead use native memory
-
-                            bytesRead += memory.Length;
 
 #if NETCOREAPP2_1
                             await destination.WriteAsync(memory, cancellationToken);
@@ -117,8 +131,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-                    // TODO: We should't wait for app logic here
-                    CompleteTimedRead(consumed, bytesRead);
+
+                    _context.RequestBodyPipe.Reader.AdvanceTo(readableBuffer.End);
+
+                    // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
+                    // the pipe despite the client being well-behaved.
+                    OnDataRead(readableBufferLength);
                 }
             }
         }
@@ -132,7 +150,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual Task StopAsync()
         {
-            TryStopTimingReads();
+            if (!RequestUpgrade)
+            {
+                Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
+
+                if (_timingEnabled)
+                {
+                    _context.TimeoutControl.StopTimingReads();
+                }
+            }
 
             return OnStopAsync();
         }
@@ -156,7 +182,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 OnReadStarting();
                 _context.HasStartedConsumingRequestBody = true;
-                TryInitializeTimingReads();
+
+                if (!RequestUpgrade)
+                {
+                    Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
+
+                    var minRate = _context.MinRequestBodyDataRate;
+
+                    if (minRate != null)
+                    {
+                        _timingEnabled = true;
+                        _context.TimeoutControl.InitializeTimingReads(minRate);
+                    }
+                }
+
                 OnReadStarted();
             }
         }
@@ -169,7 +208,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
         }
 
-        protected virtual void OnDataRead(int bytesRead)
+        protected virtual void OnDataRead(long bytesRead)
         {
         }
 
@@ -183,11 +222,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
-        private ValueTask<ReadResult> TimedReadAsync(CancellationToken cancellationToken)
+        private ValueTask<ReadResult> StartTimingReadAsync(CancellationToken cancellationToken)
         {
             var readAwaitable = _context.RequestBodyPipe.Reader.ReadAsync(cancellationToken);
 
-            if (!readAwaitable.IsCompleted && _timingReads)
+            if (!readAwaitable.IsCompleted && _timingEnabled)
             {
                 _backpressure = true;
                 _context.TimeoutControl.ResumeTimingReads();
@@ -196,49 +235,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             return readAwaitable;
         }
 
-        private void CompleteTimedRead(SequencePosition consumed, int bytesRead)
+        private void StopTimingRead(long bytesRead)
         {
-            _context.RequestBodyPipe.Reader.AdvanceTo(consumed);
+            _context.TimeoutControl.BytesRead(bytesRead - _alreadyTimedBytes);
+            _alreadyTimedBytes = 0;
 
-            _context.TimeoutControl.BytesRead(bytesRead);
-
-            if (_timingReads && _backpressure)
+            if (_timingEnabled && _backpressure)
             {
                 _backpressure = false;
                 _context.TimeoutControl.PauseTimingReads();
-            }
-
-            // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
-            // the pipe despite the client being well-behaved.
-            OnDataRead(bytesRead);
-        }
-
-        private void TryInitializeTimingReads()
-        {
-            if (!RequestUpgrade)
-            {
-                Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
-
-                var minRate = _context.MinRequestBodyDataRate;
-
-                if (minRate != null)
-                {
-                    _timingReads = true;
-                    _context.TimeoutControl.InitializeTimingReads(minRate);
-                }
-            }
-        }
-
-        private void TryStopTimingReads()
-        {
-            if (!RequestUpgrade)
-            {
-                Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
-
-                if (_timingReads)
-                {
-                    _context.TimeoutControl.StopTimingReads();
-                }
             }
         }
 

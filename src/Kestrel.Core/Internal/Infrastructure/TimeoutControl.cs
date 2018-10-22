@@ -146,15 +146,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             TimerReason = timeoutReason;
 
             // Add Heartbeat.Interval since this can be called right before the next heartbeat.
-            Interlocked.Exchange(ref _timeoutTimestamp, _lastTimestamp + ticks + Heartbeat.Interval.Ticks);
+            Interlocked.Exchange(ref _timeoutTimestamp, Interlocked.Read(ref _lastTimestamp) + ticks + Heartbeat.Interval.Ticks);
         }
 
         public void InitializeTimingReads(MinDataRate minRate)
         {
             lock (_readTimingLock)
             {
-                // minRate is always KestrelServerLimits.MinRequestBodyDataRate for HTTP/2. Per-stream rate limits are
-                // not supported.
+                // minRate is always KestrelServerLimits.MinRequestBodyDataRate for HTTP/2.
+                Debug.Assert(_concurrentIncompleteRequestBodies == 0 || minRate == _minReadRate, "Multiple simultaneous read data rates are not supported.");
+
                 _minReadRate = minRate;
                 _concurrentIncompleteRequestBodies++;
                 _concurrentAwaitingReads++;
@@ -209,6 +210,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public void BytesRead(long count)
         {
+            Debug.Assert(count >= 0, "BytesRead count must not be negative.");
+
             Interlocked.Add(ref _readTimingBytesRead, count);
         }
 
@@ -217,7 +220,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             lock (_writeTimingLock)
             {
                 // Add Heartbeat.Interval since this can be called right before the next heartbeat.
-                var currentTimeUpperBound = _lastTimestamp + Heartbeat.Interval.Ticks;
+                var currentTimeUpperBound = Interlocked.Read(ref _lastTimestamp) + Heartbeat.Interval.Ticks;
                 var ticksToCompleteWriteAtMinRate = TimeSpan.FromSeconds(size / minRate.BytesPerSecond).Ticks;
 
                 // If ticksToCompleteWriteAtMinRate is less than the configured grace period,
