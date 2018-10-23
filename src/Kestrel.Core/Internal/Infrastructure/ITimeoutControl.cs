@@ -12,9 +12,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void CancelTimeout();
 
         void StartRequestBody(MinDataRate minRate);
-        void PauseTimingReads();
-        void ResumeTimingReads();
-        void EndRequestBody();
+        void StopRequestBody();
+        void StartTimingRead();
+        void StopTimingRead();
         void BytesRead(long count);
 
         void StartTimingWrite(MinDataRate minRate, long size);

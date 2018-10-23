@@ -167,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public void EndRequestBody()
+        public void StopRequestBody()
         {
             lock (_readTimingLock)
             {
@@ -180,7 +180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public void PauseTimingReads()
+        public void StopTimingRead()
         {
             lock (_readTimingLock)
             {
@@ -193,7 +193,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public void ResumeTimingReads()
+        public void StartTimingRead()
         {
             lock (_readTimingLock)
             {

@@ -158,10 +158,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     if (_backpressure)
                     {
-                        _context.TimeoutControl.PauseTimingReads();
+                        _context.TimeoutControl.StopTimingRead();
                     }
 
-                    _context.TimeoutControl.EndRequestBody();
+                    _context.TimeoutControl.StopRequestBody();
                 }
             }
 
@@ -234,7 +234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (!readAwaitable.IsCompleted && _timingEnabled)
             {
                 _backpressure = true;
-                _context.TimeoutControl.ResumeTimingReads();
+                _context.TimeoutControl.StartTimingRead();
             }
 
             return readAwaitable;
@@ -248,7 +248,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             if (_backpressure)
             {
                 _backpressure = false;
-                _context.TimeoutControl.PauseTimingReads();
+                _context.TimeoutControl.StopTimingRead();
             }
         }
 

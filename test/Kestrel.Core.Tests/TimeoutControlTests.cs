@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Tick(now);
 
             _timeoutControl.StartRequestBody(minRate);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Tick during grace period w/ low data rate
             now += TimeSpan.FromSeconds(1);
@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Tick(now);
 
             _timeoutControl.StartRequestBody(minRate);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Set base data rate to 200 bytes/second
             now += gracePeriod;
@@ -156,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Tick(systemClock.UtcNow);
 
             _timeoutControl.StartRequestBody(minRate);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Tick at 3s, expected counted time is 3s, expected data rate is 200 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(3);
@@ -165,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Pause at 3.5s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
-            _timeoutControl.PauseTimingReads();
+            _timeoutControl.StopTimingRead();
 
             // Tick at 4s, expected counted time is 4s (first tick after pause goes through), expected data rate is 150 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
@@ -180,7 +180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Resume at 6.5s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Tick at 9s, expected counted time is 6s, expected data rate is 100 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(1.5);
@@ -207,7 +207,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Tick(systemClock.UtcNow);
 
             _timeoutControl.StartRequestBody(minRate);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Tick at 2s, expected counted time is 2s, expected data rate is 100 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(2);
@@ -219,11 +219,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Pause at 2.25s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.25);
-            _timeoutControl.PauseTimingReads();
+            _timeoutControl.StopTimingRead();
 
             // Resume at 2.5s
             systemClock.UtcNow += TimeSpan.FromSeconds(0.25);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Tick at 3s, expected counted time is 3s, expected data rate is 100 bytes/second
             systemClock.UtcNow += TimeSpan.FromSeconds(0.5);
@@ -254,7 +254,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Tick(startTime);
 
             _timeoutControl.StartRequestBody(minRate);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             _timeoutControl.SetTimeout(timeout.Ticks, TimeoutReason.RequestBodyDrain);
 
@@ -400,7 +400,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Tick(now);
 
             _timeoutControl.StartRequestBody(minRate);
-            _timeoutControl.ResumeTimingReads();
+            _timeoutControl.StartTimingRead();
 
             // Tick after grace period w/ low data rate
             now += gracePeriod + TimeSpan.FromSeconds(1);
