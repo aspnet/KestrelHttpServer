@@ -156,7 +156,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 if (_timingEnabled)
                 {
-                    _context.TimeoutControl.StopTimingReads();
+                    if (_backpressure)
+                    {
+                        _context.TimeoutControl.PauseTimingReads();
+                    }
+
+                    _context.TimeoutControl.EndRequestBody();
                 }
             }
 
@@ -192,7 +197,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     if (minRate != null)
                     {
                         _timingEnabled = true;
-                        _context.TimeoutControl.InitializeTimingReads(minRate);
+                        _context.TimeoutControl.StartRequestBody(minRate);
                     }
                 }
 
@@ -240,7 +245,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _context.TimeoutControl.BytesRead(bytesRead - _alreadyTimedBytes);
             _alreadyTimedBytes = 0;
 
-            if (_timingEnabled && _backpressure)
+            if (_backpressure)
             {
                 _backpressure = false;
                 _context.TimeoutControl.PauseTimingReads();

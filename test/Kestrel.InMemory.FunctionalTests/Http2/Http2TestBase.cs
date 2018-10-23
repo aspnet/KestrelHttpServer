@@ -1196,9 +1196,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             }
 
 
-            public virtual void InitializeTimingReads(MinDataRate minRate)
+            public virtual void StartRequestBody(MinDataRate minRate)
             {
-                _realTimeoutControl.InitializeTimingReads(minRate);
+                _realTimeoutControl.StartRequestBody(minRate);
             }
 
             public virtual void PauseTimingReads()
@@ -1211,9 +1211,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 _realTimeoutControl.ResumeTimingReads();
             }
 
-            public virtual void StopTimingReads()
+            public virtual void EndRequestBody()
             {
-                _realTimeoutControl.StopTimingReads();
+                _realTimeoutControl.EndRequestBody();
             }
 
             public virtual void BytesRead(long count)

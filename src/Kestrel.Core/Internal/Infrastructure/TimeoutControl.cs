@@ -149,16 +149,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             Interlocked.Exchange(ref _timeoutTimestamp, Interlocked.Read(ref _lastTimestamp) + ticks + Heartbeat.Interval.Ticks);
         }
 
-        public void InitializeTimingReads(MinDataRate minRate)
+        public void StartRequestBody(MinDataRate minRate)
         {
             lock (_readTimingLock)
             {
-                // minRate is always KestrelServerLimits.MinRequestBodyDataRate for HTTP/2.
+                // minRate is always KestrelServerLimits.MinRequestBodyDataRate for HTTP/2 which is the only protocol that supports concurrent request bodies.
                 Debug.Assert(_concurrentIncompleteRequestBodies == 0 || minRate == _minReadRate, "Multiple simultaneous read data rates are not supported.");
 
                 _minReadRate = minRate;
                 _concurrentIncompleteRequestBodies++;
-                _concurrentAwaitingReads++;
 
                 if (_concurrentIncompleteRequestBodies == 1)
                 {
@@ -168,12 +167,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public void StopTimingReads()
+        public void EndRequestBody()
         {
             lock (_readTimingLock)
             {
                 _concurrentIncompleteRequestBodies--;
-                _concurrentAwaitingReads--;
 
                 if (_concurrentIncompleteRequestBodies == 0)
                 {

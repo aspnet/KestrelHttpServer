@@ -11,10 +11,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void ResetTimeout(long ticks, TimeoutReason timeoutReason);
         void CancelTimeout();
 
-        void InitializeTimingReads(MinDataRate minRate);
+        void StartRequestBody(MinDataRate minRate);
         void PauseTimingReads();
         void ResumeTimingReads();
-        void StopTimingReads();
+        void EndRequestBody();
         void BytesRead(long count);
 
         void StartTimingWrite(MinDataRate minRate, long size);
