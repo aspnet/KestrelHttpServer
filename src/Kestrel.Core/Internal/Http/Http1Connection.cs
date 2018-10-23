@@ -124,6 +124,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public void HandleRequestHeadersTimeout()
             => SendTimeoutResponse();
 
+        public void HandleReadDataRateTimeout()
+        {
+            Log.RequestBodyMinimumDataRateNotSatisfied(ConnectionId, TraceIdentifier, MinRequestBodyDataRate.BytesPerSecond);
+            SendTimeoutResponse();
+        }
+
         public void ParseRequest(ReadOnlySequence<byte> buffer, out SequencePosition consumed, out SequencePosition examined)
         {
             consumed = buffer.Start;

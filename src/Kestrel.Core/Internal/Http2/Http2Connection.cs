@@ -149,6 +149,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             Abort(new ConnectionAbortedException(CoreStrings.BadRequest_RequestHeadersTimeout));
         }
 
+        public void HandleReadDataRateTimeout()
+        {
+            Log.RequestBodyMinimumDataRateNotSatisfied(ConnectionId, null, Limits.MinRequestBodyDataRate.BytesPerSecond);
+            Abort(new ConnectionAbortedException(CoreStrings.BadRequest_RequestBodyTimeout));
+        }
+
         public void StopProcessingNextRequest(bool sendGracefulGoAway = false)
         {
             lock (_stateLock)
