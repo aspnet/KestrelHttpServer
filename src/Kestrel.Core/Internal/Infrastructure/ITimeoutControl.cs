@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
+
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
     public interface ITimeoutControl
@@ -11,6 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         void ResetTimeout(long ticks, TimeoutReason timeoutReason);
         void CancelTimeout();
 
+        void InitializeHttp2(InputFlowControl connectionInputFlowControl);
         void StartRequestBody(MinDataRate minRate);
         void StopRequestBody();
         void StartTimingRead();

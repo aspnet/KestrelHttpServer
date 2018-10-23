@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 {
@@ -21,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         private bool _readTimingPauseRequested;
         private long _readTimingElapsedTicks;
         private long _readTimingBytesRead;
-
+        private InputFlowControl _connectionInputFlowControl;
         // The following are always 0 or 1 for HTTP/1.x
         private int _concurrentIncompleteRequestBodies;
         private int _concurrentAwaitingReads;
@@ -76,6 +77,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             // when draining the request body. Since there's already a (short) timeout set for draining,
             // it's safe to not check the data rate at this point.
             if (Interlocked.Read(ref _timeoutTimestamp) != long.MaxValue)
+            {
+                return;
+            }
+
+            // Don't enforce the rate timeout if there is back pressure due to HTTP/2 connection-level input
+            // flow control. We don't consider stream-level flow control, because we wouldn't be timing a read
+            // for any stream that didn't have a completely empty stream-level flow control window.
+            if (_connectionInputFlowControl?.IsAvailabilityLow == true)
             {
                 return;
             }
@@ -147,6 +156,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
             // Add Heartbeat.Interval since this can be called right before the next heartbeat.
             Interlocked.Exchange(ref _timeoutTimestamp, Interlocked.Read(ref _lastTimestamp) + ticks + Heartbeat.Interval.Ticks);
+        }
+
+        public void InitializeHttp2(InputFlowControl connectionInputFlowControl)
+        {
+            _connectionInputFlowControl = connectionInputFlowControl;
         }
 
         public void StartRequestBody(MinDataRate minRate)

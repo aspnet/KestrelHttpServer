@@ -184,6 +184,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             try
             {
                 ValidateTlsRequirements();
+
+                TimeoutControl.InitializeHttp2(_inputFlowControl);
                 TimeoutControl.SetTimeout(Limits.KeepAliveTimeout.Ticks, TimeoutReason.KeepAlive);
 
                 if (!await TryReadPrefaceAsync())

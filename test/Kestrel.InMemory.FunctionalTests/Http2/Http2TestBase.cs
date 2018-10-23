@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.HPack;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions.Internal;
@@ -1195,6 +1196,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 _realTimeoutControl.CancelTimeout();
             }
 
+
+            public virtual void InitializeHttp2(InputFlowControl connectionInputFlowControl)
+            {
+                _realTimeoutControl.InitializeHttp2(connectionInputFlowControl);
+            }
 
             public virtual void StartRequestBody(MinDataRate minRate)
             {
