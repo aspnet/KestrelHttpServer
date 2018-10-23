@@ -732,33 +732,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
-        public async Task OnlyEnforcesRequestBodyTimeoutAfterSending100Continue()
+        public async Task OnlyEnforcesRequestBodyTimeoutAfterFirstRead()
         {
             using (var input = new TestInput())
             {
-                var produceContinueCalled = false;
-                var startTimingReadsCalledAfterProduceContinue = false;
-
-                var mockHttpResponseControl = new Mock<IHttpResponseControl>();
-                mockHttpResponseControl
-                    .Setup(httpResponseControl => httpResponseControl.ProduceContinue())
-                    .Callback(() => produceContinueCalled = true);
-                input.Http1Connection.HttpResponseControl = mockHttpResponseControl.Object;
+                var startRequestBodyCalled = false;
 
                 var minReadRate = input.Http1Connection.MinRequestBodyDataRate;
                 var mockTimeoutControl = new Mock<ITimeoutControl>();
                 mockTimeoutControl
                     .Setup(timeoutControl => timeoutControl.StartRequestBody(minReadRate))
-                    .Callback(() => startTimingReadsCalledAfterProduceContinue = produceContinueCalled);
+                    .Callback(() => startRequestBodyCalled = true);
 
                 input.Http1ConnectionContext.TimeoutControl = mockTimeoutControl.Object;
 
                 var body = Http1MessageBody.For(HttpVersion.Http11, new HttpRequestHeaders { HeaderContentLength = "5" }, input.Http1Connection);
 
+                Assert.False(startRequestBodyCalled);
+
                 // Add some input and read it to start PumpAsync
                 var readTask = body.ReadAsync(new ArraySegment<byte>(new byte[1]));
 
-                Assert.True(startTimingReadsCalledAfterProduceContinue);
+                Assert.True(startRequestBodyCalled);
 
                 input.Add("a");
                 await readTask;
