@@ -64,10 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         actual = (int)Math.Min(readableBufferLength, buffer.Length);
 
                         // Make sure we don't double-count bytes on the next read.
-                        if (readableBufferLength > actual)
-                        {
-                            _alreadyTimedBytes = readableBufferLength - actual;
-                        }
+                        _alreadyTimedBytes = readableBufferLength - actual;
 
                         var slice = readableBuffer.Slice(0, actual);
                         consumed = readableBuffer.GetPosition(actual);

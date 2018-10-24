@@ -10,13 +10,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     public class Http2MessageBody : MessageBody
     {
         private readonly Http2Stream _context;
-        private readonly ITimeoutControl _timeoutControl;
 
-        private Http2MessageBody(Http2Stream context, ITimeoutControl timeoutControl)
+        private Http2MessageBody(Http2Stream context)
             : base(context)
         {
             _context = context;
-            _timeoutControl = timeoutControl;
         }
 
         protected override void OnReadStarting()
@@ -55,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 return ZeroContentLengthClose;
             }
 
-            return new Http2MessageBody(context, timeoutControl);
+            return new Http2MessageBody(context);
         }
     }
 }
