@@ -101,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 if (_minReadRate.BytesPerSecond > 0 && _readTimingElapsedTicks > _minReadRate.GracePeriod.Ticks)
                 {
                     var elapsedSeconds = (double)_readTimingElapsedTicks / TimeSpan.TicksPerSecond;
-                    var rate = Interlocked.Read(ref _readTimingBytesRead) / elapsedSeconds;
+                    var rate = _readTimingBytesRead / elapsedSeconds;
 
                     if (rate < _minReadRate.BytesPerSecond && !Debugger.IsAttached)
                     {
@@ -224,7 +224,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             Debug.Assert(count >= 0, "BytesRead count must not be negative.");
 
-            Interlocked.Add(ref _readTimingBytesRead, count);
+            lock (_readTimingLock)
+            {
+                _readTimingBytesRead += count;
+            }
         }
 
         public void StartTimingWrite(MinDataRate minRate, long size)
