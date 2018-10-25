@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private Task _pumpTask;
 
         protected Http1MessageBody(Http1Connection context)
-            : base(context)
+            : base(context, context.MinRequestBodyDataRate)
         {
             _context = context;
         }

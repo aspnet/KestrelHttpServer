@@ -63,6 +63,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public override bool IsUpgradableRequest => _upgradeAvailable;
 
+        public MinDataRate MinRequestBodyDataRate { get; set; }
+
+        public MinDataRate MinResponseDataRate { get; set; }
+
         protected override void OnRequestProcessingEnded()
         {
             Input.Complete();
@@ -428,13 +432,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         protected override void OnReset()
         {
-            ResetIHttpUpgradeFeature();
+            ResetHttp1Features();
 
             _requestTimedOut = false;
             _requestTargetForm = HttpRequestTarget.Unknown;
             _absoluteRequestTarget = null;
             _remainingRequestHeadersBytesAllowed = ServerOptions.Limits.MaxRequestHeadersTotalSize + 2;
             _requestCount++;
+
+            MinRequestBodyDataRate = ServerOptions.Limits.MinRequestBodyDataRate;
+            MinResponseDataRate = ServerOptions.Limits.MinResponseDataRate;
         }
 
         protected override void OnRequestProcessingEnding()

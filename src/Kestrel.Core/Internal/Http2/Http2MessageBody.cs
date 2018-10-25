@@ -11,8 +11,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
     {
         private readonly Http2Stream _context;
 
-        private Http2MessageBody(Http2Stream context)
-            : base(context)
+        private Http2MessageBody(Http2Stream context, MinDataRate minRequestBodyDataRate)
+            : base(context, minRequestBodyDataRate)
         {
             _context = context;
         }
@@ -46,14 +46,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
         protected override Task OnStopAsync() => Task.CompletedTask;
 
-        public static MessageBody For(Http2Stream context, ITimeoutControl timeoutControl)
+        public static MessageBody For(Http2Stream context, MinDataRate minRequestBodyDataRate)
         {
             if (context.EndStreamReceived && !context.RequestBodyStarted)
             {
                 return ZeroContentLengthClose;
             }
 
-            return new Http2MessageBody(context);
+            return new Http2MessageBody(context, minRequestBodyDataRate);
         }
     }
 }

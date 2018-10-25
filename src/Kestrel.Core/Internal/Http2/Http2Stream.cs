@@ -35,16 +35,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             _context = context;
 
             _inputFlowControl = new StreamInputFlowControl(
-                _context.StreamId,
-                _context.FrameWriter,
+                context.StreamId,
+                context.FrameWriter,
                 context.ConnectionInputFlowControl,
-                _context.ServerPeerSettings.InitialWindowSize,
-                _context.ServerPeerSettings.InitialWindowSize / 2);
+                context.ServerPeerSettings.InitialWindowSize,
+                context.ServerPeerSettings.InitialWindowSize / 2);
 
-            _outputFlowControl = new StreamOutputFlowControl(context.ConnectionOutputFlowControl, context.ClientPeerSettings.InitialWindowSize);
-            _http2Output = new Http2OutputProducer(context.StreamId, context.FrameWriter, _outputFlowControl, context.TimeoutControl, context.MemoryPool, this);
+            _outputFlowControl = new StreamOutputFlowControl(
+                context.ConnectionOutputFlowControl,
+                context.ClientPeerSettings.InitialWindowSize);
 
-            RequestBodyPipe = CreateRequestBodyPipe(_context.ServerPeerSettings.InitialWindowSize);
+            _http2Output = new Http2OutputProducer(
+                context.StreamId,
+                context.FrameWriter,
+                _outputFlowControl,
+                context.TimeoutControl,
+                context.ServiceContext.ServerOptions.Limits.MinResponseDataRate,
+                context.MemoryPool,
+                this);
+
+            RequestBodyPipe = CreateRequestBodyPipe(context.ServerPeerSettings.InitialWindowSize);
             Output = _http2Output;
         }
 
@@ -59,9 +69,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
         internal bool IsDraining => (_completionState & StreamCompletionFlags.Draining) == StreamCompletionFlags.Draining;
 
         public override bool IsUpgradableRequest => false;
-
-        // Since there can be multiple concurrent request bodies with HTTP/2, always use the global instead of the per-request data rate.
-        public override MinDataRate MinRequestBodyDataRate => ServerOptions.Limits.MinRequestBodyDataRate;
 
         protected override void OnReset()
         {
@@ -109,7 +116,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             => StringUtilities.ConcatAsHexSuffix(ConnectionId, ':', (uint)StreamId);
 
         protected override MessageBody CreateMessageBody()
-            => Http2MessageBody.For(this, _context.TimeoutControl);
+            => Http2MessageBody.For(this, ServerOptions.Limits.MinRequestBodyDataRate);
 
         // Compare to Http1Connection.OnStartLine
         protected override bool TryParseRequest(ReadResult result, out bool endConnection)

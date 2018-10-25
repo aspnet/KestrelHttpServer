@@ -17,6 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private static readonly MessageBody _zeroContentLengthKeepAlive = new ForZeroContentLength(keepAlive: true);
 
         private readonly HttpProtocol _context;
+        private readonly MinDataRate _minRequestBodyDataRate;
 
         private bool _send100Continue = true;
         private long _consumedBytes;
@@ -25,9 +26,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private bool _backpressure;
         private long _alreadyTimedBytes;
 
-        protected MessageBody(HttpProtocol context)
+        protected MessageBody(HttpProtocol context, MinDataRate minRequestBodyDataRate)
         {
             _context = context;
+            _minRequestBodyDataRate = minRequestBodyDataRate;
         }
 
         public static MessageBody ZeroContentLengthClose => _zeroContentLengthClose;
@@ -188,12 +190,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 {
                     Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
 
-                    var minRate = _context.MinRequestBodyDataRate;
-
-                    if (minRate != null)
+                    if (_minRequestBodyDataRate != null)
                     {
                         _timingEnabled = true;
-                        _context.TimeoutControl.StartRequestBody(minRate);
+                        _context.TimeoutControl.StartRequestBody(_minRequestBodyDataRate);
                     }
                 }
 
@@ -251,7 +251,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         private class ForZeroContentLength : MessageBody
         {
             public ForZeroContentLength(bool keepAlive)
-                : base(null)
+                : base(null, null)
             {
                 RequestKeepAlive = keepAlive;
             }
