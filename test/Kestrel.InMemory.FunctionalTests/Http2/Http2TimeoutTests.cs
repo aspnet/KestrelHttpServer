@@ -41,6 +41,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.KeepAlive), Times.Once);
 
             await WaitForConnectionStopAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -64,6 +66,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.KeepAlive), Times.Once);
 
             await WaitForConnectionStopAsync(expectedLastStreamId: 0, ignoreNonGoAwayFrames: false);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -120,6 +124,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.KeepAlive), Times.Once);
 
             await WaitForConnectionStopAsync(expectedLastStreamId: 1, ignoreNonGoAwayFrames: false);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -156,6 +162,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c =>c.Abort(It.Is<ConnectionAbortedException>(e => 
                 e.Message == CoreStrings.BadRequest_RequestHeadersTimeout)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -187,6 +196,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c =>c.Abort(It.Is<ConnectionAbortedException>(e => 
                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Theory]
@@ -265,6 +277,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
                 withStreamId: 1);
 
+            // Complete timing of the request body so we don't induce any unexpected request body rate timeouts.
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
             // Don't read data frame to induce "socket" backpressure.
             mockSystemClock.UtcNow += limits.MinResponseDataRate.GracePeriod + Heartbeat.Interval;
             _timeoutControl.Tick(mockSystemClock.UtcNow);
@@ -290,6 +305,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c =>c.Abort(It.Is<ConnectionAbortedException>(e => 
                 e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -312,6 +330,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withLength: 37,
                 withFlags: (byte)Http2HeadersFrameFlags.END_HEADERS,
                 withStreamId: 1);
+
+            // Complete timing of the request body so we don't induce any unexpected request body rate timeouts.
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
 
             var timeToWriteMaxData = TimeSpan.FromSeconds(_maxData.Length / limits.MinResponseDataRate.BytesPerSecond);
 
@@ -340,6 +361,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -367,6 +391,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withFlags: (byte)Http2DataFrameFlags.NONE,
                 withStreamId: 1);
 
+            // Complete timing of the request body so we don't induce any unexpected request body rate timeouts.
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
             // Don't send WINDOW_UPDATE to induce flow-control backpressure
             mockSystemClock.UtcNow += limits.MinResponseDataRate.GracePeriod + Heartbeat.Interval;
             _timeoutControl.Tick(mockSystemClock.UtcNow);
@@ -386,6 +413,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -413,6 +443,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withFlags: (byte)Http2DataFrameFlags.NONE,
                 withStreamId: 1);
 
+            // Complete timing of the request body so we don't induce any unexpected request body rate timeouts.
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
             var timeToWriteMaxData = TimeSpan.FromSeconds(_clientSettings.InitialWindowSize / limits.MinResponseDataRate.BytesPerSecond);
 
             // Don't send WINDOW_UPDATE to induce flow-control backpressure
@@ -434,6 +467,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -473,6 +509,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 withFlags: (byte)Http2DataFrameFlags.NONE,
                 withStreamId: 3);
 
+            // Complete timing of the request bodies so we don't induce any unexpected request body rate timeouts.
+            _timeoutControl.Tick(mockSystemClock.UtcNow);
+
             var timeToWriteMaxData = TimeSpan.FromSeconds(_clientSettings.InitialWindowSize / limits.MinResponseDataRate.BytesPerSecond);
             // Double the timeout for the second stream.
             timeToWriteMaxData += timeToWriteMaxData;
@@ -496,6 +535,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.ConnectionTimedBecauseResponseMininumDataRateNotSatisfied)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -541,6 +583,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.BadRequest_RequestBodyTimeout)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -590,6 +635,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.BadRequest_RequestBodyTimeout)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -655,6 +703,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.BadRequest_RequestBodyTimeout)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -721,6 +772,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.BadRequest_RequestBodyTimeout)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -810,6 +864,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _mockConnectionContext.Verify(c => c.Abort(It.Is<ConnectionAbortedException>(e =>
                  e.Message == CoreStrings.BadRequest_RequestBodyTimeout)), Times.Once);
+
+            _mockTimeoutHandler.VerifyNoOtherCalls();
+            _mockConnectionContext.VerifyNoOtherCalls();
         }
     }
 }

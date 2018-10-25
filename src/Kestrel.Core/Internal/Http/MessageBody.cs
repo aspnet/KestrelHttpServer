@@ -128,7 +128,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
                 finally
                 {
-
                     _context.RequestBodyPipe.Reader.AdvanceTo(readableBuffer.End);
 
                     // Update the flow-control window after advancing the pipe reader, so we don't risk overfilling
