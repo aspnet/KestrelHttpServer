@@ -60,13 +60,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     await outputBufferedTcs.Task.DefaultTimeout();
 
                     testContext.MockSystemClock.UtcNow +=
-                        Heartbeat.Interval +
-                        TimeSpan.FromSeconds(testContext.ServerOptions.Limits.MaxResponseBufferSize.Value * 2 / minRate.BytesPerSecond);
+                        TimeSpan.FromSeconds(testContext.ServerOptions.Limits.MaxResponseBufferSize.Value * 2 / minRate.BytesPerSecond) +
+                        minRate.GracePeriod + Heartbeat.Interval - TimeSpan.FromSeconds(.5);
                     heartbeatManager.OnHeartbeat(testContext.SystemClock.UtcNow);
 
                     Assert.Null(transportConnection.AbortReason);
 
-                    testContext.MockSystemClock.UtcNow += TimeSpan.FromTicks(1);
+                    testContext.MockSystemClock.UtcNow += TimeSpan.FromSeconds(1);
                     heartbeatManager.OnHeartbeat(testContext.SystemClock.UtcNow);
 
                     Assert.NotNull(transportConnection.AbortReason);

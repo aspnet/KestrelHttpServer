@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         private int _concurrentAwaitingReads;
 
         private readonly object _writeTimingLock = new object();
-        private int _cuncurrentAwaitingWrites;
+        private int _concurrentAwaitingWrites;
         private long _writeTimingTimeoutTimestamp;
 
         public TimeoutControl(ITimeoutHandler timeoutHandler)
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_writeTimingLock)
             {
-                if (_cuncurrentAwaitingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
+                if (_concurrentAwaitingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
                     _timeoutHandler.OnTimeout(TimeoutReason.WriteDataRate);
                 }
@@ -230,7 +230,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             }
         }
 
-        public void StartTimingWrite(MinDataRate minRate, long size)
+        public void StartTimingWrite()
+        {
+            lock (_writeTimingLock)
+            {
+                _concurrentAwaitingWrites++;
+            }
+        }
+
+        public void StopTimingWrite()
+        {
+            lock (_writeTimingLock)
+            {
+                _concurrentAwaitingWrites--;
+            }
+        }
+
+        public void BytesWritten(MinDataRate minRate, long size)
         {
             lock (_writeTimingLock)
             {
@@ -255,15 +271,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                 var accumulatedWriteTimeoutTimestamp = _writeTimingTimeoutTimestamp + ticksToCompleteWriteAtMinRate;
 
                 _writeTimingTimeoutTimestamp = Math.Max(singleWriteTimeoutTimestamp, accumulatedWriteTimeoutTimestamp);
-                _cuncurrentAwaitingWrites++;
-            }
-        }
-
-        public void StopTimingWrite()
-        {
-            lock (_writeTimingLock)
-            {
-                _cuncurrentAwaitingWrites--;
             }
         }
 

@@ -49,6 +49,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             var flushValueTask = _writer.FlushAsync(cancellationToken);
 
+            if (minRate != null)
+            {
+                _timeoutControl.BytesWritten(minRate, count);
+            }
+
             if (flushValueTask.IsCompletedSuccessfully)
             {
                 return Task.CompletedTask;
@@ -74,7 +79,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             if (minRate != null)
             {
-                _timeoutControl.StartTimingWrite(minRate, count);
+                _timeoutControl.StartTimingWrite();
             }
 
             try
