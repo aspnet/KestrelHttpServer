@@ -79,10 +79,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             {
                 RequestUpgrade = upgradeable;
             }
-
-            protected override Task OnConsumeAsync() => Task.CompletedTask;
-
-            protected override Task OnStopAsync() => Task.CompletedTask;
         }
     }
 }

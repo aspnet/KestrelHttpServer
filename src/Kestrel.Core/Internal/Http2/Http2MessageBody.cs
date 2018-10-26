@@ -42,10 +42,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             AddAndCheckConsumedBytes(bytesRead);
         }
 
-        protected override Task OnConsumeAsync() => Task.CompletedTask;
-
-        protected override Task OnStopAsync() => Task.CompletedTask;
-
         public static MessageBody For(Http2Stream context, MinDataRate minRequestBodyDataRate)
         {
             if (context.EndStreamReceived && !context.RequestBodyStarted)

@@ -21,6 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         private bool _send100Continue = true;
         private long _consumedBytes;
+        private bool _stopped;
 
         private bool _timingEnabled;
         private bool _backpressure;
@@ -46,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
-            TryInit();
+            TryStart();
 
             while (true)
             {
@@ -77,6 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     if (result.IsCompleted)
                     {
+                        TryStop();
                         return 0;
                     }
                 }
@@ -93,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual async Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default(CancellationToken))
         {
-            TryInit();
+            TryStart();
 
             while (true)
             {
@@ -125,6 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     if (result.IsCompleted)
                     {
+                        TryStop();
                         return;
                     }
                 }
@@ -141,13 +144,64 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public virtual Task ConsumeAsync()
         {
-            TryInit();
+            TryStart();
 
             return OnConsumeAsync();
         }
 
         public virtual Task StopAsync()
         {
+            TryStop();
+
+            return OnStopAsync();
+        }
+
+        protected virtual Task OnConsumeAsync() => Task.CompletedTask;
+
+        protected virtual Task OnStopAsync() => Task.CompletedTask;
+
+        protected void TryProduceContinue()
+        {
+            if (_send100Continue)
+            {
+                _context.HttpResponseControl.ProduceContinue();
+                _send100Continue = false;
+            }
+        }
+
+        private void TryStart()
+        {
+            if (_context.HasStartedConsumingRequestBody)
+            {
+                return;
+            }
+
+            OnReadStarting();
+            _context.HasStartedConsumingRequestBody = true;
+
+            if (!RequestUpgrade)
+            {
+                Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
+
+                if (_minRequestBodyDataRate != null)
+                {
+                    _timingEnabled = true;
+                    _context.TimeoutControl.StartRequestBody(_minRequestBodyDataRate);
+                }
+            }
+
+            OnReadStarted();
+        }
+
+        private void TryStop()
+        {
+            if (_stopped)
+            {
+                return;
+            }
+
+            _stopped = true;
+
             if (!RequestUpgrade)
             {
                 Log.RequestBodyDone(_context.ConnectionIdFeature, _context.TraceIdentifier);
@@ -161,43 +215,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     _context.TimeoutControl.StopRequestBody();
                 }
-            }
-
-            return OnStopAsync();
-        }
-
-        protected abstract Task OnConsumeAsync();
-
-        protected abstract Task OnStopAsync();
-
-        protected void TryProduceContinue()
-        {
-            if (_send100Continue)
-            {
-                _context.HttpResponseControl.ProduceContinue();
-                _send100Continue = false;
-            }
-        }
-
-        private void TryInit()
-        {
-            if (!_context.HasStartedConsumingRequestBody)
-            {
-                OnReadStarting();
-                _context.HasStartedConsumingRequestBody = true;
-
-                if (!RequestUpgrade)
-                {
-                    Log.RequestBodyStart(_context.ConnectionIdFeature, _context.TraceIdentifier);
-
-                    if (_minRequestBodyDataRate != null)
-                    {
-                        _timingEnabled = true;
-                        _context.TimeoutControl.StartRequestBody(_minRequestBodyDataRate);
-                    }
-                }
-
-                OnReadStarted();
             }
         }
 
@@ -265,10 +282,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             public override Task ConsumeAsync() => Task.CompletedTask;
 
             public override Task StopAsync() => Task.CompletedTask;
-
-            protected override Task OnConsumeAsync() => Task.CompletedTask;
-
-            protected override Task OnStopAsync() => Task.CompletedTask;
         }
     }
 }
