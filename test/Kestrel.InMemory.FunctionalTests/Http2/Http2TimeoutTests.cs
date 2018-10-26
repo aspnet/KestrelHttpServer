@@ -262,6 +262,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
 
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinResponseDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
+
             // Disable response buffering so "socket" backpressure is observed immediately.
             limits.MaxResponseBufferSize = 0;
 
@@ -315,6 +318,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinResponseDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             // Disable response buffering so "socket" backpressure is observed immediately.
             limits.MaxResponseBufferSize = 0;
@@ -372,6 +378,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
 
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinResponseDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
+
             // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
             _clientSettings.InitialWindowSize = 6;
 
@@ -423,6 +432,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinResponseDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
             _clientSettings.InitialWindowSize = (uint)_maxData.Length - 1;
@@ -477,6 +489,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinResponseDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             // This only affects the stream windows. The connection-level window is always initialized at 64KiB.
             _clientSettings.InitialWindowSize = (uint)_maxData.Length - 1;
@@ -546,6 +561,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
 
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinRequestBodyDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
+
             _timeoutControl.Initialize(mockSystemClock.UtcNow);
 
             await InitializeConnectionAsync(_echoApplication);
@@ -593,6 +611,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinRequestBodyDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             _timeoutControl.Initialize(mockSystemClock.UtcNow);
 
@@ -645,6 +666,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinRequestBodyDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             _timeoutControl.Initialize(mockSystemClock.UtcNow);
 
@@ -713,6 +737,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinRequestBodyDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             _timeoutControl.Initialize(mockSystemClock.UtcNow);
 
@@ -787,6 +814,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             var mockSystemClock = _serviceContext.MockSystemClock;
             var limits = _serviceContext.ServerOptions.Limits;
+
+            // Use non-default value to ensure the min request and response rates aren't mixed up.
+            limits.MinRequestBodyDataRate = new MinDataRate(480, TimeSpan.FromSeconds(2.5));
 
             _timeoutControl.Initialize(mockSystemClock.UtcNow);
 
