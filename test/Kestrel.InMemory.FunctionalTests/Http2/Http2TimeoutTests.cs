@@ -183,7 +183,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             mockSystemClock.UtcNow +=
                 TimeSpan.FromSeconds(_bytesReceived / limits.MinResponseDataRate.BytesPerSecond) + 
-                TimeSpan.FromSeconds(limits.MaxResponseBufferSize.Value * 2 / limits.MinResponseDataRate.BytesPerSecond) +
                 limits.MinResponseDataRate.GracePeriod + Heartbeat.Interval - TimeSpan.FromSeconds(.5);
 
             _timeoutControl.Tick(mockSystemClock.UtcNow);

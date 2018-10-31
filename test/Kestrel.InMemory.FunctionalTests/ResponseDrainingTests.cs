@@ -59,9 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     // Wait for the drain timeout to be set.
                     await outputBufferedTcs.Task.DefaultTimeout();
 
-                    testContext.MockSystemClock.UtcNow +=
-                        TimeSpan.FromSeconds(testContext.ServerOptions.Limits.MaxResponseBufferSize.Value * 2 / minRate.BytesPerSecond) +
-                        minRate.GracePeriod + Heartbeat.Interval - TimeSpan.FromSeconds(.5);
+                    testContext.MockSystemClock.UtcNow += minRate.GracePeriod + Heartbeat.Interval - TimeSpan.FromSeconds(.5);
                     heartbeatManager.OnHeartbeat(testContext.SystemClock.UtcNow);
 
                     Assert.Null(transportConnection.AbortReason);
