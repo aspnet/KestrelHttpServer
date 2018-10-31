@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             // There's no reason to stop timing the write after the connection is closed.
             var oneBufferSize = maxResponseBufferSize.Value;
             var maxBufferedBytes = oneBufferSize < long.MaxValue / 2 ? oneBufferSize * 2 : long.MaxValue;
-            timeoutControl.BytesWritten(minDataRate, maxBufferedBytes);
+            timeoutControl.BytesWrittenToBuffer(minDataRate, maxBufferedBytes);
             timeoutControl.StartTimingWrite();
         }
     }

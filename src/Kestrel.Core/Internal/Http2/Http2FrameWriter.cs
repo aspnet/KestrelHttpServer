@@ -349,7 +349,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
 
                     if (_minResponseDataRate != null)
                     {
-                        _timeoutControl.BytesWritten(_minResponseDataRate, _unflushedBytes);
+                        _timeoutControl.BytesWrittenToBuffer(_minResponseDataRate, _unflushedBytes);
                     }
 
                     _unflushedBytes = 0;

@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
             if (minRate != null)
             {
-                _timeoutControl.BytesWritten(minRate, count);
+                _timeoutControl.BytesWrittenToBuffer(minRate, count);
             }
 
             if (flushValueTask.IsCompletedSuccessfully)

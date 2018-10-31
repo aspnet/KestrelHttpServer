@@ -1240,9 +1240,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 _realTimeoutControl.StopTimingWrite();
             }
 
-            public virtual void BytesWritten(MinDataRate minRate, long size)
+            public virtual void BytesWrittenToBuffer(MinDataRate minRate, long size)
             {
-                _realTimeoutControl.BytesWritten(minRate, size);
+                _realTimeoutControl.BytesWrittenToBuffer(minRate, size);
             }
         }
     }
