@@ -38,14 +38,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
             StreamOutputFlowControl flowControl,
             ITimeoutControl timeoutControl,
             MemoryPool<byte> pool,
-            Http2Stream stream)
+            Http2Stream stream,
+            IKestrelTrace log)
         {
             _streamId = streamId;
             _frameWriter = frameWriter;
             _flowControl = flowControl;
             _stream = stream;
             _dataPipe = CreateDataPipe(pool);
-            _flusher = new TimingPipeFlusher(_dataPipe.Writer, timeoutControl);
+            _flusher = new TimingPipeFlusher(_dataPipe.Writer, timeoutControl, log);
             _dataWriteProcessingTask = ProcessDataWrites();
         }
 

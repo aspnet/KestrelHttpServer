@@ -51,7 +51,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2
                 _outputFlowControl,
                 context.TimeoutControl,
                 context.MemoryPool,
-                this);
+                this,
+                context.ServiceContext.Log);
 
             RequestBodyPipe = CreateRequestBodyPipe(context.ServerPeerSettings.InitialWindowSize);
             Output = _http2Output;
