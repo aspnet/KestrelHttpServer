@@ -124,6 +124,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             lock (_writeTimingLock)
             {
+                var extraTimeForTick = timestamp - _lastTimestamp - Heartbeat.Interval.Ticks;
+
+                if (extraTimeForTick > 0)
+                {
+                    _writeTimingTimeoutTimestamp += extraTimeForTick;
+                }
+
                 if (_concurrentAwaitingWrites > 0 && timestamp > _writeTimingTimeoutTimestamp && !Debugger.IsAttached)
                 {
                     _timeoutHandler.OnTimeout(TimeoutReason.WriteDataRate);
