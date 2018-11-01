@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.FlowControl;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.AspNetCore.Testing;
 using Moq;
@@ -28,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.Debugger = mockDebugger.Object;
 
             var now = DateTimeOffset.Now;
-            _timeoutControl.Tick(now);
+            _timeoutControl.Initialize(now);
             _timeoutControl.SetTimeout(1, TimeoutReason.RequestHeaders);
             _timeoutControl.Tick(now.AddTicks(2).Add(Heartbeat.Interval));
 
@@ -64,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
-            _timeoutControl.Tick(now);
+            _timeoutControl.Initialize(now);
 
             _timeoutControl.StartRequestBody(minRate);
             _timeoutControl.StartTimingRead();
@@ -78,7 +79,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
 
             // Tick after grace period w/ low data rate
-            now += TimeSpan.FromSeconds(2);
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(now);
+            now += TimeSpan.FromSeconds(1);
             _timeoutControl.BytesRead(10);
             _timeoutControl.Tick(now);
 
@@ -94,13 +97,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Initialize timestamp
             var now = DateTimeOffset.UtcNow;
-            _timeoutControl.Tick(now);
+            _timeoutControl.Initialize(now);
 
             _timeoutControl.StartRequestBody(minRate);
             _timeoutControl.StartTimingRead();
 
             // Set base data rate to 200 bytes/second
-            now += gracePeriod;
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(now);
+            now += TimeSpan.FromSeconds(1);
             _timeoutControl.BytesRead(400);
             _timeoutControl.Tick(now);
 
@@ -153,13 +158,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var minRate = new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
 
             // Initialize timestamp
-            _timeoutControl.Tick(systemClock.UtcNow);
+            _timeoutControl.Initialize(systemClock.UtcNow);
 
             _timeoutControl.StartRequestBody(minRate);
             _timeoutControl.StartTimingRead();
 
             // Tick at 3s, expected counted time is 3s, expected data rate is 200 bytes/second
-            systemClock.UtcNow += TimeSpan.FromSeconds(3);
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(systemClock.UtcNow);
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(systemClock.UtcNow);
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
             _timeoutControl.BytesRead(600);
             _timeoutControl.Tick(systemClock.UtcNow);
 
@@ -183,7 +192,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             _timeoutControl.StartTimingRead();
 
             // Tick at 9s, expected counted time is 6s, expected data rate is 100 bytes/second
-            systemClock.UtcNow += TimeSpan.FromSeconds(1.5);
+            systemClock.UtcNow += TimeSpan.FromSeconds(1.0);
+            _timeoutControl.Tick(systemClock.UtcNow);
+            systemClock.UtcNow += TimeSpan.FromSeconds(.5);
             _timeoutControl.Tick(systemClock.UtcNow);
 
             // Not timed out
@@ -204,15 +215,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var minRate = new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
 
             // Initialize timestamp
-            _timeoutControl.Tick(systemClock.UtcNow);
+            _timeoutControl.Initialize(systemClock.UtcNow);
 
             _timeoutControl.StartRequestBody(minRate);
             _timeoutControl.StartTimingRead();
 
             // Tick at 2s, expected counted time is 2s, expected data rate is 100 bytes/second
-            systemClock.UtcNow += TimeSpan.FromSeconds(2);
-            _timeoutControl.BytesRead(200);
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
             _timeoutControl.Tick(systemClock.UtcNow);
+            systemClock.UtcNow += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(systemClock.UtcNow);
+            _timeoutControl.BytesRead(200);
 
             // Not timed out
             _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
@@ -251,7 +264,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var startTime = systemClock.UtcNow;
 
             // Initialize timestamp
-            _timeoutControl.Tick(startTime);
+            _timeoutControl.Initialize(startTime);
 
             _timeoutControl.StartRequestBody(minRate);
             _timeoutControl.StartTimingRead();
@@ -275,13 +288,100 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
         }
 
         [Fact]
+        public void ReadTimingNotEnforcedWhenLowConnectionInputFlowControlAvailability()
+        {
+            var minRate = new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+
+            var flowControl = new InputFlowControl(initialWindowSize: 2, minWindowSizeIncrement: 1);
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _timeoutControl.Initialize(now);
+            _timeoutControl.InitializeHttp2(flowControl);
+
+            _timeoutControl.StartRequestBody(minRate);
+            _timeoutControl.StartTimingRead();
+
+            // Tick past grace period
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.BytesRead(100);
+            _timeoutControl.Tick(now);
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.BytesRead(100);
+            _timeoutControl.Tick(now);
+
+            // Induce low flow control availability
+            flowControl.TryAdvance(2);
+
+            // Read 0 bytes in 1 second
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(now);
+
+            // Not timed out
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+
+            // Relieve low flow control availability
+            flowControl.TryUpdateWindow(2, out _);
+            _timeoutControl.Tick(now);
+
+            // Still not timed out
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+            
+            // Read 0 bytes in 1 second
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(now);;
+
+            // Timed out
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.ReadDataRate), Times.Once);
+        }
+
+        [Fact]
+        public void ReadTimingOnlyCountsUpToOneHeartbeatIntervalPerTick()
+        {
+            var minRate = new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
+
+            // Initialize timestamp
+            var now = DateTimeOffset.UtcNow;
+            _timeoutControl.Initialize(now);
+
+            _timeoutControl.StartRequestBody(minRate);
+            _timeoutControl.StartTimingRead();
+
+            // Tick past grace period
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.BytesRead(100);
+            _timeoutControl.Tick(now);
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.BytesRead(100);
+            _timeoutControl.Tick(now);
+
+            // Read 100 bytes in 2 seconds with a single tick
+            now += TimeSpan.FromSeconds(2);
+            _timeoutControl.BytesRead(100);
+            _timeoutControl.Tick(now);
+
+            // Not timed out
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(It.IsAny<TimeoutReason>()), Times.Never);
+
+            // Read 100 bytes in 2 seconds in two ticks
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.BytesRead(100);
+            _timeoutControl.Tick(now);
+            now += TimeSpan.FromSeconds(1);
+            _timeoutControl.Tick(now);
+
+            // Timed out
+            _mockTimeoutHandler.Verify(h => h.OnTimeout(TimeoutReason.ReadDataRate), Times.Once);
+        }
+
+        [Fact]
         public void WriteTimingAbortsConnectionWhenWriteDoesNotCompleteWithMinimumDataRate()
         {
             var systemClock = new MockSystemClock();
             var minRate = new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
 
             // Initialize timestamp
-            _timeoutControl.Tick(systemClock.UtcNow);
+            _timeoutControl.Initialize(systemClock.UtcNow);
 
             // Should complete within 4 seconds, but the timeout is adjusted by adding Heartbeat.Interval
             _timeoutControl.BytesWrittenToBuffer(minRate, 400);
@@ -302,7 +402,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Initialize timestamp
             var startTime = systemClock.UtcNow;
-            _timeoutControl.Tick(startTime);
+            _timeoutControl.Initialize(startTime);
 
             // Should complete within 1 second, but the timeout is adjusted by adding Heartbeat.Interval
             _timeoutControl.BytesWrittenToBuffer(minRate, 100);
@@ -330,7 +430,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var minRate = new MinDataRate(bytesPerSecond: 100, gracePeriod: TimeSpan.FromSeconds(2));
 
             // Initialize timestamp
-            _timeoutControl.Tick(systemClock.UtcNow);
+            _timeoutControl.Initialize(systemClock.UtcNow);
 
             // Should complete within 5 seconds, but the timeout is adjusted by adding Heartbeat.Interval
             _timeoutControl.BytesWrittenToBuffer(minRate, 500);
@@ -367,7 +467,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             // Initialize timestamp
             var startTime = systemClock.UtcNow;
-            _timeoutControl.Tick(startTime);
+            _timeoutControl.Initialize(startTime);
 
             // 5 consecutive 100 byte writes.
             for (var i = 0; i < numWrites - 1; i++)
@@ -405,6 +505,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             _timeoutControl.StartRequestBody(minRate);
             _timeoutControl.StartTimingRead();
+
+            for (var timeFromNow = Heartbeat.Interval; timeFromNow <= gracePeriod; timeFromNow += Heartbeat.Interval)
+            {
+                _timeoutControl.Tick(now + timeFromNow);
+            }
 
             // Tick after grace period w/ low data rate
             now += gracePeriod + TimeSpan.FromSeconds(1);

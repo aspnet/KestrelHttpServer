@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
                     return;
                 }
 
-                _readTimingElapsedTicks += timestamp - _lastTimestamp;
+                _readTimingElapsedTicks += Math.Min(timestamp - _lastTimestamp, Heartbeat.Interval.Ticks);
 
                 if (_minReadRate.BytesPerSecond > 0 && _readTimingElapsedTicks > _minReadRate.GracePeriod.Ticks)
                 {
