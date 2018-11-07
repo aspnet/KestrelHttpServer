@@ -192,7 +192,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
         [Theory]
         [InlineData(Http2FrameType.DATA)]
-        [InlineData(Http2FrameType.HEADERS)]
+        [InlineData(Http2FrameType.CONTINUATION, Skip = "https://github.com/aspnet/KestrelHttpServer/issues/3077")]
         public async Task AbortedStream_ResetsAndDrainsRequest_RefusesFramesAfterCooldownExpires(Http2FrameType finalFrameType)
         {
             var mockSystemClock = _serviceContext.MockSystemClock;
@@ -213,6 +213,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
 
             async Task AdvanceClockAndSendFrames()
             {
+                if (finalFrameType == Http2FrameType.CONTINUATION)
+                {
+                    await SendHeadersAsync(1, Http2HeadersFrameFlags.END_STREAM, new byte[0]);
+                }
+
                 // There's a race when the appfunc is exiting about how soon it unregisters the stream, so retry until success.
                 while (!cts.Token.IsCancellationRequested)
                 {
@@ -224,11 +229,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                     switch (finalFrameType)
                     {
                         case Http2FrameType.DATA:
-                            await SendDataAsync(1, new byte[100], endStream: true);
+                            await SendDataAsync(1, new byte[100], endStream: false);
                             break;
 
-                        case Http2FrameType.HEADERS:
-                            await SendHeadersAsync(1, Http2HeadersFrameFlags.END_STREAM | Http2HeadersFrameFlags.END_HEADERS, _requestTrailers);
+                        case Http2FrameType.CONTINUATION:
+                            await SendContinuationAsync(1, Http2ContinuationFrameFlags.NONE, new byte[0]);
                             break;
 
                         default:
