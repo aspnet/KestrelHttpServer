@@ -1130,7 +1130,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
                 var message = Assert.Single(TestApplicationErrorLogger.Messages, m => m.Exception is TException);
 
                 Assert.Contains(expectedErrorMessage, expected => message.Exception.Message.Contains(expected));
-                //Assert.Contains(expectedErrorMessage, message.Exception.Message);
             }
 
             await _connectionTask;
