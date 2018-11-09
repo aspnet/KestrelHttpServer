@@ -14,5 +14,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         /// Retrieves the current system time in UTC.
         /// </summary>
         DateTimeOffset UtcNow { get; }
+
+        /// <summary>
+        /// Retrieves the current system time in UTC.
+        /// This is only safe to use from code called by the <see cref="Heartbeat"/>.
+        /// </summary>
+        DateTimeOffset UtcNowUnsynchronized { get; }
     }
 }

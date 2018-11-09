@@ -356,7 +356,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 return;
             }
 
-            var now = _systemClock.UtcNow;
+            // It's safe to use UtcNowUnsynchronized since Tick is called by the Heartbeat.
+            var now = _systemClock.UtcNowUnsynchronized;
             _timeoutControl.Tick(now);
             _requestProcessor?.Tick(now);
         }
