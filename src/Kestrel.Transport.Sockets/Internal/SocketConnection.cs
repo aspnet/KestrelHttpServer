@@ -20,7 +20,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
         private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        private static readonly bool IsMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
         private readonly Socket _socket;
         private readonly PipeScheduler _scheduler;
@@ -156,13 +155,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             while (true)
             {
-                // MacOS blocked on https://github.com/dotnet/corefx/issues/31766
-                if (!IsMacOS)
-                {
-                    // Wait for data before allocating a buffer.
-                    await _receiver.WaitForDataAsync();
-                }
-
                 // Ensure we have some reasonable amount of buffer space
                 var buffer = Input.GetMemory(MinAllocBufferSize);
 
