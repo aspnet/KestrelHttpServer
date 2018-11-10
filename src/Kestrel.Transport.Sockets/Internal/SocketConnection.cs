@@ -20,6 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
     {
         private static readonly int MinAllocBufferSize = KestrelMemoryPool.MinimumSegmentSize / 2;
         private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        private static readonly bool IsMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
         private readonly Socket _socket;
         private readonly PipeScheduler _scheduler;
@@ -207,7 +208,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 shutdownReason = new ConnectionResetException(ex.Message, ex);;
                 _trace.ConnectionReset(ConnectionId);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
                 when ((ex is SocketException socketEx && IsConnectionAbortError(socketEx.SocketErrorCode)) ||
                        ex is ObjectDisposedException)
             {
