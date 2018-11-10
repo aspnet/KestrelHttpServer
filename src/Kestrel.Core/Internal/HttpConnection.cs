@@ -113,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 using (connectionLifetimeNotificationFeature?.ConnectionClosedRequested.Register(state => ((HttpConnection)state).StopProcessingNextRequest(), this))
                 {
                     // Ensure TimeoutControl._lastTimestamp is initialized before anything that could set timeouts runs.
-                    _timeoutControl.Initialize(_systemClock.UtcNow);
+                    _timeoutControl.Initialize(_systemClock.UtcNowTicks);
 
                     _context.ConnectionFeatures.Set<IConnectionTimeoutFeature>(_timeoutControl);
 

@@ -19,7 +19,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
             _walkCallback = WalkCallback;
         }
 
-        public DateTimeOffset UtcNow => new DateTimeOffset(Interlocked.Read(ref _nowTicks), TimeSpan.Zero);
+        public DateTimeOffset UtcNow => new DateTimeOffset(UtcNowTicks, TimeSpan.Zero);
+
+        public long UtcNowTicks => Interlocked.Read(ref _nowTicks);
 
         public DateTimeOffset UtcNowUnsynchronized => _now;
 
