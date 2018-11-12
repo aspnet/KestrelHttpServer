@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
     public class IOQueue : PipeScheduler
     {
-        private static readonly WaitCallback _doWorkCallback = s => ((IOQueue)s).DoWork();
+        private static readonly WaitCallback _doWorkCallback = s => ((IOQueue)s).Execute();
 
         private readonly object _workSync = new object();
         private readonly ConcurrentQueue<Work> _workItems = new ConcurrentQueue<Work>();
@@ -24,19 +24,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 State = state
             };
 
+            // Order is important here with DoWork.
+            // Enqueue prior to checking _doingWork.
             _workItems.Enqueue(work);
 
-            lock (_workSync)
+            if (!Volatile.Read(ref _doingWork))
             {
-                if (!_doingWork)
+                // Not scheduled or working.
+                var submitWork = false;
+                // We re-check under lock here to prevent double schedule or missed schedule.
+                lock (_workSync)
+                {
+                    // Don't schedule if already scheduled or doing work.
+                    if (!_doingWork)
+                    {
+                        submitWork = true;
+                        _doingWork = true;
+                    }
+                }
+
+                // Wasn't scheduled or active, schedule outside lock.
+                if (submitWork)
                 {
                     System.Threading.ThreadPool.UnsafeQueueUserWorkItem(_doWorkCallback, this);
-                    _doingWork = true;
                 }
             }
         }
 
-        private void DoWork()
+        private void Execute()
         {
             while (true)
             {
@@ -45,12 +60,29 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     item.Callback(item.State);
                 }
 
+                // Order is important here with Schedule.
+                // Set _doingWork prior to checking .IsEmpty
+                Volatile.Write(ref _doingWork, false);
+
+                // We check under lock here to prevent double schedule or missed schedule.
                 lock (_workSync)
                 {
                     if (_workItems.IsEmpty)
                     {
-                        _doingWork = false;
-                        return;
+                        // Nothing to do, exit.
+                        break;
+                    }
+
+                    if (_doingWork)
+                    {
+                        // Something to do, but DoWork has been rescheduled already, exit.
+                        break;
+                    }
+                    else
+                    {
+                        // Something to do, and not rescheduled yet, reactivate. 
+                        // As we are already running and can do the work.
+                        _doingWork = true;
                     }
                 }
             }
