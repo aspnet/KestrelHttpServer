@@ -9,12 +9,17 @@ using System.Threading;
 namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 {
     public class IOQueue : PipeScheduler
+#if NETCOREAPP3_0
+        , IThreadPoolWorkItem
+#endif
     {
-        private static readonly WaitCallback _doWorkCallback = s => ((IOQueue)s).DoWork();
+#if !NETCOREAPP3_0
+        private static readonly WaitCallback _doWorkCallback = s => ((IOQueue)s).Execute();
+#endif
 
         private readonly object _workSync = new object();
         private readonly ConcurrentQueue<Work> _workItems = new ConcurrentQueue<Work>();
-        private bool _doingWork;
+        private bool _isExecuting;
 
         public override void Schedule(Action<object> action, object state)
         {
@@ -28,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             // Enqueue prior to checking _doingWork.
             _workItems.Enqueue(work);
 
-            if (!Volatile.Read(ref _doingWork))
+            if (!Volatile.Read(ref _isExecuting))
             {
                 // Not scheduled or working.
                 var submitWork = false;
@@ -36,22 +41,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 lock (_workSync)
                 {
                     // Don't schedule if already scheduled or doing work.
-                    if (!_doingWork)
+                    if (!_isExecuting)
                     {
                         submitWork = true;
-                        _doingWork = true;
+                        _isExecuting = true;
                     }
                 }
 
                 // Wasn't scheduled or active, schedule outside lock.
                 if (submitWork)
                 {
+#if NETCOREAPP3_0
+                    System.Threading.ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: false);
+#else
                     System.Threading.ThreadPool.UnsafeQueueUserWorkItem(_doWorkCallback, this);
+#endif
                 }
             }
         }
 
-        private void DoWork()
+#if NETCOREAPP3_0
+        void IThreadPoolWorkItem.Execute()
+#else
+        private void Execute()
+#endif
         {
             while (true)
             {
@@ -62,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
 
                 // Order is important here with Schedule.
                 // Set _doingWork prior to checking .IsEmpty
-                Volatile.Write(ref _doingWork, false);
+                Volatile.Write(ref _isExecuting, false);
 
                 // We check under lock here to prevent double schedule or missed schedule.
                 lock (_workSync)
@@ -73,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                         break;
                     }
 
-                    if (!_doingWork)
+                    if (!_isExecuting)
                     {
                         // Something to do, but DoWork has been rescheduled already, exit.
                         break;
@@ -82,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                     {
                         // Something to do, and not rescheduled yet, reactivate. 
                         // As we are already running and can do the work.
-                        _doingWork = true;
+                        _isExecuting = true;
                     }
                 }
             }
