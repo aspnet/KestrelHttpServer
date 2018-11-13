@@ -27,6 +27,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             // Enqueue prior to checking _doingWork.
             _workItems.Enqueue(work);
 
+            Thread.MemoryBarrier(); // Ensure ordering of write + check on net45x
+
             if (Volatile.Read(ref _doingWork) == 0)
             {
                 // Set as working, and check if it was already working.
@@ -44,7 +46,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
         {
             while (true)
             {
-                while (_workItems.TryDequeue(out Work item))
+                var workItems = _workItems;
+                while (workItems.TryDequeue(out Work item))
                 {
                     item.Callback(item.State);
                 }
@@ -53,7 +56,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 // Set _doingWork prior to checking .IsEmpty
                 Volatile.Write(ref _doingWork, 0);
 
-                if (_workItems.IsEmpty)
+                Thread.MemoryBarrier(); // Ensure ordering of write + check on net45x
+
+                if (workItems.IsEmpty)
                 {
                     // Nothing to do, exit.
                     break;
