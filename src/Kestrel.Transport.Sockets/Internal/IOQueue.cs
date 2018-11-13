@@ -32,6 +32,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             // Enqueue prior to checking _doingWork.
             _workItems.Enqueue(work);
 
+            // Ensure ordering of write -> read is preserved, as order is reversed between Schedule and Execute,
+            // and they are two different memory locations.
+            Thread.MemoryBarrier(); 
+
             if (Volatile.Read(ref _doingWork) == 0)
             {
                 // Set as working, and check if it was already working.
@@ -66,6 +70,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 // Order is important here with Schedule.
                 // Set _doingWork prior to checking .IsEmpty
                 Volatile.Write(ref _doingWork, 0);
+
+                // Ensure ordering of write -> read is preserved, as order is reversed between Schedule and Execute,
+                // and they are two different memory locations.
+                Thread.MemoryBarrier();
 
                 if (workItems.IsEmpty)
                 {
