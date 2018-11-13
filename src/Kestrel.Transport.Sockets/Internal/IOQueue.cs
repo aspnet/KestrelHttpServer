@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 State = state
             };
 
-            // Order is important here with DoWork.
+            // Order is important here with Execute.
             // Enqueue prior to checking _doingWork.
             _workItems.Enqueue(work);
 
@@ -52,8 +52,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 // Order is important here with Schedule.
                 // Set _doingWork prior to checking .IsEmpty
                 Volatile.Write(ref _doingWork, 0);
-
-                // We check under lock here to prevent double schedule or missed schedule.
 
                 if (_workItems.IsEmpty)
                 {
