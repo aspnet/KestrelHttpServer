@@ -21,14 +21,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
 
         public DateTimeOffset UtcNow => new DateTimeOffset(UtcNowTicks, TimeSpan.Zero);
 
-        public long UtcNowTicks => Interlocked.Read(ref _nowTicks);
+        public long UtcNowTicks => Volatile.Read(ref _nowTicks);
 
         public DateTimeOffset UtcNowUnsynchronized => _now;
 
         public void OnHeartbeat(DateTimeOffset now)
         {
             _now = now;
-            Interlocked.Exchange(ref _nowTicks, now.Ticks);
+            Volatile.Write(ref _nowTicks, now.Ticks);
 
             _connectionManager.Walk(_walkCallback);
         }
