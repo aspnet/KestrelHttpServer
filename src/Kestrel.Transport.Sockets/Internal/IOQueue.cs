@@ -29,21 +29,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
             };
 
             // Order is important here with Execute.
-            // Enqueue prior to checking _doingWork.
+
+            // 1. Enqueue prior to checking _doingWork.
             _workItems.Enqueue(work);
 
-            // Ensure ordering of write -> read is preserved, as order is reversed between Schedule and Execute,
-            // and they are two different memory locations.
+            // 2. MemoryBarrier to ensure ordering of Write (workItems.Enqueue) -> Read (_doingWork) is preserved,
+            // as order is reversed between Schedule and Execute, and they are two different memory locations.
             Thread.MemoryBarrier(); 
 
-            if (Volatile.Read(ref _doingWork) == 0)
+            // 3. Fast check if already doing work, don't need Volatile here due to explicit MemoryBarrier above
+            if (_doingWork == 0)
             {
-                // Set as working, and check if it was already working.
+                // 4. Not working, set as working, and check if it was already working (via atomic Interlocked).
                 var submitWork = Interlocked.Exchange(ref _doingWork, 1) == 0;
 
                 if (submitWork)
                 {
-                    // Wasn't scheduled or active, schedule.
+                    // 5. Wasn't working, schedule.
 #if NETCOREAPP3_0
                     System.Threading.ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: false);
 #else
@@ -68,29 +70,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.Internal
                 }
 
                 // Order is important here with Schedule.
-                // Set _doingWork prior to checking .IsEmpty
-                Volatile.Write(ref _doingWork, 0);
 
-                // Ensure ordering of write -> read is preserved, as order is reversed between Schedule and Execute,
-                // and they are two different memory locations.
+                // 1. Set _doingWork (0 == false) prior to checking .IsEmpty
+                // Don't need Volatile here due to explicit MemoryBarrier below
+                _doingWork = 0;
+
+                // 2. MemoryBarrier to ensure ordering of Write (_doingWork) -> Read (workItems.IsEmpty) is preserved, 
+                // as order is reversed between Schedule and Execute, and they are two different memory locations.
                 Thread.MemoryBarrier();
 
+                // 3. Check if there is work to do
                 if (workItems.IsEmpty)
                 {
                     // Nothing to do, exit.
                     break;
                 }
 
-                // Is work, can we set it as active again, prior to it being scheduled?
+                // 4. Is work, can we set it as active again (via atomic Interlocked), prior to scheduling?
                 var alreadyScheduled = Interlocked.Exchange(ref _doingWork, 1) == 1;
 
                 if (alreadyScheduled)
                 {
-                    // Something to do, but Execute has been rescheduled already, exit.
+                    // Execute has been rescheduled already, exit.
                     break;
                 }
 
-                // Is work, wasn't already scheduled so continue loop
+                // 5. Is work, wasn't already scheduled so continue loop
             }
         }
 
