@@ -110,7 +110,13 @@ namespace Interop.FunctionalTests
             var chromeOptions = new ChromeOptions();
             chromeOptions.AddArguments(ChromeArgs);
 
-            using (var driver = new ChromeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), chromeOptions))
+            var chromeDriverLocation = Environment.GetEnvironmentVariable("ChromeWebDriver");
+            if (string.IsNullOrEmpty(chromeDriverLocation))
+            {
+                chromeDriverLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            }
+
+            using (var driver = new ChromeDriver(chromeDriverLocation, chromeOptions))
             {
                 driver.Navigate().GoToUrl(testUrl);
 
